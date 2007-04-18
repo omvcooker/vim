@@ -19,7 +19,7 @@
 
 Name:           vim
 Version:        7.0
-Release:        %mkrel 16
+Release:        %mkrel 17
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -310,19 +310,6 @@ cp runtime/vim32x32.png %{buildroot}%_iconsdir/gvim.png
 cp runtime/vim48x48.png %{buildroot}%_liconsdir/gvim.png
 
 # menu entry
-mkdir -p %{buildroot}%{_menudir}
-cat >%{buildroot}%{_menudir}/%{name}-X11 <<EOF
-?package(%{name}-X11):\
-    command="%{_bindir}/gvim -f" \
-    needs="X11" \
-    icon="gvim.png" \
-    section="Applications/Editors" \
-    title="%{title}" \
-    longtitle="%{longtitle}" \
-    mimetypes="text/plain" \
-    xdg="true"
-EOF
-
 install -d -m 755 %{buildroot}%{_datadir}/applications
 cat >  %{buildroot}%{_datadir}/applications/mandriva-%{name}-X11.desktop << EOF
 [Desktop Entry]
@@ -506,7 +493,6 @@ rm -rf %{buildroot}
 %_iconsdir/gvim.png
 %_miconsdir/gvim.png
 %_liconsdir/gvim.png
-%_menudir/vim-X11
 %_datadir/applications/mandriva-%{name}-X11.desktop
 %_datadir/vim/gvimrc
 %endif
