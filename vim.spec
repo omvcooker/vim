@@ -19,7 +19,7 @@
 
 Name:           vim
 Version:        7.0
-Release:        %mkrel 17
+Release:        %mkrel 18
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -47,6 +47,7 @@ Patch27:        vim-6.1-rpm42.patch
 Patch28:        vim-6.4-po-mode.patch
 Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
+Patch31:	vim70-CVE-2007-2438.patch
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
