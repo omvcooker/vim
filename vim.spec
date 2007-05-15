@@ -4,7 +4,7 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 178
+%define official_ptchlvl 002
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
 
@@ -18,8 +18,8 @@
 %define longtitle   All-purpose text editor
 
 Name:           vim
-Version:        7.0
-Release:        %mkrel 19
+Version:        7.1
+Release:        %mkrel 1
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -150,7 +150,7 @@ vim-common package.
 %define localedir %{buildroot}%{_datadir}/locale/
 
 %prep
-%setup -q -b 2 -n vim70 -a4
+%setup -q -b 2 -n vim71 -a4
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
