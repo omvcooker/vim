@@ -19,7 +19,7 @@
 
 Name:           vim
 Version:        7.1
-Release:        %mkrel 1
+Release:        %mkrel 2
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -32,6 +32,7 @@ Source4:        vim-%version.%{official_ptchlvl}-patches.tar.bz2
 Source5:        vim-spec-3.0.bz2
 Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 # MDK patches
+Patch0:         vim-7.1-vimrc_nosetmouse.patch
 Patch2:         vim-5.6a-paths.patch
 Patch3:         vim-6.4-rpm-spec-syntax.patch
 Patch8:         vim-6.0af-man-path.patch
@@ -162,6 +163,7 @@ for i in vim-%version.%{official_ptchlvl}-patches/%{version}*; do
 done
 
 #mdk patches
+%patch0 -p1 -b .vimrc_nosetmouse
 %patch2 -p1
 %patch3 -p0 -b .spec
 %patch8 -p1 -b .manpath
