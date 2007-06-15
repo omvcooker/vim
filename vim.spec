@@ -31,6 +31,8 @@ Source4:        vim-%version.%{official_ptchlvl}-patches.tar.bz2
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:        vim-spec-3.0.bz2
 Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
+# from apparmor-utils package
+Source7:        apparmor.vim
 # MDK patches
 Patch0:         vim-7.1-vimrc_nosetmouse.patch
 Patch2:         vim-5.6a-paths.patch
@@ -157,6 +159,7 @@ rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
 tar xfj %SOURCE5 -C runtime
 cp -a %SOURCE6 runtime/syntax/
+cp -a %SOURCE7 runtime/syntax/
 #official patches
 for i in vim-%version.%{official_ptchlvl}-patches/%{version}*; do
     patch -p0 -s < $i
