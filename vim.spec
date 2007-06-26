@@ -342,7 +342,7 @@ done
 
 # prevent including twice the doc
 rm -fr %{buildroot}/usr/share/vim/doc
-ln -sf ../../../%_defaultdocdir/%name-common-%version/doc %{buildroot}/usr/share/vim/doc
+ln -sf ../../../%_defaultdocdir/%name-common/doc %{buildroot}/usr/share/vim/doc
 
 # symlink locales in right place so that %find_land put needed %lang:
 # see %pre common why this is needed
