@@ -51,6 +51,7 @@ Patch28:        vim-6.4-po-mode.patch
 Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
+Patch32:	vim-7.1-lzma-support.patch
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
@@ -182,6 +183,7 @@ done
 %patch28 -p0
 %patch29 -p0
 %patch30 -p0
+%patch32 -p1 -b .lzma
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
