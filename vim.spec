@@ -213,9 +213,9 @@ echo "#define FEAT_GUI" >> src/config.h
 # workaround buggy build system:
 perl -pi -e 's!/usr/include long!/usr/include !' src/auto/config.mk
 
-make
+%make
 mv src/vim src/gvim
-make -C src clean
+%make -C src clean
 %endif
 
 # Second build: vim-enhanced
@@ -224,9 +224,9 @@ CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS"  ./configure --prefix=%_prefix
 --libdir=%_libdir --with-compiledby="%packager" \
 --with-x=no --enable-gui=no --exec-prefix=%_prefix
 
-make
+%make
 mv src/vim src/vim-enhanced
-make -C src/ clean
+%make -C src/ clean
 
 # Third build: vim-minimal
 CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS" ./configure  --prefix=%_prefix \
@@ -236,9 +236,9 @@ CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS" ./configure  --prefix=%_prefix
 --libdir=%_libdir --with-compiledby="%packager" \
 --with-x=no --enable-gui=no --exec-prefix=%_prefix --with-tlib=termcap --disable-gpm
 
-make
+%make
 cp src/vim src/vim-minimal
-make -C src
+%make -C src
 
 cp -al runtime/doc doc
 # apply os_doc.diff
