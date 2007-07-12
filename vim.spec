@@ -52,6 +52,7 @@ Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
 Patch32:	vim-7.1-lzma-support.patch
+Patch33:	vim-7.1-fortify-fix-buffer-overflow.patch
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
@@ -183,7 +184,8 @@ done
 %patch28 -p0
 %patch29 -p0
 %patch30 -p0
-%patch32 -p1 -b .lzma
+%patch32 -p1 -b .lzma_support
+%patch33 -p1 -b .fortify_overflow
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
@@ -215,7 +217,7 @@ perl -pi -e 's!/usr/include long!/usr/include !' src/auto/config.mk
 
 %make
 mv src/vim src/gvim
-%make -C src clean
+make -C src clean
 %endif
 
 # Second build: vim-enhanced
@@ -226,7 +228,7 @@ CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS"  ./configure --prefix=%_prefix
 
 %make
 mv src/vim src/vim-enhanced
-%make -C src/ clean
+make -C src/ clean
 
 # Third build: vim-minimal
 CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS" ./configure  --prefix=%_prefix \
