@@ -4,7 +4,7 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 012
+%define official_ptchlvl 028
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
 
@@ -19,7 +19,7 @@
 
 Name:           vim
 Version:        7.1
-Release:        %mkrel 6
+Release:        %mkrel 7
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
