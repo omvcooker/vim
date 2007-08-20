@@ -281,7 +281,7 @@ rm -f ./bin/rvim
 for i in ex vimdiff; do
     ln -sf vim-enhanced ./usr/bin/$i
 done
-rm -f ./usr/man/man1/rvim.1.bz2
+rm -f ./usr/man/man1/rvim.*
 %if %buildgui
 ln -sf gvim ./usr/bin/gvimdiff
 ln -sf gvim ./usr/bin/vimx
