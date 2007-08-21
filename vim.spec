@@ -19,7 +19,7 @@
 
 Name:           vim
 Version:        7.1
-Release:        %mkrel 8
+Release:        %mkrel 9
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -455,7 +455,8 @@ rm -rf %{buildroot}
 
 
 %dir %_datadir/vim/
-%_datadir/vim/*
+%_datadir/vim/[^g]*
+%_datadir/vim/gvimrc_example.vim
 %_mandir/man1/vim.1*
 %_mandir/man1/ex.1*
 %_mandir/man1/vi.1*
