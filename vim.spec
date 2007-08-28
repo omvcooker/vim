@@ -323,7 +323,6 @@ cp runtime/vim48x48.png %{buildroot}%_liconsdir/gvim.png
 install -d -m 755 %{buildroot}%{_datadir}/applications
 cat >  %{buildroot}%{_datadir}/applications/mandriva-%{name}-X11.desktop << EOF
 [Desktop Entry]
-Encoding=UTF-8
 Name=%{title}
 Comment=%{longtitle}
 Exec=%{_bindir}/gvim -f
