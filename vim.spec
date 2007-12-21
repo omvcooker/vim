@@ -63,6 +63,7 @@ BuildRequires:  libxt-devel
 BuildRequires:  tcl
 BuildRequires:  tcl-devel
 %endif
+BuildRoot:      %_tmppath/%name-%version
 
 %description
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
