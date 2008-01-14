@@ -19,7 +19,7 @@
 
 Name:           vim
 Version:        7.1
-Release:        %mkrel 10
+Release:        %mkrel 11
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
