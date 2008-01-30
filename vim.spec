@@ -164,7 +164,7 @@ cp -a %SOURCE6 runtime/syntax/
 cp -a %SOURCE7 runtime/syntax/
 #official patches
 for i in vim-%version.%{official_ptchlvl}-patches/%{version}*; do
-    patch -p0 -s < $i
+    patch -p0 -s < $i || { echo $i; exit 1; }
 done
 
 #mdk patches
