@@ -19,7 +19,7 @@
 
 Name:           vim
 Version:        7.1
-Release:        %mkrel 13
+Release:        %mkrel 14
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -58,7 +58,7 @@ BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
 BuildRequires:  acl-devel
 %if %buildgui
-BuildRequires:  libgnomeui2-devel
+BuildRequires:  libgnomeui2-devel ncurses-devel
 BuildRequires:  libxt-devel
 BuildRequires:  tcl
 BuildRequires:  tcl-devel
