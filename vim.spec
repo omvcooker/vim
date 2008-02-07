@@ -52,7 +52,9 @@ Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
 Patch32:	vim-7.1-lzma-support.patch
+# from fedora:
 Patch33:	vim-7.0-fortify_warnings-1.patch
+Patch34:	vim-7.0-fstabsyntax.patch
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
