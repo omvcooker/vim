@@ -188,6 +188,7 @@ done
 %patch30 -p0
 %patch32 -p1 -b .lzma_support
 %patch33 -p1 -b .fortify_overflow
+%patch34 -p1 
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
