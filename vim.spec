@@ -199,10 +199,13 @@ done
 perl -pi -e 's|\Qsvn-commit.*.tmp\E|svn-commit*.tmp|'       ./runtime/filetype.vim
 
 %build
+# ensure xxd works with big files:
+export CFLAGS="$RPM_OPT_FLAGS -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
+export CXXFLAGS="$RPM_OPT_FLAGS -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 
 %if %buildgui
 # First build: gvim
-LOCALEDIR=%localedir CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%_prefix \
+LOCALEDIR=%localedir ./configure --prefix=%_prefix \
 --enable-pythoninterp \
 --enable-perlinterp \
 --enable-rubyinterp \
@@ -224,7 +227,7 @@ make -C src clean
 %endif
 
 # Second build: vim-enhanced
-CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS"  ./configure --prefix=%_prefix \
+./configure --prefix=%_prefix \
 --enable-acl --enable-pythoninterp --enable-perlinterp --with-features=huge \
 --libdir=%_libdir --with-compiledby="%packager" \
 --with-x=no --enable-gui=no --exec-prefix=%_prefix
@@ -234,7 +237,7 @@ mv src/vim src/vim-enhanced
 make -C src/ clean
 
 # Third build: vim-minimal
-CFLAGS="$RPM_OPT_FLAGS" CXXFLAGS="$RPM_OPT_FLAGS" ./configure  --prefix=%_prefix \
+./configure  --prefix=%_prefix \
 --with-features=tiny --disable-tclinterp --disable-cscope --disable-multibyte \
 --disable-hangulinput --disable-xim --disable-fontset --disable-gui \
 --disable-acl --disable-pythoninterp --disable-perlinterp \
