@@ -77,7 +77,7 @@ contains files which every VIM binary will need in order to run.
 %package common
 Summary:    The common files needed by any version of the VIM editor
 Group:      Editors
-Requires:   perl = %perl_version
+Requires:   perl-base = %perl_version
 Requires(pre):      coreutils 
 Requires(post):     coreutils 
 Requires(preun):    coreutils 
