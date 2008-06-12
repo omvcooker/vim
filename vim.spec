@@ -438,13 +438,17 @@ update-alternatives --remove vi  /usr/bin/vim-enhanced
 update-alternatives --remove vim /usr/bin/vim-enhanced
 :
 %if %buildgui
+%if %mdkversion < 200900
 %post X11
 %{update_menus}
 %{update_desktop_database}
+%endif
 
+%if %mdkversion < 200900
 %postun X11
 %{clean_menus}
 %{clean_desktop_database}
+%endif
 %endif
 
 %clean
