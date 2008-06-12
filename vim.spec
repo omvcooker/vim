@@ -438,7 +438,6 @@ update-alternatives --remove vi  /usr/bin/vim-enhanced
 update-alternatives --remove vim /usr/bin/vim-enhanced
 :
 %if %buildgui
-# menu stuff
 %post X11
 %{update_menus}
 %{update_desktop_database}
