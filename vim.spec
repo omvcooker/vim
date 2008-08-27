@@ -505,7 +505,6 @@ rm -rf %{buildroot}
 %doc README*.txt
 %_bindir/gvim
 %_bindir/gvimdiff
-%_bindir/gvimtutor
 %_bindir/vimx
 %_mandir/man1/gvim.1*
 %_iconsdir/gvim.png
