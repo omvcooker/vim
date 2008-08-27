@@ -4,7 +4,7 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 330
+%define official_ptchlvl 006
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
 
@@ -18,8 +18,8 @@
 %define longtitle   All-purpose text editor
 
 Name:           vim
-Version:        7.1
-Release:        %mkrel 17
+Version:        7.2
+Release:        %mkrel 1
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -34,7 +34,6 @@ Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 # from apparmor-utils package
 Source7:        apparmor.vim
 # MDK patches
-Patch0:         vim-7.1-vimrc_nosetmouse.patch
 Patch2:         vim-5.6a-paths.patch
 Patch3:         vim-6.4-rpm-spec-syntax.patch
 Patch8:         vim-6.0af-man-path.patch
@@ -47,14 +46,14 @@ Patch24:        vim-6.1-outline-mode.patch
 Patch25:        vim-6.1-xterm-s-insert.patch 
 Patch26:        vim-7.0-changelog-mode.patch
 Patch27:        vim-6.1-rpm42.patch
-Patch28:        vim-6.4-po-mode.patch
+Patch28:        vim-7.2-po-mode.patch
 Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
-Patch32:	vim-7.1-lzma-support.patch
+Patch32:	vim-7.2-lzma-support.patch
 # from fedora:
 Patch33:	vim-7.0-fortify_warnings-1.patch
-Patch34:	vim-7.0-fstabsyntax.patch
+Patch34:	vim-7.2-fstabsyntax.patch
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
@@ -157,7 +156,7 @@ vim-common package.
 %define localedir %{buildroot}%{_datadir}/locale/
 
 %prep
-%setup -q -b 2 -n vim71 -a4
+%setup -q -b 2 -n vim72 -a4
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
@@ -170,12 +169,11 @@ for i in vim-%version.%{official_ptchlvl}-patches/%{version}*; do
 done
 
 #mdk patches
-%patch0 -p1 -b .vimrc_nosetmouse
 %patch2 -p1
 %patch3 -p0 -b .spec
 %patch8 -p1 -b .manpath
 %patch10 -p1 -b .xxdloc
-%patch11 -p1 -b .gcc31
+#%patch11 -p1 -b .gcc31
 %patch20 -p1 -b .warly
 %patch22 -p0
 %patch23 -p0 -b .doc
