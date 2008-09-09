@@ -275,6 +275,9 @@ mkdir -p %{buildroot}{/bin,%_bindir,%_datadir/{vim,locale},%_mandir/man1,%locale
 
 make -C src installmacros prefix=%{buildroot}%_prefix VIMRTDIR=""
 
+# fix unreadable files:
+chmod a+r runtime/{autoload/{tar,netrw}.vim,doc/pi_{netrw,tar}.txt}
+
 %if %buildgui
 mkdir -p %{buildroot}%_bindir
 install -s -m 755 src/gvim %{buildroot}%_bindir
