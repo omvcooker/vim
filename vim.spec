@@ -41,6 +41,7 @@ Patch8:         vim-6.0af-man-path.patch
 Patch10:        xxd-locale.patch
 Patch11:        vim-6.2-gcc31.patch
 Patch20:        vimrc_hebrew.patch
+Patch21:	    vim-7.2-perl-5.10-syntax.patch
 Patch22:        vim-6.1-fix-xterms-comments.patch
 Patch23:        vim-6.3-remove-docs.patch
 Patch24:        vim-6.1-outline-mode.patch 
@@ -178,6 +179,7 @@ done
 %patch10 -p1 -b .xxdloc
 #%patch11 -p1 -b .gcc31
 %patch20 -p1 -b .warly
+%patch21 -p1 
 %patch22 -p0
 %patch23 -p0 -b .doc
 %patch24 -p0
