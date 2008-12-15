@@ -329,7 +329,7 @@ perl -p -i -e "s|#!/usr/local/bin/perl|#!/usr/bin/perl|" runtime/doc/*.pl
 
 # installing the menu icons & entry
 %if %buildgui
-mkdir -p %{buildroot}{%_miconsdir,%_liconsdir,%_menudir}
+mkdir -p %{buildroot}{%_miconsdir,%_liconsdir}
 cp runtime/vim16x16.png %{buildroot}%_miconsdir/gvim.png
 cp runtime/vim32x32.png %{buildroot}%_iconsdir/gvim.png
 cp runtime/vim48x48.png %{buildroot}%_liconsdir/gvim.png
