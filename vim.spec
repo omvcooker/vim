@@ -5,6 +5,7 @@
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
 %define official_ptchlvl 065
+%define rversion	7.2
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
 
@@ -18,17 +19,17 @@
 %define longtitle   All-purpose text editor
 
 Name:           vim
-Version:        7.2
-Release:        %mkrel 9.%official_ptchlvl
+Version:        %{rversion}.%{official_ptchlvl}
+Release:        %mkrel 10
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
 Group:          Editors
-Source0:        %{url}/%name-%version.tar.bz2
-Source2:        %{url}/extra/%name-%version-lang.tar.bz2
+Source0:        %{url}/%name-%rversion.tar.bz2
+Source2:        %{url}/extra/%name-%rversion-lang.tar.bz2
 # read README.mdk prior updating official patches:
 Source3:		README.mdk
-Source4:        vim-%version.%{official_ptchlvl}-patches.tar.bz2
+Source4:        vim-%rversion.%{official_ptchlvl}-patches.tar.bz2
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:        vim-spec-3.0.bz2
 Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
@@ -170,7 +171,7 @@ cp -a %SOURCE6 runtime/syntax/
 cp -a %SOURCE7 runtime/syntax/
 cp -a %SOURCE8 runtime/syntax/
 #official patches
-for i in vim-%version.%{official_ptchlvl}-patches/%{version}*; do
+for i in vim-%version-patches/%{version}*; do
     patch -p0 -s < $i || { echo $i; exit 1; }
 done
 
@@ -270,7 +271,7 @@ ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 %install
 rm -fr %{buildroot}
 
-[ ! -e mandrake ] && mv vim-%version.%{official_ptchlvl}-patches mandrake
+[ ! -e mandrake ] && mv vim-%version-patches mandrake
 
 perl -pi -e 's!LOCALEDIR=\$\(DEST_LANG\)!LOCALEDIR=\$(DESTDIR)\$\(prefix\)/share/locale!g' src/Makefile
 
