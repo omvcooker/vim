@@ -4,7 +4,7 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 065
+%define official_ptchlvl 069
 %define rversion	7.2
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
