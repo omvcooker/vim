@@ -171,7 +171,7 @@ cp -a %SOURCE6 runtime/syntax/
 cp -a %SOURCE7 runtime/syntax/
 cp -a %SOURCE8 runtime/syntax/
 #official patches
-for i in vim-%version-patches/%{version}*; do
+for i in vim-%version-patches/%{rversion}*; do
     patch -p0 -s < $i || { echo $i; exit 1; }
 done
 
