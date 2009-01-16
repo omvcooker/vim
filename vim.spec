@@ -20,7 +20,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 1
+Release:        %mkrel 2
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -36,6 +36,7 @@ Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 # from apparmor-utils package
 Source7:        apparmor.vim
 Source8:        cfengine.vim
+Source9:        cfengine.vim
 # MDK patches
 Patch0:         vim-7.2-vimrc_nosetmouse.patch
 Patch2:         vim-5.6a-paths.patch
@@ -170,6 +171,7 @@ tar xfj %SOURCE5 -C runtime
 cp -a %SOURCE6 runtime/syntax/
 cp -a %SOURCE7 runtime/syntax/
 cp -a %SOURCE8 runtime/syntax/
+cp -a %SOURCE9 runtime/syntax/
 #official patches
 for i in vim-%version-patches/%{rversion}*; do
     patch -p0 -s < $i || { echo $i; exit 1; }
