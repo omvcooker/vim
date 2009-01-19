@@ -20,7 +20,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 3
+Release:        %mkrel 4
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -500,6 +500,8 @@ rm -rf %{buildroot}
 %_mandir/man1/xxd.1*
 %_sysconfdir/vim/
 %config(noreplace) %_sysconfdir/vim/*
+# Cmake improved syntax provided by cmake package ( needed for syntax additions )
+%exclude %_datadir/vim/*/cmake.vim
 
 %files minimal
 %defattr(-,root,root)
