@@ -20,7 +20,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 2
+Release:        %mkrel 3
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -36,7 +36,7 @@ Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 # from apparmor-utils package
 Source7:        apparmor.vim
 Source8:        cfengine.vim
-Source9:        cfengine.vim
+Source9:        nagios.vim
 # MDK patches
 Patch0:         vim-7.2-vimrc_nosetmouse.patch
 Patch2:         vim-5.6a-paths.patch
