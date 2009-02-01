@@ -48,8 +48,8 @@ Patch20:        vimrc_hebrew.patch
 Patch21:	    vim-7.2-perl-5.10-syntax.patch
 Patch22:        vim-6.1-fix-xterms-comments.patch
 Patch23:        vim-6.3-remove-docs.patch
-Patch24:        vim-6.1-outline-mode.patch 
-Patch25:        vim-6.1-xterm-s-insert.patch 
+Patch24:        vim-6.1-outline-mode.patch
+Patch25:        vim-6.1-xterm-s-insert.patch
 Patch26:        vim-7.0-changelog-mode.patch
 Patch27:        vim-6.1-rpm42.patch
 Patch28:        vim-7.2-po-mode.patch
@@ -58,8 +58,21 @@ Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
 Patch32:	vim-7.2-lzma-support.patch
 # from fedora:
-Patch33:	vim-7.0-fortify_warnings-1.patch
-Patch34:	vim-7.2-fstabsyntax.patch
+#Patch33:	vim-7.0-fortify_warnings-1.patch
+#Patch34:	vim-7.2-fstabsyntax.patch
+#Patch35:        vim-7.1-lib64.patch
+
+Patch3000: vim-7.0-syntax.patch
+Patch3002: vim-7.1-nowarnings.patch
+Patch3003: vim-6.1-rh3.patch
+Patch3004: vim-7.0-rclocation.patch
+Patch3006: vim-6.4-checkhl.patch
+Patch3007: vim-7.2-fstabsyntax.patch
+Patch3008: vim-7.1-lib64.patch
+Patch3009: vim-7.0-warning.patch
+Patch3010: vim-7.0-syncolor.patch
+Patch3011: vim-7.0-specedit.patch
+
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
@@ -83,10 +96,10 @@ contains files which every VIM binary will need in order to run.
 Summary:    The common files needed by any version of the VIM editor
 Group:      Editors
 Requires:   perl-base = %perl_version
-Requires(pre):      coreutils 
-Requires(post):     coreutils 
-Requires(preun):    coreutils 
-Requires(postun):   coreutils 
+Requires(pre):      coreutils
+Requires(post):     coreutils
+Requires(preun):    coreutils
+Requires(postun):   coreutils
 Conflicts:  man-pages-fr < 1.68.0-2mdk
 Conflicts:  man-pages-it < 0.3.4-2mdk
 Conflicts:  man-pages-pl <= 0.4-10mdk
@@ -185,7 +198,7 @@ done
 %patch10 -p1 -b .xxdloc
 #%patch11 -p1 -b .gcc31
 %patch20 -p1 -b .warly
-%patch21 -p1 
+%patch21 -p1
 %patch22 -p0
 %patch23 -p0 -b .doc
 %patch24 -p0
@@ -196,8 +209,20 @@ done
 %patch29 -p0
 %patch30 -p0
 %patch32 -p1 -b .lzma_support
-%patch33 -p1 -b .fortify_overflow
-%patch34 -p1 
+#%patch33 -p1 -b .fortify_overflow
+#%patch34 -p1
+
+%patch3000 -p1
+%patch3002 -p1
+%patch3003 -p1
+%patch3004 -p1
+
+#%patch3006 -p1
+%patch3007 -p1
+%patch3008 -p1
+%patch3009 -p1
+%patch3010 -p1
+#%patch3011 -p1
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
@@ -224,7 +249,7 @@ LOCALEDIR=%localedir ./configure --prefix=%_prefix \
 --enable-gtk2-check \
 --enable-multibyte --enable-xim --enable-fontset --mandir=%_mandir \
 --libdir=%_libdir --with-compiledby="%packager"
- 
+
 echo "#define MAX_FEAT 1" >> src/config.h
 echo "#define FEAT_GUI" >> src/config.h
 # workaround buggy build system:
@@ -324,7 +349,7 @@ perl -p -i -e 's|#!/usr/bin/nawk|#!/usr/bin/gawk|' mve.awk
 perl -p -i -e 's|#!/usr/local/bin/perl|#!/usr/bin/perl|' *.pl
 perl -p -i -e 's|#!/usr/gnu/bin/perl|#!/usr/bin/perl|' *
 cd -
- 
+
 # Be short-circuit aware :
 ln -f runtime/macros/README.txt README_macros.txt
 ln -f runtime/tools/README.txt README_tools.txt
