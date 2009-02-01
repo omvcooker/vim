@@ -4,10 +4,12 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 087
+%define official_ptchlvl 088
 %define rversion	7.2
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
+%define python_version %(rpm -q --qf '%%{epoch}:%%{version}' python)
+%define ruby_version %(rpm -q --qf '%%{epoch}:%%{version}' ruby)
 
 # Should we build X11 gui
 %define buildgui 1
@@ -255,7 +257,7 @@ make -C src clean
 
 # Second build: vim-enhanced
 ./configure --prefix=%_prefix \
---enable-acl --enable-pythoninterp --enable-perlinterp --with-features=huge \
+--enable-acl --enable-rubyinterp --enable-tclinterp --enable-pythoninterp --enable-perlinterp --with-features=huge \
 --libdir=%_libdir --with-compiledby="%packager" \
 --with-x=no --enable-gui=no --exec-prefix=%_prefix
 
