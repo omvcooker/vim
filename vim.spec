@@ -57,7 +57,7 @@ Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
 Patch32:	vim-7.2-lzma-support.patch
-# From Ffedora:
+# Fedora patches
 Patch3000: vim-7.0-syntax.patch
 Patch3002: vim-7.1-nowarnings.patch
 Patch3003: vim-6.1-rh3.patch
