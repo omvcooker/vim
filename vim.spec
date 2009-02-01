@@ -4,7 +4,7 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 079
+%define official_ptchlvl 093
 %define rversion	7.2
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -57,11 +57,7 @@ Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
 Patch32:	vim-7.2-lzma-support.patch
-# from fedora:
-#Patch33:	vim-7.0-fortify_warnings-1.patch
-#Patch34:	vim-7.2-fstabsyntax.patch
-#Patch35:        vim-7.1-lib64.patch
-
+# From Ffedora:
 Patch3000: vim-7.0-syntax.patch
 Patch3002: vim-7.1-nowarnings.patch
 Patch3003: vim-6.1-rh3.patch
@@ -209,14 +205,11 @@ done
 %patch29 -p0
 %patch30 -p0
 %patch32 -p1 -b .lzma_support
-#%patch33 -p1 -b .fortify_overflow
-#%patch34 -p1
-
+# Fedora patches
 %patch3000 -p1
 %patch3002 -p1
 %patch3003 -p1
 %patch3004 -p1
-
 #%patch3006 -p1
 %patch3007 -p1
 %patch3008 -p1
