@@ -22,7 +22,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 5
+Release:        %mkrel 6
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -60,16 +60,9 @@ Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
 Patch32:	vim-7.2-lzma-support.patch
 # Fedora patches
-Patch3000: vim-7.0-syntax.patch
-Patch3002: vim-7.1-nowarnings.patch
-Patch3003: vim-6.1-rh3.patch
-Patch3004: vim-7.0-rclocation.patch
-Patch3006: vim-6.4-checkhl.patch
-Patch3007: vim-7.2-fstabsyntax.patch
-Patch3008: vim-7.1-lib64.patch
-Patch3009: vim-7.0-warning.patch
-Patch3010: vim-7.0-syncolor.patch
-Patch3011: vim-7.0-specedit.patch
+Patch33:  vim-7.0-fortify_warnings-1.patch
+Patch34:  vim-7.2-fstabsyntax.patch
+Patch35:  vim-7.1-lib64.patch
 
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
@@ -207,17 +200,11 @@ done
 %patch29 -p0
 %patch30 -p0
 %patch32 -p1 -b .lzma_support
+
 # Fedora patches
-%patch3000 -p1
-%patch3002 -p1
-%patch3003 -p1
-%patch3004 -p1
-#%patch3006 -p1
-%patch3007 -p1
-%patch3008 -p1
-%patch3009 -p1
-%patch3010 -p1
-#%patch3011 -p1
+%patch33 -p1
+%patch34 -p1
+%patch35 -p1
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
