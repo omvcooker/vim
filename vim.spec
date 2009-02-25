@@ -59,10 +59,11 @@ Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
 Patch32:	vim-7.2-lzma-support.patch
+
 # Fedora patches
-Patch33:  vim-7.0-fortify_warnings-1.patch
-Patch34:  vim-7.2-fstabsyntax.patch
-Patch35:  vim-7.1-lib64.patch
+Patch100:  vim-7.0-fortify_warnings-1.patch
+Patch101:  vim-7.2-fstabsyntax.patch
+Patch102:  vim-7.1-lib64.patch
 
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
@@ -202,9 +203,9 @@ done
 %patch32 -p1 -b .lzma_support
 
 # Fedora patches
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
+%patch100 -p1
+%patch101 -p1
+%patch102 -p1
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
