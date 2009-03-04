@@ -22,7 +22,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 7
+Release:        %mkrel 8
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -65,6 +65,12 @@ Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 Patch100:  vim-7.0-fortify_warnings-1.patch
 Patch101:  vim-7.2-fstabsyntax.patch
 Patch102:  vim-7.1-lib64.patch
+
+# (cg) Forking is handled very badly. The fork is handled after calling gtk_init()
+# which can basically kill any threads started by gtk or any gtk modules including
+# libcanberra. This is wrong, wrong, wrong, and gvim people should be shot.
+# See https://qa.mandriva.com/show_bug.cgi?id=44925#c17
+Patch1000: nofork.patch
 
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
@@ -208,6 +214,8 @@ done
 %patch100 -p1
 %patch101 -p1
 %patch102 -p1
+
+%patch1000 -p1
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
