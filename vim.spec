@@ -291,7 +291,7 @@ ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 %install
 rm -fr %{buildroot}
 
-[ ! -e mandrake ] && mv vim-%version-patches mandrake
+[ ! -e mandriva ] && mv vim-%version-patches mandriva
 
 perl -pi -e 's!LOCALEDIR=\$\(DEST_LANG\)!LOCALEDIR=\$(DESTDIR)\$\(prefix\)/share/locale!g' src/Makefile
 
@@ -487,7 +487,7 @@ rm -rf %{buildroot}
 %files common -f vim.lang
 %defattr(-,root,root)
 %doc README*.txt runtime/termcap
-%doc --parents mandrake/README*
+%doc --parents mandriva/README*
 %doc doc
 %_datadir/vim/doc
 
