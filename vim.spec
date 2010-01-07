@@ -22,7 +22,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 2
+Release:        %mkrel 3
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -129,7 +129,7 @@ when only the root partition is present.
 %package enhanced
 Summary:    A version of the VIM editor which includes recent enhancements
 Group:      Editors
-Requires:   vim-common >= %version
+Requires:   vim-common >= %version-%release
 Obsoletes:  vim-color
 Provides:   vim
 Provides:   vim-color
@@ -154,7 +154,7 @@ vim-common package.
 Summary:    The VIM version of the vi editor for the X Window System
 Group:      Editors
 Provides:   vim
-Requires:   vim-common >= %version
+Requires:   vim-common >= %version-%release
 Requires(post):     desktop-file-utils
 Requires(postun):   desktop-file-utils
 
