@@ -22,7 +22,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 4
+Release:        %mkrel 5
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -366,8 +366,8 @@ Icon=gvim
 Terminal=false
 Type=Application
 StartupNotify=false
-Categories=Gtk;X-MandrivaLinux-MoreApplications-Editors;TextEditor;
-MimeType=text/plain
+Categories=Gtk;TextEditor;Utility;
+MimeType=text/plain;
 EOF
 
 # gvim and fontset (from Pablo) 2001/03/19
