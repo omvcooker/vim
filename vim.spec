@@ -4,7 +4,7 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 284
+%define official_ptchlvl 446
 %define rversion	7.2
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -22,7 +22,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 6
+Release:        %mkrel 1
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -64,7 +64,6 @@ Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 # Fedora patches
 Patch100:  vim-7.0-fortify_warnings-1.patch
 Patch101:  vim-7.2-fstabsyntax.patch
-Patch102:  vim-7.1-lib64.patch
 
 # (cg) Forking is handled very badly. The fork is handled after calling gtk_init()
 # which can basically kill any threads started by gtk or any gtk modules including
@@ -186,6 +185,7 @@ cp -a %SOURCE8 runtime/syntax/
 cp -a %SOURCE9 runtime/syntax/
 #official patches
 for i in vim-%version-patches/%{rversion}*; do
+echo $i; echo $i 2>&1;
     patch -p0 -s < $i || { echo $i; exit 1; }
 done
 
@@ -213,7 +213,6 @@ done
 # Fedora patches
 %patch100 -p1
 %patch101 -p1
-%patch102 -p1
 
 %patch1000 -p1
 
