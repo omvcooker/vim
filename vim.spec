@@ -22,7 +22,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 5
+Release:        %mkrel 6
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
