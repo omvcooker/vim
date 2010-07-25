@@ -22,7 +22,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 2
+Release:        %mkrel 3
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -58,7 +58,6 @@ Patch28:        vim-7.2-po-mode.patch
 Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
-Patch32:	vim-7.2-lzma-support.patch
 Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 
 # Fedora patches
@@ -207,7 +206,6 @@ done
 %patch28 -p0
 %patch29 -p0
 %patch30 -p0
-%patch32 -p1 -b .lzma_support
 %patch33 -p1 -b .security
 
 # Fedora patches
