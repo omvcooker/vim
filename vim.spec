@@ -4,8 +4,8 @@
 # - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 446
-%define rversion	7.2
+%define official_ptchlvl 0
+%define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
 %define python_version %(rpm -q --qf '%%{epoch}:%%{version}' python)
@@ -22,16 +22,15 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 4
+Release:        %mkrel 1
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
 Group:          Editors
 Source0:        %{url}/%name-%rversion.tar.bz2
-Source2:        %{url}/extra/%name-%rversion-lang.tar.bz2
 # read README.mdk prior updating official patches:
 Source3:		README.mdk
-Source4:        vim-%rversion.%{official_ptchlvl}-patches.tar.bz2
+#Source4:        vim-%rversion.%{official_ptchlvl}-patches.tar.bz2
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:        vim-spec-3.0.bz2
 Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
@@ -47,14 +46,13 @@ Patch8:         vim-6.0af-man-path.patch
 Patch10:        xxd-locale.patch
 Patch11:        vim-6.2-gcc31.patch
 Patch20:        vimrc_hebrew.patch
-Patch21:	    vim-7.2-perl-5.10-syntax.patch
 Patch22:        vim-6.1-fix-xterms-comments.patch
 Patch23:        vim-6.3-remove-docs.patch
 Patch24:        vim-6.1-outline-mode.patch
 Patch25:        vim-6.1-xterm-s-insert.patch
 Patch26:        vim-7.0-changelog-mode.patch
 Patch27:        vim-6.1-rpm42.patch
-Patch28:        vim-7.2-po-mode.patch
+Patch28:        vim-7.3-po-mode.patch
 Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
 Patch31:	vim70-CVE-2007-2438.patch
@@ -62,7 +60,7 @@ Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 
 # Fedora patches
 Patch100:  vim-7.0-fortify_warnings-1.patch
-Patch101:  vim-7.2-fstabsyntax.patch
+Patch101:  vim-7.3-fstabsyntax.patch
 
 # (cg) Forking is handled very badly. The fork is handled after calling gtk_init()
 # which can basically kill any threads started by gtk or any gtk modules including
@@ -174,7 +172,7 @@ vim-common package.
 %define localedir %{buildroot}%{_datadir}/locale/
 
 %prep
-%setup -q -b 2 -n vim72 -a4
+%setup -q -n vim73
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
@@ -184,10 +182,10 @@ cp -a %SOURCE7 runtime/syntax/
 cp -a %SOURCE8 runtime/syntax/
 cp -a %SOURCE9 runtime/syntax/
 #official patches
-for i in vim-%version-patches/%{rversion}*; do
-echo $i; echo $i 2>&1;
-    patch -p0 -s < $i || { echo $i; exit 1; }
-done
+#for i in vim-%version-patches/%{rversion}*; do
+#echo $i; echo $i 2>&1;
+#    patch -p0 -s < $i || { echo $i; exit 1; }
+#done
 
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse
@@ -197,14 +195,14 @@ done
 %patch10 -p1 -b .xxdloc
 #%patch11 -p1 -b .gcc31
 %patch20 -p1 -b .warly
-%patch21 -p1
+#patch21 -p1
 %patch22 -p0
 %patch23 -p0 -b .doc
 %patch24 -p0
 %patch25 -p0
 %patch26 -p0
 %patch27 -p0
-%patch28 -p0
+%patch28 -p1
 %patch29 -p0
 %patch30 -p0
 %patch33 -p1 -b .security
@@ -289,7 +287,7 @@ ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 %install
 rm -fr %{buildroot}
 
-[ ! -e mandriva ] && mv vim-%version-patches mandriva
+#[ ! -e mandriva ] && mv vim-%version-patches mandriva
 
 perl -pi -e 's!LOCALEDIR=\$\(DEST_LANG\)!LOCALEDIR=\$(DESTDIR)\$\(prefix\)/share/locale!g' src/Makefile
 
@@ -485,7 +483,7 @@ rm -rf %{buildroot}
 %files common -f vim.lang
 %defattr(-,root,root)
 %doc README*.txt runtime/termcap
-%doc --parents mandriva/README*
+#%doc --parents mandriva/README*
 %doc doc
 %_datadir/vim/doc
 
