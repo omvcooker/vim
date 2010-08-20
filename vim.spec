@@ -27,8 +27,8 @@ Url:            http://www.vim.org/
 License:        Charityware
 Group:          Editors
 Source0:        %{url}/%name-%rversion.tar.bz2
-# read README.mdk prior updating official patches:
-Source3:		README.mdk
+# read README.mdv prior updating official patches:
+Source3:		README.mdv
 #Source4:        vim-%rversion.%{official_ptchlvl}-patches.tar.bz2
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:        vim-spec-3.0.bz2
