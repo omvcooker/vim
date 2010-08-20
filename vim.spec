@@ -1,7 +1,6 @@
 # Notes / Warning :
 # - this package is not prefixable
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
-# - as long as missing buildrequires is not identified, it must be manually built to get GUI
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
 %define official_ptchlvl 0
