@@ -422,46 +422,42 @@ else rm -f %_datadir/vim/lang
 fi
 
 %post minimal
-update-alternatives --install /usr/bin/vi uvi /bin/vim-minimal 10
-update-alternatives --install /bin/vi     vi  /bin/vim-minimal 10
-update-alternatives --install /bin/vim    vim /bin/vim-minimal 10
-for i in view ex rvi rview rvim; do
-    update-alternatives --install /bin/$i $i /bin/vi 10 || :
-done
-:
+update-alternatives --install /bin/vi vi /bin/vim-minimal 10 \
+    --slave /bin/view view /bin/vim-minimal \
+    --slave /bin/ex ex /bin/vim-minimal \
+    --slave /bin/rvi rvi /bin/vim-minimal \
+    --slave /bin/rview rview /bin/vim-minimal
+update-alternatives --install /bin/vim vim /bin/vim-minimal 10 \
+    --slave /bin/rvim rvim /bin/vim-minimal
 
 %postun minimal
 [ $1 = 0 ] || exit 0
-update-alternatives --remove uvi /usr/bin/vim-minimal
 update-alternatives --remove vi  /bin/vim-minimal
 update-alternatives --remove vim /bin/vim-minimal
 
+%triggerpostun minimal -- vim-minimal < 7.3
+update-alternatives --remove uvi /bin/vim-minimal
 for i in view ex rvi rview rvim; do
     update-alternatives --remove $i /bin/$i || :
 done
-
-:
-
-%triggerpostun -n vim-minimal -- vim-minimal < 6.1-22mdk
-for i in view ex rvi rview rvim; do
-    update-alternatives --remove $i /bin/$i || :
-done
-
-:
-
 
 %post enhanced
-update-alternatives --install /usr/bin/vi uvi /usr/bin/vim-enhanced 20
-update-alternatives --install /bin/vi  vi     /usr/bin/vim-enhanced 20
-update-alternatives --install /bin/vim vim    /usr/bin/vim-enhanced 20
-:
+update-alternatives --install /bin/vi vi /usr/bin/vim-enhanced 20 \
+    --slave /bin/view view /usr/bin/vim-enhanced \
+    --slave /bin/ex ex /usr/bin/vim-enhanced \
+    --slave /bin/rvi rvi /usr/bin/vim-enhanced \
+    --slave /bin/rview rview /usr/bin/vim-enhanced
+update-alternatives --install /bin/vim vim /usr/bin/vim-enhanced 20 \
+    --slave /bin/rvim rvim /usr/bin/vim-enhanced
 
 %postun enhanced
 [ $1 = 0 ] || exit 0
-update-alternatives --remove uvi /usr/bin/vim-enhanced
 update-alternatives --remove vi  /usr/bin/vim-enhanced
 update-alternatives --remove vim /usr/bin/vim-enhanced
-:
+
+%triggerpostun enhanced -- vim-enhanced < 7.3
+update-alternatives --remove uvi /usr/bin/vim-enhanced
+
 %if %buildgui
 %if %mdkversion < 200900
 %post X11
