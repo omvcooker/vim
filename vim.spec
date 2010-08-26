@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 0
+%define official_ptchlvl 003
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -29,7 +29,7 @@ Group:          Editors
 Source0:        %{url}/%name-%rversion.tar.bz2
 # read README.mdv prior updating official patches:
 Source3:		README.mdv
-#Source4:        vim-%rversion.%{official_ptchlvl}-patches.tar.bz2
+Source4:        vim-%rversion.%{official_ptchlvl}-patches.tar.bz2
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:        vim-spec-3.0.bz2
 Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
@@ -171,7 +171,7 @@ vim-common package.
 %define localedir %{buildroot}%{_datadir}/locale/
 
 %prep
-%setup -q -n vim73
+%setup -q -n vim73 -a4
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
