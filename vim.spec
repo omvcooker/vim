@@ -21,7 +21,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 2
+Release:        %mkrel 3
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
