@@ -309,14 +309,17 @@ install -s -m 755 src/vim-minimal %{buildroot}/bin/vim-minimal
 
 cd %{buildroot}
 rm -f ./bin/rvim
+rm -f ./usr/bin/rview ./usr/bin/rvim ./usr/bin/view
 for i in ex vimdiff; do
     ln -sf vim-enhanced ./usr/bin/$i
 done
 rm -f ./usr/man/man1/rvim.*
+rm -f ./usr/share/man/man1/evim.*
 %if %buildgui
 ln -sf gvim ./usr/bin/gvimdiff
 ln -sf gvim ./usr/bin/vimx
 %endif
+rm -f ./usr/share/vim/*/cmake.vim
 cd -
 
 # installing man pages
@@ -500,17 +503,11 @@ rm -rf %{buildroot}
 %lang(it) %_mandir/it*/man*/*
 %lang(pl) %_mandir/pl*/man*/*
 %lang(ru) %_mandir/ru*/man*/*
-%exclude %_mandir/man1/evim.1*
-%exclude %_bindir/rview
-%exclude %_bindir/rvim
-%exclude %_bindir/view
 %_bindir/vimtutor
 %_bindir/xxd
 %_mandir/man1/xxd.1*
 %_sysconfdir/vim/
 %config(noreplace) %_sysconfdir/vim/*
-# Cmake improved syntax provided by cmake package ( needed for syntax additions )
-%exclude %_datadir/vim/*/cmake.vim
 
 %files minimal
 %defattr(-,root,root)
@@ -538,5 +535,3 @@ rm -rf %{buildroot}
 %_datadir/applications/mandriva-%{name}-X11.desktop
 %_datadir/vim/gvimrc
 %endif
-
-
