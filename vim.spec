@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 003
+%define official_ptchlvl 099
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -21,7 +21,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 3
+Release:        %mkrel 1
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
