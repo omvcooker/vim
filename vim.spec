@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 107
+%define official_ptchlvl 125
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -21,7 +21,7 @@
 
 Name:           vim
 Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 2
+Release:        %mkrel 1
 Summary:        VIsual editor iMproved
 Url:            http://www.vim.org/
 License:        Charityware
@@ -29,7 +29,7 @@ Group:          Editors
 Source0:        %{url}/%name-%rversion.tar.bz2
 # read README.mdv prior updating official patches:
 Source3:		README.mdv
-Source4:        vim-%rversion.%{official_ptchlvl}-patches.tar.bz2
+Source4:        vim-%rversion-patches.tar.xz
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:        vim-spec-3.0.bz2
 Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
@@ -181,10 +181,10 @@ cp -a %SOURCE7 runtime/syntax/
 cp -a %SOURCE8 runtime/syntax/
 cp -a %SOURCE9 runtime/syntax/
 #official patches
-#for i in vim-%version-patches/%{rversion}*; do
-#echo $i; echo $i 2>&1;
-#    patch -p0 -s < $i || { echo $i; exit 1; }
-#done
+for i in vim-%rversion-patches/%{rversion}*; do
+	echo $i
+	patch -p0 -s < $i || { echo $i; exit 1; }
+done
 
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse
