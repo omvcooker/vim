@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 125
+%define official_ptchlvl 135
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
