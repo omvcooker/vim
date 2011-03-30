@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 138
+%define official_ptchlvl 146
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -43,7 +43,6 @@ Patch2:         vim-5.6a-paths.patch
 Patch3:         vim-6.4-rpm-spec-syntax.patch
 Patch8:         vim-6.0af-man-path.patch
 Patch10:        xxd-locale.patch
-Patch11:        vim-6.2-gcc31.patch
 Patch20:        vimrc_hebrew.patch
 Patch22:        vim-6.1-fix-xterms-comments.patch
 Patch23:        vim-6.3-remove-docs.patch
@@ -52,9 +51,7 @@ Patch25:        vim-6.1-xterm-s-insert.patch
 Patch26:        vim-7.0-changelog-mode.patch
 Patch27:        vim-6.1-rpm42.patch
 Patch28:        vim-7.3-po-mode.patch
-Patch29:        vim-7.0-po-buildfix.patch
 Patch30:        vim-7.0-add-dhcpd-syntax.patch
-Patch31:	vim70-CVE-2007-2438.patch
 Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 
 # Fedora patches
@@ -192,9 +189,7 @@ done
 %patch3 -p0 -b .spec
 %patch8 -p1 -b .manpath
 %patch10 -p1 -b .xxdloc
-#%patch11 -p1 -b .gcc31
 %patch20 -p1 -b .warly
-#patch21 -p1
 %patch22 -p0
 %patch23 -p0 -b .doc
 %patch24 -p0
@@ -202,7 +197,6 @@ done
 %patch26 -p0
 %patch27 -p0
 %patch28 -p1
-%patch29 -p0
 %patch30 -p0
 %patch33 -p1 -b .security
 
