@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 201
+%define official_ptchlvl 206
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -27,6 +27,9 @@ Url:            http://www.vim.org/
 License:        Charityware
 Group:          Editors
 Source0:        %{url}/%name-%rversion.tar.bz2
+# Official unpatched indent.txt. There is problem with it on tarball.
+Source1:	indent.txt
+Source2:	os_win32.txt
 # read README.mdv prior updating official patches:
 Source3:		README.mdv
 Source4:        vim-%rversion-patches.tar.xz
@@ -169,6 +172,8 @@ vim-common package.
 
 %prep
 %setup -q -n vim73 -a4
+cp -f %SOURCE1 runtime/doc/indent.txt
+cp -f %SOURCE2 runtime/doc/os_win32.txt
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
