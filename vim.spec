@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 206
+%define official_ptchlvl 219
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -227,15 +227,38 @@ export CXXFLAGS="$RPM_OPT_FLAGS -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 %if %buildgui
 # First build: gvim
 LOCALEDIR=%localedir ./configure --prefix=%_prefix \
---enable-pythoninterp \
---enable-perlinterp \
---enable-rubyinterp \
---enable-tclinterp \
---with-features=huge \
---enable-acl --with-x=yes --enable-gui=gnome2 --exec-prefix=%_prefix/X11R6 \
---enable-gtk2-check \
---enable-multibyte --enable-xim --enable-fontset --mandir=%_mandir \
---libdir=%_libdir --with-compiledby="%packager"
+	--disable-darwin \
+	--disable-selinux \
+	--disable-xsmp \
+	--disable-xsmp-interact \
+	--enable-luainterp=yes \
+	--enable-mzschemeinterp=no \
+	--enable-perlinterp=yes \
+	--enable-pythoninterp=yes \
+	--enable-python3interp=yes \
+	--enable-tclinterp=yes \
+	--enable-rubyinterp=yes \
+	--disable-cscope \
+	--disable-workshop \
+	--enable-netbeans \
+	--disable-sniff \
+	--enable-multibyte \
+	--disable-hangulinput \
+	--enable-xim \
+	--enable-fontset \
+	--with-features=huge \
+	--enable-gui=gnome2 \
+	--enable-gtk2-check \
+	--enable-gnome-check \
+	--enable-acl \
+	--enable-gpm \
+	--disable-sysmouse \
+	--enable-nls \
+	--with-x=yes \
+	--exec-prefix=%_prefix/X11R6 \
+	--mandir=%_mandir \
+	--libdir=%_libdir \
+	--with-compiledby="%packager"
 
 echo "#define MAX_FEAT 1" >> src/config.h
 echo "#define FEAT_GUI" >> src/config.h
