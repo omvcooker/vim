@@ -67,7 +67,7 @@ Patch101:  vim-7.3-fstabsyntax.patch
 # See https://qa.mandriva.com/show_bug.cgi?id=44925#c17
 Patch1000: nofork.patch
 
-BuildRequires:	liblua-devel
+BuildRequires:	%{_lib}lua-devel
 BuildRequires:  python-devel
 BuildRequires:  perl-devel
 BuildRequires:  termcap-devel
