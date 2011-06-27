@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 230
+%define official_ptchlvl 237
 %define rversion	7.3
 
 %define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
@@ -16,156 +16,153 @@
 %{?_with_gui:%global buildgui 1}
 %{?_without_gui:%global buildgui 0}
 
-%define title       VI editor
-%define longtitle   All-purpose text editor
+%define	title		VI editor
+%define longtitle	All-purpose text editor
 
-Name:           vim
-Version:        %{rversion}.%{official_ptchlvl}
-Release:        %mkrel 1
-Summary:        VIsual editor iMproved
-Url:            http://www.vim.org/
-License:        Charityware
-Group:          Editors
-Source0:        %{url}/%name-%rversion.tar.bz2
-# Official unpatched indent.txt. There is problem with it on tarball.
-Source1:	indent.txt
-Source2:	os_win32.txt
+Name:		vim
+Version:	%{rversion}.%{official_ptchlvl}
+Release:	%mkrel 1
+Summary:	VIsual editor iMproved
+Url:		http://www.vim.org/
+License:	Charityware
+Group:		Editors
+Source0:	%{url}/%name-%rversion.tar.bz2
 # read README.mdv prior updating official patches:
-Source3:		README.mdv
-Source4:        vim-%rversion-patches.tar.xz
+Source3:	README.mdv
+Source4:	vim-%rversion-patches.tar.xz
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
-Source5:        vim-spec-3.0.bz2
-Source6:        http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
+Source5:	vim-spec-3.0.bz2
+Source6:	http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 # from apparmor-utils package
-Source7:        apparmor.vim
-Source8:        cfengine.vim
-Source9:        nagios.vim
+Source7:	apparmor.vim
+Source8:	cfengine.vim
+Source9:	nagios.vim
 # MDK patches
-Patch0:         vim-7.2-vimrc_nosetmouse.patch
-Patch2:         vim-5.6a-paths.patch
-Patch3:         vim-6.4-rpm-spec-syntax.patch
-Patch8:         vim-6.0af-man-path.patch
-Patch10:        xxd-locale.patch
-Patch20:        vimrc_hebrew.patch
-Patch22:        vim-6.1-fix-xterms-comments.patch
-Patch23:        vim-6.3-remove-docs.patch
-Patch24:        vim-6.1-outline-mode.patch
-Patch25:        vim-6.1-xterm-s-insert.patch
-Patch26:        vim-7.0-changelog-mode.patch
-Patch27:        vim-6.1-rpm42.patch
-Patch28:        vim-7.3-po-mode.patch
-Patch30:        vim-7.0-add-dhcpd-syntax.patch
+Patch0:		vim-7.2-vimrc_nosetmouse.patch
+Patch2:		vim-5.6a-paths.patch
+Patch3:		vim-6.4-rpm-spec-syntax.patch
+Patch8:		vim-6.0af-man-path.patch
+Patch10:	xxd-locale.patch
+Patch20:	vimrc_hebrew.patch
+Patch22:	vim-6.1-fix-xterms-comments.patch
+Patch23:	vim-6.3-remove-docs.patch
+Patch24:	vim-6.1-outline-mode.patch
+Patch25:	vim-6.1-xterm-s-insert.patch
+Patch26:	vim-7.0-changelog-mode.patch
+Patch27:	vim-6.1-rpm42.patch
+Patch28:	vim-7.3-po-mode.patch
+Patch30:	vim-7.0-add-dhcpd-syntax.patch
 Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 
 # Fedora patches
-Patch100:  vim-7.0-fortify_warnings-1.patch
-Patch101:  vim-7.3-fstabsyntax.patch
+Patch100:	vim-7.0-fortify_warnings-1.patch
+Patch101:	vim-7.3-fstabsyntax.patch
 
 # (cg) Forking is handled very badly. The fork is handled after calling gtk_init()
 # which can basically kill any threads started by gtk or any gtk modules including
 # libcanberra. This is wrong, wrong, wrong, and gvim people should be shot.
 # See https://qa.mandriva.com/show_bug.cgi?id=44925#c17
-Patch1000: nofork.patch
+Patch1000:	nofork.patch
 
 BuildRequires:	%{_lib}lua-devel
-BuildRequires:  python-devel
-BuildRequires:  perl-devel
-BuildRequires:  termcap-devel
-BuildRequires:  acl-devel
+BuildRequires:	python-devel
+BuildRequires:	perl-devel
+BuildRequires:	termcap-devel
+BuildRequires:	acl-devel
 %if %buildgui
-BuildRequires:  libgnomeui2-devel ncurses-devel
-BuildRequires:  libxt-devel
-BuildRequires:  tcl
-BuildRequires:  tcl-devel
+BuildRequires:	libgnomeui2-devel ncurses-devel
+BuildRequires:	libxt-devel
+BuildRequires:	tcl
+BuildRequires:	tcl-devel
 %endif
-BuildRoot:      %_tmppath/%name-%version
+BuildRoot:	%_tmppath/%name-%version
 
 %description
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
-editor.  Vi was the first real screen-based editor for UNIX, and is still
-very popular.  VIM improves on vi by adding new features: multiple windows,
-multi-level undo, block highlighting and more.  The vim-common package
+editor. Vi was the first real screen-based editor for UNIX, and is still
+very popular. VIM improves on vi by adding new features: multiple windows,
+multi-level undo, block highlighting and more. The vim-common package
 contains files which every VIM binary will need in order to run.
 
 %package common
-Summary:    The common files needed by any version of the VIM editor
-Group:      Editors
-Requires(pre):      coreutils
-Requires(post):     coreutils
-Requires(preun):    coreutils
-Requires(postun):   coreutils
-Conflicts:  man-pages-fr < 1.68.0-2mdk
-Conflicts:  man-pages-it < 0.3.4-2mdk
-Conflicts:  man-pages-pl <= 0.4-10mdk
-Conflicts:  git-core < 1:1.6.0.1-2mdv
+Summary:	The common files needed by any version of the VIM editor
+Group:		Editors
+Requires(pre):	coreutils
+Requires(post):	coreutils
+Requires(preun):coreutils
+Requires(postun): coreutils
+Conflicts:	man-pages-fr < 1.68.0-2mdk
+Conflicts:	man-pages-it < 0.3.4-2mdk
+Conflicts:	man-pages-pl <= 0.4-10mdk
+Conflicts:	git-core < 1:1.6.0.1-2mdv
 
 %description common
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
-editor.  Vi was the first real screen-based editor for UNIX, and is still
-very popular.  VIM improves on vi by adding new features: multiple windows,
-multi-level undo, block highlighting and more.  The vim-common package
+editor. Vi was the first real screen-based editor for UNIX, and is still
+very popular. VIM improves on vi by adding new features: multiple windows,
+multi-level undo, block highlighting and more. The vim-common package
 contains files which every VIM binary will need in order to run.
 
 %package minimal
-Summary:    A minimal version of the VIM editor
-Group:      Editors
-Provides:   vim
-Requires(post):     update-alternatives
-Requires(postun):   update-alternatives
+Summary:	A minimal version of the VIM editor
+Group:		Editors
+Provides:	vim
+Requires(post):	update-alternatives
+Requires(postun): update-alternatives
 
 %description minimal
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
-editor.  Vi was the first real screen-based editor for UNIX, and is still
-very popular.  VIM improves on vi by adding new features: multiple windows,
-multi-level undo, block highlighting and more.  The vim-minimal package
+editor. Vi was the first real screen-based editor for UNIX, and is still
+very popular. VIM improves on vi by adding new features: multiple windows,
+multi-level undo, block highlighting and more. The vim-minimal package
 includes a minimal version of VIM, which is installed into /bin/vi for use
 when only the root partition is present.
 
 %package enhanced
-Summary:    A version of the VIM editor which includes recent enhancements
-Group:      Editors
-Requires:   vim-common >= %version-%release
-Requires:   perl-base = %perl_version
-Obsoletes:  vim-color
-Provides:   vim
-Provides:   vim-color
-Requires(post):     update-alternatives
-Requires(postun):   update-alternatives
+Summary:	A version of the VIM editor which includes recent enhancements
+Group:		Editors
+Requires:	vim-common >= %version-%release
+Requires:	perl-base = %perl_version
+Obsoletes:	vim-color
+Provides:	vim
+Provides:	vim-color
+Requires(post):	update-alternatives
+Requires(postun): update-alternatives
 
 %description enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
-editor.  Vi was the first real screen-based editor for UNIX, and is still
-very popular.  VIM improves on vi by adding new features: multiple windows,
-multi-level undo, block highlighting and more.  The vim-enhanced package
+editor. Vi was the first real screen-based editor for UNIX, and is still
+very popular. VIM improves on vi by adding new features: multiple windows,
+multi-level undo, block highlighting and more. The vim-enhanced package
 contains a version of VIM with extra, recently introduced features like
 Python and Perl interpreters.
 
 Install the vim-enhanced package if you'd like to use a version of the VIM
 editor which includes recently added enhancements like interpreters for the
-Python and Perl scripting languages.  You'll also need to install the
+Python and Perl scripting languages. You'll also need to install the
 vim-common package.
 
 %if %buildgui
 %package X11
-Summary:    The VIM version of the vi editor for the X Window System
-Group:      Editors
-Provides:   vim
-Requires:   vim-common >= %version-%release
-Requires:   perl-base = %perl_version
-Requires(post):     desktop-file-utils
-Requires(postun):   desktop-file-utils
+Summary:	The VIM version of the vi editor for the X Window System
+Group:		Editors
+Provides:	vim
+Requires:	vim-common >= %version-%release
+Requires:	perl-base = %perl_version
+Requires(post):	desktop-file-utils
+Requires(postun): desktop-file-utils
 
 %description X11
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
-editor.  Vi was the first real screen-based editor for UNIX, and is still
-very popular.  VIM improves on vi by adding new features: multiple windows,
+editor. Vi was the first real screen-based editor for UNIX, and is still
+very popular. VIM improves on vi by adding new features: multiple windows,
 multi-level undo, block highlighting and more. VIM-X11 is a version of the
-VIM editor which will run within the X Window System.  If you install this
+VIM editor which will run within the X Window System. If you install this
 package, you can run VIM as an X application with a full GUI interface and
 mouse support.
 
 Install the vim-X11 package if you'd like to try out a version of vi with
-graphics and mouse capabilities.  You'll also need to install the
+graphics and mouse capabilities. You'll also need to install the
 vim-common package.
 %endif
 
@@ -173,8 +170,6 @@ vim-common package.
 
 %prep
 %setup -q -n vim73 -a4
-cp -f %SOURCE1 runtime/doc/indent.txt
-cp -f %SOURCE2 runtime/doc/os_win32.txt
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
@@ -216,9 +211,9 @@ perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vim
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
 # disable command echo
 for i in runtime/{gvimrc_example.vim,vimrc_example.vim}; do
-    perl -pi -e 's!^set showcmd!set noshowcmd!' $i
+	 perl -pi -e 's!^set showcmd!set noshowcmd!' $i
 done
-perl -pi -e 's|\Qsvn-commit.*.tmp\E|svn-commit*.tmp|'       ./runtime/filetype.vim
+perl -pi -e 's|\Qsvn-commit.*.tmp\E|svn-commit*.tmp|' ./runtime/filetype.vim
 
 %build
 # ensure xxd works with big files:
@@ -282,7 +277,7 @@ mv src/vim src/vim-enhanced
 make -C src/ clean
 
 # Third build: vim-minimal
-./configure  --prefix=%_prefix \
+./configure --prefix=%_prefix \
 --with-features=tiny --disable-tclinterp --disable-cscope --disable-multibyte \
 --disable-hangulinput --disable-xim --disable-fontset --disable-gui \
 --disable-acl --disable-pythoninterp --disable-perlinterp \
@@ -309,8 +304,6 @@ ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 %install
 rm -fr %{buildroot}
 
-#[ ! -e mandriva ] && mv vim-%version-patches mandriva
-
 perl -pi -e 's!LOCALEDIR=\$\(DEST_LANG\)!LOCALEDIR=\$(DESTDIR)\$\(prefix\)/share/locale!g' src/Makefile
 
 mkdir -p %{buildroot}{/bin,%_bindir,%_datadir/{vim,locale},%_mandir/man1,%localedir}
@@ -334,7 +327,7 @@ cd %{buildroot}
 rm -f ./bin/rvim
 rm -f ./usr/bin/rview ./usr/bin/rvim ./usr/bin/view
 for i in ex vimdiff; do
-    ln -sf vim-enhanced ./usr/bin/$i
+  ln -sf vim-enhanced ./usr/bin/$i
 done
 rm -f ./usr/man/man1/rvim.*
 rm -f ./usr/share/man/man1/evim.*
@@ -347,7 +340,7 @@ cd -
 
 # installing man pages
 for i in %{buildroot}%_mandir/man1/{vi,rvi}; do
-    cp %{buildroot}%_mandir/man1/vim.1 $i.1
+  cp %{buildroot}%_mandir/man1/vim.1 $i.1
 done
 
 %if %buildgui
@@ -458,7 +451,7 @@ update-alternatives --install /bin/vim vim /bin/vim-minimal 10 \
 
 %postun minimal
 [ $1 = 0 ] || exit 0
-update-alternatives --remove vi  /bin/vim-minimal
+update-alternatives --remove vi /bin/vim-minimal
 update-alternatives --remove vim /bin/vim-minimal
 
 %triggerpostun minimal -- vim-minimal < 7.3
@@ -478,7 +471,7 @@ update-alternatives --install /bin/vim vim /usr/bin/vim-enhanced 20 \
 
 %postun enhanced
 [ $1 = 0 ] || exit 0
-update-alternatives --remove vi  /usr/bin/vim-enhanced
+update-alternatives --remove vi /usr/bin/vim-enhanced
 update-alternatives --remove vim /usr/bin/vim-enhanced
 
 %triggerpostun enhanced -- vim-enhanced < 7.3
