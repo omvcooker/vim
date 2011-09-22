@@ -205,7 +205,7 @@ done
 %patch100 -p1
 %patch101 -p1
 
-%patch1000 -p1
+#%patch1000 -p1
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
