@@ -51,6 +51,7 @@ Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
 # (proyvind): fix path to locale files
 Patch35:	vim-7.3.372-use-proper-localedir.patch
 Patch36:	vim-7.3.372-add-missing-functions-for-ruby-dlopen.patch
+Patch37:	vim-7.3.381-always-install-icons.patch
 
 # Fedora patches
 Patch100:	vim-7.0-fortify_warnings-1.patch
@@ -198,6 +199,7 @@ done
 %patch34 -p1 -b .cpp11~
 %patch35 -p1 -b .localedir~
 %patch36 -p1 -b .dlopen~
+%patch37 -p1 -b .icons_install~
 
 # Fedora patches
 %patch100 -p1
@@ -354,10 +356,6 @@ ln -f runtime/tools/README.txt README_tools.txt
 
 # installing the menu icons & entry
 %if %{with gui}
-install -m644 runtime/vim16x16.png -D %{buildroot}%{_miconsdir}/gvim.png
-install -m644 runtime/vim32x32.png -D %{buildroot}%{_iconsdir}/gvim.png
-install -m644 runtime/vim48x48.png -D %{buildroot}%{_liconsdir}/gvim.png
-
 # menu entry
 install -d %{buildroot}%{_datadir}/applications
 cat > %{buildroot}%{_datadir}/applications/mandriva-%{name}-X11.desktop << EOF
@@ -375,6 +373,8 @@ EOF
 
 # gvim and fontset (from Pablo) 2001/03/19
 echo 'set guifontset=-*-fixed-medium-r-normal--14-*-*-*-c-*-*-*,-*-*-medium-r-normal--14-*-*-*-c-*-*-*,-*-*-medium-r-normal--14-*-*-*-m-*-*-*,*' > %{buildroot}%{_datadir}/vim/gvimrc
+%else
+rm -rf %{buildroot}%{_iconsdir}
 %endif
 
 # prevent including twice the doc
@@ -505,9 +505,9 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_bindir}/gvimdiff
 %{_bindir}/vimx
 %{_mandir}/man1/gvim.1*
-%{_iconsdir}/gvim.png
-%{_miconsdir}/gvim.png
-%{_liconsdir}/gvim.png
+%{_iconsdir}/locolor/16x16/apps/gvim.png
+%{_iconsdir}/locolor/32x32/apps/gvim.png
+%{_iconsdir}/hicolor/48x48/apps/gvim.png
 %{_datadir}/applications/mandriva-%{name}-X11.desktop
 %{_datadir}/vim/gvimrc
 %endif
