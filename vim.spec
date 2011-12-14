@@ -249,7 +249,8 @@ autoconf
 	--disable-sysmouse \
 	--enable-nls \
 	--with-x=yes \
-	--with-compiledby="%{packager}"
+	--with-compiledby="%{vendor} %{bugurl}" \
+	--with-modified-by="%{packager}"
 
 echo "#define MAX_FEAT 1" >> src/config.h
 echo "#define FEAT_GUI" >> src/config.h
@@ -271,9 +272,10 @@ make -C src clean
 	--enable-tclinterp=dynamic \
 	--enable-rubyinterp=dynamic \
 	--with-features=huge \
-	--with-compiledby="%{packager}" \
 	--with-x=no \
-	--enable-gui=no
+	--enable-gui=no \
+	--with-compiledby="%{vendor} %{bugurl}" \
+	--with-modified-by="%{packager}"
 
 %make
 mv src/vim src/vim-enhanced
@@ -292,11 +294,12 @@ make -C src/ clean
 	--disable-acl \
 	--disable-pythoninterp \
 	--disable-perlinterp \
-	--with-compiledby="%{packager}" \
 	--with-x=no \
 	--enable-gui=no \
 	--with-tlib=termcap \
-	--disable-gpm
+	--disable-gpm \
+	--with-compiledby="%{vendor} %{bugurl}" \
+	--with-modified-by="%{packager}"
 
 %make
 cp src/vim src/vim-minimal
