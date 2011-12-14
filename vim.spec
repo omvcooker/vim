@@ -266,7 +266,7 @@ make -C src clean
 	--with-features=huge \
 	--with-x=no \
 	--enable-gui=no \
-	--with-tlib=ncurses
+	--with-tlib=ncurses \
 	--with-compiledby="%{vendor} %{bugurl}" \
 	--with-modified-by="%{packager}"
 
@@ -318,9 +318,6 @@ mkdir -p %{buildroot}%{_localedir}
 
 make -C src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
 
-# fix unreadable files:
-chmod a+r runtime/{autoload/{tar,netrw}.vim,doc/pi_{netrw,tar}.txt}
-
 %if %{with gui}
 install -m755 src/gvim -D %{buildroot}%{_bindir}/gvim
 %endif
@@ -328,20 +325,16 @@ install -m755 src/gvim -D %{buildroot}%{_bindir}/gvim
 install -m755 src/vim-enhanced -D %{buildroot}%{_bindir}
 install -m755 src/vim-minimal -D %{buildroot}/bin/vim-minimal
 
-cd %{buildroot}
-rm -f ./bin/rvim
-rm -f ./usr/bin/rview ./usr/bin/rvim ./usr/bin/view
+rm -f %{buildroot}%{_bindir}/{rview,rvim,view}
 for i in ex vimdiff; do
-  ln -sf vim-enhanced ./usr/bin/$i
+  ln -sf vim-enhanced %{buildroot}%{_bindir}/$i
 done
-rm -f ./usr/man/man1/rvim.*
-rm -f ./usr/share/man/man1/evim.*
+rm -f %{buildroot}%{_mandir}/man1/evim.*
 %if %{with gui}
-ln -sf gvim ./usr/bin/gvimdiff
-ln -sf gvim ./usr/bin/vimx
+ln -sf gvim %{buildroot}%{_bindir}/gvimdiff
+ln -sf gvim %{buildroot}%{_bindir}/vimx
 %endif
-rm -f ./usr/share/vim/*/cmake.vim
-cd -
+rm -f %{buildroot}%{_datadir}/vim/*/cmake.vim
 
 # installing man pages
 for i in %{buildroot}%{_mandir}/man1/{vi,rvi}; do
@@ -352,20 +345,11 @@ done
 ln -s vim.1%{_extension} %{buildroot}%{_mandir}/man1/gvim.1%{_extension}
 %endif
 
-ln -sf vimrc_example.vim %{buildroot}/usr/share/vim/vimrc
-
-cd %{buildroot}%{_prefix}/share/vim/tools
-# i need to make a choice :(.
-rm -f vim132
-perl -p -i -e 's|#!/usr/bin/nawk|#!/usr/bin/gawk|' mve.awk
-perl -p -i -e 's|#!/usr/local/bin/perl|#!/usr/bin/perl|' *.pl
-perl -p -i -e 's|#!/usr/gnu/bin/perl|#!/usr/bin/perl|' *
-cd -
+ln -sf vimrc_example.vim %{buildroot}%{_datadir}/vim/vimrc
 
 # Be short-circuit aware :
 ln -f runtime/macros/README.txt README_macros.txt
 ln -f runtime/tools/README.txt README_tools.txt
-perl -p -i -e "s|#!/usr/local/bin/perl|#!/usr/bin/perl|" runtime/doc/*.pl
 
 # installing the menu icons & entry
 %if %{with gui}
@@ -392,14 +376,9 @@ EOF
 echo 'set guifontset=-*-fixed-medium-r-normal--14-*-*-*-c-*-*-*,-*-*-medium-r-normal--14-*-*-*-c-*-*-*,-*-*-medium-r-normal--14-*-*-*-m-*-*-*,*' > %{buildroot}%{_datadir}/vim/gvimrc
 %endif
 
-# fix the paths in the man pages
-for i in %{buildroot}/usr/share/man/man1/*.1; do
-    perl -p -i -e "s|%{buildroot}||" $i
-done
-
 # prevent including twice the doc
-rm -fr %{buildroot}/usr/share/vim/doc
-ln -sf ../../../%{_defaultdocdir}/%{name}-common/doc %{buildroot}/usr/share/vim/doc
+rm -rf %{buildroot}%{_datadir}/vim/doc
+ln -s %{_defaultdocdir}/%{name}-common/doc %{buildroot}%{_datadir}/vim/doc
 
 %{find_lang} %{name} --with-man --all-name
 
@@ -510,7 +489,6 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 /bin/vim-minimal
 
 %files enhanced
-%defattr(-,root,root)
 %doc README*.txt
 %{_bindir}/ex
 %{_bindir}/vimdiff
