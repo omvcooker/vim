@@ -8,6 +8,7 @@
 
 # Should we build X11 gui
 %bcond_without gui
+%bcond_with	python3
 
 %define	title		VI editor
 %define longtitle	All-purpose text editor
@@ -65,7 +66,9 @@ Patch1000:	nofork.patch
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
+%if %{with python3}
 BuildRequires:	pkgconfig(python3)
+%endif
 BuildRequires:	perl-devel
 BuildRequires:	acl-devel
 %if %{with gui}
