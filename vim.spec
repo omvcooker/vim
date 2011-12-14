@@ -53,6 +53,8 @@ Patch27:	vim-6.1-rpm42.patch
 Patch28:	vim-7.3-po-mode.patch
 Patch30:	vim-7.0-add-dhcpd-syntax.patch
 Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
+# (proyvind): adds various new keywords from C++11 standard to C++ syntax highlighting
+Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
 
 # Fedora patches
 Patch100:	vim-7.0-fortify_warnings-1.patch
@@ -200,6 +202,7 @@ done
 %patch28 -p1
 %patch30 -p0
 %patch33 -p1 -b .security
+%patch34 -p1 -b .cpp11~
 
 # Fedora patches
 %patch100 -p1
