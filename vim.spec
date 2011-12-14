@@ -215,13 +215,9 @@ cd src
 autoconf
 
 %build
-export CFLAGS="$RPM_OPT_FLAGS"
-export CXXFLAGS="$RPM_OPT_FLAGS"
-
 %if %buildgui
 # First build: gvim
-./configure --prefix=%_prefix \
-	--datadir=%{_datadir} \
+%configure2_5x \
 	--disable-darwin \
 	--disable-selinux \
 	--disable-xsmp \
@@ -250,10 +246,7 @@ export CXXFLAGS="$RPM_OPT_FLAGS"
 	--disable-sysmouse \
 	--enable-nls \
 	--with-x=yes \
-	--exec-prefix=%_prefix/X11R6 \
-	--mandir=%_mandir \
-	--libdir=%_libdir \
-	--with-compiledby="%packager"
+	--with-compiledby="%{packager}"
 
 echo "#define MAX_FEAT 1" >> src/config.h
 echo "#define FEAT_GUI" >> src/config.h
@@ -266,22 +259,39 @@ make -C src clean
 %endif
 
 # Second build: vim-enhanced
-./configure --prefix=%_prefix --datadir=%{_datadir} \
---enable-acl --enable-rubyinterp --enable-tclinterp --enable-pythoninterp --enable-perlinterp --with-features=huge \
---libdir=%_libdir --with-compiledby="%packager" \
---with-x=no --enable-gui=no --exec-prefix=%_prefix
+%configure2_5x \
+	--enable-acl \
+	--enable-rubyinterp \
+	--enable-tclinterp \
+	--enable-pythoninterp \
+	--enable-perlinterp \
+	--with-features=huge \
+	--with-compiledby="%{packager}" \
+	--with-x=no \
+	--enable-gui=no
 
 %make
 mv src/vim src/vim-enhanced
 make -C src/ clean
 
 # Third build: vim-minimal
-./configure --prefix=%_prefix --datadir=%{_datadir} \
---with-features=tiny --disable-tclinterp --disable-cscope --disable-multibyte \
---disable-hangulinput --disable-xim --disable-fontset --disable-gui \
---disable-acl --disable-pythoninterp --disable-perlinterp \
---libdir=%_libdir --with-compiledby="%packager" \
---with-x=no --enable-gui=no --exec-prefix=%_prefix --with-tlib=termcap --disable-gpm
+%configure2_5x \
+	--with-features=tiny \
+	--disable-tclinterp \
+	--disable-cscope \
+	--disable-multibyte \
+	--disable-hangulinput \
+	--disable-xim \
+	--disable-fontset \
+	--disable-gui \
+	--disable-acl \
+	--disable-pythoninterp \
+	--disable-perlinterp \
+	--with-compiledby="%{packager}" \
+	--with-x=no \
+	--enable-gui=no \
+	--with-tlib=termcap \
+	--disable-gpm
 
 %make
 cp src/vim src/vim-minimal
