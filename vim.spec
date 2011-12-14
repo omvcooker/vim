@@ -69,7 +69,6 @@ BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
 BuildRequires:	pkgconfig(python3)
 BuildRequires:	perl-devel
-BuildRequires:	termcap-devel
 BuildRequires:	acl-devel
 %if %buildgui
 BuildRequires:	pkgconfig(libgnomeui-2.0) pkgconfig(ncurses)
@@ -242,6 +241,7 @@ autoconf
 	--enable-fontset \
 	--with-features=huge \
 	--enable-gui=gnome2 \
+	--with-tlib=ncurses \
 	--enable-gtk2-check \
 	--enable-gnome-check \
 	--enable-acl \
@@ -274,6 +274,7 @@ make -C src clean
 	--with-features=huge \
 	--with-x=no \
 	--enable-gui=no \
+	--with-tlib=ncurses
 	--with-compiledby="%{vendor} %{bugurl}" \
 	--with-modified-by="%{packager}"
 
@@ -296,7 +297,7 @@ make -C src/ clean
 	--disable-perlinterp \
 	--with-x=no \
 	--enable-gui=no \
-	--with-tlib=termcap \
+	--with-tlib=ncurses \
 	--disable-gpm \
 	--with-compiledby="%{vendor} %{bugurl}" \
 	--with-modified-by="%{packager}"
