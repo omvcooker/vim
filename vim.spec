@@ -6,10 +6,6 @@
 %define official_ptchlvl 372
 %define rversion	7.3
 
-%define perl_version %(rpm -q --qf '%%{epoch}:%%{version}' perl)
-%define python_version %(rpm -q --qf '%%{epoch}:%%{version}' python)
-%define ruby_version %(rpm -q --qf '%%{epoch}:%%{version}' ruby)
-
 # Should we build X11 gui
 %define buildgui 1
 
@@ -124,7 +120,6 @@ when only the root partition is present.
 Summary:	A version of the VIM editor which includes recent enhancements
 Group:		Editors
 Requires:	vim-common >= %version-%release
-Requires:	perl-base = %perl_version
 Obsoletes:	vim-color
 Provides:	vim
 Provides:	vim-color
@@ -150,7 +145,6 @@ Summary:	The VIM version of the vi editor for the X Window System
 Group:		Editors
 Provides:	vim
 Requires:	vim-common >= %version-%release
-Requires:	perl-base = %perl_version
 Requires(post):	desktop-file-utils
 Requires(postun): desktop-file-utils
 
