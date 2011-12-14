@@ -40,7 +40,7 @@ Source9:	nagios.vim
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
 Patch2:		vim-5.6a-paths.patch
-Patch3:		vim-6.4-rpm-spec-syntax.patch
+Patch3:		vim-7.3.372-rpm-spec-syntax.patch
 Patch8:		vim-6.0af-man-path.patch
 Patch10:	xxd-locale.patch
 Patch20:	vimrc_hebrew.patch
@@ -189,7 +189,7 @@ done
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse
 %patch2 -p1
-%patch3 -p0 -b .spec
+%patch3 -p0 -b .spec~
 %patch8 -p1 -b .manpath
 %patch10 -p1 -b .xxdloc
 %patch20 -p1 -b .warly
