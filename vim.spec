@@ -385,15 +385,18 @@ find %{buildroot}%{_datadir}/vim/tutor -name "tutor.*" | egrep -v 'tutor(|\.vim)
  sed -e "s^%{buildroot}^^" -e 's!^\(.*tutor.\)\(..\)!%lang(\2) \1\2!g' >> %{name}.lang
 
 find %{buildroot}%{_datadir}/vim/lang -name "menu*" |
- sed -e "s^%{buildroot}^^" -e 's!^\(.*menu_\)\(..\)\(_\)!%lang(\2) \1\2\3!g' \
-  -e 's!^\(.*menu\)\(_chinese\)!%lang(zh) \1\2!g' \
-  -e 's!^\(.*menu\)\(_czech_\)!%lang(cs) \1\2!g' \
-  -e 's!^\(.*menu\)\(_french\)!%lang(fr) \1\2!g' \
-  -e 's!^\(.*menu\)\(_german\)!%lang(de) \1\2!g' \
-  -e 's!^\(.*menu\)\(_japanes\)!%lang(ja) \1\2!g' \
-  -e 's!^\(.*menu\)\(_polish\)!%lang(pl) \1\2!g' \
-  -e 's!^\(.*menu\)\(_slovak\)!%lang(sk) \1\2!g' \
-  -e 's!^\(.*menu\)\(_spanis\)!%lang(es) \1\2!g' \
+ sed -e "s^%{buildroot}^^" \
+  -e 's!^\(/.*menu_\)\(..\)\(_\)!%lang(\2) \1\2\3!g' \
+  -e 's!^\(/.*menu_\)\(..\)\(_\)!%lang(\2) \1\2\3!g' \
+  -e 's!^\(/.*menu\)\(_chinese\)!%lang(zh) \1\2!g' \
+  -e 's!^\(/.*menu\)\(_czech_\)!%lang(cs) \1\2!g' \
+  -e 's!^\(/.*menu\)\(_french\)!%lang(fr) \1\2!g' \
+  -e 's!^\(/.*menu\)\(_german\)!%lang(de) \1\2!g' \
+  -e 's!^\(/.*menu\)\(_japanes\)!%lang(ja) \1\2!g' \
+  -e 's!^\(/.*menu\)\(_polish\)!%lang(pl) \1\2!g' \
+  -e 's!^\(/.*menu\)\(_slovak\)!%lang(sk) \1\2!g' \
+  -e 's!^\(/.*menu\)\(_spanis\)!%lang(es) \1\2!g' \
+  -e 's!^\(/.*menu_\)\(..\)!%lang(\2) \1\2!g' \
   >> %{name}.lang
 rm -f %{buildroot}%{_bindir}/vim
 
