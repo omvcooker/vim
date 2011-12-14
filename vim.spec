@@ -252,11 +252,6 @@ autoconf
 	--with-compiledby="%{vendor} %{bugurl}" \
 	--with-modified-by="%{packager}"
 
-echo "#define MAX_FEAT 1" >> src/config.h
-echo "#define FEAT_GUI" >> src/config.h
-# workaround buggy build system:
-perl -pi -e 's!/usr/include long!/usr/include !' src/auto/config.mk
-
 %make
 mv src/vim src/gvim
 make -C src clean
