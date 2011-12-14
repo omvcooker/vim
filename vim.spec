@@ -53,6 +53,7 @@ Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
 # (proyvind): fix path to locale files
 Patch35:	vim-7.3.372-use-proper-localedir.patch
+Patch36:	vim-7.3.372-add-missing-functions-for-ruby-dlopen.patch
 
 # Fedora patches
 Patch100:	vim-7.0-fortify_warnings-1.patch
@@ -198,6 +199,7 @@ done
 %patch33 -p1 -b .security
 %patch34 -p1 -b .cpp11~
 %patch35 -p1 -b .localedir~
+%patch36 -p1 -b .dlopen~
 
 # Fedora patches
 %patch100 -p1
@@ -229,7 +231,7 @@ autoconf
 	--enable-pythoninterp=dynamic \
 	--enable-python3interp=dynamic \
 	--enable-tclinterp=dynamic \
-	--enable-rubyinterp=yes \
+	--enable-rubyinterp=dynamic \
 	--disable-cscope \
 	--disable-workshop \
 	--enable-netbeans \
@@ -267,7 +269,7 @@ make -C src clean
 	--enable-pythoninterp=dynamic \
 	--enable-python3interp=dynamic \
 	--enable-tclinterp=dynamic \
-	--enable-rubyinterp=yes \
+	--enable-rubyinterp=dynamic \
 	--with-features=huge \
 	--with-compiledby="%{packager}" \
 	--with-x=no \
