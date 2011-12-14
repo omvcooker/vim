@@ -345,11 +345,11 @@ cd -
 
 # installing man pages
 for i in %{buildroot}%{_mandir}/man1/{vi,rvi}; do
-  cp %{buildroot}%{_mandir}/man1/vim.1 $i.1
+  ln -s vim.1%{_extension} $i.1%{_extension}
 done
 
 %if %{with gui}
-cp %{buildroot}%{_mandir}/man1/vim.1 %{buildroot}%{_mandir}/man1/gvim.1
+ln -s vim.1%{_extension} %{buildroot}%{_mandir}/man1/gvim.1%{_extension}
 %endif
 
 ln -sf vimrc_example.vim %{buildroot}/usr/share/vim/vimrc
