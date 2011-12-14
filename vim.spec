@@ -260,6 +260,7 @@ make -C src clean
 
 # Second build: vim-enhanced
 %configure2_5x \
+	--disable-selinux \
 	--enable-acl \
 	--enable-luainterp=dynamic \
 	--enable-perlinterp=dynamic \
@@ -280,6 +281,7 @@ make -C src/ clean
 
 # Third build: vim-minimal
 %configure2_5x \
+	--disable-selinux \
 	--with-features=tiny \
 	--disable-tclinterp \
 	--disable-cscope \
