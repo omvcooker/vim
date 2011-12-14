@@ -286,7 +286,7 @@ make -C src/ clean
 	--with-features=tiny \
 	--disable-tclinterp \
 	--disable-cscope \
-	--disable-multibyte \
+	--enable-multibyte \
 	--disable-hangulinput \
 	--disable-xim \
 	--disable-fontset \
