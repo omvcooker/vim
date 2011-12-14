@@ -64,14 +64,14 @@ Patch101:	vim-7.3-fstabsyntax.patch
 # See https://qa.mandriva.com/show_bug.cgi?id=44925#c17
 Patch1000:	nofork.patch
 
-BuildRequires:	%{_lib}lua-devel
-BuildRequires:	python-devel
+BuildRequires:	pkgconfig(lua)
+BuildRequires:	pkgconfig(python)
 BuildRequires:	perl-devel
 BuildRequires:	termcap-devel
 BuildRequires:	acl-devel
 %if %buildgui
-BuildRequires:	libgnomeui2-devel ncurses-devel
-BuildRequires:	libxt-devel
+BuildRequires:	pkgconfig(libgnomeui-2.0) pkgconfig(ncurses)
+BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
 BuildRequires:	tcl-devel
 %endif
