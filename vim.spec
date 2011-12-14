@@ -73,7 +73,6 @@ BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
 BuildRequires:	tcl-devel
 %endif
-BuildRoot:	%_tmppath/%name-%version
 
 %description
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -299,8 +298,6 @@ ln -s tutor.fr runtime/tutor/tutor.br
 ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 
 %install
-rm -fr %{buildroot}
-
 perl -pi -e 's!LOCALEDIR=\$\(DEST_LANG\)!LOCALEDIR=\$(DESTDIR)\$\(prefix\)/share/locale!g' src/Makefile
 
 mkdir -p %{buildroot}{/bin,%_bindir,%_datadir/{vim,locale},%_mandir/man1,%localedir}
@@ -475,7 +472,6 @@ update-alternatives --remove vim /usr/bin/vim-enhanced
 update-alternatives --remove uvi /usr/bin/vim-enhanced
 
 %files common -f vim.lang
-%defattr(-,root,root)
 %doc README*.txt runtime/termcap
 #%doc --parents mandriva/README*
 %doc doc
@@ -506,7 +502,6 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %config(noreplace) %_sysconfdir/vim/*
 
 %files minimal
-%defattr(-,root,root)
 %doc README*.txt
 /bin/vim-minimal
 
@@ -519,7 +514,6 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 
 %if %buildgui
 %files X11
-%defattr(-,root,root)
 %doc README*.txt
 %_bindir/gvim
 %_bindir/gvimdiff
