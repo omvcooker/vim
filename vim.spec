@@ -322,11 +322,11 @@ make -C src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
 chmod a+r runtime/{autoload/{tar,netrw}.vim,doc/pi_{netrw,tar}.txt}
 
 %if %{with gui}
-install -s -m755 src/gvim -D %{buildroot}%{_bindir}/gvim
+install -m755 src/gvim -D %{buildroot}%{_bindir}/gvim
 %endif
 
-install -s -m755 src/vim-enhanced -D %{buildroot}%{_bindir}
-install -s -m755 src/vim-minimal -D %{buildroot}/bin/vim-minimal
+install -m755 src/vim-enhanced -D %{buildroot}%{_bindir}
+install -m755 src/vim-minimal -D %{buildroot}/bin/vim-minimal
 
 cd %{buildroot}
 rm -f ./bin/rvim
