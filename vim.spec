@@ -182,7 +182,7 @@ done
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse
 %patch2 -p1
-%patch3 -p0 -b .spec~
+%patch3 -p1 -b .spec~
 %patch8 -p1 -b .manpath
 %patch10 -p1 -b .xxdloc
 %patch20 -p1 -b .warly
