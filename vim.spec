@@ -477,20 +477,6 @@ update-alternatives --remove vim /usr/bin/vim-enhanced
 %triggerpostun enhanced -- vim-enhanced < 7.3
 update-alternatives --remove uvi /usr/bin/vim-enhanced
 
-%if %buildgui
-%if %mdkversion < 200900
-%post X11
-%{update_menus}
-%{update_desktop_database}
-%endif
-
-%if %mdkversion < 200900
-%postun X11
-%{clean_menus}
-%{clean_desktop_database}
-%endif
-%endif
-
 %files common -f vim.lang
 %defattr(-,root,root)
 %doc README*.txt runtime/termcap
