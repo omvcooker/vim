@@ -312,7 +312,6 @@ ln -s tutor.fr runtime/tutor/tutor.br
 ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 
 %install
-mkdir -p %{buildroot}%{_localedir}
 %makeinstall_std VIMRTDIR=""
 
 
