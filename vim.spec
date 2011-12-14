@@ -66,6 +66,7 @@ Patch1000:	nofork.patch
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
+BuildRequires:	pkgconfig(python3)
 BuildRequires:	perl-devel
 BuildRequires:	termcap-devel
 BuildRequires:	acl-devel
