@@ -22,10 +22,10 @@ Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
 Group:		Editors
-Source0:	%{url}/%name-%rversion.tar.bz2
+Source0:	%{url}/%{name}-%{rversion}.tar.bz2
 # read README.mdv prior updating official patches:
 Source3:	README.mdv
-Source4:	vim-%rversion-patches.tar.xz
+Source4:	vim-%{rversion}-patches.tar.xz
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:	vim-spec-3.0.bz2
 Source6:	http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
@@ -84,7 +84,7 @@ very popular. VIM improves on vi by adding new features: multiple windows,
 multi-level undo, block highlighting and more. The vim-common package
 contains files which every VIM binary will need in order to run.
 
-%package common
+%package	common
 Summary:	The common files needed by any version of the VIM editor
 Group:		Editors
 Requires(pre):	coreutils
@@ -96,21 +96,21 @@ Conflicts:	man-pages-it < 0.3.4-2mdk
 Conflicts:	man-pages-pl <= 0.4-10mdk
 Conflicts:	git-core < 1:1.6.0.1-2mdv
 
-%description common
+%description	common
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
 editor. Vi was the first real screen-based editor for UNIX, and is still
 very popular. VIM improves on vi by adding new features: multiple windows,
 multi-level undo, block highlighting and more. The vim-common package
 contains files which every VIM binary will need in order to run.
 
-%package minimal
+%package	minimal
 Summary:	A minimal version of the VIM editor
 Group:		Editors
 Provides:	vim
 Requires(post):	update-alternatives
 Requires(postun): update-alternatives
 
-%description minimal
+%description	minimal
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
 editor. Vi was the first real screen-based editor for UNIX, and is still
 very popular. VIM improves on vi by adding new features: multiple windows,
@@ -118,17 +118,17 @@ multi-level undo, block highlighting and more. The vim-minimal package
 includes a minimal version of VIM, which is installed into /bin/vi for use
 when only the root partition is present.
 
-%package enhanced
+%package	enhanced
 Summary:	A version of the VIM editor which includes recent enhancements
 Group:		Editors
-Requires:	vim-common >= %version-%release
+Requires:	vim-common >= %{EVRD}
 Obsoletes:	vim-color
 Provides:	vim
 Provides:	vim-color
 Requires(post):	update-alternatives
 Requires(postun): update-alternatives
 
-%description enhanced
+%description	enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
 editor. Vi was the first real screen-based editor for UNIX, and is still
 very popular. VIM improves on vi by adding new features: multiple windows,
@@ -142,15 +142,15 @@ Python and Perl scripting languages. You'll also need to install the
 vim-common package.
 
 %if %buildgui
-%package X11
+%package	X11
 Summary:	The VIM version of the vi editor for the X Window System
 Group:		Editors
 Provides:	vim
-Requires:	vim-common >= %version-%release
+Requires:	vim-common >= %{EVRD}
 Requires(post):	desktop-file-utils
 Requires(postun): desktop-file-utils
 
-%description X11
+%description	X11
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
 editor. Vi was the first real screen-based editor for UNIX, and is still
 very popular. VIM improves on vi by adding new features: multiple windows,
@@ -169,13 +169,13 @@ vim-common package.
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
-tar xfj %SOURCE5 -C runtime
-cp -a %SOURCE6 runtime/syntax/
-cp -a %SOURCE7 runtime/syntax/
-cp -a %SOURCE8 runtime/syntax/
-cp -a %SOURCE9 runtime/syntax/
+tar xfj %{SOURCE5} -C runtime
+cp -a %{SOURCE6} runtime/syntax/
+cp -a %{SOURCE7} runtime/syntax/
+cp -a %{SOURCE8} runtime/syntax/
+cp -a %{SOURCE9} runtime/syntax/
 #official patches
-for i in vim-%rversion-patches/%{rversion}*; do
+for i in vim-%{rversion}-patches/%{rversion}*; do
 	echo $i
 	patch -p0 -s < $i || { echo $i; exit 1; }
 done
@@ -206,8 +206,8 @@ done
 
 #%patch1000 -p1
 
-perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%_sysconfdir/vim/vimrc"|' src/os_unix.h
-perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%_sysconfdir/vim/gvimrc"|' src/os_unix.h
+perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%{_sysconfdir}/vim/vimrc"|' src/os_unix.h
+perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%{_sysconfdir}/vim/gvimrc"|' src/os_unix.h
 # disable command echo
 for i in runtime/{gvimrc_example.vim,vimrc_example.vim}; do
 	 perl -pi -e 's!^set showcmd!set noshowcmd!' $i
@@ -315,24 +315,21 @@ ln -s tutor.fr runtime/tutor/tutor.br
 ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 
 %install
-perl -pi -e 's!LOCALEDIR=\$\(DEST_LANG\)!LOCALEDIR=\$(DESTDIR)\$\(prefix\)/share/locale!g' src/Makefile
-
-mkdir -p %{buildroot}{/bin,%_bindir,%_datadir/{vim,locale},%_mandir/man1}
+mkdir -p %{buildroot}%{_localedir}
 %makeinstall_std VIMRTDIR=""
 
 
-make -C src installmacros prefix=%{buildroot}%_prefix VIMRTDIR=""
+make -C src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
 
 # fix unreadable files:
 chmod a+r runtime/{autoload/{tar,netrw}.vim,doc/pi_{netrw,tar}.txt}
 
 %if %buildgui
-mkdir -p %{buildroot}%_bindir
-install -s -m 755 src/gvim %{buildroot}%_bindir
+install -s -m755 src/gvim -D %{buildroot}%{_bindir}/gvim
 %endif
 
-install -s -m 755 src/vim-enhanced %{buildroot}%_bindir
-install -s -m 755 src/vim-minimal %{buildroot}/bin/vim-minimal
+install -s -m755 src/vim-enhanced -D %{buildroot}%{_bindir}
+install -s -m755 src/vim-minimal -D %{buildroot}/bin/vim-minimal
 
 cd %{buildroot}
 rm -f ./bin/rvim
@@ -350,17 +347,17 @@ rm -f ./usr/share/vim/*/cmake.vim
 cd -
 
 # installing man pages
-for i in %{buildroot}%_mandir/man1/{vi,rvi}; do
-  cp %{buildroot}%_mandir/man1/vim.1 $i.1
+for i in %{buildroot}%{_mandir}/man1/{vi,rvi}; do
+  cp %{buildroot}%{_mandir}/man1/vim.1 $i.1
 done
 
 %if %buildgui
-cp %{buildroot}%_mandir/man1/vim.1 %{buildroot}%_mandir/man1/gvim.1
+cp %{buildroot}%{_mandir}/man1/vim.1 %{buildroot}%{_mandir}/man1/gvim.1
 %endif
 
 ln -sf vimrc_example.vim %{buildroot}/usr/share/vim/vimrc
 
-cd %{buildroot}/%_prefix/share/vim/tools
+cd %{buildroot}%{_prefix}/share/vim/tools
 # i need to make a choice :(.
 rm -f vim132
 perl -p -i -e 's|#!/usr/bin/nawk|#!/usr/bin/gawk|' mve.awk
@@ -375,14 +372,13 @@ perl -p -i -e "s|#!/usr/local/bin/perl|#!/usr/bin/perl|" runtime/doc/*.pl
 
 # installing the menu icons & entry
 %if %buildgui
-mkdir -p %{buildroot}{%_miconsdir,%_liconsdir}
-cp runtime/vim16x16.png %{buildroot}%_miconsdir/gvim.png
-cp runtime/vim32x32.png %{buildroot}%_iconsdir/gvim.png
-cp runtime/vim48x48.png %{buildroot}%_liconsdir/gvim.png
+install -m644 runtime/vim16x16.png -D %{buildroot}%{_miconsdir}/gvim.png
+install -m644 runtime/vim32x32.png -D %{buildroot}%{_iconsdir}/gvim.png
+install -m644 runtime/vim48x48.png -D %{buildroot}%{_liconsdir}/gvim.png
 
 # menu entry
-install -d -m 755 %{buildroot}%{_datadir}/applications
-cat >  %{buildroot}%{_datadir}/applications/mandriva-%{name}-X11.desktop << EOF
+install -d %{buildroot}%{_datadir}/applications
+cat > %{buildroot}%{_datadir}/applications/mandriva-%{name}-X11.desktop << EOF
 [Desktop Entry]
 Name=%{title}
 Comment=%{longtitle}
@@ -406,14 +402,14 @@ done
 
 # prevent including twice the doc
 rm -fr %{buildroot}/usr/share/vim/doc
-ln -sf ../../../%_defaultdocdir/%name-common/doc %{buildroot}/usr/share/vim/doc
+ln -sf ../../../%{_defaultdocdir}/%{name}-common/doc %{buildroot}/usr/share/vim/doc
 
-%{find_lang} %name --with-man --all-name
+%{find_lang} %{name} --with-man --all-name
 
-find %{buildroot}%_datadir/vim/tutor -name "tutor.*" | egrep -v 'tutor(|\.vim)$' |
- sed -e "s^%{buildroot}^^" -e 's!^\(.*tutor.\)\(..\)!%lang(\2) \1\2!g' >> %name.lang
+find %{buildroot}%{_datadir}/vim/tutor -name "tutor.*" | egrep -v 'tutor(|\.vim)$' |
+ sed -e "s^%{buildroot}^^" -e 's!^\(.*tutor.\)\(..\)!%lang(\2) \1\2!g' >> %{name}.lang
 
-find %{buildroot}%_datadir/vim/lang -name "menu*" |
+find %{buildroot}%{_datadir}/vim/lang -name "menu*" |
  sed -e "s^%{buildroot}^^" -e 's!^\(.*menu_\)\(..\)\(_\)!%lang(\2) \1\2\3!g' \
   -e 's!^\(.*menu\)\(_chinese\)!%lang(zh) \1\2!g' \
   -e 's!^\(.*menu\)\(_czech_\)!%lang(cs) \1\2!g' \
@@ -424,13 +420,13 @@ find %{buildroot}%_datadir/vim/lang -name "menu*" |
   -e 's!^\(.*menu\)\(_slovak\)!%lang(sk) \1\2!g' \
   -e 's!^\(.*menu\)\(_spanis\)!%lang(es) \1\2!g' \
   >> %name.lang
-rm -f %{buildroot}%_bindir/vim
+rm -f %{buildroot}%{_bindir}/vim
 
-mkdir -p %{buildroot}/%_sysconfdir/vim/
-MESSAGE='"Place your systemwide modification here.\n"%_datadir/vim/ files will be overwritten on update\n'
-echo -e "$MESSAGE\nsource %_datadir/vim/vimrc" > %{buildroot}/%_sysconfdir/vim/vimrc
+mkdir -p %{buildroot}%{_sysconfdir}/vim/
+MESSAGE='"Place your systemwide modification here.\n"%{_datadir}/vim/ files will be overwritten on update\n'
+echo -e "$MESSAGE\nsource %{_datadir}/vim/vimrc" > %{buildroot}%{_sysconfdir}/vim/vimrc
 %if %buildgui
-echo -e "$MESSAGE\nsource %_datadir/vim/gvimrc" > %{buildroot}/%_sysconfdir/vim/gvimrc
+echo -e "$MESSAGE\nsource %{_datadir}/vim/gvimrc" > %{buildroot}%{_sysconfdir}/vim/gvimrc
 %endif
 
 %post minimal
@@ -475,42 +471,42 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 #%doc --parents mandriva/README*
 %doc doc
 
-%dir %_datadir/vim/
-%_datadir/vim/autoload
-%_datadir/vim/colors
-%_datadir/vim/compiler
-%_datadir/vim/doc
-%_datadir/vim/ftplugin
-%_datadir/vim/indent
-%_datadir/vim/keymap
-%dir %_datadir/vim/lang
-%_datadir/vim/lang/README.txt
-%_datadir/vim/macros
-%_datadir/vim/plugin
-%_datadir/vim/print
-%_datadir/vim/spell
-%_datadir/vim/syntax
-%_datadir/vim/tools
-%dir %_datadir/vim/tutor
-%_datadir/vim/tutor/*.txt
-%_datadir/vim/tutor/tutor
-%_datadir/vim/tutor/tutor.vim
-%_datadir/vim/*.vim
-%_datadir/vim/vimrc
-%_mandir/man1/vim.1*
-%_mandir/man1/ex.1*
-%_mandir/man1/vi.1*
-%_mandir/man1/view.1*
-%_mandir/man1/rvi.1*
-%_mandir/man1/rview.1*
-%_mandir/man1/vimdiff.1*
-%_mandir/man1/vimtutor.1*
-%_mandir/man1/rvim.1*
-%_bindir/vimtutor
-%_bindir/xxd
-%_mandir/man1/xxd.1*
-%dir %_sysconfdir/vim/
-%config(noreplace) %_sysconfdir/vim/*
+%dir %{_datadir}/vim/
+%{_datadir}/vim/autoload
+%{_datadir}/vim/colors
+%{_datadir}/vim/compiler
+%{_datadir}/vim/doc
+%{_datadir}/vim/ftplugin
+%{_datadir}/vim/indent
+%{_datadir}/vim/keymap
+%dir %{_datadir}/vim/lang
+%{_datadir}/vim/lang/README.txt
+%{_datadir}/vim/macros
+%{_datadir}/vim/plugin
+%{_datadir}/vim/print
+%{_datadir}/vim/spell
+%{_datadir}/vim/syntax
+%{_datadir}/vim/tools
+%dir %{_datadir}/vim/tutor
+%{_datadir}/vim/tutor/*.txt
+%{_datadir}/vim/tutor/tutor
+%{_datadir}/vim/tutor/tutor.vim
+%{_datadir}/vim/*.vim
+%{_datadir}/vim/vimrc
+%{_mandir}/man1/vim.1*
+%{_mandir}/man1/ex.1*
+%{_mandir}/man1/vi.1*
+%{_mandir}/man1/view.1*
+%{_mandir}/man1/rvi.1*
+%{_mandir}/man1/rview.1*
+%{_mandir}/man1/vimdiff.1*
+%{_mandir}/man1/vimtutor.1*
+%{_mandir}/man1/rvim.1*
+%{_bindir}/vimtutor
+%{_bindir}/xxd
+%{_mandir}/man1/xxd.1*
+%dir %{_sysconfdir}/vim/
+%config(noreplace) %{_sysconfdir}/vim/*
 
 %files minimal
 %doc README*.txt
@@ -519,20 +515,20 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %files enhanced
 %defattr(-,root,root)
 %doc README*.txt
-%_bindir/ex
-%_bindir/vimdiff
-%_bindir/vim-enhanced
+%{_bindir}/ex
+%{_bindir}/vimdiff
+%{_bindir}/vim-enhanced
 
 %if %buildgui
 %files X11
 %doc README*.txt
-%_bindir/gvim
-%_bindir/gvimdiff
-%_bindir/vimx
-%_mandir/man1/gvim.1*
-%_iconsdir/gvim.png
-%_miconsdir/gvim.png
-%_liconsdir/gvim.png
-%_datadir/applications/mandriva-%{name}-X11.desktop
-%_datadir/vim/gvimrc
+%{_bindir}/gvim
+%{_bindir}/gvimdiff
+%{_bindir}/vimx
+%{_mandir}/man1/gvim.1*
+%{_iconsdir}/gvim.png
+%{_miconsdir}/gvim.png
+%{_liconsdir}/gvim.png
+%{_datadir}/applications/mandriva-%{name}-X11.desktop
+%{_datadir}/vim/gvimrc
 %endif
