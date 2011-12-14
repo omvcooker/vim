@@ -161,8 +161,6 @@ graphics and mouse capabilities. You'll also need to install the
 vim-common package.
 %endif
 
-%define localedir %{buildroot}%{_datadir}/locale/
-
 %prep
 %setup -q -n vim73 -a4
 # spec plugin
@@ -217,7 +215,7 @@ export CXXFLAGS="$RPM_OPT_FLAGS"
 
 %if %buildgui
 # First build: gvim
-LOCALEDIR=%localedir ./configure --prefix=%_prefix \
+./configure --prefix=%_prefix \
 	--disable-darwin \
 	--disable-selinux \
 	--disable-xsmp \
@@ -299,7 +297,7 @@ ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 %install
 perl -pi -e 's!LOCALEDIR=\$\(DEST_LANG\)!LOCALEDIR=\$(DESTDIR)\$\(prefix\)/share/locale!g' src/Makefile
 
-mkdir -p %{buildroot}{/bin,%_bindir,%_datadir/{vim,locale},%_mandir/man1,%localedir}
+mkdir -p %{buildroot}{/bin,%_bindir,%_datadir/{vim,locale},%_mandir/man1}
 %makeinstall_std VIMRTDIR=""
 
 
@@ -390,18 +388,12 @@ done
 rm -fr %{buildroot}/usr/share/vim/doc
 ln -sf ../../../%_defaultdocdir/%name-common/doc %{buildroot}/usr/share/vim/doc
 
-# symlink locales in right place so that %find_land put needed %lang:
-# see %pre common why this is needed
-pushd %{buildroot}/%_datadir/vim/lang
-    ln -s ../../locale/* .
-popd
+%{find_lang} %name --with-man --all-name
 
-%{find_lang} %name
-
-find %{buildroot}%_datadir/vim/ -name "tutor.*" | egrep -v 'tutor(|\.vim)$' |
+find %{buildroot}%_datadir/vim/tutor -name "tutor.*" | egrep -v 'tutor(|\.vim)$' |
  sed -e "s^%{buildroot}^^" -e 's!^\(.*tutor.\)\(..\)!%lang(\2) \1\2!g' >> %name.lang
 
-find %{buildroot}%_datadir/vim/ -name "menu*" |
+find %{buildroot}%_datadir/vim/lang -name "menu*" |
  sed -e "s^%{buildroot}^^" -e 's!^\(.*menu_\)\(..\)\(_\)!%lang(\2) \1\2\3!g' \
   -e 's!^\(.*menu\)\(_chinese\)!%lang(zh) \1\2!g' \
   -e 's!^\(.*menu\)\(_czech_\)!%lang(cs) \1\2!g' \
@@ -474,12 +466,29 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %doc README*.txt runtime/termcap
 #%doc --parents mandriva/README*
 %doc doc
-%_datadir/vim/doc
-
 
 %dir %_datadir/vim/
-%_datadir/vim/[^g]*
-%_datadir/vim/gvimrc_example.vim
+%_datadir/vim/autoload
+%_datadir/vim/colors
+%_datadir/vim/compiler
+%_datadir/vim/doc
+%_datadir/vim/ftplugin
+%_datadir/vim/indent
+%_datadir/vim/keymap
+%dir %_datadir/vim/lang
+%_datadir/vim/lang/README.txt
+%_datadir/vim/macros
+%_datadir/vim/plugin
+%_datadir/vim/print
+%_datadir/vim/spell
+%_datadir/vim/syntax
+%_datadir/vim/tools
+%dir %_datadir/vim/tutor
+%_datadir/vim/tutor/*.txt
+%_datadir/vim/tutor/tutor
+%_datadir/vim/tutor/tutor.vim
+%_datadir/vim/*.vim
+%_datadir/vim/vimrc
 %_mandir/man1/vim.1*
 %_mandir/man1/ex.1*
 %_mandir/man1/vi.1*
@@ -489,15 +498,10 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %_mandir/man1/vimdiff.1*
 %_mandir/man1/vimtutor.1*
 %_mandir/man1/rvim.1*
-%_mandir/*/man*/*
-%lang(fr) %_mandir/fr*/man*/*
-%lang(it) %_mandir/it*/man*/*
-%lang(pl) %_mandir/pl*/man*/*
-%lang(ru) %_mandir/ru*/man*/*
 %_bindir/vimtutor
 %_bindir/xxd
 %_mandir/man1/xxd.1*
-%_sysconfdir/vim/
+%dir %_sysconfdir/vim/
 %config(noreplace) %_sysconfdir/vim/*
 
 %files minimal
