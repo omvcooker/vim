@@ -1,9 +1,9 @@
 # Notes / Warning :
 # - this package is not prefixable
-# - to update official patches, aka SOURCE4, see README.mdk in SOURCE4
+# - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 372
+%define official_ptchlvl 381
 %define rversion	7.3
 
 # Should we build X11 gui
@@ -14,7 +14,7 @@
 
 Name:		vim
 Version:	%{rversion}.%{official_ptchlvl}
-Release:	2
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -172,9 +172,11 @@ cp -a %{SOURCE7} runtime/syntax/
 cp -a %{SOURCE8} runtime/syntax/
 cp -a %{SOURCE9} runtime/syntax/
 #official patches
-for i in vim-%{rversion}-patches/%{rversion}*; do
-	echo $i
-	patch -p0 -s < $i || { echo $i; exit 1; }
+for i in `seq -f '%03g' 1 %{official_ptchlvl}`; do
+	p=vim-%{rversion}-patches/%{rversion}.$i
+	cmd="patch -p0 %{_default_patch_flags} -i $p"
+	echo $cmd
+	$cmd || { echo $p; exit 1; }
 done
 
 #mdk patches
