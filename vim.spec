@@ -51,6 +51,8 @@ Patch30:	vim-7.0-add-dhcpd-syntax.patch
 Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 # (proyvind): adds various new keywords from C++11 standard to C++ syntax highlighting
 Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
+# (proyvind): fix path to locale files
+Patch35:	vim-7.3.372-use-proper-localedir.patch
 
 # Fedora patches
 Patch100:	vim-7.0-fortify_warnings-1.patch
@@ -194,6 +196,7 @@ done
 %patch30 -p0
 %patch33 -p1 -b .security
 %patch34 -p1 -b .cpp11~
+%patch35 -p1 -b .localedir~
 
 # Fedora patches
 %patch100 -p1
@@ -208,6 +211,8 @@ for i in runtime/{gvimrc_example.vim,vimrc_example.vim}; do
 	 perl -pi -e 's!^set showcmd!set noshowcmd!' $i
 done
 perl -pi -e 's|\Qsvn-commit.*.tmp\E|svn-commit*.tmp|' ./runtime/filetype.vim
+cd src
+autoconf
 
 %build
 export CFLAGS="$RPM_OPT_FLAGS"
@@ -216,6 +221,7 @@ export CXXFLAGS="$RPM_OPT_FLAGS"
 %if %buildgui
 # First build: gvim
 ./configure --prefix=%_prefix \
+	--datadir=%{_datadir} \
 	--disable-darwin \
 	--disable-selinux \
 	--disable-xsmp \
@@ -260,7 +266,7 @@ make -C src clean
 %endif
 
 # Second build: vim-enhanced
-./configure --prefix=%_prefix \
+./configure --prefix=%_prefix --datadir=%{_datadir} \
 --enable-acl --enable-rubyinterp --enable-tclinterp --enable-pythoninterp --enable-perlinterp --with-features=huge \
 --libdir=%_libdir --with-compiledby="%packager" \
 --with-x=no --enable-gui=no --exec-prefix=%_prefix
@@ -270,7 +276,7 @@ mv src/vim src/vim-enhanced
 make -C src/ clean
 
 # Third build: vim-minimal
-./configure --prefix=%_prefix \
+./configure --prefix=%_prefix --datadir=%{_datadir} \
 --with-features=tiny --disable-tclinterp --disable-cscope --disable-multibyte \
 --disable-hangulinput --disable-xim --disable-fontset --disable-gui \
 --disable-acl --disable-pythoninterp --disable-perlinterp \
@@ -412,18 +418,6 @@ echo -e "$MESSAGE\nsource %_datadir/vim/vimrc" > %{buildroot}/%_sysconfdir/vim/v
 %if %buildgui
 echo -e "$MESSAGE\nsource %_datadir/vim/gvimrc" > %{buildroot}/%_sysconfdir/vim/gvimrc
 %endif
-
-%pre common
-# This is needed since locales have been moved to /usr/share/locale
-# thus enabling us to install only requested locales
-# the problem is that vim look for anything in %_datadir/vim/lang
-# So we've to symlink locales there
-# But to prevent update faillure, we must first be sure a link
-# creation won't fail because old directory is still there
-if test -d %_datadir/vim/lang -a ! -L %_datadir/vim/lang
-then rm -fr %_datadir/vim/lang
-else rm -f %_datadir/vim/lang
-fi
 
 %post minimal
 update-alternatives --install /bin/vi vi /bin/vim-minimal 10 \
