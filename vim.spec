@@ -7,10 +7,7 @@
 %define rversion	7.3
 
 # Should we build X11 gui
-%define buildgui 1
-
-%{?_with_gui:%global buildgui 1}
-%{?_without_gui:%global buildgui 0}
+%bcond_without gui
 
 %define	title		VI editor
 %define longtitle	All-purpose text editor
@@ -70,7 +67,7 @@ BuildRequires:	pkgconfig(python)
 BuildRequires:	pkgconfig(python3)
 BuildRequires:	perl-devel
 BuildRequires:	acl-devel
-%if %buildgui
+%if %{with gui}
 BuildRequires:	pkgconfig(libgnomeui-2.0) pkgconfig(ncurses)
 BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
@@ -141,7 +138,7 @@ editor which includes recently added enhancements like interpreters for the
 Python and Perl scripting languages. You'll also need to install the
 vim-common package.
 
-%if %buildgui
+%if %{with gui}
 %package	X11
 Summary:	The VIM version of the vi editor for the X Window System
 Group:		Editors
@@ -217,7 +214,7 @@ cd src
 autoconf
 
 %build
-%if %buildgui
+%if %{with gui}
 # First build: gvim
 %configure2_5x \
 	--disable-darwin \
@@ -324,7 +321,7 @@ make -C src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
 # fix unreadable files:
 chmod a+r runtime/{autoload/{tar,netrw}.vim,doc/pi_{netrw,tar}.txt}
 
-%if %buildgui
+%if %{with gui}
 install -s -m755 src/gvim -D %{buildroot}%{_bindir}/gvim
 %endif
 
@@ -339,7 +336,7 @@ for i in ex vimdiff; do
 done
 rm -f ./usr/man/man1/rvim.*
 rm -f ./usr/share/man/man1/evim.*
-%if %buildgui
+%if %{with gui}
 ln -sf gvim ./usr/bin/gvimdiff
 ln -sf gvim ./usr/bin/vimx
 %endif
@@ -351,7 +348,7 @@ for i in %{buildroot}%{_mandir}/man1/{vi,rvi}; do
   cp %{buildroot}%{_mandir}/man1/vim.1 $i.1
 done
 
-%if %buildgui
+%if %{with gui}
 cp %{buildroot}%{_mandir}/man1/vim.1 %{buildroot}%{_mandir}/man1/gvim.1
 %endif
 
@@ -371,7 +368,7 @@ ln -f runtime/tools/README.txt README_tools.txt
 perl -p -i -e "s|#!/usr/local/bin/perl|#!/usr/bin/perl|" runtime/doc/*.pl
 
 # installing the menu icons & entry
-%if %buildgui
+%if %{with gui}
 install -m644 runtime/vim16x16.png -D %{buildroot}%{_miconsdir}/gvim.png
 install -m644 runtime/vim32x32.png -D %{buildroot}%{_iconsdir}/gvim.png
 install -m644 runtime/vim48x48.png -D %{buildroot}%{_liconsdir}/gvim.png
@@ -419,13 +416,13 @@ find %{buildroot}%{_datadir}/vim/lang -name "menu*" |
   -e 's!^\(.*menu\)\(_polish\)!%lang(pl) \1\2!g' \
   -e 's!^\(.*menu\)\(_slovak\)!%lang(sk) \1\2!g' \
   -e 's!^\(.*menu\)\(_spanis\)!%lang(es) \1\2!g' \
-  >> %name.lang
+  >> %{name}.lang
 rm -f %{buildroot}%{_bindir}/vim
 
 mkdir -p %{buildroot}%{_sysconfdir}/vim/
 MESSAGE='"Place your systemwide modification here.\n"%{_datadir}/vim/ files will be overwritten on update\n'
 echo -e "$MESSAGE\nsource %{_datadir}/vim/vimrc" > %{buildroot}%{_sysconfdir}/vim/vimrc
-%if %buildgui
+%if %{with gui}
 echo -e "$MESSAGE\nsource %{_datadir}/vim/gvimrc" > %{buildroot}%{_sysconfdir}/vim/gvimrc
 %endif
 
@@ -519,7 +516,7 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_bindir}/vimdiff
 %{_bindir}/vim-enhanced
 
-%if %buildgui
+%if %{with gui}
 %files X11
 %doc README*.txt
 %{_bindir}/gvim
