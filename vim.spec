@@ -222,12 +222,12 @@ autoconf
 	--disable-selinux \
 	--disable-xsmp \
 	--disable-xsmp-interact \
-	--enable-luainterp=yes \
+	--enable-luainterp=dynamic \
 	--enable-mzschemeinterp=no \
-	--enable-perlinterp=yes \
-	--enable-pythoninterp=yes \
-	--enable-python3interp=yes \
-	--enable-tclinterp=yes \
+	--enable-perlinterp=dynamic \
+	--enable-pythoninterp=dynamic \
+	--enable-python3interp=dynamic \
+	--enable-tclinterp=dynamic \
 	--enable-rubyinterp=yes \
 	--disable-cscope \
 	--disable-workshop \
@@ -261,10 +261,12 @@ make -C src clean
 # Second build: vim-enhanced
 %configure2_5x \
 	--enable-acl \
-	--enable-rubyinterp \
-	--enable-tclinterp \
-	--enable-pythoninterp \
-	--enable-perlinterp \
+	--enable-luainterp=dynamic \
+	--enable-perlinterp=dynamic \
+	--enable-pythoninterp=dynamic \
+	--enable-python3interp=dynamic \
+	--enable-tclinterp=dynamic \
+	--enable-rubyinterp=yes \
 	--with-features=huge \
 	--with-compiledby="%{packager}" \
 	--with-x=no \
