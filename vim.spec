@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 429
+%define official_ptchlvl 434
 %define rversion	7.3
 
 # Should we build X11 gui
@@ -15,7 +15,7 @@
 
 Name:		vim
 Version:	%{rversion}.%{official_ptchlvl}
-Release:	2
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
