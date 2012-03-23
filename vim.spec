@@ -34,7 +34,7 @@ Source9:	nagios.vim
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
 Patch2:		vim-5.6a-paths.patch
-Patch3:		vim-7.3.372-rpm-spec-syntax.patch
+Patch3:		vim-7.3.478-rpm-spec-syntax.patch
 Patch8:		vim-6.0af-man-path.patch
 Patch10:	xxd-locale.patch
 Patch20:	vimrc_hebrew.patch
