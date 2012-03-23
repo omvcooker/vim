@@ -391,7 +391,7 @@ ln -s %{_defaultdocdir}/%{name}-common/doc %{buildroot}%{_datadir}/vim/doc
 
 %{find_lang} %{name} --with-man --all-name
 
-find %{buildroot}%{_datadir}/vim/tutor -name "tutor.*" | egrep -v 'tutor(|\.vim)$' |
+find %{buildroot}%{_datadir}/vim/tutor -name "tutor.*" | grep -v -e 'tutor(|\.vim)$' |
  sed -e "s^%{buildroot}^^" -e 's!^\(.*tutor.\)\(..\)!%lang(\2) \1\2!g' >> %{name}.lang
 
 find %{buildroot}%{_datadir}/vim/lang -name "menu*" |
