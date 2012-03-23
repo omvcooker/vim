@@ -53,6 +53,7 @@ Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
 Patch35:	vim-7.3.372-use-proper-localedir.patch
 Patch36:	vim-7.3.372-add-missing-functions-for-ruby-dlopen.patch
 Patch37:	vim-7.3.381-always-install-icons.patch
+Patch38:	vim-7.3.478-dont-check-for-xsetlocale.patch
 
 # Fedora patches
 Patch100:	vim-7.0-fortify_warnings-1.patch
@@ -206,6 +207,7 @@ done
 %patch35 -p1 -b .localedir~
 %patch36 -p1 -b .dlopen~
 %patch37 -p1 -b .icons_install~
+%patch38 -p1 -b .xsetlocale~
 
 # Fedora patches
 %patch100 -p1
