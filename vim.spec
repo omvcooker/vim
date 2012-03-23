@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 434
+%define official_ptchlvl 478
 %define rversion	7.3
 
 # Should we build X11 gui
@@ -45,7 +45,7 @@ Patch25:	vim-6.1-xterm-s-insert.patch
 Patch26:	vim-7.0-changelog-mode.patch
 Patch27:	vim-6.1-rpm42.patch
 Patch28:	vim-7.3-po-mode.patch
-Patch30:	vim-7.0-add-dhcpd-syntax.patch
+Patch30:	vim-7.3.478-add-dhcpd-syntax.patch
 Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 # (proyvind): adds various new keywords from C++11 standard to C++ syntax highlighting
 Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
@@ -200,7 +200,7 @@ done
 %patch26 -p0
 %patch27 -p0
 %patch28 -p1
-%patch30 -p0
+%patch30 -p1
 %patch33 -p1 -b .security
 %patch34 -p1 -b .cpp11~
 %patch35 -p1 -b .localedir~
