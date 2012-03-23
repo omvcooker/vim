@@ -175,6 +175,9 @@ cp -a %{SOURCE6} runtime/syntax/
 cp -a %{SOURCE7} runtime/syntax/
 cp -a %{SOURCE8} runtime/syntax/
 cp -a %{SOURCE9} runtime/syntax/
+pushd vim-%{rversion}-patches
+md5sum -c MD5SUMS
+popd
 #official patches
 for i in `seq -f '%03g' 1 %{official_ptchlvl}`; do
 	p=vim-%{rversion}-patches/%{rversion}.$i
