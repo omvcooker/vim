@@ -59,12 +59,6 @@ Patch38:	vim-7.3.478-dont-check-for-xsetlocale.patch
 Patch100:	vim-7.0-fortify_warnings-1.patch
 Patch101:	vim-7.3-fstabsyntax.patch
 
-# (cg) Forking is handled very badly. The fork is handled after calling gtk_init()
-# which can basically kill any threads started by gtk or any gtk modules including
-# libcanberra. This is wrong, wrong, wrong, and gvim people should be shot.
-# See https://qa.mandriva.com/show_bug.cgi?id=44925#c17
-Patch1000:	nofork.patch
-
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
 %if %{with python3}
@@ -132,7 +126,13 @@ Requires(postun): update-alternatives
 
 %description	enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
-editor. Vi was the first real screen-based editor for UNIX, and is still
+editor. Vi was the# (cg) Forking is handled very badly. The fork is handled after calling gtk_init()
+# which can basically kill any threads started by gtk or any gtk modules including
+# libcanberra. This is wrong, wrong, wrong, and gvim people should be shot.
+# See https://qa.mandriva.com/show_bug.cgi?id=44925#c17
+Patch1000:	nofork.patch
+
+ first real screen-based editor for UNIX, and is still
 very popular. VIM improves on vi by adding new features: multiple windows,
 multi-level undo, block highlighting and more. The vim-enhanced package
 contains a version of VIM with extra, recently introduced features like
@@ -212,8 +212,6 @@ done
 # Fedora patches
 %patch100 -p1
 %patch101 -p1
-
-#%patch1000 -p1
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%{_sysconfdir}/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%{_sysconfdir}/vim/gvimrc"|' src/os_unix.h
