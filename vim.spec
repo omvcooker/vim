@@ -126,13 +126,7 @@ Requires(postun): update-alternatives
 
 %description	enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
-editor. Vi was the# (cg) Forking is handled very badly. The fork is handled after calling gtk_init()
-# which can basically kill any threads started by gtk or any gtk modules including
-# libcanberra. This is wrong, wrong, wrong, and gvim people should be shot.
-# See https://qa.mandriva.com/show_bug.cgi?id=44925#c17
-Patch1000:	nofork.patch
-
- first real screen-based editor for UNIX, and is still
+editor. Vi was the first real screen-based editor for UNIX, and is still
 very popular. VIM improves on vi by adding new features: multiple windows,
 multi-level undo, block highlighting and more. The vim-enhanced package
 contains a version of VIM with extra, recently introduced features like
