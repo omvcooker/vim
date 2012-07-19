@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 486
+%define official_ptchlvl 605
 %define rversion	7.3
 
 # Should we build X11 gui
@@ -83,10 +83,6 @@ contains files which every VIM binary will need in order to run.
 %package	common
 Summary:	The common files needed by any version of the VIM editor
 Group:		Editors
-Requires(pre):	coreutils
-Requires(post):	coreutils
-Requires(preun):coreutils
-Requires(postun): coreutils
 Conflicts:	man-pages-fr < 1.68.0-2mdk
 Conflicts:	man-pages-it < 0.3.4-2mdk
 Conflicts:	man-pages-pl <= 0.4-10mdk
@@ -103,8 +99,6 @@ contains files which every VIM binary will need in order to run.
 Summary:	A minimal version of the VIM editor
 Group:		Editors
 Provides:	vim
-Requires(post):	update-alternatives
-Requires(postun): update-alternatives
 
 %description	minimal
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -121,8 +115,6 @@ Requires:	vim-common >= %{EVRD}
 Obsoletes:	vim-color
 Provides:	vim
 Provides:	vim-color
-Requires(post):	update-alternatives
-Requires(postun): update-alternatives
 
 %description	enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -143,8 +135,6 @@ Summary:	The VIM version of the vi editor for the X Window System
 Group:		Editors
 Provides:	vim
 Requires:	vim-common >= %{EVRD}
-Requires(post):	desktop-file-utils
-Requires(postun): desktop-file-utils
 
 %description	X11
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -170,9 +160,9 @@ cp -a %{SOURCE6} runtime/syntax/
 cp -a %{SOURCE7} runtime/syntax/
 cp -a %{SOURCE8} runtime/syntax/
 cp -a %{SOURCE9} runtime/syntax/
-pushd vim-%{rversion}-patches
-md5sum -c MD5SUMS
-popd
+#pushd vim-%{rversion}-patches
+#md5sum -c MD5SUMS
+#popd
 #official patches
 for i in `seq -f '%03g' 1 %{official_ptchlvl}`; do
 	p=vim-%{rversion}-patches/%{rversion}.$i
