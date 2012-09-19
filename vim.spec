@@ -51,7 +51,6 @@ Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
 Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
 # (proyvind): fix path to locale files
 Patch35:	vim-7.3.372-use-proper-localedir.patch
-Patch36:	vim-7.3.372-add-missing-functions-for-ruby-dlopen.patch
 Patch37:	vim-7.3.381-always-install-icons.patch
 Patch38:	vim-7.3.478-dont-check-for-xsetlocale.patch
 
@@ -189,7 +188,6 @@ done
 %patch33 -p1 -b .security
 %patch34 -p1 -b .cpp11~
 %patch35 -p1 -b .localedir~
-%patch36 -p1 -b .dlopen~
 %patch37 -p1 -b .icons_install~
 %patch38 -p1 -b .xsetlocale~
 
