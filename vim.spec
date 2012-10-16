@@ -3,7 +3,7 @@
 # - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
 %define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 672
+%define official_ptchlvl 691
 %define rversion	7.3
 
 # Should we build X11 gui
