@@ -66,7 +66,8 @@ BuildRequires:	pkgconfig(python3)
 BuildRequires:	perl-devel
 BuildRequires:	acl-devel
 %if %{with gui}
-BuildRequires:	pkgconfig(libgnomeui-2.0) pkgconfig(ncurses)
+BuildRequires:	pkgconfig(libgnomeui-2.0) 
+BuildRequires:	%{_lib}ncurses
 BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
 BuildRequires:	tcl-devel
