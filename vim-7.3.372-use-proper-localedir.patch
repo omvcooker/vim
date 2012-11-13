@@ -1,0 +1,76 @@
+--- vim73/src/config.h.in.localedir~	2011-12-14 17:43:11.385611764 +0100
++++ vim73/src/config.h.in	2011-12-14 17:43:14.030612600 +0100
+@@ -411,6 +411,9 @@
+ /* Define if we have dlopen() */
+ #undef HAVE_DLOPEN
+ 
++/* Define path to localedir */
++#undef LOCALEDIR
++
+ /* Define if we have dlsym() */
+ #undef HAVE_DLSYM
+ 
+--- vim73/src/configure.in.localedir~	2011-12-14 17:43:28.170617044 +0100
++++ vim73/src/configure.in	2011-12-14 17:58:03.993812530 +0100
+@@ -3379,6 +3379,15 @@ if test "$enable_multibyte" = "yes"; the
+   LDFLAGS=$ldflags_save
+ fi
+ 
++AC_MSG_CHECKING([for locale directory])
++LOCALEDIR=`echo "${datadir}/locale"`
++AC_DEFINE_UNQUOTED(
++    [LOCALEDIR], ["$LOCALEDIR"],
++    [Full path to locale directory]
++)
++AC_SUBST(LOCALEDIR)
++AC_MSG_RESULT([$LOCALEDIR])
++
+ dnl Link with xpg4, it is said to make Korean locale working
+ AC_CHECK_LIB(xpg4, _xpg4_setrunelocale, [LIBS="$LIBS -lxpg4"],,)
+ 
+--- vim73/src/main.c.localedir~	2011-12-14 17:43:54.874625311 +0100
++++ vim73/src/main.c	2011-12-14 17:54:42.766780028 +0100
+@@ -1491,11 +1491,16 @@ init_locale()
+ 	/* expand_env() doesn't work yet, because chartab[] is not initialized
+ 	 * yet, call vim_getenv() directly */
+ 	p = vim_getenv((char_u *)"VIMRUNTIME", &mustfree);
++#ifndef LOCALEDIR
++
+ 	if (p != NULL && *p != NUL)
+ 	{
+ 	    vim_snprintf((char *)NameBuff, MAXPATHL, "%s/lang", p);
+ 	    bindtextdomain(VIMPACKAGE, (char *)NameBuff);
+ 	}
++#endif
++	bindtextdomain(VIMPACKAGE, LOCALEDIR);
++
+ 	if (mustfree)
+ 	    vim_free(p);
+ 	textdomain(VIMPACKAGE);
+--- vim73/src/Makefile.localedir~	2011-12-14 20:21:03.996585397 +0100
++++ vim73/src/Makefile	2011-12-14 20:24:53.520641627 +0100
+@@ -2091,7 +2091,7 @@ install-languages: languages $(DEST_LANG
+ 	-$(SHELL) ./installml.sh install "$(GUI_MAN_TARGETS)" \
+ 		$(DEST_MAN_RU_U) $(INSTALLMLARGS)
+ 	if test -n "$(MAKEMO)" -a -f $(PODIR)/Makefile; then \
+-	   cd $(PODIR); $(MAKE) prefix=$(DESTDIR)$(prefix) LOCALEDIR=$(DEST_LANG) \
++	   cd $(PODIR); $(MAKE) prefix=$(DESTDIR)$(prefix) LOCALEDIR=$(DESTDIR)$(DATADIR)/locale \
+ 	   INSTALL_DATA=$(INSTALL_DATA) FILEMOD=$(FILEMOD) install; \
+ 	fi
+ 	if test -d $(LANGSOURCE); then \
+--- vim73/src/po/Makefile.localedir~	2011-12-14 20:25:34.416652381 +0100
++++ vim73/src/po/Makefile	2011-12-14 20:26:30.582666983 +0100
+@@ -141,11 +141,11 @@ install: $(MOFILES)
+ 	for lang in $(LANGUAGES); do \
+ 	  dir=$(LOCALEDIR)/$$lang/; \
+ 	  if test ! -x "$$dir"; then \
+-	    mkdir $$dir; chmod 755 $$dir; \
++	    mkdir -p $$dir; chmod 755 $$dir; \
+ 	  fi; \
+ 	  dir=$(LOCALEDIR)/$$lang/LC_MESSAGES; \
+ 	  if test ! -x "$$dir"; then \
+-	    mkdir $$dir; chmod 755 $$dir; \
++	    mkdir -p $$dir; chmod 755 $$dir; \
+ 	  fi; \
+ 	  if test -r $$lang.mo; then \
+ 	    $(INSTALL_DATA) $$lang.mo $$dir/$(PACKAGE).mo; \

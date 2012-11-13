@@ -1,0 +1,31 @@
+--- vim60ag/src/xxd/xxd.c.37073	Mon May 21 16:17:29 2001
++++ vim60ag/src/xxd/xxd.c	Mon May 21 16:32:12 2001
+@@ -90,6 +90,7 @@
+ #if __MWERKS__ && !defined(BEBOX)
+ # include <unix.h>	/* for fdopen() on MAC */
+ #endif
++#include <locale.h>
+ 
+ #if defined(__BORLANDC__) && __BORLANDC__ <= 0x0410 && !defined(fileno)
+ /* Missing define and prototype grabbed from the BC 4.0 <stdio.h> */
+@@ -478,6 +479,11 @@
+   long length = -1, n = 0, seekoff = 0;
+   static char l[LLEN+1];  /* static because it may be too big for stack */
+   char *pp;
++  char *lang=getenv("LANG");
++  if(!lang) lang=getenv("LC_ALL");
++  if(!lang) lang=getenv("LC_CTYPE");
++  if(lang)
++         setlocale(LC_ALL, lang);
+ 
+ #ifdef AMIGA
+   /* This program doesn't work when started from the Workbench */
+@@ -758,7 +764,7 @@ char *argv[];
+ #else
+ 	  (e > 31 && e < 127)
+ #endif
+-	  ? e : '.';
++	  ? e : isalnum(e) ? e : '.';
+       if (e)
+ 	nonzero++;
+       n++;
