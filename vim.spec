@@ -15,7 +15,7 @@
 
 Name:		vim
 Version:	%{rversion}.%{official_ptchlvl}
-Release:	2
+Release:	3
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
