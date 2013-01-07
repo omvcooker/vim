@@ -2,8 +2,8 @@
 # - this package is not prefixable
 # - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
-%define url ftp://ftp.vim.org/pub/vim/unix/
-%define official_ptchlvl 691
+%define dlurl	ftp://ftp.vim.org/pub/vim
+%define official_ptchlvl 762
 %define rversion	7.3
 
 # Should we build X11 gui
@@ -20,7 +20,7 @@ Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
 Group:		Editors
-Source0:	%{url}/%{name}-%{rversion}.tar.bz2
+Source0:	%{dlurl}/unix/%{name}-%{rversion}.tar.bz2
 # read README.mdv prior updating official patches:
 Source3:	README.mdv
 Source4:	vim-%{rversion}-patches.tar.xz
@@ -67,7 +67,7 @@ BuildRequires:	perl-devel
 BuildRequires:	acl-devel
 %if %{with gui}
 BuildRequires:	pkgconfig(libgnomeui-2.0) 
-BuildRequires:	%{_lib}ncurses
+BuildRequires:	pkgconfig(ncursesw)
 BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
 BuildRequires:	tcl-devel
@@ -164,12 +164,23 @@ cp -a %{SOURCE9} runtime/syntax/
 #md5sum -c MD5SUMS
 #popd
 #official patches
+new=0
 for i in `seq -f '%03g' 1 %{official_ptchlvl}`; do
 	p=vim-%{rversion}-patches/%{rversion}.$i
+        if [ ! -f "$p" ]; then
+		if wget %{dlurl}/patches/%{rversion}/%{rversion}.$i -O "$p"; then
+			new=1
+		else
+			break
+		fi
+	fi
 	cmd="patch -p0 %{_default_patch_flags} -i $p"
 	echo $cmd
 	$cmd || { echo $p; exit 1; }
 done
+if [ $new -ne 0 ]; then
+	tar -Jcf %{SOURCE4} vim-%{rversion}-patches
+fi
 
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse
