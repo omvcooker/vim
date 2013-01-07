@@ -1,9 +1,4 @@
 sources:
-  "apparmor.vim:"	8785b2101e3fa11e5a67ec60d49af899151c6b82
-  "cfengine.vim:"	7e871a5f9f277bc91d7622fb5160a9cb3a8a89c4
-  "dhcpd.vim:"	ecaf41c4478fa31ab1a711c784474918b1f53e6c
-  "nagios.vim:"	d81c5203b5a15d279df6ae2be8a8386f15004755
-  "README.mdv:"	4c2bc80050d54578d393adb5ec50712d8cf5bc5e
   "vim-7.3-patches.tar.xz:"	514bc401095867971fd8c8c52300f219f5d025db
   "vim-7.3.tar.bz2:"	46faa96c5fab639899b1c655c23d8755b62f036f
   "vim-spec-3.0.bz2:"	d177f0f3ecb9c93ab15f30a2f99b2ecb1ff08f5d
