@@ -1,4 +1,4 @@
 sources:
-  "vim-7.3-patches.tar.xz:"	514bc401095867971fd8c8c52300f219f5d025db
   "vim-7.3.tar.bz2:"	46faa96c5fab639899b1c655c23d8755b62f036f
   "vim-spec-3.0.bz2:"	d177f0f3ecb9c93ab15f30a2f99b2ecb1ff08f5d
+  vim-7.3-patches.tar.xz: 3f32d212ec70761f895e4facbb52f9120276e677
