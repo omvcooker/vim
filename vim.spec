@@ -8,7 +8,7 @@
 
 # Should we build X11 gui
 %bcond_without gui
-%bcond_with	python3
+%bcond_without python3
 
 %define	title		VI editor
 %define longtitle	All-purpose text editor
