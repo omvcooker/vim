@@ -5,6 +5,7 @@
 %define dlurl	ftp://ftp.vim.org/pub/vim
 %define official_ptchlvl 762
 %define rversion	7.3
+%define __noautoreq '.*/bin/awk|.*/bin/gawk'
 
 # Should we build X11 gui
 %bcond_without gui
@@ -15,7 +16,7 @@
 
 Name:		vim
 Version:	%{rversion}.%{official_ptchlvl}
-Release:	2
+Release:	3
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
