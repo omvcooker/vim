@@ -1,11 +1,11 @@
---- vim73/runtime/syntax/spec.vim.spec~	2010-05-15 13:03:57.000000000 +0200
-+++ vim73/runtime/syntax/spec.vim	2012-03-23 17:48:18.393541178 +0100
+--- vim74/runtime/syntax/spec.vim.spec~	2010-05-15 13:03:57.000000000 +0200
++++ vim74/runtime/syntax/spec.vim	2013-08-18 10:37:42.197544994 +0200
 @@ -2,7 +2,7 @@
  " Purpose:     Vim syntax file
  " Language:    SPEC: Build/install scripts for Linux RPM packages
  " Maintainer:  Donovan Rebbechi elflord@panix.com
 -" Last Change: Fri Dec 3 11:54 EST 2004 Marcin Dalecki
-+" Last Change: Fri Mar 23 17:50 CET 2012 Per Øyvind Karlsen
++" Last Change: Sun Aug 18 10:37 CET 2013 Bernhard Rosenkränzer bero@lindev.ch
  
  " For version 5.x: Clear all syntax items
  " For version 6.x: Quit when a syntax file was already loaded
@@ -23,10 +23,10 @@
  "specComands
  syn match   specConfigure  contained '\./configure'
 -syn match   specTarCommand contained '\<tar\s\+[cxvpzIf]\{,5}\s*'
-+syn match   specTarCommand contained '\<tar\s\+[cxvpzIjf]\{,5}\s*'
++syn match   specTarCommand contained '\<tar\s\+[cxvpzIjJf]\{,5}\s*'
  syn keyword specCommandSpecial contained root
  syn keyword specCommand		contained make xmkmf mkdir chmod ln find sed rm strip moc echo grep ls rm mv mkdir install cp pwd cat tail then else elif cd gzip rmdir ln eval export touch
-+syn keyword specCommand        contained python pushd popd perl bzip2 bunzip2 gunzip xz unxz
++syn keyword specCommand        contained python pushd popd perl bzip2 bunzip2 gunzip xz unxz lzip
  syn cluster specCommands contains=specCommand,specTarCommand,specConfigure,specCommandSpecial
  
  "frequently used rpm env vars
@@ -78,7 +78,7 @@
 -syn region specPreAmble oneline matchgroup=specCommand start='^\(Prereq\|Summary\|Name\|Version\|Packager\|Requires\|Icon\|URL\|Source\d*\|Patch\d*\|Prefix\|Packager\|Group\|License\|Release\|BuildRoot\|Distribution\|Vendor\|Provides\|ExclusiveArch\|ExcludeArch\|ExclusiveOS\|Obsoletes\|BuildArch\|BuildArchitectures\|BuildRequires\|BuildConflicts\|BuildPreReq\|Conflicts\|AutoRequires\|AutoReq\|AutoReqProv\|AutoProv\|Epoch\)' end='$' contains=specEmail,specURL,specURLMacro,specLicense,specColon,specVariables,specSpecialChar,specMacroIdentifier
 +"TODO: deprecate %mkrel
 +syn region specPreAmbleDeprecated oneline matchgroup=specError start='^\(Copyright\|Serial\|BuildRoot\|PreReq\|BuildPreReq\|Patch\|Source\)' end='$' contains=specEmail,specURL,specURLMacro,specLicense,specColon,specVariables,specSpecialChar,specMacroIdentifier
-+syn region specPreAmble oneline matchgroup=specCommand start='^\(Summary\|Name\|Version\|Packager\|Requires\|Suggests\|Icon\|URL\|Source\d\+\|Patch\d\+\|Prefix\|Packager\|Group\|License\|Release\|Distribution\|Vendor\|Provides\|ExclusiveArch\|ExcludeArch\|ExclusiveOS\|Obsoletes\|BuildArch\|BuildArchitectures\|BuildRequires\|BuildConflicts\|Conflicts\|AutoRequires\|AutoReq\|AutoReqProv\|AutoProv\|Epoch\|DistTag\|DistEpoch\)' end='$' contains=specEmail,specURL,specURLMacro,specLicense,specColon,specVariables,specSpecialChar,specMacroIdentifier
++syn region specPreAmble oneline matchgroup=specCommand start='^\(Summary\|Name\|Version\|Packager\|Requires\|Suggests\|Icon\|URL\|Source\d\+\|Patch\d\+\|Prefix\|Packager\|Group\|License\|Release\|Distribution\|Vendor\|Provides\|ExclusiveArch\|ExcludeArch\|ExclusiveOS\|ExcludeOS\|Obsoletes\|BuildArch\|BuildArchitectures\|BuildRequires\|BuildConflicts\|Conflicts\|AutoRequires\|AutoReq\|AutoReqProv\|AutoProv\|Epoch\|DistTag\|DistEpoch\)' end='$' contains=specEmail,specURL,specURLMacro,specLicense,specColon,specVariables,specSpecialChar,specMacroIdentifier
 +syn region specPreAmble oneline matchgroup=specCommand start='^ExcludeOS' end='$' contains=specEmail,specURL,specURLMacro,specLicense,specColon,specVariables,specSpecialChar,specMacroIdentifier
  
  "%% Description Section %%
@@ -90,8 +90,8 @@
 -syn region specScriptArea matchgroup=specSection start='^%\(prep\|build\|install\|clean\|pre\|postun\|preun\|post\)\>' skip='^%{\|^%\(define\|patch\d*\|configure\|GNUconfigure\|setup\|find_lang\|makeinstall\)\>' end='^%'me=e-1 contains=specSpecialVariables,specVariables,@specCommands,specVariables,shDo,shFor,shCaseEsac,specNoNumberHilite,specCommandOpts,shComment,shIf,specSpecialChar,specMacroIdentifier,specSectionMacroArea,specSectionMacroBracketArea,shOperator,shQuote1,shQuote2
 +"TODO: deprecate %defattr(-,root,root) as first line of %files, 'rm -rf %{buildroot}'
 +syn region specScriptAreaDeprecated matchgroup=specError start='^%\(clean\|patch\)\>' end='^%'me=e-1 contains=specSpecialVariables,specVariables,@specCommands,specVariables,shDo,shFor,shCaseEsac,specNoNumberHilite,specCommandOpts,shComment,shIf,specSpecialChar,specMacroIdentifier,specSectionMacroArea,specSectionMacroBracketArea,shOperator,shQuote1,shQuote2
-+syn region specScriptArea matchgroup=specSection start='^%\(prep\|build\|install\|check\|pre\|postun\|preun\|post\)\>' skip='^%{\|^%\(define\|patch\d\+\|configure\|GNUconfigure\|setup\|find_lang\|makeinstall\)\>' end='^%'me=e-1 contains=specSpecialVariables,specVariables,@specCommands,specVariables,shDo,shFor,shCaseEsac,specNoNumberHilite,specCommandOpts,shComment,shIf,specSpecialChar,specMacroIdentifier,specSectionMacroArea,specSectionMacroBracketArea,shOperator,shQuote1,shQuote2
-+syn region specScriptAreaMDK matchgroup=specSection start='^%\(prep\|build\|install\|check\|pre\|postun\|preun\|post\|pretrans\|posttrans\|trigger\(in\|postun\|prein\|un\|\(pre\|post\)trans\(in\|un\)\(\|_\(pre\|post\)\)\)\)\>' skip='^%{\|^%\(_install_info\|configure\|configure2_5x\|make\|)makeinstall_std\|old_makeinstall\|_post_service\|_postun_groupdel\|_pre_groupadd\|_preun_service\|_remove_install_info\)\>' end='^%'me=e-1 contains=specSpecialVariables,specVariables,@specCommands,specVariables,shDo,shFor,shCaseEsac,specNoNumberHilite,specCommandOpts,shComment,shIf,specSpecialChar,specMacroIdentifier,specSectionMacroAreaMDK,specSectionMacroBracketArea,shOperator,shQuote1,shQuote2
++syn region specScriptArea matchgroup=specSection start='^%\(track\|prep\|build\|install\|check\|pre\|postun\|preun\|post\)\>' skip='^%{\|^%\(define\|patch\d\+\|configure\|GNUconfigure\|setup\|find_lang\|makeinstall\)\>' end='^%'me=e-1 contains=specSpecialVariables,specVariables,@specCommands,specVariables,shDo,shFor,shCaseEsac,specNoNumberHilite,specCommandOpts,shComment,shIf,specSpecialChar,specMacroIdentifier,specSectionMacroArea,specSectionMacroBracketArea,shOperator,shQuote1,shQuote2
++syn region specScriptAreaMDK matchgroup=specSection start='^%\(track\|prep\|build\|install\|check\|pre\|postun\|preun\|post\|pretrans\|posttrans\|trigger\(in\|postun\|prein\|un\|\(pre\|post\)trans\(in\|un\)\(\|_\(pre\|post\)\)\)\)\>' skip='^%{\|^%\(_install_info\|configure\|configure2_5x\|make\|)makeinstall_std\|old_makeinstall\|_post_service\|_postun_groupdel\|_pre_groupadd\|_preun_service\|_remove_install_info\)\>' end='^%'me=e-1 contains=specSpecialVariables,specVariables,@specCommands,specVariables,shDo,shFor,shCaseEsac,specNoNumberHilite,specCommandOpts,shComment,shIf,specSpecialChar,specMacroIdentifier,specSectionMacroAreaMDK,specSectionMacroBracketArea,shOperator,shQuote1,shQuote2
  
  "%% Changelog Section %%
  syn region specChangelogArea matchgroup=specSection start='^%changelog' end='^%'me=e-1 contains=specEmail,specURL,specWeekday,specMonth,specNumber,specComment,specLicense
