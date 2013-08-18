@@ -24,7 +24,6 @@ Group:		Editors
 Source0:	%{dlurl}/unix/%{name}-%{rversion}.tar.bz2
 # read README.mdv prior updating official patches:
 Source3:	README.mdv
-Source4:	vim-%{rversion}-patches.tar.xz
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:	vim-spec-3.0.bz2
 Source6:	http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
@@ -57,6 +56,13 @@ Patch38:	vim-7.3.478-dont-check-for-xsetlocale.patch
 # Fedora patches
 Patch100:	vim-7.0-fortify_warnings-1.patch
 Patch101:	vim-7.4-fstabsyntax.patch
+
+# Official patches
+%{expand:%(
+for i in `seq -f '%%03g' 1 %{official_ptchlvl}`; do
+	echo Patch1$i:	ftp://ftp.vim.org/pub/vim/patches/%{rversion}/%{rversion}.$i
+done
+)}
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
@@ -151,7 +157,7 @@ vim-common package.
 %endif
 
 %prep
-%setup -q -n vim%(echo %rversion |sed -e 's,\.,,g') -a4
+%setup -q -n vim%(echo %rversion |sed -e 's,\.,,g')
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
@@ -160,27 +166,12 @@ cp -a %{SOURCE6} runtime/syntax/
 cp -a %{SOURCE7} runtime/syntax/
 cp -a %{SOURCE8} runtime/syntax/
 cp -a %{SOURCE9} runtime/syntax/
-#pushd vim-%{rversion}-patches
-#md5sum -c MD5SUMS
-#popd
-#official patches
-new=0
-for i in `seq -f '%03g' 1 %{official_ptchlvl}`; do
-	p=vim-%{rversion}-patches/%{rversion}.$i
-        if [ ! -f "$p" ]; then
-		if wget %{dlurl}/patches/%{rversion}/%{rversion}.$i -O "$p"; then
-			new=1
-		else
-			break
-		fi
-	fi
-	cmd="patch -p0 %{_default_patch_flags} -i $p"
-	echo $cmd
-	$cmd || { echo $p; exit 1; }
+# Apply official patches
+%{expand:%(
+for i in `seq -f '%%03g' 1 %{official_ptchlvl}`; do
+	echo %%patch1$i -p0 -b .$i~
 done
-if [ $new -ne 0 ]; then
-	tar -Jcf %{SOURCE4} vim-%{rversion}-patches
-fi
+)}
 
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse~
