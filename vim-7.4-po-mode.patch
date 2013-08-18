@@ -1,16 +1,15 @@
-diff -Naur -x '*~' -x '*.orig' -x '*.rej' vim73/runtime/syntax/po.vim vim73-po-mode//runtime/syntax/po.vim
---- vim73/runtime/syntax/po.vim	2010-05-15 13:03:57.000000000 +0200
-+++ vim73-po-mode//runtime/syntax/po.vim	2010-08-20 22:34:57.000000000 +0200
+--- vim74/runtime/syntax/po.vim.orig	2013-08-18 09:57:04.127025069 +0200
++++ vim74/runtime/syntax/po.vim	2013-08-18 09:59:04.405521381 +0200
 @@ -1,6 +1,7 @@
  " Vim syntax file
  " Language:	po (gettext)
  " Maintainer:	Dwayne Bailey <dwayne@translate.org.za>
 +" Patchedby:	Sung-Hyun Nam <namsh@kldp.org>
- " Last Change:	2008 Sep 17
+ " Last Change:	2012 Apr 30
  " Contributors: Dwayne Bailey (Most advanced syntax highlighting)
  "               Leonardo Fontenelle (Spell checking)
-@@ -133,3 +134,83 @@
- let b:current_syntax = "po"
+@@ -138,3 +139,82 @@ let &cpo = s:keepcpo
+ unlet s:keepcpo
  
  " vim:set ts=8 sts=2 sw=2 noet:
 +
@@ -92,4 +91,3 @@ diff -Naur -x '*~' -x '*.orig' -x '*.rej' vim73/runtime/syntax/po.vim vim73-po-m
 +  endwhile
 +  echo "There's no fuzzy"
 +endfun
-+

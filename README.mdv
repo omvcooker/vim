@@ -13,7 +13,7 @@ A] vi vs vim :
 
 This is vim, a Vi IMproved.
 If you just want the plain old historic vi, just install vim-minimal.
-If you want the full featured vim, either install vim-minimal or vim-X11.
+If you want the full featured vim, either install vim-enhanced or vim-X11.
 (Both need vim-common package).
 
 Vim features are : multi level undo, multi windows and buffers, syntax
@@ -58,7 +58,7 @@ looking at /usr/share/vim/tutor/ directory content.
 ==============================
 
 for ease of maintenance, official upstream patches came all together in a
-tarball named vim-6.1.???-patches.tar.bz2
+tarball named vim-x.x.???-patches.tar.xz
 
 the short description of the upstream patches we apply is in
 README.upstream_patches.
@@ -84,7 +84,7 @@ A] updating upstream patches :
      second pass, then ":x")
 
 4) do the tarball with "make tar
-   (aka "tar cfj vim-6.1.???-patches{.tar.bz2,}")
+   (aka "tar cJf vim-x.x.???-patches{.tar.xz,}")
 
 5) update the spec file so that %official_ptchlvl reflect the new latest patch
    number

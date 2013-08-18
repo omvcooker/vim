@@ -3,8 +3,8 @@
 # - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
 %define dlurl	ftp://ftp.vim.org/pub/vim
-%define official_ptchlvl 762
-%define rversion	7.3
+%define rversion %(echo %version |cut -d. -f1-2)
+%define official_ptchlvl %(echo %version |cut -d. -f3)
 %define __noautoreq '.*/bin/awk|.*/bin/gawk'
 
 # Should we build X11 gui
@@ -15,8 +15,8 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	%{rversion}.%{official_ptchlvl}
-Release:	3
+Version:	7.4.005
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -43,21 +43,20 @@ Patch22:	vim-6.1-fix-xterms-comments.patch
 Patch23:	vim-6.3-remove-docs.patch
 Patch24:	vim-6.1-outline-mode.patch
 Patch25:	vim-6.1-xterm-s-insert.patch
-Patch26:	vim-7.0-changelog-mode.patch
 Patch27:	vim-6.1-rpm42.patch
-Patch28:	vim-7.3-po-mode.patch
+Patch28:	vim-7.4-po-mode.patch
 Patch30:	vim-7.3.478-add-dhcpd-syntax.patch
-Patch33:	vim-7.1.314-CVE-2009-0316-debian.patch
+Patch33:	vim-7.4.005-CVE-2009-0316-debian.patch
 # (proyvind): adds various new keywords from C++11 standard to C++ syntax highlighting
-Patch34:	vim-7.3.372-add-new-cpp11-keywords-to-cpp-syntax.patch
+Patch34:	vim-7.4.005-add-new-cpp11-keywords-to-cpp-syntax.patch
 # (proyvind): fix path to locale files
-Patch35:	vim-7.3.372-use-proper-localedir.patch
+Patch35:	vim-7.4.005-use-proper-localedir.patch
 Patch37:	vim-7.3.381-always-install-icons.patch
 Patch38:	vim-7.3.478-dont-check-for-xsetlocale.patch
 
 # Fedora patches
 Patch100:	vim-7.0-fortify_warnings-1.patch
-Patch101:	vim-7.3-fstabsyntax.patch
+Patch101:	vim-7.4-fstabsyntax.patch
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
@@ -152,7 +151,7 @@ vim-common package.
 %endif
 
 %prep
-%setup -q -n vim73 -a4
+%setup -q -n vim%(echo %rversion |sed -e 's,\.,,g') -a4
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
@@ -184,21 +183,20 @@ if [ $new -ne 0 ]; then
 fi
 
 #mdk patches
-%patch0 -p1 -b .vimrc_nosetmouse
+%patch0 -p1 -b .vimrc_nosetmouse~
 %patch2 -p1
 %patch3 -p1 -b .spec~
-%patch8 -p1 -b .manpath
-%patch10 -p1 -b .xxdloc
-%patch20 -p1 -b .warly
+%patch8 -p1 -b .manpath~
+%patch10 -p1 -b .xxdloc~
+%patch20 -p1 -b .warly~
 %patch22 -p0
-%patch23 -p0 -b .doc
+%patch23 -p0 -b .doc~
 %patch24 -p0
 %patch25 -p0
-%patch26 -p0
 %patch27 -p0
-%patch28 -p1
+%patch28 -p1 -b .pomode~
 %patch30 -p1
-%patch33 -p1 -b .security
+%patch33 -p1 -b .security~
 %patch34 -p1 -b .cpp11~
 %patch35 -p1 -b .localedir~
 %patch37 -p1 -b .icons_install~
@@ -206,7 +204,11 @@ fi
 
 # Fedora patches
 %patch100 -p1
-%patch101 -p1
+%patch101 -p1 -b .fstab~
+
+# Get rid of patch backup files - some stuff gets installed by
+# copying the entire directory
+find . -name "*.*~" |xargs rm -f
 
 perl -pi -e 's|SYS_VIMRC_FILE "\$VIM/vimrc"|SYS_VIMRC_FILE "%{_sysconfdir}/vim/vimrc"|' src/os_unix.h
 perl -pi -e 's|SYS_GVIMRC_FILE "\$VIM/gvimrc"|SYS_GVIMRC_FILE "%{_sysconfdir}/vim/gvimrc"|' src/os_unix.h

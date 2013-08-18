@@ -1,5 +1,7 @@
----
+removed_sources:
+  vim-7.3.tar.bz2: 46faa96c5fab639899b1c655c23d8755b62f036f
 sources:
   vim-7.3-patches.tar.xz: 3f32d212ec70761f895e4facbb52f9120276e677
-  vim-7.3.tar.bz2: 46faa96c5fab639899b1c655c23d8755b62f036f
+  vim-7.4-patches.tar.xz: 43f3b4ba72d8b5c5b956b60409024492729caabb
+  vim-7.4.tar.bz2: 601abf7cc2b5ab186f40d8790e542f86afca86b7
   vim-spec-3.0.bz2: d177f0f3ecb9c93ab15f30a2f99b2ecb1ff08f5d
