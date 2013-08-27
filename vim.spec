@@ -15,7 +15,7 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.005
+Version:	7.4.009
 Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
@@ -23,7 +23,7 @@ License:	Charityware
 Group:		Editors
 Source0:	%{dlurl}/unix/%{name}-%{rversion}.tar.bz2
 # read README.mdv prior updating official patches:
-Source3:	README.mdv
+Source3:	README.omv
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:	vim-spec-3.0.bz2
 Source6:	http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
