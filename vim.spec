@@ -106,6 +106,7 @@ contains files which every VIM binary will need in order to run.
 Summary:	A minimal version of the VIM editor
 Group:		Editors
 Provides:	vim
+Requires(post,postun):	update-alternatives
 
 %description	minimal
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -122,6 +123,7 @@ Requires:	vim-common >= %{EVRD}
 Obsoletes:	vim-color
 Provides:	vim
 Provides:	vim-color
+Requires(post,postun):	update-alternatives
 
 %description	enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
