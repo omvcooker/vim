@@ -15,7 +15,7 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.169
+Version:	7.4.193
 Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
@@ -31,6 +31,7 @@ Source6:	http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 Source7:	apparmor.vim
 Source8:	cfengine.vim
 Source9:	nagios.vim
+Source100:	vim.rpmlintrc
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
 Patch2:		vim-5.6a-paths.patch
