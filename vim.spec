@@ -15,7 +15,7 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.193
+Version:	7.4.244
 Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
@@ -125,7 +125,6 @@ Requires:	vim-common >= %{EVRD}
 Obsoletes:	vim-color
 Provides:	vim
 Provides:	vim-color
-Requires(post,postun):	update-alternatives
 
 %description	enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
