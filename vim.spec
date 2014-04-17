@@ -16,7 +16,7 @@
 
 Name:		vim
 Version:	7.4.244
-Release:	1
+Release:	2
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -74,7 +74,7 @@ BuildRequires:	pkgconfig(python3)
 BuildRequires:	perl-devel
 BuildRequires:	acl-devel
 %if %{with gui}
-BuildRequires:	pkgconfig(libgnomeui-2.0) 
+BuildRequires:	pkgconfig(gtk+-2.0) 
 BuildRequires:	pkgconfig(ncursesw)
 BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
@@ -241,10 +241,9 @@ autoconf
 	--enable-xim \
 	--enable-fontset \
 	--with-features=huge \
-	--enable-gui=gnome2 \
+	--enable-gui=gtk2 \
 	--with-tlib=ncurses \
 	--enable-gtk2-check \
-	--enable-gnome-check \
 	--enable-acl \
 	--enable-gpm \
 	--disable-sysmouse \
