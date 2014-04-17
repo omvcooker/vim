@@ -197,7 +197,7 @@ done
 %patch35 -p1 -b .localedir~
 %patch36 -p1 -b .qthl~
 %patch37 -p1 -b .icons_install~
-%patch38 -p1 -b .xsetlocale~
+#patch38 -p1 -b .xsetlocale~
 
 # Fedora patches
 %patch100 -p1
