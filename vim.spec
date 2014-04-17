@@ -15,8 +15,8 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.009
-Release:	6
+Version:	7.4.244
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -31,6 +31,7 @@ Source6:	http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 Source7:	apparmor.vim
 Source8:	cfengine.vim
 Source9:	nagios.vim
+Source100:	vim.rpmlintrc
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
 Patch2:		vim-5.6a-paths.patch
@@ -73,7 +74,7 @@ BuildRequires:	pkgconfig(python3)
 BuildRequires:	perl-devel
 BuildRequires:	acl-devel
 %if %{with gui}
-BuildRequires:	pkgconfig(libgnomeui-2.0) 
+BuildRequires:	pkgconfig(gtk+-2.0) 
 BuildRequires:	pkgconfig(ncursesw)
 BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
@@ -106,7 +107,7 @@ contains files which every VIM binary will need in order to run.
 Summary:	A minimal version of the VIM editor
 Group:		Editors
 Provides:	vim
-Requires(post,postun):	update-alternatives
+Requires(post,postun):update-alternatives
 
 %description	minimal
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -119,11 +120,11 @@ when only the root partition is present.
 %package	enhanced
 Summary:	A version of the VIM editor which includes recent enhancements
 Group:		Editors
+Requires(post,postun):update-alternatives
 Requires:	vim-common >= %{EVRD}
 Obsoletes:	vim-color
 Provides:	vim
 Provides:	vim-color
-Requires(post,postun):	update-alternatives
 
 %description	enhanced
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -143,6 +144,7 @@ vim-common package.
 Summary:	The VIM version of the vi editor for the X Window System
 Group:		Editors
 Provides:	vim
+Requires(post,postun):update-alternatives
 Requires:	vim-common >= %{EVRD}
 
 %description	X11
@@ -239,10 +241,9 @@ autoconf
 	--enable-xim \
 	--enable-fontset \
 	--with-features=huge \
-	--enable-gui=gnome2 \
+	--enable-gui=gtk2 \
 	--with-tlib=ncurses \
 	--enable-gtk2-check \
-	--enable-gnome-check \
 	--enable-acl \
 	--enable-gpm \
 	--disable-sysmouse \
