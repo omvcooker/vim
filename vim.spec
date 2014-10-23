@@ -16,7 +16,7 @@
 
 Name:		vim
 Version:	7.4.289
-Release:	1
+Release:	2
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -107,7 +107,9 @@ contains files which every VIM binary will need in order to run.
 Summary:	A minimal version of the VIM editor
 Group:		Editors
 Provides:	vim
-Requires(post,postun):update-alternatives
+Requires(post,postun):	update-alternatives
+Requires(post,postun):	rpm-helper
+Requires(post,postun):	bash
 
 %description	minimal
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
@@ -120,7 +122,9 @@ when only the root partition is present.
 %package	enhanced
 Summary:	A version of the VIM editor which includes recent enhancements
 Group:		Editors
-Requires(post,postun):update-alternatives
+Requires(post,postun):	update-alternatives
+Requires(post,postun):	rpm-helper
+Requires(post,postun):	bash
 Requires:	vim-common >= %{EVRD}
 Obsoletes:	vim-color
 Provides:	vim
@@ -144,7 +148,9 @@ vim-common package.
 Summary:	The VIM version of the vi editor for the X Window System
 Group:		Editors
 Provides:	vim
-Requires(post,postun):update-alternatives
+Requires(post,postun):	update-alternatives
+Requires(post,postun):	rpm-helper
+Requires(post,postun):	bash
 Requires:	vim-common >= %{EVRD}
 
 %description	X11
@@ -220,7 +226,7 @@ autoconf
 %build
 %if %{with gui}
 # First build: gvim
-%configure2_5x \
+%configure \
 	--disable-darwin \
 	--disable-selinux \
 	--disable-xsmp \
@@ -258,7 +264,7 @@ make -C src clean
 %endif
 
 # Second build: vim-enhanced
-%configure2_5x \
+%configure \
 	--disable-selinux \
 	--enable-acl \
 	--enable-luainterp=dynamic \
@@ -279,7 +285,7 @@ mv src/vim src/vim-enhanced
 make -C src/ clean
 
 # Third build: vim-minimal
-%configure2_5x \
+%configure \
 	--disable-selinux \
 	--with-features=tiny \
 	--disable-tclinterp \
