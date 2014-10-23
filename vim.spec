@@ -15,8 +15,8 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.289
-Release:	2
+Version:	7.4.488
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -61,8 +61,13 @@ Patch101:	vim-7.4-fstabsyntax.patch
 
 # Official patches
 %{expand:%(
-for i in `seq -f '%%03g' 1 %{official_ptchlvl}`; do
+for i in `seq -f '%%03g' 1 250`; do
 	echo Patch1$i:	ftp://ftp.vim.org/pub/vim/patches/%{rversion}/%{rversion}.$i
+done
+)}
+%{expand:%(
+for i in `seq -f '%%03g' 251 %{official_ptchlvl}`; do
+        echo Patch1$i:  ftp://ftp.vim.org/pub/vim/patches/%{rversion}/%{rversion}.$i
 done
 )}
 
@@ -200,7 +205,7 @@ done
 %patch30 -p1
 %patch33 -p1 -b .security~
 %patch34 -p1 -b .cpp11~
-%patch35 -p1 -b .localedir~
+#patch35 -p1 -b .localedir~
 %patch36 -p1 -b .qthl~
 %patch37 -p1 -b .icons_install~
 #patch38 -p1 -b .xsetlocale~
