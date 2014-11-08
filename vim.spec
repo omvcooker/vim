@@ -15,7 +15,7 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.488
+Version:	7.4.507
 Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
@@ -60,6 +60,7 @@ Patch100:	vim-7.0-fortify_warnings-1.patch
 Patch101:	vim-7.4-fstabsyntax.patch
 
 # Official patches
+# Split at 250 to prevent the buffer for %%expand output from overflowing
 %{expand:%(
 for i in `seq -f '%%03g' 1 250`; do
 	echo Patch1$i:	ftp://ftp.vim.org/pub/vim/patches/%{rversion}/%{rversion}.$i
@@ -261,7 +262,7 @@ autoconf
 	--enable-nls \
 	--with-x=yes \
 	--with-compiledby="%{vendor} %{bugurl}" \
-	--with-modified-by="%{packager}"
+	--with-modified-by="the OpenMandriva team <om-cooker@lists.openmandriva.org>"
 
 %make
 mv src/vim src/gvim
@@ -283,7 +284,7 @@ make -C src clean
 	--enable-gui=no \
 	--with-tlib=ncurses \
 	--with-compiledby="%{vendor} %{bugurl}" \
-	--with-modified-by="%{packager}"
+	--with-modified-by="the OpenMandriva team <om-cooker@lists.openmandriva.org>"
 
 %make
 mv src/vim src/vim-enhanced
@@ -308,7 +309,7 @@ make -C src/ clean
 	--with-tlib=ncurses \
 	--disable-gpm \
 	--with-compiledby="%{vendor} %{bugurl}" \
-	--with-modified-by="%{packager}"
+	--with-modified-by="the OpenMandriva team <om-cooker@lists.openmandriva.org>"
 
 %make
 cp src/vim src/vim-minimal
