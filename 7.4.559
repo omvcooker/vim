@@ -1,0 +1,77 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.559
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.559
+Problem:    Appending a block in the middle of a tab does not work correctly
+	    when virtualedit is set.
+Solution:   Decrement spaces and count, don't reset them. (James McCoy)
+Files:	    src/ops.c, src/testdir/test39.in, src/testdir/test39.ok
+
+
+--- src/ops.c.559~	2015-01-07 19:27:27.383263429 +0100
++++ src/ops.c	2015-01-07 19:32:19.013505396 +0100
+@@ -612,20 +612,20 @@ block_insert(oap, s, b_insert, bdp)
+ #ifdef FEAT_MBYTE
+ 	if (has_mbyte && spaces > 0)
+ 	{
++	    int off;
++
+ 	    /* Avoid starting halfway a multi-byte character. */
+ 	    if (b_insert)
+ 	    {
+-		int off = (*mb_head_off)(oldp, oldp + offset + spaces);
+-		spaces -= off;
+-		count -= off;
++		off = (*mb_head_off)(oldp, oldp + offset + spaces);
+ 	    }
+ 	    else
+ 	    {
+-		int off = (*mb_off_next)(oldp, oldp + offset);
++		off = (*mb_off_next)(oldp, oldp + offset);
+ 		offset += off;
+-		spaces = 0;
+-		count = 0;
+ 	    }
++	    spaces -= off;
++	    count -= off;
+ 	}
+ #endif
+ 
+--- src/testdir/test39.in.559~	2015-01-07 19:27:27.682521675 +0100
++++ src/testdir/test39.in	2015-01-07 19:32:19.014505896 +0100
+@@ -38,11 +38,14 @@ G$khhhhhkkcmno
+ /^C23$/
+ :exe ":norm! l\<C-V>j$hhAab\<Esc>"
+ :.,/^$/w >> test.out
+-:" Test for Visual block insert when virtualedit=all
+-:set ve=all
++:" Test for Visual block insert when virtualedit=all and utf-8 encoding
++:set ve=all enc=utf-8
+ :/\t\tline
+ :exe ":norm! 07l\<C-V>jjIx\<Esc>"
+-:set ve=
++:.,/^$/w >> test.out
++:" Test for Visual block append when virtualedit=all
++:exe ":norm! 012l\<C-v>jjAx\<Esc>"
++:set ve= enc=latin1
+ :.,/^$/w >> test.out
+ :" gUe must uppercase a whole word, also when ﬂ changes to SS
+ Gothe youtuﬂeuu endYpk0wgUe
+Binary files src/testdir/test39.ok.559~ and src/testdir/test39.ok differ
+--- src/version.c.559~	2015-01-07 19:27:27.676516493 +0100
++++ src/version.c	2015-01-07 19:32:19.016506896 +0100
+@@ -742,6 +742,8 @@ static char *(features[]) =
+ static int included_patches[] =
+ {   /* Add new patch number below this line */
+ /**/
++    559,
++/**/
+     558,
+ /**/
+     557,
