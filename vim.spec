@@ -213,12 +213,25 @@ for i in runtime/{gvimrc_example.vim,vimrc_example.vim}; do
 	 perl -pi -e 's!^set showcmd!set noshowcmd!' $i
 done
 perl -pi -e 's|\Qsvn-commit.*.tmp\E|svn-commit*.tmp|' ./runtime/filetype.vim
-cd src
+pushd src
 autoconf
+popd
+
+%if %{with gui}
+mkdir .gui
+cp -a * .gui
+%endif
+
+mkdir .enhanced
+cp -a * .enhanced
+
+mkdir .minimal
+cp -a * .minimal
 
 %build
 %if %{with gui}
 # First build: gvim
+pushd .gui
 %configure \
 	--disable-darwin \
 	--disable-selinux \
@@ -252,11 +265,11 @@ autoconf
 	--with-modified-by="the OpenMandriva team <om-cooker@lists.openmandriva.org>"
 
 %make
-mv src/vim src/gvim
-make -C src clean
+popd
 %endif
 
 # Second build: vim-enhanced
+pushd .enhanced
 %configure \
 	--disable-selinux \
 	--enable-acl \
@@ -274,10 +287,10 @@ make -C src clean
 	--with-modified-by="the OpenMandriva team <om-cooker@lists.openmandriva.org>"
 
 %make
-mv src/vim src/vim-enhanced
-make -C src/ clean
+popd
 
 # Third build: vim-minimal
+pushd .minimal
 %configure \
 	--disable-selinux \
 	--with-features=tiny \
@@ -299,8 +312,7 @@ make -C src/ clean
 	--with-modified-by="the OpenMandriva team <om-cooker@lists.openmandriva.org>"
 
 %make
-cp src/vim src/vim-minimal
-%make -C src
+popd
 
 cp -al runtime/doc doc
 # apply os_doc.diff
@@ -316,17 +328,17 @@ ln -s tutor.fr runtime/tutor/tutor.br
 ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 
 %install
-%makeinstall_std VIMRTDIR=""
+%makeinstall_std -C .minimal VIMRTDIR=""
 
 
-make -C src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
+make -C .minimal/src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
 
 %if %{with gui}
-install -m755 src/gvim -D %{buildroot}%{_bindir}/gvim
+install -m755 .gui/src/vim -D %{buildroot}%{_bindir}/gvim
 %endif
 
-install -m755 src/vim-enhanced -D %{buildroot}%{_bindir}
-install -m755 src/vim-minimal -D %{buildroot}/bin/vim-minimal
+install -m755 .enhanced/src/vim -D %{buildroot}%{_bindir}/vim-enhanced
+install -m755 .minimal/src/vim -D %{buildroot}/bin/vim-minimal
 
 rm -f %{buildroot}%{_bindir}/{rview,rvim,view}
 for i in ex vimdiff; do
