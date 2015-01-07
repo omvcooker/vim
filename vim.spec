@@ -6,6 +6,7 @@
 %define rversion %(echo %version |cut -d. -f1-2)
 %define official_ptchlvl %(echo %version |cut -d. -f3)
 %define __noautoreq '.*/bin/awk|.*/bin/gawk'
+%global	ldflags	%{ldflags} -Wl,--error-unresolved-symbols
 
 # Should we build X11 gui
 %bcond_without gui
