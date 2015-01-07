@@ -32,6 +32,8 @@ Source6:	http://trific.ath.cx/Ftp/vim/syntax/dhcpd.vim
 Source7:	apparmor.vim
 Source8:	cfengine.vim
 Source9:	nagios.vim
+# http://www.vim.org/scripts/script.php?script_id=4293 (0.92)
+Source10:	stl.vim
 Source100:	vim.rpmlintrc
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
@@ -174,6 +176,7 @@ cp -a %{SOURCE6} runtime/syntax/
 cp -a %{SOURCE7} runtime/syntax/
 cp -a %{SOURCE8} runtime/syntax/
 cp -a %{SOURCE9} runtime/syntax/
+install -m644 %{SOURCE10} runtime/syntax/cpp
 # Apply official patches
 
 %{lua:for i=1,rpm.expand("%{official_ptchlvl}") do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end}
