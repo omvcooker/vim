@@ -234,6 +234,7 @@ cp -a * .minimal
 # First build: gvim
 pushd .gui
 %configure \
+	--localedir=%{_localedir} \
 	--disable-darwin \
 	--disable-selinux \
 	--disable-xsmp \
@@ -272,6 +273,7 @@ popd
 # Second build: vim-enhanced
 pushd .enhanced
 %configure \
+	--localedir=%{_localedir} \
 	--disable-selinux \
 	--enable-acl \
 	--enable-luainterp=dynamic \
@@ -293,6 +295,7 @@ popd
 # Third build: vim-minimal
 pushd .minimal
 %configure \
+	--localedir=%{_localedir} \
 	--disable-selinux \
 	--with-features=tiny \
 	--disable-tclinterp \
@@ -329,10 +332,13 @@ ln -s tutor.fr runtime/tutor/tutor.br
 ln -s menu_fr_fr.iso_8859-15.vim runtime/lang/menu_br
 
 %install
-%makeinstall_std -C .minimal VIMRTDIR=""
+%makeinstall_std -C .enhanced VIMRTDIR=""
 
 
-make -C .minimal/src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
+make -C .enhanced/src installmacros prefix=%{buildroot}%{_prefix} VIMRTDIR=""
+
+install -d %{buildroot}%{_localedir}
+mv %{buildroot}%{_datadir}/vim/lang/*/ %{buildroot}%{_localedir}
 
 %if %{with gui}
 install -m755 .gui/src/vim -D %{buildroot}%{_bindir}/gvim
