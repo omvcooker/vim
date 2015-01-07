@@ -33,7 +33,11 @@ Source7:	apparmor.vim
 Source8:	cfengine.vim
 Source9:	nagios.vim
 # http://www.vim.org/scripts/script.php?script_id=4293 (0.92)
+# C++11/C++14 STL syntax highlighting
 Source10:	stl.vim
+# https://raw.githubusercontent.com/hynek/vim-python-pep8-indent/master/indent/python.vim
+# python PEP8 indent replacing upstream non-PEP8 indent
+Source11:	python-pep8-indent.vim
 Source100:	vim.rpmlintrc
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
@@ -177,8 +181,9 @@ cp -a %{SOURCE7} runtime/syntax/
 cp -a %{SOURCE8} runtime/syntax/
 cp -a %{SOURCE9} runtime/syntax/
 install -m644 %{SOURCE10} runtime/syntax/cpp
-# Apply official patches
+cp -a %{SOURCE11} runtime/indent/python.vim
 
+# Apply official patches
 %{lua:for i=1,rpm.expand("%{official_ptchlvl}") do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end}
 
 #mdk patches
