@@ -67,7 +67,7 @@ Patch100:	vim-7.0-fortify_warnings-1.patch
 Patch101:	vim-7.4-fstabsyntax.patch
 
 # Official patches
-%{lua:for i=1,rpm.expand("%{official_ptchlvl}") do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("ftp://ftp.vim.org/pub/vim/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end}
+%{lua:for i=1,rpm.expand("%{official_ptchlvl}") do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end}
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
