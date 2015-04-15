@@ -1,4 +1,4 @@
---- vim74/runtime/syntax/spec.vim.spec~	2010-05-15 13:03:57.000000000 +0200
+-- vim74/runtime/syntax/spec.vim.spec~	2010-05-15 13:03:57.000000000 +0200
 +++ vim74/runtime/syntax/spec.vim	2013-08-18 11:12:58.518087346 +0200
 @@ -2,7 +2,7 @@
  " Purpose:     Vim syntax file
@@ -38,13 +38,13 @@
  "valid macro names from /usr/lib/rpm/macros
 -syn keyword specMacroNameOther contained buildroot buildsubdir distribution disturl ix86 name nil optflags perl_sitearch release requires_eq vendor version
 -syn match   specMacroNameOther contained '\<\(PATCH\|SOURCE\)\d*\>'
-+syn keyword specMacroNameOther contained buildroot buildsubdir distepoch disttag distribution disturl EVRD ix86 ldflags name nil optflags perl_sitearch release requires_eq vendor version epoch
++syn keyword specMacroNameOther contained _vendor _distribution bugurl buildroot buildsubdir debugcflags distepoch disttag distribution disturl EVRD ix86 ldflags name nil ocaml_sitelib optflags perl_sitearch perl_vendorarch perl_vendorlib py_ver pydir python_sitearch python_sitelib python_version py_incdir py_prefix py_platlibdir py_platsitedir py_purelibdir py_puresitedir pyver release requires_eq vendor version epoch
 +syn match   specMacroNameOther contained '\<\(PATCH\|SOURCE\)\d\+\>'
  
  "valid _macro names from /usr/lib/rpm/macros
 -syn keyword specMacroNameLocal contained _arch _binary_payload _bindir _build _build_alias _build_cpu _builddir _build_os _buildshell _buildsubdir _build_vendor _bzip2bin _datadir _dbpath _dbpath_rebuild _defaultdocdir _docdir _excludedocs _exec_prefix _fixgroup _fixowner _fixperms _ftpport _ftpproxy _gpg_path _gzipbin _host _host_alias _host_cpu _host_os _host_vendor _httpport _httpproxy _includedir _infodir _install_langs _install_script_path _instchangelog _langpatt _lib _libdir _libexecdir _localstatedir _mandir _netsharedpath _oldincludedir _os _pgpbin _pgp_path _prefix _preScriptEnvironment _provides _rpmdir _rpmfilename _sbindir _sharedstatedir _signature _sourcedir _source_payload _specdir _srcrpmdir _sysconfdir _target _target_alias _target_cpu _target_os _target_platform _target_vendor _timecheck _tmppath _topdir _usr _usrsrc _var _vendor
-+syn keyword specMacroNameLocal contained _arch _binary_payload _bindir _build _build_alias _build_cpu _builddir _build_os _buildshell _buildsubdir _build_vendor _bzip2bin _datadir _dbpath _dbpath_rebuild _defaultdocdir _docdir _excludedocs _exec_prefix _fixgroup _fixowner _fixperms _ftpport _ftpproxy _gamesbindir _gamesdatadir _gpg_path _gzipbin _host _host_alias _host_cpu _host_os _host_vendor _httpport _httpproxy _includedir _infodir _install_langs _install_script_path _instchangelog _javadir _javadocdir _langpatt _lib _libdir _libexecdir _localstatedir _mandir _netsharedpath _oldincludedir _os _pgpbin _pgp_path _prefix _preScriptEnvironment _provides _rpmdir _rpmfilename _sbindir _sharedstatedir _signature _sourcedir _source_payload _specdir _srcrpmdir _sysconfdir _target _target_alias _target_cpu _target_os _target_platform _target_vendor _timecheck _tmppath _topdir _usr _usrsrc _var _vendor
-+syn keyword specMacroNameLocal contained _iconsdir _initrddir _liconsdir _menudir _miconsdir perl_vendorarch perl_vendorlib
++syn keyword specMacroNameLocal contained _arch _binary_payload _bindir _build _build_alias _build_cpu _builddir _build_os _buildshell _buildsubdir _build_vendor _bzip2bin _datadir _dbpath _dbpath_rebuild _defaultdocdir _docdir _excludedocs _exec_prefix _fixgroup _fixowner _fixperms _ftpport _ftpproxy _gamesbindir _gamesdatadir _gpg_path _gzipbin _host _host_alias _host_cpu _host_os _host_vendor _httpport _httpproxy _includedir _infodir _install_langs _install_script_path _instchangelog _javadir _javadocdir _langpatt _lib _libdir _libexecdir _localedir _localstatedir _mandir _netsharedpath _oldincludedir _os _pgpbin _pgp_path _prefix _preScriptEnvironment _provides _rpmdir _rpmfilename _sbindir _sharedstatedir _signature _sourcedir _source_payload _specdir _srcrpmdir _sysconfdir _target _target_alias _target_cpu _target_os _target_platform _target_vendor _timecheck _tmppath _topdir _usr _usrsrc _var _vendor
++syn keyword specMacroNameLocal contained _iconsdir _initrddir _liconsdir _menudir _miconsdir _xfontdir _webconfdir _webappconfdir
  
  
  "------------------------------------------------------------------------------
@@ -53,11 +53,11 @@
  "One line macros - valid in all ScriptAreas
  "tip: remember do include new items on specScriptArea's skip section
 -syn region specSectionMacroArea oneline matchgroup=specSectionMacro start='^%\(define\|patch\d*\|setup\|configure\|GNUconfigure\|find_lang\|makeinstall\|include\)\>' end='$' contains=specCommandOpts,specMacroIdentifier
-+syn region specSectionMacroAreaDeprecated oneline matchgroup=specError start='%{\|%\(clean_menus\|update_menus\|mkrel\|_install_info\|_remove_install_info\)\>' end='$' contains=specCommandOpts,specMacroIdentifier
++syn region specSectionMacroAreaDeprecated oneline matchgroup=specError start='%{\|%\(configure2_5x|clean_menus\|update_menus\|mkrel\|_install_info\|_remove_install_info\)\>' end='$' contains=specCommandOpts,specMacroIdentifier
 +syn region specSectionMacroArea oneline matchgroup=specSectionMacro start='^%\(define\|patch\d\+\|setup\|cmake\|configure\|GNUconfigure\|find_lang\|makeinstall\|include\|\)\>' end='$' contains=specCommandOpts,specMacroIdentifier
  syn region specSectionMacroBracketArea oneline matchgroup=specSectionMacro start='^%{\(configure\|GNUconfigure\|find_lang\|makeinstall\)}' end='$' contains=specCommandOpts,specMacroIdentifier
 +"tip: remember do include new item on specScriptAreaMDK's skip section
-+syn region specSectionMacroAreaMDK oneline matchgroup=specSectionMacro start='%{\|%\(configure\|configure2_5x\|make\|makeinstall_std\|old_makeinstall\|_post_service\|_postun_groupdel\|_pre_groupadd\|_preun_service\|mklibname\|setup_compile_flags\|serverbuild\)\>' end='$' contains=specCommandOpts,specMacroIdentifier
++syn region specSectionMacroAreaMDK oneline matchgroup=specSectionMacro start='%{\|%\(apply_patches\|before_configure\|configure\|config_update\|dependinglibpackage\|dlopen_req\|lib_soname\|libpackage\|make\|makeinstall_std\|old_makeinstall\|_package_i18n\|_post_service\|_postun_groupdel\|_pre_groupadd\|_preun_service\|mklibname\|rename\|setup_compile_flags\|serverbuild\)\>' end='$' contains=specCommandOpts,specMacroIdentifier
  
  "%% Files Section %%
  "TODO %config valid parameters: missingok\|noreplace
