@@ -16,8 +16,8 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.699
-Release:	2
+Version:	7.4.898
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -67,7 +67,8 @@ Patch100:	vim-7.0-fortify_warnings-1.patch
 Patch101:	vim-7.4-fstabsyntax.patch
 
 # Official patches
-%{lua:for i=1,rpm.expand("%{official_ptchlvl}") do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end}
+%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then j=499 end; for i=1,j do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end}
+%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then for i=500,j do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end end}
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
@@ -184,7 +185,8 @@ install -m644 %{SOURCE10} runtime/syntax/cpp
 cp -a %{SOURCE11} runtime/indent/python.vim
 
 # Apply official patches
-%{lua:for i=1,rpm.expand("%{official_ptchlvl}") do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end}
+%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then j=499 end; for i=1,j do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end}
+%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then for i=500,j do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end end}
 
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse~

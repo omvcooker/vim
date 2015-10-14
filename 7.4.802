@@ -1,0 +1,33 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.802
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.802
+Problem:    Using "A" in Visual mode while 'linebreak' is set is not tested.
+Solution:   Add a test for this, verifies the problem is fixed. (Ingo Karkat)
+Files:      src/testdir/test39.in, src/testdir/test39.ok
+
+
+*** ../vim-7.4.801/src/version.c	2015-07-28 14:42:41.177971415 +0200
+--- src/version.c	2015-07-28 17:10:38.117983542 +0200
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     802,
+  /**/
+
+-- 
+Facepalm statement #2: "If there is a country without immigrants I'm going to
+move there"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///
