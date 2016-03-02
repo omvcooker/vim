@@ -16,7 +16,7 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.898
+Version:	7.4.899
 Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
@@ -38,6 +38,9 @@ Source10:	stl.vim
 # https://raw.githubusercontent.com/hynek/vim-python-pep8-indent/master/indent/python.vim
 # python PEP8 indent replacing upstream non-PEP8 indent
 Source11:	python-pep8-indent.vim
+# perfect theme
+# https://github.com/tomasr/molokai.git
+Source12:	molokai.vim
 Source100:	vim.rpmlintrc
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
@@ -183,6 +186,7 @@ cp -a %{SOURCE8} runtime/syntax/
 cp -a %{SOURCE9} runtime/syntax/
 install -m644 %{SOURCE10} runtime/syntax/cpp
 cp -a %{SOURCE11} runtime/indent/python.vim
+cp -a %{SOURCE12} runtime/colors
 
 # Apply official patches
 %{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then j=499 end; for i=1,j do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end}
@@ -434,6 +438,7 @@ rm -f %{buildroot}%{_bindir}/vim
 mkdir -p %{buildroot}%{_sysconfdir}/vim/
 MESSAGE='"Place your systemwide modification here.\n"%{_datadir}/vim/ files will be overwritten on update\n'
 echo -e "$MESSAGE\nsource %{_datadir}/vim/vimrc" > %{buildroot}%{_sysconfdir}/vim/vimrc
+echo -e "colorscheme molokai" >> %{buildroot}%{_sysconfdir}/vim/vimrc
 %if %{with gui}
 echo -e "$MESSAGE\nsource %{_datadir}/vim/gvimrc" > %{buildroot}%{_sysconfdir}/vim/gvimrc
 %endif
