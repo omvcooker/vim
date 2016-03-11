@@ -1,7 +1,7 @@
 --- vim73/src/Makefile.icons_install~	2011-12-14 21:29:44.363793098 +0100
 +++ vim73/src/Makefile	2011-12-14 21:30:26.261814468 +0100
 @@ -2115,18 +2115,9 @@ ICON32PATH = $(DESTDIR)$(DATADIR)/icons/
- ICON16PATH = $(DESTDIR)$(DATADIR)/icons/locolor/16x16/apps
+ DESKTOPPATH = $(DESTDIR)$(DATADIR)/applications
  KDEPATH = $(HOME)/.kde/share/icons
  install-icons:
 -	if test -d $(ICON48PATH) -a -w $(ICON48PATH) \
@@ -18,7 +18,7 @@
 -	fi
 +	install -m644 $(SCRIPTSOURCE)/vim48x48.png -D $(ICON48PATH)/gvim.png; \
 +	install -m644 $(SCRIPTSOURCE)/vim32x32.png -D $(ICON32PATH)/gvim.png; \
-+	install -m644 $(SCRIPTSOURCE)/vim16x16.png -D $(ICON16PATH)/gvim.png
- 
- 
- $(HELPSOURCE)/vim.1 $(MACROSOURCE) $(TOOLSSOURCE):
++	install -m644 $(SCRIPTSOURCE)/vim16x16.png -D $(ICON16PATH)/gvim.png;
+ 	if test -d $(DESKTOPPATH) -a -w $(DESKTOPPATH); then \
+ 	   $(INSTALL_DATA) $(SCRIPTSOURCE)/vim.desktop \
+ 		$(SCRIPTSOURCE)/gvim.desktop \

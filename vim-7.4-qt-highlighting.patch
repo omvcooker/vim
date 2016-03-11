@@ -1,7 +1,7 @@
 --- vim74/runtime/syntax/cpp.vim.qthl~	2013-08-18 11:16:00.525811936 +0200
 +++ vim74/runtime/syntax/cpp.vim	2013-08-18 11:17:34.158641365 +0200
 @@ -42,6 +42,24 @@ if !exists("cpp_no_cpp11")
-   syn keyword cppConstant	nullptr
+   syn match cppNumber		display "\<0b[01]\+\(u\=l\{0,2}\|ll\=u\)\>"
  endif
  
 +" Qt extensions

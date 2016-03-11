@@ -1,711 +1,0 @@
-To: vim_dev@googlegroups.com
-Subject: Patch 7.4.995
-Fcc: outbox
-From: Bram Moolenaar <Bram@moolenaar.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-------------
-
-Patch 7.4.995
-Problem:    gdk_pixbuf_new_from_inline() is deprecated.
-Solution:   Generate auto/gui_gtk_gresources.c. (Kazunobu Kazunobu,
-            closes #507)
-Files:      src/Makefile, src/auto/configure, src/config.h.in,
-            src/config.mk.in, src/configure.in, src/gui_gtk.c,
-            src/gui_gtk_gresources.xml, src/gui_gtk_x11.c,
-            src/proto/gui_gtk_gresources.pro,
-            pixmaps/stock_vim_build_tags.png, pixmaps/stock_vim_find_help.png,
-            pixmaps/stock_vim_save_all.png,
-            pixmaps/stock_vim_session_load.png,
-            pixmaps/stock_vim_session_new.png,
-            pixmaps/stock_vim_session_save.png, pixmaps/stock_vim_shell.png,
-            pixmaps/stock_vim_window_maximize.png,
-            pixmaps/stock_vim_window_maximize_width.png,
-            pixmaps/stock_vim_window_minimize.png,
-            pixmaps/stock_vim_window_minimize_width.png,
-            pixmaps/stock_vim_window_split.png,
-            pixmaps/stock_vim_window_split_vertical.png
-
-
-*** ../vim-7.4.994/src/Makefile	2015-12-29 14:26:51.831787607 +0100
---- src/Makefile	2015-12-29 18:43:32.061907190 +0100
-***************
-*** 1199,1208 ****
-  
-  ### GTK GUI
-  GTK_SRC		= gui.c gui_gtk.c gui_gtk_x11.c pty.c gui_gtk_f.c \
-! 			gui_beval.c
-  GTK_OBJ		= objects/gui.o objects/gui_gtk.o objects/gui_gtk_x11.o \
-  			objects/pty.o objects/gui_gtk_f.o \
-! 			objects/gui_beval.o
-  GTK_DEFS	= -DFEAT_GUI_GTK $(NARROW_PROTO)
-  GTK_IPATH	= $(GUI_INC_LOC)
-  GTK_LIBS_DIR	= $(GUI_LIB_LOC)
---- 1199,1208 ----
-  
-  ### GTK GUI
-  GTK_SRC		= gui.c gui_gtk.c gui_gtk_x11.c pty.c gui_gtk_f.c \
-! 			gui_beval.c $(GRESOURCE_SRC)
-  GTK_OBJ		= objects/gui.o objects/gui_gtk.o objects/gui_gtk_x11.o \
-  			objects/pty.o objects/gui_gtk_f.o \
-! 			objects/gui_beval.o $(GRESOURCE_OBJ)
-  GTK_DEFS	= -DFEAT_GUI_GTK $(NARROW_PROTO)
-  GTK_IPATH	= $(GUI_INC_LOC)
-  GTK_LIBS_DIR	= $(GUI_LIB_LOC)
-***************
-*** 1527,1533 ****
-  
-  EXTRA_SRC = hangulin.c if_lua.c if_mzsch.c auto/if_perl.c if_perlsfio.c \
-  	    if_python.c if_python3.c if_tcl.c if_ruby.c if_sniff.c \
-! 	    gui_beval.c workshop.c wsdebug.c integration.c netbeans.c
-  
-  # Unittest files
-  MEMFILE_TEST_SRC = memfile_test.c
---- 1527,1534 ----
-  
-  EXTRA_SRC = hangulin.c if_lua.c if_mzsch.c auto/if_perl.c if_perlsfio.c \
-  	    if_python.c if_python3.c if_tcl.c if_ruby.c if_sniff.c \
-! 	    gui_beval.c workshop.c wsdebug.c integration.c netbeans.c \
-! 	    $(GRESOURCE_SRC)
-  
-  # Unittest files
-  MEMFILE_TEST_SRC = memfile_test.c
-***************
-*** 1869,1874 ****
---- 1870,1878 ----
-  if_perl.pro: auto/if_perl.c
-  	$(CPROTO) -DFEAT_GUI auto/if_perl.c | sed "/_VI/d" > proto/$@
-  
-+ gui_gtk_gresources.pro: auto/gui_gtk_gresources.c
-+ 	$(CPROTO) -DFEAT_GUI $< > proto/$@
-+ 	echo "/* vim: set ft=c : */" >> proto/$@
-  
-  notags:
-  	-rm -f tags
-***************
-*** 2441,2447 ****
-  # We support common typing mistakes for Juergen! :-)
-  clean celan: testclean
-  	-rm -f *.o objects/* core $(VIMTARGET).core $(VIMTARGET) vim xxd/*.o
-! 	-rm -f $(TOOLS) auto/osdef.h auto/pathdef.c auto/if_perl.c
-  	-rm -f conftest* *~ auto/link.sed
-  	-rm -f $(UNITTEST_TARGETS)
-  	-rm -f runtime pixmaps
---- 2445,2451 ----
-  # We support common typing mistakes for Juergen! :-)
-  clean celan: testclean
-  	-rm -f *.o objects/* core $(VIMTARGET).core $(VIMTARGET) vim xxd/*.o
-! 	-rm -f $(TOOLS) auto/osdef.h auto/pathdef.c auto/if_perl.c auto/gui_gtk_gresources.c auto/gui_gtk_gresources.h
-  	-rm -f conftest* *~ auto/link.sed
-  	-rm -f $(UNITTEST_TARGETS)
-  	-rm -f runtime pixmaps
-***************
-*** 2578,2583 ****
---- 2582,2592 ----
-  	-@echo '";' >> $@
-  	-@sh $(srcdir)/pathdef.sh
-  
-+ auto/gui_gtk_gresources.c: gui_gtk_gresources.xml
-+ 	$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=../pixmaps --generate --c-name=gui_gtk --manual-register $<
-+ auto/gui_gtk_gresources.h: gui_gtk_gresources.xml
-+ 	$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=../pixmaps --generate --c-name=gui_gtk --manual-register $<
-+ 
-  # All the object files are put in the "objects" directory.  Since not all make
-  # commands understand putting object files in another directory, it must be
-  # specified for each file separately.
-***************
-*** 2663,2668 ****
---- 2672,2680 ----
-  objects/gui_gtk_f.o: gui_gtk_f.c
-  	$(CCC) -o $@ gui_gtk_f.c
-  
-+ objects/gui_gtk_gresources.o: auto/gui_gtk_gresources.c
-+ 	$(CCC) $(PERL_CFLAGS) -o $@ auto/gui_gtk_gresources.c
-+ 
-  objects/gui_gtk_x11.o: gui_gtk_x11.c
-  	$(CCC) -o $@ gui_gtk_x11.c
-  
-***************
-*** 3145,3150 ****
---- 3157,3172 ----
-   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
-   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
-   globals.h farsi.h arabic.h gui_gtk_f.h
-+ objects/gui_gtk_gresources.o: auto/gui_gtk_gresources.c gui_gtk_gresources.xml \
-+  ../pixmaps/stock_vim_build_tags.png ../pixmaps/stock_vim_find_help.png \
-+  ../pixmaps/stock_vim_save_all.png ../pixmaps/stock_vim_session_load.png \
-+  ../pixmaps/stock_vim_session_new.png ../pixmaps/stock_vim_session_save.png \
-+  ../pixmaps/stock_vim_shell.png ../pixmaps/stock_vim_window_maximize.png \
-+  ../pixmaps/stock_vim_window_maximize_width.png \
-+  ../pixmaps/stock_vim_window_minimize.png \
-+  ../pixmaps/stock_vim_window_minimize_width.png \
-+  ../pixmaps/stock_vim_window_split.png \
-+  ../pixmaps/stock_vim_window_split_vertical.png
-  objects/gui_motif.o: gui_motif.c vim.h auto/config.h feature.h os_unix.h \
-   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
-   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
-***************
-*** 3197,3203 ****
-   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
-   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
-   globals.h farsi.h arabic.h gui_gtk_f.h ../runtime/vim32x32.xpm \
-!  ../runtime/vim16x16.xpm ../runtime/vim48x48.xpm
-  objects/gui_x11.o: gui_x11.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
-   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
-   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
---- 3219,3225 ----
-   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
-   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
-   globals.h farsi.h arabic.h gui_gtk_f.h ../runtime/vim32x32.xpm \
-!  ../runtime/vim16x16.xpm ../runtime/vim48x48.xpm $(GRESOURCE_HDR)
-  objects/gui_x11.o: gui_x11.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
-   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
-   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
-*** ../vim-7.4.994/src/auto/configure	2015-12-17 15:34:49.936071729 +0100
---- src/auto/configure	2015-12-29 18:45:58.064329435 +0100
-***************
-*** 636,641 ****
---- 636,645 ----
-  GUI_INC_LOC
-  NARROW_PROTO
-  MOTIF_LIBNAME
-+ GRESOURCE_OBJ
-+ GRESOURCE_SRC
-+ GRESOURCE_HDR
-+ GLIB_COMPILE_RESOURCES
-  GNOME_INCLUDEDIR
-  GNOME_LIBDIR
-  GNOME_LIBS
-***************
-*** 8907,8912 ****
---- 8911,8996 ----
-    fi
-  fi
-  
-+ if test "x$GUITYPE" = "xGTK"; then
-+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking version of Gdk-Pixbuf" >&5
-+ $as_echo_n "checking version of Gdk-Pixbuf... " >&6; }
-+   gdk_pixbuf_version=`$PKG_CONFIG --modversion gdk-pixbuf-2.0`
-+   if test "x$gdk_pixbuf_version" != x ; then
-+     gdk_pixbuf_version_minor=`echo $gdk_pixbuf_version | \
-+       sed -e 's/[0-9][0-9]*\.\([0-9][0-9]*\)\.[0-9][0-9]*/\1/'`
-+     if test "x$gdk_pixbuf_version_minor" != x -a \
-+       $gdk_pixbuf_version_minor -ge 32 ; then
-+       { $as_echo "$as_me:${as_lineno-$LINENO}: result: OK." >&5
-+ $as_echo "OK." >&6; }
-+       # Extract the first word of "glib-compile-resources", so it can be a program name with args.
-+ set dummy glib-compile-resources; ac_word=$2
-+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-+ $as_echo_n "checking for $ac_word... " >&6; }
-+ if ${ac_cv_path_GLIB_COMPILE_RESOURCES+:} false; then :
-+   $as_echo_n "(cached) " >&6
-+ else
-+   case $GLIB_COMPILE_RESOURCES in
-+   [\\/]* | ?:[\\/]*)
-+   ac_cv_path_GLIB_COMPILE_RESOURCES="$GLIB_COMPILE_RESOURCES" # Let the user override the test with a path.
-+   ;;
-+   *)
-+   as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-+ for as_dir in $PATH
-+ do
-+   IFS=$as_save_IFS
-+   test -z "$as_dir" && as_dir=.
-+     for ac_exec_ext in '' $ac_executable_extensions; do
-+   if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-+     ac_cv_path_GLIB_COMPILE_RESOURCES="$as_dir/$ac_word$ac_exec_ext"
-+     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
-+     break 2
-+   fi
-+ done
-+   done
-+ IFS=$as_save_IFS
-+ 
-+   test -z "$ac_cv_path_GLIB_COMPILE_RESOURCES" && ac_cv_path_GLIB_COMPILE_RESOURCES="no"
-+   ;;
-+ esac
-+ fi
-+ GLIB_COMPILE_RESOURCES=$ac_cv_path_GLIB_COMPILE_RESOURCES
-+ if test -n "$GLIB_COMPILE_RESOURCES"; then
-+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GLIB_COMPILE_RESOURCES" >&5
-+ $as_echo "$GLIB_COMPILE_RESOURCES" >&6; }
-+ else
-+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-+ $as_echo "no" >&6; }
-+ fi
-+ 
-+ 
-+       { $as_echo "$as_me:${as_lineno-$LINENO}: checking glib-compile-resources" >&5
-+ $as_echo_n "checking glib-compile-resources... " >&6; }
-+       if test "x$GLIB_COMPILE_RESOURCES" = xno ; then
-+         { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot be found in PATH." >&5
-+ $as_echo "cannot be found in PATH." >&6; }
-+       else
-+ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: usable." >&5
-+ $as_echo "usable." >&6; }
-+         $as_echo "#define USE_GRESOURCE 1" >>confdefs.h
-+ 
-+         GRESOURCE_HDR="auto/gui_gtk_gresources.h"
-+         GRESOURCE_SRC="auto/gui_gtk_gresources.c"
-+         GRESOURCE_OBJ="objects/gui_gtk_gresources.o"
-+       fi
-+     else
-+       { $as_echo "$as_me:${as_lineno-$LINENO}: result: not usable." >&5
-+ $as_echo "not usable." >&6; }
-+     fi
-+   else
-+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot obtain from pkg_config." >&5
-+ $as_echo "cannot obtain from pkg_config." >&6; }
-+   fi
-+ fi
-+ 
-+ 
-+ 
-+ 
-+ 
-  
-  if test -z "$SKIP_MOTIF"; then
-    gui_XXX="/usr/XXX/Motif* /usr/Motif*/XXX /usr/XXX /usr/shlib /usr/X11*/XXX /usr/XXX/X11* /usr/dt/XXX /local/Motif*/XXX /local/XXX/Motif* /usr/local/Motif*/XXX /usr/local/XXX/Motif* /usr/local/XXX /usr/local/X11*/XXX /usr/local/LessTif/Motif*/XXX $MOTIFHOME/XXX"
-*** ../vim-7.4.994/src/config.h.in	2015-09-08 20:00:17.531627716 +0200
---- src/config.h.in	2015-12-29 18:14:49.900506583 +0100
-***************
-*** 452,454 ****
---- 452,457 ----
-  
-  /* Define if Xutf8SetWMProperties() is in an X library. */
-  #undef HAVE_XUTF8SETWMPROPERTIES
-+ 
-+ /* Define if GResource is used to load icons */
-+ #undef USE_GRESOURCE
-*** ../vim-7.4.994/src/config.mk.in	2014-08-17 17:05:39.155057796 +0200
---- src/config.mk.in	2015-12-29 18:14:49.900506583 +0100
-***************
-*** 158,163 ****
---- 158,168 ----
-  MOTIF_LIBNAME	= @MOTIF_LIBNAME@
-  GTK_LIBNAME	= @GTK_LIBNAME@
-  
-+ GLIB_COMPILE_RESOURCES = @GLIB_COMPILE_RESOURCES@
-+ GRESOURCE_HDR = @GRESOURCE_HDR@
-+ GRESOURCE_SRC = @GRESOURCE_SRC@
-+ GRESOURCE_OBJ = @GRESOURCE_OBJ@
-+ 
-  ### Any OS dependent extra source and object file
-  OS_EXTRA_SRC	= @OS_EXTRA_SRC@
-  OS_EXTRA_OBJ	= @OS_EXTRA_OBJ@
-*** ../vim-7.4.994/src/configure.in	2015-12-17 15:34:49.932071771 +0100
---- src/configure.in	2015-12-29 18:34:24.675821780 +0100
-***************
-*** 2500,2505 ****
---- 2500,2539 ----
-    fi
-  fi
-  
-+ dnl Check the version of Gdk-Pixbuf.  If the version is 2.32 or later and
-+ dnl glib-compile-resources is found in PATH, use GResource.
-+ if test "x$GUITYPE" = "xGTK"; then
-+   AC_MSG_CHECKING([version of Gdk-Pixbuf])
-+   gdk_pixbuf_version=`$PKG_CONFIG --modversion gdk-pixbuf-2.0`
-+   if test "x$gdk_pixbuf_version" != x ; then
-+     gdk_pixbuf_version_minor=`echo $gdk_pixbuf_version | \
-+       sed -e 's/[[0-9]][[0-9]]*\.\([[0-9]][[0-9]]*\)\.[[0-9]][[0-9]]*/\1/'`
-+     if test "x$gdk_pixbuf_version_minor" != x -a \
-+       $gdk_pixbuf_version_minor -ge 32 ; then
-+       AC_MSG_RESULT([OK.])
-+       AC_PATH_PROG(GLIB_COMPILE_RESOURCES,[glib-compile-resources],no)
-+       AC_MSG_CHECKING([glib-compile-resources])
-+       if test "x$GLIB_COMPILE_RESOURCES" = xno ; then
-+         AC_MSG_RESULT([cannot be found in PATH.])
-+       else
-+ 	AC_MSG_RESULT([usable.])
-+         AC_DEFINE(USE_GRESOURCE)
-+         GRESOURCE_HDR="auto/gui_gtk_gresources.h"
-+         GRESOURCE_SRC="auto/gui_gtk_gresources.c"
-+         GRESOURCE_OBJ="objects/gui_gtk_gresources.o"
-+       fi
-+     else
-+       AC_MSG_RESULT([not usable.])
-+     fi
-+   else
-+     AC_MSG_RESULT([cannot obtain from pkg_config.])
-+   fi
-+ fi
-+ AC_SUBST(GLIB_COMPILE_RESOURCES)
-+ AC_SUBST(GRESOURCE_HDR)
-+ AC_SUBST(GRESOURCE_SRC)
-+ AC_SUBST(GRESOURCE_OBJ)
-+ 
-  dnl Check for Motif include files location.
-  dnl The LAST one found is used, this makes the highest version to be used,
-  dnl e.g. when Motif1.2 and Motif2.0 are both present.
-*** ../vim-7.4.994/src/gui_gtk.c	2013-07-03 11:49:42.000000000 +0200
---- src/gui_gtk.c	2015-12-29 18:20:42.516702748 +0100
-***************
-*** 140,145 ****
---- 140,170 ----
-      /* 31 */ GTK_STOCK_QUIT
-  };
-  
-+ #ifdef USE_GRESOURCE
-+ typedef struct IconNames {
-+     const char *icon_name;
-+     const char *file_name;
-+ } IconNames;
-+ 
-+ static IconNames stock_vim_icons[] = {
-+     { "vim-build-tags", "stock_vim_build_tags.png" },
-+     { "vim-find-help", "stock_vim_find_help.png" },
-+     { "vim-save-all", "stock_vim_save_all.png" },
-+     { "vim-session-load", "stock_vim_session_load.png" },
-+     { "vim-session-new", "stock_vim_session_new.png" },
-+     { "vim-session-save", "stock_vim_session_save.png" },
-+     { "vim-shell", "stock_vim_shell.png" },
-+     { "vim-window-maximize", "stock_vim_window_maximize.png" },
-+     { "vim-window-maximize-width", "stock_vim_window_maximize_width.png" },
-+     { "vim-window-minimize", "stock_vim_window_minimize.png" },
-+     { "vim-window-minimize-width", "stock_vim_window_minimize_width.png" },
-+     { "vim-window-split", "stock_vim_window_split.png" },
-+     { "vim-window-split-vertical", "stock_vim_window_split_vertical.png" },
-+     { NULL, NULL }
-+ };
-+ #endif
-+ 
-+ #ifndef USE_GRESOURCE
-      static void
-  add_stock_icon(GtkIconFactory	*factory,
-  	       const char	*stock_id,
-***************
-*** 157,162 ****
---- 182,188 ----
-      gtk_icon_set_unref(icon_set);
-      g_object_unref(pixbuf);
-  }
-+ #endif
-  
-      static int
-  lookup_menu_iconfile(char_u *iconfile, char_u *dest)
-***************
-*** 262,272 ****
-      void
-  gui_gtk_register_stock_icons(void)
-  {
-! #   include "../pixmaps/stock_icons.h"
-      GtkIconFactory *factory;
-  
-      factory = gtk_icon_factory_new();
-! #   define ADD_ICON(Name, Data) add_stock_icon(factory, Name, Data, (int)sizeof(Data))
-  
-      ADD_ICON("vim-build-tags",		  stock_vim_build_tags);
-      ADD_ICON("vim-find-help",		  stock_vim_find_help);
---- 288,299 ----
-      void
-  gui_gtk_register_stock_icons(void)
-  {
-! #ifndef USE_GRESOURCE
-! # include "../pixmaps/stock_icons.h"
-      GtkIconFactory *factory;
-  
-      factory = gtk_icon_factory_new();
-! # define ADD_ICON(Name, Data) add_stock_icon(factory, Name, Data, (int)sizeof(Data))
-  
-      ADD_ICON("vim-build-tags",		  stock_vim_build_tags);
-      ADD_ICON("vim-find-help",		  stock_vim_find_help);
-***************
-*** 282,288 ****
-      ADD_ICON("vim-window-split",	  stock_vim_window_split);
-      ADD_ICON("vim-window-split-vertical", stock_vim_window_split_vertical);
-  
-! #   undef ADD_ICON
-      gtk_icon_factory_add_default(factory);
-      g_object_unref(factory);
-  }
---- 309,336 ----
-      ADD_ICON("vim-window-split",	  stock_vim_window_split);
-      ADD_ICON("vim-window-split-vertical", stock_vim_window_split_vertical);
-  
-! # undef ADD_ICON
-! #else
-!     GtkIconFactory * const factory = gtk_icon_factory_new();
-!     const char * const path_prefix = "/org/vim/gui/icon";
-!     IconNames *names;
-! 
-!     for (names = stock_vim_icons; names->icon_name != NULL; names++)
-!     {
-!         char path[MAXPATHL];
-!         GdkPixbuf *pixbuf;
-! 
-!         vim_snprintf(path, MAXPATHL, "%s/%s", path_prefix, names->file_name);
-!         pixbuf = gdk_pixbuf_new_from_resource(path, NULL);
-!         if (pixbuf != NULL)
-!         {
-!             GtkIconSet *icon_set = gtk_icon_set_new_from_pixbuf(pixbuf);
-!             gtk_icon_factory_add(factory, names->icon_name, icon_set);
-!             gtk_icon_set_unref(icon_set);
-!             g_object_unref(pixbuf);
-!         }
-!     }
-! #endif
-      gtk_icon_factory_add_default(factory);
-      g_object_unref(factory);
-  }
-*** ../vim-7.4.994/src/gui_gtk_gresources.xml	2015-12-29 18:50:39.949280523 +0100
---- src/gui_gtk_gresources.xml	2015-12-29 18:14:49.900506583 +0100
-***************
-*** 0 ****
---- 1,18 ----
-+ <?xml version="1.0" encoding="UTF-8"?>
-+ <gresources>
-+     <gresource prefix="/org/vim/gui/icon">
-+         <file>stock_vim_build_tags.png</file>
-+         <file>stock_vim_find_help.png</file>
-+         <file>stock_vim_save_all.png</file>
-+         <file>stock_vim_session_load.png</file>
-+         <file>stock_vim_session_new.png</file>
-+         <file>stock_vim_session_save.png</file>
-+         <file>stock_vim_shell.png</file>
-+         <file>stock_vim_window_maximize.png</file>
-+         <file>stock_vim_window_maximize_width.png</file>
-+         <file>stock_vim_window_minimize.png</file>
-+         <file>stock_vim_window_minimize_width.png</file>
-+         <file>stock_vim_window_split.png</file>
-+         <file>stock_vim_window_split_vertical.png</file>
-+     </gresource>
-+ </gresources>
-*** ../vim-7.4.994/src/gui_gtk_x11.c	2015-11-24 15:38:39.691489300 +0100
---- src/gui_gtk_x11.c	2015-12-29 18:14:49.900506583 +0100
-***************
-*** 22,27 ****
---- 22,30 ----
-   */
-  
-  #include "vim.h"
-+ #ifdef USE_GRESOURCE
-+ #include "auto/gui_gtk_gresources.h"
-+ #endif
-  
-  #ifdef FEAT_GUI_GNOME
-  /* Gnome redefines _() and N_().  Grrr... */
-***************
-*** 1434,1439 ****
---- 1437,1445 ----
-  	EMSG(_((char *)e_opendisp));
-  	return FAIL;
-      }
-+ #ifdef USE_GRESOURCE
-+     gui_gtk_register_resource();
-+ #endif
-      return OK;
-  }
-  
-***************
-*** 3620,3625 ****
---- 3626,3634 ----
-  		IOSIZE - 1);
-  	preserve_exit();
-      }
-+ #ifdef USE_GRESOURCE
-+     gui_gtk_unregister_resource();
-+ #endif
-  }
-  
-  
-*** ../vim-7.4.994/src/proto/gui_gtk_gresources.pro	2015-12-29 18:50:39.961280393 +0100
---- src/proto/gui_gtk_gresources.pro	2015-12-29 18:14:49.900506583 +0100
-***************
-*** 0 ****
---- 1,5 ----
-+ /* auto/gui_gtk_gresources.c */
-+ GResource *gui_gtk_get_resource __ARGS((void));
-+ void gui_gtk_register_resource __ARGS((void));
-+ void gui_gtk_unregister_resource __ARGS((void));
-+ /* vim: set ft=c : */
-*** ../vim-7.4.994/pixmaps/stock_vim_build_tags.png	2015-12-29 18:50:39.965280350 +0100
---- pixmaps/stock_vim_build_tags.png	2015-12-29 18:08:43.860447369 +0100
-***************
-*** 0 ****
---- 1,3 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  nIDATHíU=Â@}Éz¥pÝý±¿MÁ¿b#¨XZXA´8±! ¤Ìçí¹Îøw^åæe2oçÍn<qÁYÌJÎ ï®×c¾¹PûK@C§ÓQù~¿/¸ÍfÃ Þ¿4,Ë¼øp8 ò<|¦^jç0Æ¨|Qcö]t»]äy0]Õj"Bóù\ðãñØ[¸h4¢mcjµÚÅ9Ç1Úí¶kí.~²,C©ôóh±X¨/¯×kF#oØÉ ìEz½®nImÃáÕjÕãâ8F«Õrñ[d­·	Z(õz=ì÷{·· Àr¹]"RÏÇt:½.$3«3ÐÎG¹\F³Ùtñ]Êkív;o[Zk1ÍP©TD±4ME+ÊÌØn·^Î=ÿÓgz+r±ÀËÜ'þ¾åá¨Ú^    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_find_help.png	2015-12-29 18:50:39.973280264 +0100
---- pixmaps/stock_vim_find_help.png	2015-12-29 18:09:18.840071105 +0100
-***************
-*** 0 ****
---- 1,6 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  lIDATH}}PTçÆ÷îeqwÑ8-ZE>5"Bui¶Sí©Edl'é´c¬4©Ö±3Ilb¨&DMÔÔNR­	N±T,"Ð4Ä¯h]öóîÝ}ûÇî2tÚé3sfîÌ}ç}sÎsÎ½a<|ðïMG^:¸Ä:>±³¯ïþæ¾ûü±1«Àl6Odf¤ÝMOKû«>6ö÷§Ï¼7ÍÀ g¶àMà<0¹uKåIEQyâ¶1áÎør¨_\¾ô¡Xµj¥e9°qÃÀ 0Lcy>Áyà£G~³öñ¼¦¤¤Ï-BO¨>·p»ÂéÎpLO
-+ }RL
-+ Kßññ£Ë$àðRôrøH|ùð¯rÞzåµæÇ½YpØqÎÎât:q¹\ø¼~TUCÓBhÁ:Y&Ñë¤g<©]m·ÿXZZ¼ø Ø%Ðv`­£§û§/¯^¼jëï¢)zìg_ÅSÇãÆãõ T@ ëtH¨ªÐ»gÈ2éðzµ¸cÅ¾PÈ$ g£S;r3Ë;ì¾íg._%0mÃqíöþ{Ø&§°'±Ü·ÐßoAõûÑëõècb~ôtßME/K¬0È4ªK%HFÇ0+õê)¡vÞO=µQa4Dee  EHNNG^Ø/,Å&a{q§ßY$¾*3Áu&qz¹^ "Ë	å¡©ê]uuÊlaëÛKUÕwik»ÂõëØ´©ìì {4M+l6{UýÑWùÍOïg*w¡KZ¢Ü×#Ë²NXW§KX¸ðàñão¬¨ÙSKmm7?É%Ë±Z¿$.ÎHrr&ñ{ËàáH¿2ÓÓOßµÿ,O	²jE:1ùëö½¼<ææ?35e Üg±äFnÝê ¤ä¤¦fÓÛ{·ÛËåá±ÇÑÒrÀLø]wpxøQuuUÅÙá¤Üuèø<!ãBDHPXð Pä±1«9&F$Ünöâryp»Ã,Ë ~@Û¶íûÀÿ·­íwzô¥O
-+ Ñ4¿êÇgXèjlØPL{{7÷ðx¼¸Ý-ZJFF6 RRÙÙ¼4 2¢Pýøý>f.ô÷Ï1I6LLOÏpüõÎ»HW×çÌÎºIHHÆlþEEkijjáêËçõu»ke`0ß§âñ¸im½M¤Wa­o¾|éCá°Oqë¨¬¬³iyy¹øÅ¾ç$IB$ñþù³]Ctw~%ºßù­PU¯}(º:?W®\Úú@(g¤¥µüòÀøÂ¹·N1p ídöµ;'¦f×î¢ÖOZ«wÖÔöæiVçdá½ØÇ6A@õÓÝÙ=Ú¨@ºÝ»É²°ô}!¬Nñº1¹>¶OLÚ#Îä/S	`.gÿn»½ô¶Ü#Ú×ÄÇ÷GÕ'¯	PÖ=±¦±ýNg]ï#ñeiÄd¬&ö[[Aõ£=QÀÂø¤¹l&êñ^ÿë6àÙû^,> ¦rÂkÛ!o©üh¿ÓéLM0=xwDÅá >Àû÷&fOÔ0Å°Àå#pþ©ëLã#ôòþEã/?nº¦ é¥e5oÛ°6«zB¨?6_Î:Îi\nÖq+½=ÓÝÕÁ`JAö~%ñ{`8)>27!P¡k×ïÿàBgwãÉIoö;1¬Ü»ÄqDHàõùp¹\¨ªÓéà!c÷Z#÷`EÔkÀ¿"DHkÀLSn¯ïÇ.##ülâââ¦­­cþ8^`áÕ~y÷Hò"$äðÊ}h#ü×"1	ÜN ç¨:ï¡9Hü7¤XÂ+×@øoAOxü£ÊÕH}ü@j8*äÿD!G"ptóÎGýÍ*ø¿Jðo71?àÃsè    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_save_all.png	2015-12-29 18:50:39.977280220 +0100
---- pixmaps/stock_vim_save_all.png	2015-12-29 18:09:36.103885407 +0100
-***************
-*** 0 ****
---- 1,6 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  ´IDATHµKh\UÇ÷Ü;¯ÌL2&( ÒMIF+âc!º¨ uYÅeqaD]t£»ª;««®²¨¡(ÑEmlV%µB*y`ÌÜç9ßqqçÎÜâÆ´õó¸ïñû¾à0`oà÷99=ûk¿ü§NðÚÓ£\+ø>(zkà(°B+¼÷é<tä6[;¼ph_f×Úü~õMZßî6è8R	âJtBÜp°X×Åow°bØÒ£\øåKçóÁWÀ°ÖApåÊÜöñ\>ú ¿²½ñE@`=aá3Ü`\'= Hø?pyYF¶T«\*³Ú1¸IÄSÀI,¶P¥³Þ¢>R£ªÍQüµU+å&E§HX¤gÐë FÇU­»Ü÷Æñ]âócÇPJ!:@H("Êãº^À@¤@Äô~p---a³ÅP»Ý à¹DQ<p 
-+ ¢Êpmoo3==½ëÈçççS;yD±±qR«ÑhìÚx&k-¶G$½h%Ò<®Ý"
-+ Ã°?ñr5P	ia3\þêê5!CÁè$AÄ¤Qg¸JwÏ0;;KEÿT[<ç]µïû>Åáq\å°ÖÀ¢{máª7¦PÍ[©)'H,ÖZ<WQêC¥>>¥6LQç*tC$~kf¸6Û>J)?;Kc´Icl/ÆI#ÑX,I±dkÃG¹}rH®Mµ6ýÂöqYÃÊW§yö<þäSxG¹2±ngíÖqðãòyÎ]¤ÛÜÏ¥K+Ø¿\~úz®Â%ßéðÈ£Q®yëÍ×ÙX_àíwÞess(ð	{îSg¾aè	Rñ,&L(àÞÇ_åòÏäqÝÔ]¹2D¥y¦ÎN$N4÷S¯S®TèÝUJjpVKÖ§?y<.Iaà#Æ$õµÕCÑTku&n¢><Ö	Ø1µÀRr50À9`he¸ºZHâÀ÷ñ}£M¿k¢0`´9ÆøÄ$¥R(
-+ 1ÄQLA,"k7Ùh÷p}è#ÔM¦î¸¿cjj_:ÊØÞ ¨Ö©×Gð¼Û[óÛÅ¢0¤Cb%Ø>° ÌpO»ÌæÏÿ\=æª    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_session_load.png	2015-12-29 18:50:39.981280177 +0100
---- pixmaps/stock_vim_session_load.png	2015-12-29 18:09:51.611718597 +0100
-***************
-*** 0 ****
---- 1,13 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  ÌIDATHÝilUEÇsï}}m*ÝR¢%¥»ÅYJS(&Å¸/~rÃ ( 	i\Ð@üRBk¥PÃRiK[^ûÚ÷Ú×}Kß»÷Îø¡¥¡ôÿädÎÌ3çùOþÀ½À) ðêo2Ðþ­s8uøÈWs¦MË½É ´tß8ÌÕf·ÓçóEï41uZFqScÇøÜÜ,¼=MCJ) ²sîcoi¾¾ßç'3ºmh@xÅG;ÞIÂ!Âá~"(¦i2æ$2³'2úù¬¬ý3¶,3g&Mç	BØ¶B×4tCÃáp  '7.·· ²¢®H²ñ·8ô×1éþñæ÷e_.Õ`&þ(º®a8TH©°mÛÄÅ".6GMN'1Nºnà÷÷°¸à)ÒÓÓËeeÐÕÙmèÛíÁé¥?BÃÐQ(lKâ!6ÎIÔ
-+ éëCÙ
-+ ¡	ØRa6¾Þë $%s¹2Ø+#cZ×OÄ4ùtç~¼ßzçÏ7T`pÐ P
-+ áUµT9Í¶´nÛ©R
-+ Ë²0MË´2Áùè#OÎÉÆM(æ\]ÉÉI\iùñ¶ÎúØÐü§3û°LH4ßßG$DÂÈ¸CìüíòUÎ=M¨ÿ:RJR(¥t)%­­ÌÍ[ÉÜ¼\¼Ðaè9aè\øõ
-+ K
-+ Ö²léª*jh¿ÖyR!R )%µÕ¤¦¦r¹©þ@¡1PÆU¿Ê[ÞÀëéaÝ(ÈG»«üyl|yoozÝ%%ìüx/qqÎ6!DÀ hm¹Æ5«FvÅ(J¢	[Ú(ùàóõ=y¨<EE,_^LWg'ÑÔØ¦îªØ]ÿúuÖ¯_KÍ¹²Ø)å>8*©Ø¼u#òÉ8z¬gÎ¬ü½Âa¯TñË1£km[õ ý¡qñ1a,ËÆ¶N{#çV¿ÀÂ TTTàñxiooçâÅ6lXG]]-óEÙ±µµ?ääLH3 
-+ q¥én·Ó´±,k°±j0#PlYYéêtÚ47_¥«ËÃ¨Q,YºÖfúÇãÙg¸ûó/÷÷øý¦É¬ÙSææ÷X)Z¯>+Ù¥¶½·YåÍ®RSÕÛ·©«Íê¥W«¢Åù
-+ èflBÌù0xÀJ!½ûOïkmo:¸?ö\]5yÎeúèõõP~ü(õõçÙ]²'ï,NLL©t¹\¶933$WJP[séÛï}´¶4
-+ pwzðzº9rôD (=-->,m=R>%m¯&´nÀ{+q»»_Ù»ï@½®ki[¶nÇÆ:I£©¯¿È¥ãÆ9RVþ3
-+ ¼Ë DV"D >ljj:&Y¬Ð4Q ¥:¸(ÿ¡ôòU.!X¡ÇMg M7ütñçg åV %Òn$xh~    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_session_new.png	2015-12-29 18:50:39.985280133 +0100
---- pixmaps/stock_vim_session_new.png	2015-12-29 18:10:09.699524038 +0100
-***************
-*** 0 ****
---- 1,9 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  ÁIDATH½ML\UÇoê0¯R°iiWÚ¸è3J¸¤]¸5ÕÑÄ¸rCZ5ºQÀm6­CN	
-+ ±I±Ð
-+ ¦"2y÷^oæ1Ún<ÉÉ}÷NòûßsÎ½çüÖ¨Gô]+ æççU&Qÿeº®«ÕÛÛ«8PhvÐÒEÉdðx<µD"×ëÅétD <^Ì2GéäAp¥5J)ÑuP(DCC YÀ]£dR"¥(ïß_Ãívioo§¿¿ S)²£@5¸ÔétË@8&288ðà*<f6]¢Ñ\Ó4sD)¶¶òB!»½uï y­­Â¨c	hæ
-+ )$©Ttz?IÞMríÚéî1ðù× {õª¤¬+J*4æTWá¢©©ºpP(Èë3EGJpñ[¹¦B¼·Ã0 ®ãvMMµË¶RvûüÖ|cc½¤Úvd%E7`Ðy¤e¼â):Æétró÷8N¦¦¦hhxÆÆ},..Vóù-2çÁ@ ¯×k+0J¥8sæ+:wÑmf<~¶h3ÝÝ=¼÷îÛD"im}¦êÈTß·»ln¥hôûa677øôÔ'ÖÏÒÓÓÍjrÚ0s¯Â0òÖ]QRR¨bÅ^{ý~ c?]$£o	V+d²Y.OLòÝÈ0GÃÒ!L/ïD¦ &;ÇI¥î¸2ÍÐ·Cì?pl6Gkó1^~åUGD
-+ RÒo_Î
-+ z1Ekk9¿³¼¾%XZºÅêj@0Àó/ðÇí%rû©¯¯ãìèÂ¦}¨6R¢ÚÚ½úéS§8zô)Â×âóûxëäIô\å$wî,3zîÃÚuLñ[)*p`^æÇ.±§v/Ùôß|ðáûÌÎÎÒÙÙÁ£# \äË/>ãêôíÂ ¢²b³;EÎ!½¹ÉþLL0 ÍÓuZÑÛwßæg
-+ §¦üPPè¼ÊVã]/Ò×ûCÃgi¶päH¹¹ëü<þ±X7o!ñç`ÍÊw*dêêvvóE²ô¶XË£þ(õ7z(Þ0 Ì°}G¶ÝÒ-¬¹}ïÈzË5¯    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_session_save.png	2015-12-29 18:50:39.989280090 +0100
---- pixmaps/stock_vim_session_save.png	2015-12-29 18:10:27.927327836 +0100
-***************
-*** 0 ****
---- 1,11 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  ·IDATH¥mLÕUÀ÷ïåÞ\DCZ³¹bMK{]n9«YMGöA[aë8_NË¹¦s¬1í~rY3Â%«© 0lf3à^7½÷ÿoç>À½Y=Û³ç^~çyÎsÎówñÿELk»ìÔþÃK{º
-+ °¾½¨ö¤ï[:°P¨wvîÜ¬ªz?´ûúþè¡´¤Ø´9|  mË5	PW:#ôëã´Ôd÷b4·%%R×AsÃ¤·éu¾»ÜÀÈÈ0áÐ@Â­ññ1|>?áP?W¯Ý ¾¡1Ì÷Ä*Bïo=0~õ
-+ DÇ@cYà c1¬@
-+ oßÂº¢õ<uKñ%¹y:ÿÆFûÑc1êÞ ¼	R.¤ø}~BÛN©ÀåÅe+7Õû°¡¤¦¦&èëëãÖ­.*+Ëim½AiI1õµ@RàHòHRnÖì=8ëéº}Æ§&?áÐ ¦%èîþpx´yilØ¸Þn%ñî;oåÔ97È"7 Mùäê={9qü +W® +3Ô`*îÚiôõ¸{·Ú3çéªPj¢ÕÖÖÓ¤¹¹ÎÎNÊËË©¨¬ ·§ýö±²à9FGùú«ó ñ3Ø|È¢o:hnýÞ+uÔÔÔÌéAZZçêÎDDîÓÛÓ0dhðOê£@vÂiH&IOOÿÇ0<tÇóóå½¼åËóéè¸Åå®²¾øÅ¸ $ ¦RàìÙ³lÛ¶öövN>MUUms½¹òÝG9õññ¡g 4¯"Éz(DAAÁ»/,,$&ìªª*:nþì¼'yõíÿ¢ wÀ
-+ Ãrð­ZKuu5¦iþmqÃQxx<S¹QVV®ë$¥eáÖ\£3çM]4[a`z.ZF©GHT(¥ð¸5L`²/>MÓ°A?iãqk8¦3;@³A"¹§£iíõµ¸p>?ôÌ!ÂF
-+ 
-+ mbíÖ
-+ ÈY ÒÃ/H!@	º.ðæÆ"J7mÆãñà$OQhä>cã£XFöV.5ß&±;wº(\öì P8Â)Ñ#Ö¿²ÀÏþ}{pøÈ1FF0c:FLçÙç_¢îâO$/ÉÆv0fOT $MÖ$ ÀäÎã¹ÛAÆ,©iøâ·Õ7Kùzì)$FLG
-+ m;CH9ñFY)©A.ZßãØ¸.Â1Ï5ÇÜüñ^¼DmÄt]×HdiÄIVv>Ó4R`^©R¡°úäÁ®¯{m;Áôr.ãFË5rssy¯²Ì HIM#Çãelt_owa©¸¥IT"`¨A/ðèuyV}ª°(Þ.8ÎÅDIHTï´ïÿVQ ör]ê    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_shell.png	2015-12-29 18:50:39.993280048 +0100
---- pixmaps/stock_vim_shell.png	2015-12-29 18:10:42.363172360 +0100
-***************
-*** 0 ****
---- 1,14 ----
-+ PNG
-+ 
-+    IHDR   0   0   Wù   sBIT|d  @IDAThíï«e×YÇ?kíµ÷9÷N&w&4¶ÒjÛ¡J(ÂØôoüâ¿h)´öU©¾¾+©BE#ª5!Ó8¡Ñj"M:$N{ïÌ½gïµ×ZÏêg­µÏMgro}ÑuÙ÷ìsö9{?ßçy¾Ï¯?^?^ok­WX +¯fëú¿ÿN¬ü¦óÊkÞþ~ÑZ1yëâÚñ(p°*2ªQïüÏÿ½{n÷}?`idQsX{wuåLJ,õ½BÎ  gBLÓDJ)EbL¤¤G,¯!x$%$	ó<óâ/¼ô»üì{wGÀDWßì]¸øÁW®½µkm`1¶Á,Nó?ë¿!ÉDTD£
-+ DQ?")&|ðH,r||üÞòä= #U ¶Jb¬Y6[Î)ï%!ç-­K"
-+  ZCr&´óv=×Ï
-+ ÀÉ¢ME~«±ï6ÀØ
-+ À EËáæþ>Ø-WÚR?¹h3dQ}/)å¤%RªEbq'! ÀýïúI¨K¤
-+ `ª×´¡i|_}ô7îêóïÄúË?ÿSÞ¸q£ úqÞÆmÿÀlGÉ >öËÃ9Gg;:×aÅ:³N-Óéo1-Vú°T´sVn¤$!~°s å÷"/üç¬W+$&RáLY­0@FýÒâq3òñßüxãÅBn0ù	ï=Þ{ÆÍÈèGÆqÄOãñÍfÃ¸Ù"HBR qVòzïõ}M1Æd@óç RHJ`mp~ï<«õ
-+ Û©à]§Vð³'å¤d.Äï.uô«#Ã0bÂ9Çî=»JÒ ÷1 Yð'÷¾ë	)få$) ;wZ'-PâµiüÆb c~òøÙ3à>¨ Ó81ùq&=÷£oùAÌ%¾'IøI]fö3sÔ{ÎA#NÍ±äÞ~' f²½½=vÖ;d2a$IÔº¡ceWKØíôpÎ±³»CÞËD êUë9ebðÇ9ÍLÓDôÍ´¡Ûtb<Ý"ÆØfÍ¸áÖ­[ªñ d)*éR"Ä@ê¿~ö¸)¥×qRLÌóLq[®Vm bl¹àt 1al&EpñÂEbÒ
-+ ±¥7=½Å¹t®Åìss!¨×$!QUæÀp<0Çþ¨grSl' ¤³X %Bé:G,&;Úñú¯7!jèÓD¥Z±¥F2fypµ Y	bÒ£!âg=ó<7î¯*!FòK¿%ÉÄ¤ÅX	î»p Ùf¬±vhißõ¡42ð*"­J1µP)Q9$Bbò1Æzû£ÕjÅæh±ªXj$ùA,R$ÓÜ>àúõëÍ9g°Ð÷=}ß3'äV^¥·¹CL-ê9°ñæifÜxï6£KöÂSÄ­µÀ½d¡Îu¬5ýÐ³Z¯úç}ß+ «Ù¸fI;Eª nègÏ4N¬§5ÇGÇôCÏíÃÛªRZ¦Â\îsºJ©k! LÓí,C?0­'s¬V+At®£³¶³fu½_ýÌfÕø4©ö'ÏfÜà7¾q Ds>[JI+AcMó¹/Ð¹[áVêóÃ0°^¯ú~è±mÚ`4i¡Î
-+  L¡%ÁÑÞõý¨
-+ 0èkséäL³X ÄwkM«GöèlÇ¿ðE~úi¾þÏ_çèèaCë]×éÃmÝX£-|ÆÈ<ÏçYµ>©Ö'?1ûi31ÏK&nï,Q(Æ@u¡{ÎßCïzøÀ<ðxì×ãÊ¿]á©gâhs¤p½æBäJbUÊÒ¤¨uN-¦qbûcºMG×udrË­ì3r fGÛÙÖTìÐ=øíOpéÒ%>üÐyäá£>ÊÕç®òÌ³Ïðü<O×uZ×¶¹rAÔZ#>zÍ^<ÖW^AU´ pÖLf-Îß{×9nÜ¼ÁWÿþ«<ùµ'¹ÿþûyìÑÇøÈÃáá_xO}öSXc¡+.T,Ú´²L¸ô¾gòÎjQý¾öK7vÆjt<>"Ä»D¡ýC¬³¼ï§ßÇC=Ä>È#Á9Ç7úO~íI®ÿïu-äÊß6ê>560)´Zh»¤öoüRV.n ¦6@(.´{~gÿÉã ¼öÚk|ù+_æÿúM1Î°Þ]«ß©Á,Í<>õpâ!bÑ\´È9:Ó1uøA-0%1´òõæ¸Îqõß¯òÄß<ÁåËÑ¬µ:K9ý¹Ï|÷ÿÌûé¾µ¤Ï^y'þú	®\½¢9a+;·ú*hEfëÚHÎÏæÒ¨Xk%uïìì`­åÓði ¬³ô¶Ç9u`°ÿ£ÏCµpË9·Wç6[f;cBÑzI}î±(²<
-+ oùÒ© D"Ö,.tkÿrUÛÆà:§ZG±V¢½`i½ALQÃªÐj!I¥CCÚg5_Ô¤%9ÁsãÕ[a&TL|ùéËwüá;±Ôw¼®ï'qcøùýõc1dkX¦¢¦Ë²Ô<IGuòVX©6B¥°kýqíÑB­ÖM"u²§üðÖÑ© ¿ßbÀËK/_ã¥¿Û&rê³%<O)öÓ":He
-+ WJêVÑb.BK¹wìÕa*ÊCO0ùI9P§Ð9¹¨RTµ´´1lµµs[mà·,H|ïÞ=î»ï'ÈÀµkßÅûi±»½óÖÄÉ(ä½Äm¶	´Â7è¨}/6Ýæ­;77¡h¼Þ=óSï~Ïë92p|<²»»^°Xã1ÜÖHN9Ij£t³õMÓ~Aê4ºøwV%é4MP¶@/ì"Xôü·ãöíc$gÎ?wBÓ;ëu.blïÐðòË×^}åÕëï±¦[¶>+-{¹i¤jTÚy#%k0©~}ÒuÊ]÷ªÆnîßj7zç6À9`F÷ÈUÌà×?«?úýßûQdÞécè&/çz\òºahãwõo!E!Kj\ÐLjQFôe`¥å¶ZA'3ÆÀ·¿ý_áïþáû-Uþ!ðàU`ªð·ÀÏïþåððpzåÚwÈ]ç\iF¾ï{z7Ð9eEiéÆ¤dÑâ	[í;ê¾@írÙÊª5Õë¯ßø-àà5à­¤" Û{dC1ÑEàW/ñ£±þø'àF9XöÈRP·WW¨;ÝîE]@w×(È»ïòýß·`ïá3ªá©{X¿n/ùr=o8²u~T À;µO\âe_,ù2[$fK¸®=*xÏÉÍï»­ÿO*²¨G>õwwzèYwíßÐwZoR¼ëîüiS¾óÃp§»ñán×Þ?,>¼uýü¦õ=!¶Æ÷zL    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_window_maximize.png	2015-12-29 18:50:40.001279961 +0100
---- pixmaps/stock_vim_window_maximize.png	2015-12-29 18:10:58.626997198 +0100
-***************
-*** 0 ****
---- 1,5 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  ÓIDATHÕ¿kAÇ?³®H]æHe#	)EØ,	v\î 4¢)Ó¤²±M%A¸ä:IF)B{\0µWÌ5*FÉeÅrK²{s|áÁìÛ÷ÞwÞ¯]¸êPïä2âEÖ"rN.Ò·ÛíÜa¿+u:wÖZ#;s(¥°Ö:}£ÑÈõ/Ìàoh­¥I¸yÙ.¡µöòó"ÐZ#qxxB#ÃÈî¼Ißõ°ùõ¼Ø£üòëk&^~^½zk­)'ð´zµÒëþ¾Þ=èAÝ};½#xõø6²;_hl­u©S=Opíz C!²]èàK°p'£S ²¿R%]¿Q3[""=ÈCÇDQì-(B$-g éasù#táýgÔÌÖ¿¥ðýõµC×«l7P«¹þZk'AÍÖà¤ë=Â""b­uì/
-+ Ñc£÷&×ÝãMe¨NbM\î&?2C!$Bye
-+ 6¨xøye`­EÝé}øª~*ÜÉl-áÕ¯àÐ§D­Vf³é1¨(ÂCÇN_¯×scü÷_æÕÇ¢ÃÜv]    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_window_maximize_width.png	2015-12-29 18:50:40.005279917 +0100
---- pixmaps/stock_vim_window_maximize_width.png	2015-12-29 18:11:15.006820788 +0100
-***************
-*** 0 ****
---- 1,4 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  ¹IDATHÍ¿JQÆw\	JºÜ°
-+ Q,%!]MY3(²/à;ØXÌ*H`M@mB$°¬ÈVV[-w5¸ÎbvMqïh|p{æ;ç;9çøß ½J!~É¸67ÎÐp TgÆ wú_í,ÂH	"ÁEÖ0ÕÃ~¯yñ:çÐly¿´=_ÿwôoSc'J$éÞ§Õj%TR]Ôétîv³ÙLÜs²µkíÀxÖZNÞôûmXG;¹")k-Z¥©[3ìÛ)¡­r&/ÕEÚÇ d 0yþç\:½Jb¤x>Î~a^}ÍH m¥ý>ê	Ë98}{ufLú¾ -OP­VëË.sóú\t¹¾pÎ¥²ïónìëwû¼ÌÇÎ9éÕ³ü!ñáî1aÏ'¹¯iCQ^B ÝnÓh4¼ç¡^¯'îþyï 7Ïàô2nxï0û4'£ñò÷ÊÜhÀÊÞ®¾äÓû\_E¾®ÅPté?8~ÿ0æ­UW!    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_window_minimize.png	2015-12-29 18:50:40.009279874 +0100
---- pixmaps/stock_vim_window_minimize.png	2015-12-29 18:12:01.598319013 +0100
-***************
-*** 0 ****
---- 1,5 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  IDATHí±JA¿=OD±ó¬lkKµµ)ò¾MzKâÓF,RÇ\eeqÕÁ5Zä·õ43bã;°óÿ3;3ì|Ð§}°8DN4ê¸ÎÇVÞ³Ãm# ··	 Öí3ÌÉÄ& Û°ÃTð6ËBïq.õBh\Aù
-+ cAÿÉD^Ò )ªÅ^8\ä_S\ddfÔ@ÒVç¾mZeí°³,«ØîAóâ_àï¾uQQ¤iZ0IýëV® ¼5MG@:Ùõtsd±
-+ H­8Ø8ÀÆ¶M"Ö'ëüNï8îîsq~Ïä}juuAu\·ÜßÔÁÿö    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_window_minimize_width.png	2015-12-29 18:50:40.013279831 +0100
---- pixmaps/stock_vim_window_minimize_width.png	2015-12-29 18:12:18.010142266 +0100
-***************
-*** 0 ****
---- 1,4 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d  (IDATHí½JÄPFÏÄ>½ Ê2¬  âXúU°Ñµ³ÓNìD$! E­V1f,bboÜ°¤¸sïo2ÜøAb×®Ë©ª_$Fg»MyÁ`d<Cc®ñºjºö»æ'Õ8¥ÁÑÆz»ÝLT·9[[,Vá83kÁ¼^mk¢º¿
-+ »+åPTïör«L!UxyCzý¯,mÜ¦¾ïãºn¾îzæÀ°2ÇË[$ÇùÁS¸|*à¦S^H¯Ï¯`	'ÇãyÝRÂNÃûßÂ¿MÖ/`òñ©¾×b-[ÔÈ©^ãT=J5ÎtäÈx]ÇqLE#ç 0LüEûûúLiu,Ï    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_window_split.png	2015-12-29 18:50:40.021279745 +0100
---- pixmaps/stock_vim_window_split.png	2015-12-29 18:12:33.669973619 +0100
-***************
-*** 0 ****
---- 1,7 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d   ­IDATHíA
-+ Ã E¥wpãMsÆàÆ#ÌFÁ3LW	A#¤¤ÐÐü§èÜUÐ3CU«Ç,çÞs ÔZM§I)­s!°®¦leZþ·t¿h¡BÑ2Ï³]PJÀ{o
-+ ?"û´
-+  kÃGVUóØ¶6|d8×*Z~¿n(X
-+ í,m¡¹Á>Í9jÓ4íæ¦äQÞu¼ ê²OcEJ    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/pixmaps/stock_vim_window_split_vertical.png	2015-12-29 18:50:40.025279701 +0100
---- pixmaps/stock_vim_window_split_vertical.png	2015-12-29 18:11:45.010497656 +0100
-***************
-*** 0 ****
---- 1,4 ----
-+ PNG
-+ 
-+    IHDR         àw=ø   sBIT|d   {IDATHíA
-+  E¿Ò­=£¸ñÎÂg°Ufñó@yúgßPkmóÕÈ9ÓÎ9fµ×ö]°±îÒGR¥NkkÆhh@÷E1Æ¡è½Ç÷óÏn?½²{æhW$" ÒmëÎ9ÊQhVþÙðXÉª;    IEND®B`
-\ No newline at end of file
-*** ../vim-7.4.994/src/version.c	2015-12-29 17:11:11.769335920 +0100
---- src/version.c	2015-12-29 18:16:45.111266008 +0100
-***************
-*** 743,744 ****
---- 743,746 ----
-  {   /* Add new patch number below this line */
-+ /**/
-+     995,
-  /**/
-
--- 
-WOMAN:   Dennis, there's some lovely filth down here.  Oh -- how d'you do?
-ARTHUR:  How do you do, good lady.  I am Arthur, King of the Britons.
-         Who's castle is that?
-WOMAN:   King of the who?
-                                  The Quest for the Holy Grail (Monty Python)
-
- /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
-///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
-\\\  an exciting new programming language -- http://www.Zimbu.org        ///
- \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

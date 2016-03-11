@@ -1,13 +1,5 @@
 --- vim74/runtime/syntax/po.vim.orig	2013-08-18 09:57:04.127025069 +0200
 +++ vim74/runtime/syntax/po.vim	2013-08-18 09:59:04.405521381 +0200
-@@ -1,6 +1,7 @@
- " Vim syntax file
- " Language:	po (gettext)
- " Maintainer:	Dwayne Bailey <dwayne@translate.org.za>
-+" Patchedby:	Sung-Hyun Nam <namsh@kldp.org>
- " Last Change:	2012 Apr 30
- " Contributors: Dwayne Bailey (Most advanced syntax highlighting)
- "               Leonardo Fontenelle (Spell checking)
 @@ -138,3 +139,82 @@ let &cpo = s:keepcpo
  unlet s:keepcpo
  

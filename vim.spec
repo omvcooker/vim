@@ -2,7 +2,7 @@
 # - this package is not prefixable
 # - to update official patches, aka SOURCE4, see README.upstream_patches in SOURCE4
 
-%define dlurl	ftp://ftp.vim.org/pub/vim
+%define dlurl	https://github.com/vim
 %define rversion %(echo %version |cut -d. -f1-2)
 %define official_ptchlvl %(echo %version |cut -d. -f3)
 %define __noautoreq '.*/bin/awk|.*/bin/gawk'
@@ -22,7 +22,7 @@ Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
 Group:		Editors
-Source0:	%{dlurl}/unix/%{name}-%{rversion}.tar.bz2
+Source0:	%{dlurl}/vim/releases/%{name}-%{version}.tar.gz
 # read README.mdv prior updating official patches:
 Source3:	README.omv
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
@@ -57,8 +57,6 @@ Patch27:	vim-6.1-rpm42.patch
 Patch28:	vim-7.4-po-mode.patch
 Patch30:	vim-7.3.478-add-dhcpd-syntax.patch
 Patch33:	vim-7.4.005-CVE-2009-0316-debian.patch
-# (proyvind): adds various new keywords from C++11 standard to C++ syntax highlighting
-Patch34:	vim-7.4.005-add-new-cpp11-keywords-to-cpp-syntax.patch
 # (proyvind): fix path to locale files
 Patch35:	vim-7.4.005-use-proper-localedir.patch
 Patch36:	vim-7.4-qt-highlighting.patch
@@ -66,12 +64,7 @@ Patch37:	vim-7.3.381-always-install-icons.patch
 Patch38:	vim-7.3.478-dont-check-for-xsetlocale.patch
 
 # Fedora patches
-Patch100:	vim-7.0-fortify_warnings-1.patch
 Patch101:	vim-7.4-fstabsyntax.patch
-
-# Official patches
-%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>99) then j=99 end; for i=1,j do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end}
-%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>99) then for i=100,j do print("Patch1"..string.format("%g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%g",i).."\n") end end}
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)
@@ -175,7 +168,7 @@ vim-common package.
 %endif
 
 %prep
-%setup -q -n vim%(echo %rversion |sed -e 's,\.,,g')
+%setup -q -n vim-%{version}
 # spec plugin
 rm -f runtime/doc/pi_spec.txt
 rm -f runtime/ftpplugin/spec.vim
@@ -188,14 +181,10 @@ install -m644 %{SOURCE10} runtime/syntax/cpp
 cp -a %{SOURCE11} runtime/indent/python.vim
 cp -a %{SOURCE12} runtime/colors
 
-# Apply official patches
-%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then j=499 end; for i=1,j do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end}
-%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then for i=500,j do print(rpm.expand("%patch1"..string.format("%03g",i).." -p0 -b ."..i.."~\n")) end end}
-
 #mdk patches
 %patch0 -p1 -b .vimrc_nosetmouse~
 %patch2 -p1
-%patch3 -p1 -b .spec~
+#patch3 -p1 -b .spec~
 %patch8 -p1 -b .manpath~
 %patch10 -p1 -b .xxdloc~
 %patch20 -p1 -b .warly~
@@ -207,14 +196,12 @@ cp -a %{SOURCE12} runtime/colors
 %patch28 -p1 -b .pomode~
 %patch30 -p1
 %patch33 -p1 -b .security~
-%patch34 -p1 -b .cpp11~
 #patch35 -p1 -b .localedir~
 %patch36 -p1 -b .qthl~
 %patch37 -p1 -b .icons_install~
 #patch38 -p1 -b .xsetlocale~
 
 # Fedora patches
-%patch100 -p1
 %patch101 -p1 -b .fstab~
 
 # Get rid of patch backup files - some stuff gets installed by
