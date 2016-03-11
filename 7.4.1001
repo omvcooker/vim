@@ -1,0 +1,45 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1001
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1001 (after 7.4.1000)
+Problem:    test_viml isn't run.
+Solution:   Include change in makefile.
+Files:      src/testdir/Make_all.mak
+
+
+*** ../vim-7.4.1000/src/testdir/Make_all.mak	2015-12-28 21:35:07.773243000 +0100
+--- src/testdir/Make_all.mak	2015-12-30 13:54:20.291584685 +0100
+***************
+*** 174,179 ****
+--- 174,180 ----
+  # Keep test_alot.res as the last one, sort the others.
+  NEW_TESTS = test_assert.res \
+  	    test_cdo.res \
++ 	    test_viml.res \
+  	    test_alot.res
+  
+  
+*** ../vim-7.4.1000/src/version.c	2015-12-30 15:49:01.821318406 +0100
+--- src/version.c	2015-12-30 15:57:27.963889510 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1001,
+  /**/
+
+-- 
+Some say the world will end in fire; some say in segfaults.
+I say it will end in a curly bracket.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

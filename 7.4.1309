@@ -1,0 +1,224 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1309
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1309
+Problem:    When a test fails not all relevant info is listed.
+Solution:   Add the errors to the messages.
+Files:      src/testdir/runtest.vim
+
+
+*** ../vim-7.4.1308/src/testdir/runtest.vim	2016-01-17 17:10:54.134874935 +0100
+--- src/testdir/runtest.vim	2016-02-13 14:02:20.972857404 +0100
+***************
+*** 19,24 ****
+--- 19,28 ----
+  "
+  " If cleanup after each Test_ function is needed, define a TearDown function.
+  " It will be called after each Test_ function.
++ "
++ " When debugging a test it can be useful to add messages to v:errors:
++ " 	call add(v:errors, "this happened")
++ 
+  
+  " Without the +eval feature we can't run these tests, bail out.
+  so small.vim
+***************
+*** 65,85 ****
+  
+  
+  " Source the test script.  First grab the file name, in case the script
+! " navigates away.
+! let testname = expand('%')
+! let done = 0
+! let fail = 0
+! let errors = []
+! let messages = []
+  if expand('%') =~ 'test_viml.vim'
+!   " this test has intentional errors, don't use try/catch.
+    source %
+  else
+    try
+      source %
+    catch
+!     let fail += 1
+!     call add(errors, 'Caught exception: ' . v:exception . ' @ ' . v:throwpoint)
+    endtry
+  endif
+  
+--- 69,89 ----
+  
+  
+  " Source the test script.  First grab the file name, in case the script
+! " navigates away.  g:testname can be used by the tests.
+! let g:testname = expand('%')
+! let s:done = 0
+! let s:fail = 0
+! let s:errors = []
+! let s:messages = []
+  if expand('%') =~ 'test_viml.vim'
+!   " this test has intentional s:errors, don't use try/catch.
+    source %
+  else
+    try
+      source %
+    catch
+!     let s:fail += 1
+!     call add(s:errors, 'Caught exception: ' . v:exception . ' @ ' . v:throwpoint)
+    endtry
+  endif
+  
+***************
+*** 88,114 ****
+  redir @q
+  function /^Test_
+  redir END
+! let tests = split(substitute(@q, 'function \(\k*()\)', '\1', 'g'))
+  
+  " Execute the tests in alphabetical order.
+!  for test in sort(tests)
+    if exists("*SetUp")
+      call SetUp()
+    endif
+  
+!   call add(messages, 'Executing ' . test)
+!   let done += 1
+    try
+!     exe 'call ' . test
+    catch
+!     let fail += 1
+!     call add(v:errors, 'Caught exception in ' . test . ': ' . v:exception . ' @ ' . v:throwpoint)
+    endtry
+  
+    if len(v:errors) > 0
+!     let fail += 1
+!     call add(errors, 'Found errors in ' . test . ':')
+!     call extend(errors, v:errors)
+      let v:errors = []
+    endif
+  
+--- 92,117 ----
+  redir @q
+  function /^Test_
+  redir END
+! let s:tests = split(substitute(@q, 'function \(\k*()\)', '\1', 'g'))
+  
+  " Execute the tests in alphabetical order.
+!  for s:test in sort(s:tests)
+    if exists("*SetUp")
+      call SetUp()
+    endif
+  
+!   call add(s:messages, 'Executing ' . s:test)
+!   let s:done += 1
+    try
+!     exe 'call ' . s:test
+    catch
+!     call add(v:errors, 'Caught exception in ' . s:test . ': ' . v:exception . ' @ ' . v:throwpoint)
+    endtry
+  
+    if len(v:errors) > 0
+!     let s:fail += 1
+!     call add(s:errors, 'Found errors in ' . s:test . ':')
+!     call extend(s:errors, v:errors)
+      let v:errors = []
+    endif
+  
+***************
+*** 117,151 ****
+    endif
+  endfor
+  
+! if fail == 0
+    " Success, create the .res file so that make knows it's done.
+!   exe 'split ' . fnamemodify(testname, ':r') . '.res'
+    write
+  endif
+  
+! if len(errors) > 0
+    " Append errors to test.log
+    split test.log
+    call append(line('$'), '')
+!   call append(line('$'), 'From ' . testname . ':')
+!   call append(line('$'), errors)
+    write
+  endif
+  
+! let message = 'Executed ' . done . (done > 1 ? ' tests': ' test')
+  echo message
+! call add(messages, message)
+! if fail > 0
+!   let message = fail . ' FAILED'
+    echo message
+!   call add(messages, message)
+  endif
+  
+  " Append messages to "messages"
+  split messages
+  call append(line('$'), '')
+! call append(line('$'), 'From ' . testname . ':')
+! call append(line('$'), messages)
+  write
+  
+  qall!
+--- 120,155 ----
+    endif
+  endfor
+  
+! if s:fail == 0
+    " Success, create the .res file so that make knows it's done.
+!   exe 'split ' . fnamemodify(g:testname, ':r') . '.res'
+    write
+  endif
+  
+! if len(s:errors) > 0
+    " Append errors to test.log
+    split test.log
+    call append(line('$'), '')
+!   call append(line('$'), 'From ' . g:testname . ':')
+!   call append(line('$'), s:errors)
+    write
+  endif
+  
+! let message = 'Executed ' . s:done . (s:done > 1 ? ' tests' : ' test')
+  echo message
+! call add(s:messages, message)
+! if s:fail > 0
+!   let message = s:fail . ' FAILED:'
+    echo message
+!   call add(s:messages, message)
+!   call extend(s:messages, s:errors)
+  endif
+  
+  " Append messages to "messages"
+  split messages
+  call append(line('$'), '')
+! call append(line('$'), 'From ' . g:testname . ':')
+! call append(line('$'), s:messages)
+  write
+  
+  qall!
+*** ../vim-7.4.1308/src/version.c	2016-02-12 22:35:47.523872551 +0100
+--- src/version.c	2016-02-13 14:05:16.835003166 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1309,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+242. You turn down a better-paying job because it doesn't come with
+     a free e-mail account.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,117 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1316
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1316
+Problem:    Can't build MS-Windows console version. (Tux)
+Solution:   Add #ifdefs.
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1315/src/eval.c	2016-02-13 23:22:35.089363591 +0100
+--- src/eval.c	2016-02-13 23:48:00.729265261 +0100
+***************
+*** 627,633 ****
+--- 627,635 ----
+  static void f_islocked(typval_T *argvars, typval_T *rettv);
+  static void f_items(typval_T *argvars, typval_T *rettv);
+  #ifdef FEAT_JOB
++ # ifdef FEAT_CHANNEL
+  static void f_job_getchannel(typval_T *argvars, typval_T *rettv);
++ # endif
+  static void f_job_start(typval_T *argvars, typval_T *rettv);
+  static void f_job_stop(typval_T *argvars, typval_T *rettv);
+  static void f_job_status(typval_T *argvars, typval_T *rettv);
+***************
+*** 7741,7746 ****
+--- 7743,7749 ----
+      static void
+  job_free(job_T *job)
+  {
++ # ifdef FEAT_CHANNEL
+      if (job->jv_channel != NULL)
+      {
+  	/* The channel doesn't count as a references for the job, we need to
+***************
+*** 7748,7753 ****
+--- 7751,7757 ----
+  	job->jv_channel->ch_job = NULL;
+  	channel_unref(job->jv_channel);
+      }
++ # endif
+      mch_clear_job(job);
+      vim_free(job);
+  }
+***************
+*** 8238,8244 ****
+--- 8242,8250 ----
+      {"islocked",	1, 1, f_islocked},
+      {"items",		1, 1, f_items},
+  #ifdef FEAT_JOB
++ # ifdef FEAT_CHANNEL
+      {"job_getchannel",	1, 1, f_job_getchannel},
++ # endif
+      {"job_start",	1, 2, f_job_start},
+      {"job_status",	1, 1, f_job_status},
+      {"job_stop",	1, 2, f_job_stop},
+***************
+*** 10747,10753 ****
+  	    break;
+  #endif
+  	case VAR_CHANNEL:
+! #ifdef FEAT_CMDWIN
+  	    n = argvars[0].vval.v_channel == NULL
+  			       || !channel_is_open(argvars[0].vval.v_channel);
+  	    break;
+--- 10753,10759 ----
+  	    break;
+  #endif
+  	case VAR_CHANNEL:
+! #ifdef FEAT_CHANNEL
+  	    n = argvars[0].vval.v_channel == NULL
+  			       || !channel_is_open(argvars[0].vval.v_channel);
+  	    break;
+***************
+*** 14395,14400 ****
+--- 14401,14408 ----
+  }
+  
+  #ifdef FEAT_JOB
++ 
++ # ifdef FEAT_CHANNEL
+  /*
+   * "job_getchannel()" function
+   */
+***************
+*** 14413,14418 ****
+--- 14421,14427 ----
+  	    ++job->jv_channel->ch_refcount;
+      }
+  }
++ # endif
+  
+  /*
+   * "job_start()" function
+*** ../vim-7.4.1315/src/version.c	2016-02-13 23:22:35.093363549 +0100
+--- src/version.c	2016-02-13 23:49:12.936499817 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1316,
+  /**/
+
+-- 
+Hear about the guy who played a blank tape at full blast?
+The mime next door went nuts.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

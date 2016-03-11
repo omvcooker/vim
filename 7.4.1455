@@ -1,0 +1,94 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1455
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1455
+Problem:    JSON decoding test for surrogate pairs is in the wrong place.
+Solution:   Move the test lines. (Ken Takata)
+Files:      src/testdir/test_json.vim
+
+
+*** ../vim-7.4.1454/src/testdir/test_json.vim	2016-02-28 18:03:55.686659957 +0100
+--- src/testdir/test_json.vim	2016-02-28 19:59:27.954376906 +0100
+***************
+*** 82,89 ****
+  
+    if has('multi_byte')
+      call assert_equal(s:jsonmb, json_encode(s:varmb))
+!     call assert_equal(s:varsp1, json_decode(s:jsonsp1))
+!     call assert_equal(s:varsp2, json_decode(s:jsonsp2))
+    endif
+  
+    call assert_equal(s:jsonnr, json_encode(s:varnr))
+--- 82,88 ----
+  
+    if has('multi_byte')
+      call assert_equal(s:jsonmb, json_encode(s:varmb))
+!     " no test for surrogate pair, json_encode() doesn't create them.
+    endif
+  
+    call assert_equal(s:jsonnr, json_encode(s:varnr))
+***************
+*** 120,127 ****
+  
+    if has('multi_byte')
+      call assert_equal(s:varmb, json_decode(s:jsonmb))
+!     call assert_equal(s:varsp1, js_decode(s:jsonsp1))
+!     call assert_equal(s:varsp2, js_decode(s:jsonsp2))
+    endif
+  
+    call assert_equal(s:varnr, json_decode(s:jsonnr))
+--- 119,126 ----
+  
+    if has('multi_byte')
+      call assert_equal(s:varmb, json_decode(s:jsonmb))
+!     call assert_equal(s:varsp1, json_decode(s:jsonsp1))
+!     call assert_equal(s:varsp2, json_decode(s:jsonsp2))
+    endif
+  
+    call assert_equal(s:varnr, json_decode(s:jsonnr))
+***************
+*** 185,190 ****
+--- 184,190 ----
+  
+    if has('multi_byte')
+      call assert_equal(s:jsonmb, js_encode(s:varmb))
++     " no test for surrogate pair, js_encode() doesn't create them.
+    endif
+  
+    call assert_equal(s:jsonnr, js_encode(s:varnr))
+***************
+*** 223,228 ****
+--- 223,230 ----
+  
+    if has('multi_byte')
+      call assert_equal(s:varmb, js_decode(s:jsonmb))
++     call assert_equal(s:varsp1, js_decode(s:jsonsp1))
++     call assert_equal(s:varsp2, js_decode(s:jsonsp2))
+    endif
+  
+    call assert_equal(s:varnr, js_decode(s:jsonnr))
+*** ../vim-7.4.1454/src/version.c	2016-02-28 19:50:47.555824204 +0100
+--- src/version.c	2016-02-28 20:03:49.683638391 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1455,
+  /**/
+
+-- 
+The chat program is in public domain.  This is not the GNU public license.
+If it breaks then you get to keep both pieces.
+		-- Copyright notice for the chat program
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

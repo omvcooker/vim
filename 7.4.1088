@@ -1,0 +1,165 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1088
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1088
+Problem:    Coverity warns for uninitialized variables.  Only one is an actual
+            problem.
+Solution:   Move the conditions.  Don't use endpos if handling an error.
+Files:      src/ops.c
+
+
+*** ../vim-7.4.1087/src/ops.c	2016-01-10 22:12:41.356254408 +0100
+--- src/ops.c	2016-01-12 20:43:58.801618570 +0100
+***************
+*** 5371,5379 ****
+      }
+      else
+      {
+! 	int one_change;
+! 	int length;
+! 	pos_T startpos;
+  
+  	if (u_save((linenr_T)(oap->start.lnum - 1),
+  					(linenr_T)(oap->end.lnum + 1)) == FAIL)
+--- 5371,5379 ----
+      }
+      else
+      {
+! 	int	one_change;
+! 	int	length;
+! 	pos_T	startpos;
+  
+  	if (u_save((linenr_T)(oap->start.lnum - 1),
+  					(linenr_T)(oap->end.lnum + 1)) == FAIL)
+***************
+*** 5388,5419 ****
+  		pos.col = bd.textcol;
+  		length = bd.textlen;
+  	    }
+! 	    else
+  	    {
+! 		if (oap->motion_type == MLINE)
+  		{
+! 		    curwin->w_cursor.col = 0;
+! 		    pos.col = 0;
+! 		    length = (colnr_T)STRLEN(ml_get(pos.lnum));
+  		}
+! 		else if (oap->motion_type == MCHAR)
+  		{
+! 		    if (!oap->inclusive)
+! 			dec(&(oap->end));
+! 		    length = (colnr_T)STRLEN(ml_get(pos.lnum));
+! 		    pos.col = 0;
+! 		    if (pos.lnum == oap->start.lnum)
+! 		    {
+! 			pos.col += oap->start.col;
+! 			length -= oap->start.col;
+! 		    }
+! 		    if (pos.lnum == oap->end.lnum)
+! 		    {
+! 			length = (int)STRLEN(ml_get(oap->end.lnum));
+! 			if (oap->end.col >= length)
+! 			    oap->end.col = length - 1;
+! 			length = oap->end.col - pos.col + 1;
+! 		    }
+  		}
+  	    }
+  	    one_change = do_addsub(oap->op_type, &pos, length, amount);
+--- 5388,5416 ----
+  		pos.col = bd.textcol;
+  		length = bd.textlen;
+  	    }
+! 	    else if (oap->motion_type == MLINE)
+! 	    {
+! 		curwin->w_cursor.col = 0;
+! 		pos.col = 0;
+! 		length = (colnr_T)STRLEN(ml_get(pos.lnum));
+! 	    }
+! 	    else /* oap->motion_type == MCHAR */
+  	    {
+! 		if (!oap->inclusive)
+! 		    dec(&(oap->end));
+! 		length = (colnr_T)STRLEN(ml_get(pos.lnum));
+! 		pos.col = 0;
+! 		if (pos.lnum == oap->start.lnum)
+  		{
+! 		    pos.col += oap->start.col;
+! 		    length -= oap->start.col;
+  		}
+! 		if (pos.lnum == oap->end.lnum)
+  		{
+! 		    length = (int)STRLEN(ml_get(oap->end.lnum));
+! 		    if (oap->end.col >= length)
+! 			oap->end.col = length - 1;
+! 		    length = oap->end.col - pos.col + 1;
+  		}
+  	    }
+  	    one_change = do_addsub(oap->op_type, &pos, length, amount);
+***************
+*** 5493,5499 ****
+      int		was_positive = TRUE;
+      int		visual = VIsual_active;
+      int		did_change = FALSE;
+!     pos_T	t = curwin->w_cursor;
+      int		maxlen = 0;
+      pos_T	startpos;
+      pos_T	endpos;
+--- 5490,5496 ----
+      int		was_positive = TRUE;
+      int		visual = VIsual_active;
+      int		did_change = FALSE;
+!     pos_T	save_cursor = curwin->w_cursor;
+      int		maxlen = 0;
+      pos_T	startpos;
+      pos_T	endpos;
+***************
+*** 5819,5827 ****
+  	    --curwin->w_cursor.col;
+      }
+  
+- theend:
+-     if (visual)
+- 	curwin->w_cursor = t;
+      if (did_change)
+      {
+  	/* set the '[ and '] marks */
+--- 5816,5821 ----
+***************
+*** 5831,5836 ****
+--- 5825,5834 ----
+  	    --curbuf->b_op_end.col;
+      }
+  
++ theend:
++     if (visual)
++ 	curwin->w_cursor = save_cursor;
++ 
+      return did_change;
+  }
+  
+*** ../vim-7.4.1087/src/version.c	2016-01-10 22:12:41.356254408 +0100
+--- src/version.c	2016-01-12 20:44:42.837141471 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1088,
+  /**/
+
+-- 
+There are two ways of constructing a software design. One way is to make
+it so simple that there are obviously no deficiencies. The other way
+is to make it so complicated that there are no obvious deficiencies.
+                                                           -C.A.R. Hoare
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

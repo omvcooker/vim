@@ -1,0 +1,50 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.972
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.972
+Problem:    Memory leak when there is an error in setting an option.
+Solution:   Free the saved value (Christian Brabandt)
+Files:      src/option.c
+
+
+*** ../vim-7.4.971/src/option.c	2015-12-11 22:38:32.655594654 +0100
+--- src/option.c	2015-12-13 14:55:36.212414185 +0100
+***************
+*** 4970,4976 ****
+--- 4970,4981 ----
+  
+  			/* If error detected, print the error message. */
+  			if (errmsg != NULL)
++ 			{
++ #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
++ 			    vim_free(saved_origval);
++ #endif
+  			    goto skip;
++ 			}
+  #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
+  			if (saved_origval != NULL)
+  			{
+*** ../vim-7.4.971/src/version.c	2015-12-13 14:45:16.543158883 +0100
+--- src/version.c	2015-12-13 14:58:33.870480594 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     972,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+262. Your computer has it's own phone line - but your daughter doesn't.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

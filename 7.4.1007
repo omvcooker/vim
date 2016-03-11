@@ -1,0 +1,84 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1007
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1007
+Problem:    When a symbolic link points to a file in the root directory, the
+            swapfile is not correct.
+Solution:   Do not try getting the full name of a file in the root directory.
+            (Milly, closes #501)
+Files:      src/os_unix.c
+
+
+*** ../vim-7.4.1006/src/os_unix.c	2015-11-19 19:55:12.340839491 +0100
+--- src/os_unix.c	2015-12-31 18:20:35.966080162 +0100
+***************
+*** 2507,2514 ****
+      fname = posix_fname;
+  #endif
+  
+!     /* expand it if forced or not an absolute path */
+!     if (force || !mch_isFullName(fname))
+      {
+  	/*
+  	 * If the file name has a path, change to that directory for a moment,
+--- 2507,2516 ----
+      fname = posix_fname;
+  #endif
+  
+!     /* Expand it if forced or not an absolute path.
+!      * Do not do it for "/file", the result is always "/". */
+!     if ((force || !mch_isFullName(fname))
+! 	    && ((p = vim_strrchr(fname, '/')) == NULL || p != fname))
+      {
+  	/*
+  	 * If the file name has a path, change to that directory for a moment,
+***************
+*** 2517,2527 ****
+  	 */
+  #ifdef OS2
+  	only_drive = 0;
+! 	if (((p = vim_strrchr(fname, '/')) != NULL)
+  		|| ((p = vim_strrchr(fname, '\\')) != NULL)
+  		|| (((p = vim_strchr(fname,  ':')) != NULL) && ++only_drive))
+  #else
+! 	if ((p = vim_strrchr(fname, '/')) != NULL)
+  #endif
+  	{
+  #ifdef HAVE_FCHDIR
+--- 2519,2529 ----
+  	 */
+  #ifdef OS2
+  	only_drive = 0;
+! 	if (p != NULL
+  		|| ((p = vim_strrchr(fname, '\\')) != NULL)
+  		|| (((p = vim_strchr(fname,  ':')) != NULL) && ++only_drive))
+  #else
+! 	if (p != NULL)
+  #endif
+  	{
+  #ifdef HAVE_FCHDIR
+*** ../vim-7.4.1006/src/version.c	2015-12-31 16:21:41.555246139 +0100
+--- src/version.c	2015-12-31 18:24:10.355765967 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1007,
+  /**/
+
+-- 
+MARTHA'S WAY: Don't throw out all that leftover wine. Freeze into ice cubes
+              for future use in casseroles and sauces.
+MY WAY:       What leftover wine?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,81 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1469
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1469
+Problem:    Channel test sometimes fails, especially on OS/X. (Kazunobu
+            Kuriyama)
+Solution:   Change the && into ||, call getsockopt() in more situations.
+            (Ozaki Kiichi)
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1468/src/channel.c	2016-02-29 23:03:19.680871941 +0100
+--- src/channel.c	2016-03-02 20:48:31.471629977 +0100
+***************
+*** 720,729 ****
+  	     * After putting the socket in non-blocking mode, connect() will
+  	     * return EINPROGRESS, select() will not wait (as if writing is
+  	     * possible), need to use getsockopt() to check if the socket is
+! 	     * actually connect.
+! 	     * We detect an failure to connect when both read and write fds
+  	     * are set.  Use getsockopt() to find out what kind of failure. */
+! 	    if (FD_ISSET(sd, &rfds) && FD_ISSET(sd, &wfds))
+  	    {
+  		ret = getsockopt(sd,
+  			    SOL_SOCKET, SO_ERROR, &so_error, &so_error_len);
+--- 720,729 ----
+  	     * After putting the socket in non-blocking mode, connect() will
+  	     * return EINPROGRESS, select() will not wait (as if writing is
+  	     * possible), need to use getsockopt() to check if the socket is
+! 	     * actually able to connect.
+! 	     * We detect an failure to connect when either read and write fds
+  	     * are set.  Use getsockopt() to find out what kind of failure. */
+! 	    if (FD_ISSET(sd, &rfds) || FD_ISSET(sd, &wfds))
+  	    {
+  		ret = getsockopt(sd,
+  			    SOL_SOCKET, SO_ERROR, &so_error, &so_error_len);
+***************
+*** 1559,1565 ****
+  
+  	    curbuf = buffer;
+  	    u_sync(TRUE);
+! 	    u_save(lnum, lnum + 1);
+  
+  	    if (msg == NULL)
+  		/* JSON or JS mode: re-encode the message. */
+--- 1559,1566 ----
+  
+  	    curbuf = buffer;
+  	    u_sync(TRUE);
+! 	    /* ignore undo failure, undo is not very useful here */
+! 	    ignored = u_save(lnum, lnum + 1);
+  
+  	    if (msg == NULL)
+  		/* JSON or JS mode: re-encode the message. */
+*** ../vim-7.4.1468/src/version.c	2016-03-01 22:51:40.267027614 +0100
+--- src/version.c	2016-03-02 20:43:25.698801475 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1469,
+  /**/
+
+-- 
+CART DRIVER: Bring out your dead!
+LARGE MAN:   Here's one!
+CART DRIVER: Ninepence.
+BODY:        I'm not dead!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

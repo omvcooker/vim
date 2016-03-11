@@ -1,0 +1,604 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1143
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1143
+Problem:    Can't sort on floating point numbers.
+Solution:   Add the "f" flag to ":sort".  (Alex Jakushev)  Also add the "f"
+            flag to sort().
+Files:      runtime/doc/change.txt, src/ex_cmds.c, src/testdir/test_sort.vim,
+            src/testdir/test57.in, src/testdir/test57.ok, src/eval.c
+
+
+*** ../vim-7.4.1142/runtime/doc/change.txt	2016-01-02 17:54:04.407793439 +0100
+--- runtime/doc/change.txt	2016-01-19 22:46:11.700221893 +0100
+***************
+*** 1713,1719 ****
+  found here: |sort()|, |uniq()|.
+  
+  							*:sor* *:sort*
+! :[range]sor[t][!] [i][u][r][n][x][o][b] [/{pattern}/]
+  			Sort lines in [range].  When no range is given all
+  			lines are sorted.
+  
+--- 1745,1751 ----
+  found here: |sort()|, |uniq()|.
+  
+  							*:sor* *:sort*
+! :[range]sor[t][!] [b][f][i][n][o][r][u][x] [/{pattern}/]
+  			Sort lines in [range].  When no range is given all
+  			lines are sorted.
+  
+***************
+*** 1721,1730 ****
+--- 1753,1770 ----
+  
+  			With [i] case is ignored.
+  
++ 			Options [n][f][x][o][b] are mutually exclusive.
++ 
+  			With [n] sorting is done on the first decimal number
+  			in the line (after or inside a {pattern} match).
+  			One leading '-' is included in the number.
+  
++ 			With [f] sorting is done on the Float in the line.
++ 			The value of Float is determined similar to passing
++ 			the text (after or inside a {pattern} match) to
++ 			str2float() function. This option is available only
++ 			if Vim was compiled with Floating point support.
++ 
+  			With [x] sorting is done on the first hexadecimal
+  			number in the line (after or inside a {pattern}
+  			match).  A leading "0x" or "0X" is ignored.
+***************
+*** 1736,1745 ****
+  			With [b] sorting is done on the first binary number in
+  			the line (after or inside a {pattern} match).
+  
+! 			With [u] only keep the first of a sequence of
+! 			identical lines (ignoring case when [i] is used).
+! 			Without this flag, a sequence of identical lines
+! 			will be kept in their original order.
+  			Note that leading and trailing white space may cause
+  			lines to be different.
+  
+--- 1776,1785 ----
+  			With [b] sorting is done on the first binary number in
+  			the line (after or inside a {pattern} match).
+  
+! 			With [u] (u stands for unique) only keep the first of
+! 			a sequence of identical lines (ignoring case when [i]
+! 			is used).  Without this flag, a sequence of identical
+! 			lines will be kept in their original order.
+  			Note that leading and trailing white space may cause
+  			lines to be different.
+  
+***************
+*** 1780,1787 ****
+  quite useless.
+  
+  The details about sorting depend on the library function used.  There is no
+! guarantee that sorting is "stable" or obeys the current locale.  You will have
+! to try it out.
+  
+  The sorting can be interrupted, but if you interrupt it too late in the
+  process you may end up with duplicated lines.  This also depends on the system
+--- 1820,1827 ----
+  quite useless.
+  
+  The details about sorting depend on the library function used.  There is no
+! guarantee that sorting obeys the current locale.  You will have to try it out.
+! Vim does do a "stable" sort.
+  
+  The sorting can be interrupted, but if you interrupt it too late in the
+  process you may end up with duplicated lines.  This also depends on the system
+*** ../vim-7.4.1142/src/ex_cmds.c	2016-01-18 23:28:44.161810727 +0100
+--- src/ex_cmds.c	2016-01-19 23:30:11.579183991 +0100
+***************
+*** 275,292 ****
+  static char_u	*sortbuf1;
+  static char_u	*sortbuf2;
+  
+! static int	sort_ic;		/* ignore case */
+! static int	sort_nr;		/* sort on number */
+! static int	sort_rx;		/* sort on regex instead of skipping it */
+  
+! static int	sort_abort;		/* flag to indicate if sorting has been interrupted */
+  
+  /* Struct to store info to be sorted. */
+  typedef struct
+  {
+      linenr_T	lnum;			/* line number */
+!     long	start_col_nr;		/* starting column number or number */
+!     long	end_col_nr;		/* ending column number */
+  } sorti_T;
+  
+  static int
+--- 275,304 ----
+  static char_u	*sortbuf1;
+  static char_u	*sortbuf2;
+  
+! static int	sort_ic;	/* ignore case */
+! static int	sort_nr;	/* sort on number */
+! static int	sort_rx;	/* sort on regex instead of skipping it */
+! #ifdef FEAT_FLOAT
+! static int	sort_flt;	/* sort on floating number */
+! #endif
+  
+! static int	sort_abort;	/* flag to indicate if sorting has been interrupted */
+  
+  /* Struct to store info to be sorted. */
+  typedef struct
+  {
+      linenr_T	lnum;			/* line number */
+!     union {
+! 	struct
+! 	{
+! 	    long	start_col_nr;		/* starting column number */
+! 	    long	end_col_nr;		/* ending column number */
+! 	} line;
+! 	long	value;		/* value if sorting by integer */
+! #ifdef FEAT_FLOAT
+! 	float_T value_flt;	/* value if sorting by float */
+! #endif
+!     } st_u;
+  } sorti_T;
+  
+  static int
+***************
+*** 319,337 ****
+      /* When sorting numbers "start_col_nr" is the number, not the column
+       * number. */
+      if (sort_nr)
+! 	result = l1.start_col_nr == l2.start_col_nr ? 0
+! 				 : l1.start_col_nr > l2.start_col_nr ? 1 : -1;
+      else
+      {
+  	/* We need to copy one line into "sortbuf1", because there is no
+  	 * guarantee that the first pointer becomes invalid when obtaining the
+  	 * second one. */
+! 	STRNCPY(sortbuf1, ml_get(l1.lnum) + l1.start_col_nr,
+! 					 l1.end_col_nr - l1.start_col_nr + 1);
+! 	sortbuf1[l1.end_col_nr - l1.start_col_nr] = 0;
+! 	STRNCPY(sortbuf2, ml_get(l2.lnum) + l2.start_col_nr,
+! 					 l2.end_col_nr - l2.start_col_nr + 1);
+! 	sortbuf2[l2.end_col_nr - l2.start_col_nr] = 0;
+  
+  	result = sort_ic ? STRICMP(sortbuf1, sortbuf2)
+  						 : STRCMP(sortbuf1, sortbuf2);
+--- 331,354 ----
+      /* When sorting numbers "start_col_nr" is the number, not the column
+       * number. */
+      if (sort_nr)
+! 	result = l1.st_u.value == l2.st_u.value ? 0
+! 				 : l1.st_u.value > l2.st_u.value ? 1 : -1;
+! #ifdef FEAT_FLOAT
+!     else if (sort_flt)
+! 	result = l1.st_u.value_flt == l2.st_u.value_flt ? 0
+! 			     : l1.st_u.value_flt > l2.st_u.value_flt ? 1 : -1;
+! #endif
+      else
+      {
+  	/* We need to copy one line into "sortbuf1", because there is no
+  	 * guarantee that the first pointer becomes invalid when obtaining the
+  	 * second one. */
+! 	STRNCPY(sortbuf1, ml_get(l1.lnum) + l1.st_u.line.start_col_nr,
+! 		     l1.st_u.line.end_col_nr - l1.st_u.line.start_col_nr + 1);
+! 	sortbuf1[l1.st_u.line.end_col_nr - l1.st_u.line.start_col_nr] = 0;
+! 	STRNCPY(sortbuf2, ml_get(l2.lnum) + l2.st_u.line.start_col_nr,
+! 		     l2.st_u.line.end_col_nr - l2.st_u.line.start_col_nr + 1);
+! 	sortbuf2[l2.st_u.line.end_col_nr - l2.st_u.line.start_col_nr] = 0;
+  
+  	result = sort_ic ? STRICMP(sortbuf1, sortbuf2)
+  						 : STRCMP(sortbuf1, sortbuf2);
+***************
+*** 382,387 ****
+--- 399,407 ----
+  	goto sortend;
+  
+      sort_abort = sort_ic = sort_rx = sort_nr = 0;
++ #ifdef FEAT_FLOAT
++     sort_flt = 0;
++ #endif
+  
+      for (p = eap->arg; *p != NUL; ++p)
+      {
+***************
+*** 393,401 ****
+  	    sort_rx = TRUE;
+  	else if (*p == 'n')
+  	{
+! 	    sort_nr = 2;
+  	    ++format_found;
+  	}
+  	else if (*p == 'b')
+  	{
+  	    sort_what = STR2NR_BIN + STR2NR_FORCE;
+--- 413,428 ----
+  	    sort_rx = TRUE;
+  	else if (*p == 'n')
+  	{
+! 	    sort_nr = 1;
+! 	    ++format_found;
+! 	}
+! #ifdef FEAT_FLOAT
+! 	else if (*p == 'f')
+! 	{
+! 	    sort_flt = 1;
+  	    ++format_found;
+  	}
++ #endif
+  	else if (*p == 'b')
+  	{
+  	    sort_what = STR2NR_BIN + STR2NR_FORCE;
+***************
+*** 460,466 ****
+  	goto sortend;
+      }
+  
+!     /* From here on "sort_nr" is used as a flag for any number sorting. */
+      sort_nr += sort_what;
+  
+      /*
+--- 487,494 ----
+  	goto sortend;
+      }
+  
+!     /* From here on "sort_nr" is used as a flag for any integer number
+!      * sorting. */
+      sort_nr += sort_what;
+  
+      /*
+***************
+*** 494,500 ****
+  	    if (regmatch.regprog != NULL)
+  		end_col = 0;
+  
+! 	if (sort_nr)
+  	{
+  	    /* Make sure vim_str2nr doesn't read any digits past the end
+  	     * of the match, by temporarily terminating the string there */
+--- 522,528 ----
+  	    if (regmatch.regprog != NULL)
+  		end_col = 0;
+  
+! 	if (sort_nr || sort_flt)
+  	{
+  	    /* Make sure vim_str2nr doesn't read any digits past the end
+  	     * of the match, by temporarily terminating the string there */
+***************
+*** 503,529 ****
+  	    *s2 = NUL;
+  	    /* Sorting on number: Store the number itself. */
+  	    p = s + start_col;
+! 	    if (sort_what & STR2NR_HEX)
+! 		s = skiptohex(p);
+! 	    else if (sort_what & STR2NR_BIN)
+! 		s = skiptobin(p);
+! 	    else
+! 		s = skiptodigit(p);
+! 	    if (s > p && s[-1] == '-')
+! 		--s;  /* include preceding negative sign */
+! 	    if (*s == NUL)
+! 		/* empty line should sort before any number */
+! 		nrs[lnum - eap->line1].start_col_nr = -MAXLNUM;
+  	    else
+! 		vim_str2nr(s, NULL, NULL, sort_what,
+! 			       &nrs[lnum - eap->line1].start_col_nr, NULL, 0);
+  	    *s2 = c;
+  	}
+  	else
+  	{
+  	    /* Store the column to sort at. */
+! 	    nrs[lnum - eap->line1].start_col_nr = start_col;
+! 	    nrs[lnum - eap->line1].end_col_nr = end_col;
+  	}
+  
+  	nrs[lnum - eap->line1].lnum = lnum;
+--- 531,575 ----
+  	    *s2 = NUL;
+  	    /* Sorting on number: Store the number itself. */
+  	    p = s + start_col;
+! 	    if (sort_nr)
+! 	    {
+! 		if (sort_what & STR2NR_HEX)
+! 		    s = skiptohex(p);
+! 		else if (sort_what & STR2NR_BIN)
+! 		    s = skiptobin(p);
+! 		else
+! 		    s = skiptodigit(p);
+! 		if (s > p && s[-1] == '-')
+! 		    --s;  /* include preceding negative sign */
+! 		if (*s == NUL)
+! 		    /* empty line should sort before any number */
+! 		    nrs[lnum - eap->line1].st_u.value = -MAXLNUM;
+! 		else
+! 		    vim_str2nr(s, NULL, NULL, sort_what,
+! 			       &nrs[lnum - eap->line1].st_u.value, NULL, 0);
+! 	    }
+! #ifdef FEAT_FLOAT
+  	    else
+! 	    {
+! 		s = skipwhite(p);
+! 		if (*s == '+')
+! 		    s = skipwhite(s + 1);
+! 
+! 		if (*s == NUL)
+! 		    /* empty line should sort before any number */
+! 		    nrs[lnum - eap->line1].st_u.value_flt = -DBL_MAX;
+! 		else
+! 		    nrs[lnum - eap->line1].st_u.value_flt =
+! 						      strtod((char *)s, NULL);
+! 	    }
+! #endif
+  	    *s2 = c;
+  	}
+  	else
+  	{
+  	    /* Store the column to sort at. */
+! 	    nrs[lnum - eap->line1].st_u.line.start_col_nr = start_col;
+! 	    nrs[lnum - eap->line1].st_u.line.end_col_nr = end_col;
+  	}
+  
+  	nrs[lnum - eap->line1].lnum = lnum;
+*** ../vim-7.4.1142/src/testdir/test_sort.vim	2015-12-03 16:32:52.724051746 +0100
+--- src/testdir/test_sort.vim	2016-01-19 23:21:27.292957153 +0100
+***************
+*** 17,19 ****
+--- 17,23 ----
+    call assert_equal([3, 13, 28], sort([13, 28, 3], 'N'))
+    call assert_equal(['3', '13', '28'], sort(['13', '28', '3'], 'N'))
+  endfunc
++ 
++ func Test_sort_float()
++   call assert_equal([0.28, 3, 13.5], sort([13.5, 0.28, 3], 'f'))
++ endfunc
+*** ../vim-7.4.1142/src/testdir/test57.in	2016-01-02 17:54:04.423793267 +0100
+--- src/testdir/test57.in	2016-01-19 23:25:02.442587528 +0100
+***************
+*** 32,37 ****
+--- 32,38 ----
+  :/^t27:/+1,/^t28/-1sort no
+  :/^t28:/+1,/^t29/-1sort b
+  :/^t29:/+1,/^t30/-1sort b
++ :/^t30:/+1,/^t31/-1sort f
+  :/^t01:/,$wq! test.out
+  ENDTEST
+  
+***************
+*** 496,504 ****
+  b322b
+  b321
+  b321b
+- t28: binary
+  
+  
+  0b111000
+  0b101100
+  0b101001
+--- 497,505 ----
+  b322b
+  b321
+  b321b
+  
+  
++ t28: binary
+  0b111000
+  0b101100
+  0b101001
+***************
+*** 513,521 ****
+  0b100010
+  0b100100
+  0b100010
+- t29: binary with leading characters
+  
+  
+  0b100010
+  0b010000
+   0b101001
+--- 514,522 ----
+  0b100010
+  0b100100
+  0b100010
+  
+  
++ t29: binary with leading characters
+  0b100010
+  0b010000
+   0b101001
+***************
+*** 530,533 ****
+  0b101010
+  0b000000
+  b0b111000
+! t30: done
+--- 531,545 ----
+  0b101010
+  0b000000
+  b0b111000
+! 
+! 
+! t30: float
+! 1.234
+! 0.88
+! 123.456
+! 1.15e-6
+! -1.1e3
+! -1.01e3
+! 
+! 
+! t31: done
+*** ../vim-7.4.1142/src/testdir/test57.ok	2016-01-02 17:54:04.423793267 +0100
+--- src/testdir/test57.ok	2016-01-19 23:26:02.829922562 +0100
+***************
+*** 453,458 ****
+--- 453,460 ----
+  b322b
+  b321
+  b321b
++ 
++ 
+  t28: binary
+  
+  
+***************
+*** 487,490 ****
+  0b101010
+  b0b101100
+  b0b111000
+! t30: done
+--- 489,501 ----
+  0b101010
+  b0b101100
+  b0b111000
+! t30: float
+! 
+! 
+! -1.1e3
+! -1.01e3
+! 1.15e-6
+! 0.88
+! 1.234
+! 123.456
+! t31: done
+*** ../vim-7.4.1142/src/eval.c	2016-01-19 20:51:27.743756709 +0100
+--- src/eval.c	2016-01-19 23:29:31.387626413 +0100
+***************
+*** 809,814 ****
+--- 809,817 ----
+  static typval_T *alloc_string_tv __ARGS((char_u *string));
+  static void init_tv __ARGS((typval_T *varp));
+  static long get_tv_number __ARGS((typval_T *varp));
++ #ifdef FEAT_FLOAT
++ static float_T get_tv_float(typval_T *varp);
++ #endif
+  static linenr_T get_tv_lnum __ARGS((typval_T *argvars));
+  static linenr_T get_tv_lnum_buf __ARGS((typval_T *argvars, buf_T *buf));
+  static char_u *get_tv_string __ARGS((typval_T *varp));
+***************
+*** 18143,18148 ****
+--- 18146,18154 ----
+  static int	item_compare_ic;
+  static int	item_compare_numeric;
+  static int	item_compare_numbers;
++ #ifdef FEAT_FLOAT
++ static int	item_compare_float;
++ #endif
+  static char_u	*item_compare_func;
+  static dict_T	*item_compare_selfdict;
+  static int	item_compare_func_err;
+***************
+*** 18182,18187 ****
+--- 18188,18203 ----
+  	return v1 == v2 ? 0 : v1 > v2 ? 1 : -1;
+      }
+  
++ #ifdef FEAT_FLOAT
++     if (item_compare_float)
++     {
++ 	float_T	v1 = get_tv_float(tv1);
++ 	float_T	v2 = get_tv_float(tv2);
++ 
++ 	return v1 == v2 ? 0 : v1 > v2 ? 1 : -1;
++     }
++ #endif
++ 
+      /* tv2string() puts quotes around a string and allocates memory.  Don't do
+       * that for string variables. Use a single quote when comparing with a
+       * non-string to do what the docs promise. */
+***************
+*** 18316,18321 ****
+--- 18332,18340 ----
+  	item_compare_ic = FALSE;
+  	item_compare_numeric = FALSE;
+  	item_compare_numbers = FALSE;
++ #ifdef FEAT_FLOAT
++ 	item_compare_float = FALSE;
++ #endif
+  	item_compare_func = NULL;
+  	item_compare_selfdict = NULL;
+  	if (argvars[1].v_type != VAR_UNKNOWN)
+***************
+*** 18346,18351 ****
+--- 18365,18377 ----
+  			item_compare_func = NULL;
+  			item_compare_numbers = TRUE;
+  		    }
++ #ifdef FEAT_FLOAT
++ 		    else if (STRCMP(item_compare_func, "f") == 0)
++ 		    {
++ 			item_compare_func = NULL;
++ 			item_compare_float = TRUE;
++ 		    }
++ #endif
+  		    else if (STRCMP(item_compare_func, "i") == 0)
+  		    {
+  			item_compare_func = NULL;
+***************
+*** 21613,21618 ****
+--- 21639,21678 ----
+      return n;
+  }
+  
++ #ifdef FEAT_FLOAT
++     static float_T
++ get_tv_float(varp)
++     typval_T	*varp;
++ {
++     switch (varp->v_type)
++     {
++ 	case VAR_NUMBER:
++ 	    return (float_T)(varp->vval.v_number);
++ #ifdef FEAT_FLOAT
++ 	case VAR_FLOAT:
++ 	    return varp->vval.v_float;
++ 	    break;
++ #endif
++ 	case VAR_FUNC:
++ 	    EMSG(_("E891: Using a Funcref as a Float"));
++ 	    break;
++ 	case VAR_STRING:
++ 	    EMSG(_("E892: Using a String as a Float"));
++ 	    break;
++ 	case VAR_LIST:
++ 	    EMSG(_("E893: Using a List as a Float"));
++ 	    break;
++ 	case VAR_DICT:
++ 	    EMSG(_("E894: Using a Dictionary as a Float"));
++ 	    break;
++ 	default:
++ 	    EMSG2(_(e_intern2), "get_tv_float()");
++ 	    break;
++     }
++     return 0;
++ }
++ #endif
++ 
+  /*
+   * Get the lnum from the first argument.
+   * Also accepts ".", "$", etc., but that only works for the current buffer.
+*** ../vim-7.4.1142/src/version.c	2016-01-19 22:28:54.615592984 +0100
+--- src/version.c	2016-01-19 22:47:19.119483218 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1143,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+12. You turn off your modem and get this awful empty feeling, like you just
+    pulled the plug on a loved one.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

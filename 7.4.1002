@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1002
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1002
+Problem:    Cannot run an individual test on MS-Windows.
+Solution:   Move the rule to run test1 downwards. (Ken Takata)
+Files:      src/testdir/Make_dos.mak
+
+
+*** ../vim-7.4.1001/src/testdir/Make_dos.mak	2015-12-29 17:11:11.769335920 +0100
+--- src/testdir/Make_dos.mak	2015-12-30 17:15:08.037829696 +0100
+***************
+*** 27,35 ****
+  
+  .SUFFIXES: .in .out .res .vim
+  
+- # Must run test1 first to create small.vim.
+- $(SCRIPTS) $(SCRIPTS_GUI) $(SCRIPTS_WIN32) $(NEW_TESTS): $(SCRIPTS_FIRST)
+- 
+  nongui:	nolog $(SCRIPTS_FIRST) $(SCRIPTS) newtests report
+  
+  small:	nolog report
+--- 27,32 ----
+***************
+*** 67,72 ****
+--- 64,74 ----
+  		 & echo $* FAILED >> test.log ) \
+  		else ( move /y test.out $*.out )
+  
++ # Must run test1 first to create small.vim.
++ # This rule must come after the one that copies the input files to dostmp to
++ # allow for running an individual test.
++ $(SCRIPTS) $(SCRIPTS_GUI) $(SCRIPTS_WIN32) $(NEW_TESTS): $(SCRIPTS_FIRST)
++ 
+  report:
+  	@echo ""
+  	@echo Test results:
+*** ../vim-7.4.1001/src/version.c	2015-12-30 15:58:58.862914407 +0100
+--- src/version.c	2015-12-30 17:16:00.109269486 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1002,
+  /**/
+
+-- 
+Q: How does a UNIX Guru pick up a girl?
+A: look; grep; which; eval; nice; uname; talk; date;
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

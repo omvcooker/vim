@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1368
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1368
+Problem:    One more Win16 file remains.
+Solution:   Delete it.
+Files:      src/proto/os_win16.pro
+
+
+*** ../vim-7.4.1367/src/proto/os_win16.pro	2016-01-19 13:21:55.845334290 +0100
+--- src/proto/os_win16.pro	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,12 ****
+- /* os_win16.c */
+- void mch_setmouse(int on);
+- void mch_init(void);
+- int mch_check_win(int argc, char **argv);
+- long mch_get_pid(void);
+- int mch_call_shell(char_u *cmd, int options);
+- void mch_delay(long msec, int ignoreinput);
+- void mch_breakcheck(void);
+- long_u mch_avail_mem(int special);
+- int mch_rename(const char *pszOldFile, const char *pszNewFile);
+- char *default_shell(void);
+- /* vim: set ft=c : */
+--- 0 ----
+*** ../vim-7.4.1367/src/version.c	2016-02-20 15:26:38.299827771 +0100
+--- src/version.c	2016-02-20 15:48:12.582400459 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1368,
+  /**/
+
+-- 
+GUARD #1:  What -- a swallow carrying a coconut?
+ARTHUR:    It could grip it by the husk!
+GUARD #1:  It's not a question of where he grips it!  It's a simple question
+           of weight ratios!  A five ounce bird could not carry a 1 pound
+           coconut.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

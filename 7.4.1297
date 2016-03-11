@@ -1,0 +1,96 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1297
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1297
+Problem:    On Mac test_channel leaves python instances running.
+Solution:   Use a small waittime to make ch_open() work. (Ozaki Kiichi)
+Files:      src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1296/src/testdir/test_channel.vim	2016-02-07 22:21:15.722056889 +0100
+--- src/testdir/test_channel.vim	2016-02-09 23:33:05.563589032 +0100
+***************
+*** 23,28 ****
+--- 23,29 ----
+  endif
+  
+  let s:port = -1
++ let s:chopt = has('macunix') ? {'waittime' : 1} : {}
+  
+  func s:start_server()
+    " The Python program writes the port number in Xportnr.
+***************
+*** 60,66 ****
+    endif
+    let s:port = l[0]
+  
+!   let handle = ch_open('localhost:' . s:port)
+    return handle
+  endfunc
+  
+--- 61,67 ----
+    endif
+    let s:port = l[0]
+  
+!   let handle = ch_open('localhost:' . s:port, s:chopt)
+    return handle
+  endfunc
+  
+***************
+*** 155,161 ****
+    endif
+    call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+  
+!   let newhandle = ch_open('localhost:' . s:port)
+    call assert_equal('got it', ch_sendexpr(newhandle, 'hello!'))
+    call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+  
+--- 156,162 ----
+    endif
+    call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+  
+!   let newhandle = ch_open('localhost:' . s:port, s:chopt)
+    call assert_equal('got it', ch_sendexpr(newhandle, 'hello!'))
+    call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+  
+***************
+*** 181,187 ****
+  " Test that trying to connect to a non-existing port fails quickly.
+  func Test_connect_waittime()
+    let start = reltime()
+!   let handle = ch_open('localhost:9876')
+    if handle >= 0
+      " Oops, port does exists.
+      call ch_close(handle)
+--- 182,188 ----
+  " Test that trying to connect to a non-existing port fails quickly.
+  func Test_connect_waittime()
+    let start = reltime()
+!   let handle = ch_open('localhost:9876', s:chopt)
+    if handle >= 0
+      " Oops, port does exists.
+      call ch_close(handle)
+*** ../vim-7.4.1296/src/version.c	2016-02-09 21:24:40.988610334 +0100
+--- src/version.c	2016-02-09 23:28:24.430547760 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1297,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+207. You're given one phone call in prison and you ask them for a laptop.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

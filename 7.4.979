@@ -1,0 +1,60 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.979
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.979
+Problem:    When changing the crypt key the blocks read from disk are not
+            decrypted.
+Solution:   Also call ml_decrypt_data() when mf_old_key is set. (Ken Takata)
+Files:      src/memfile.c
+
+
+*** ../vim-7.4.978/src/memfile.c	2015-06-09 18:35:17.467406952 +0200
+--- src/memfile.c	2015-12-19 15:20:00.169578882 +0100
+***************
+*** 1032,1039 ****
+      }
+  
+  #ifdef FEAT_CRYPT
+!     /* Decrypt if 'key' is set and this is a data block. */
+!     if (*mfp->mf_buffer->b_p_key != NUL)
+  	ml_decrypt_data(mfp, hp->bh_data, offset, size);
+  #endif
+  
+--- 1032,1040 ----
+      }
+  
+  #ifdef FEAT_CRYPT
+!     /* Decrypt if 'key' is set and this is a data block. And when changing the
+!      * key. */
+!     if (*mfp->mf_buffer->b_p_key != NUL || mfp->mf_old_key != NULL)
+  	ml_decrypt_data(mfp, hp->bh_data, offset, size);
+  #endif
+  
+*** ../vim-7.4.978/src/version.c	2015-12-19 15:15:49.888288506 +0100
+--- src/version.c	2015-12-19 15:24:40.442543597 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     979,
+  /**/
+
+-- 
+DINGO:   You must spank her well and after you have spanked her you
+         may deal with her as you like and then ... spank me.
+AMAZING: And spank me!
+STUNNER: And me.
+LOVELY:  And me.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1193
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1193
+Problem:    Can't build the channel feature on MS-Windows.
+Solution:   Add #ifdef HAVE_POLL.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1192/src/channel.c	2016-01-28 22:36:15.044065128 +0100
+--- src/channel.c	2016-01-28 23:00:38.476630464 +0100
+***************
+*** 726,737 ****
+--- 726,739 ----
+  	break;
+      }
+  #else
++ # ifdef HAVE_POLL
+      struct pollfd	fds;
+  
+      fds.fd = fd;
+      fds.events = POLLIN;
+      if (poll(&fds, 1, timeout) <= 0)
+  	return FAIL;
++ # endif
+  #endif
+      return OK;
+  }
+*** ../vim-7.4.1192/src/version.c	2016-01-28 22:46:52.017343116 +0100
+--- src/version.c	2016-01-28 23:01:09.388304761 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1193,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+62. If your doorbell rings, you think that new mail has arrived.  And then
+    you're disappointed that it's only someone at the door.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

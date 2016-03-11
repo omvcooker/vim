@@ -1,0 +1,80 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1481
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1481
+Problem:    Can't build with small features.
+Solution:   Add #ifdef.
+Files:      src/ex_cmds2.c
+
+
+*** ../vim-7.4.1480/src/ex_cmds2.c	2016-03-03 17:13:00.488910501 +0100
+--- src/ex_cmds2.c	2016-03-03 17:20:37.576051611 +0100
+***************
+*** 3057,3062 ****
+--- 3057,3063 ----
+      return do_in_path(p_rtp, name, all ? DIP_ALL : 0, callback, cookie);
+  }
+  
++ #ifdef FEAT_AUTOCMD
+  /*
+   * Source filetype detection scripts, if filetype.vim was already done.
+   */
+***************
+*** 3075,3080 ****
+--- 3076,3082 ----
+      }
+      vim_free(cmd);
+  }
++ #endif
+  
+      static void
+  add_pack_plugin(char_u *fname, void *cookie)
+***************
+*** 3160,3166 ****
+--- 3162,3170 ----
+  {
+      do_in_path(p_pp, (char_u *)"pack/*/ever/*/plugin/*.vim",
+  					      DIP_ALL, add_pack_plugin, p_pp);
++ #ifdef FEAT_AUTOCMD
+      may_do_filetypes((char_u *)"pack/*/ever/*/ftdetect/*.vim");
++ #endif
+  }
+  
+  /*
+***************
+*** 3181,3188 ****
+--- 3185,3194 ----
+      vim_snprintf(pat, len, plugpat, eap->arg);
+      do_in_path(p_pp, (char_u *)pat, DIP_ALL, add_pack_plugin, p_pp);
+  
++ #ifdef FEAT_AUTOCMD
+      vim_snprintf(pat, len, ftpat, eap->arg);
+      may_do_filetypes((char_u *)pat);
++ #endif
+  
+      vim_free(pat);
+  }
+*** ../vim-7.4.1480/src/version.c	2016-03-03 17:13:00.492910458 +0100
+--- src/version.c	2016-03-03 17:21:15.283660629 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1481,
+  /**/
+
+-- 
+"Beware of bugs in the above code; I have only proved
+it correct, not tried it." -- Donald Knuth
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

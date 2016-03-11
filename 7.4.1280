@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1280
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1280
+Problem:    Missing case value.
+Solution:   Add VAR_JOB.
+Files:      src/if_python.c, src/if_python3.c
+
+
+*** ../vim-7.4.1279/src/if_python.c	2016-02-06 20:32:20.879442156 +0100
+--- src/if_python.c	2016-02-06 21:55:58.606807228 +0100
+***************
+*** 1560,1565 ****
+--- 1560,1566 ----
+  	case VAR_STRING:
+  	case VAR_FLOAT:
+  	case VAR_SPECIAL:
++ 	case VAR_JOB:
+  	    break;
+      }
+  }
+*** ../vim-7.4.1279/src/if_python3.c	2016-02-06 20:32:20.879442156 +0100
+--- src/if_python3.c	2016-02-06 21:56:09.050696868 +0100
+***************
+*** 1653,1658 ****
+--- 1653,1659 ----
+  	case VAR_STRING:
+  	case VAR_FLOAT:
+  	case VAR_SPECIAL:
++ 	case VAR_JOB:
+  	    break;
+      }
+  }
+*** ../vim-7.4.1279/src/version.c	2016-02-07 19:16:24.242303692 +0100
+--- src/version.c	2016-02-07 19:23:35.885815271 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1280,
+  /**/
+
+-- 
+        Very funny, Scotty.  Now beam down my clothes.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

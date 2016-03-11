@@ -1,0 +1,44 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1110
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1110
+Problem:    Test 108 fails when language is French.
+Solution:   Force English messages. (Dominique Pelle)
+Files:      src/testdir/test108.in
+
+
+*** ../vim-7.4.1109/src/testdir/test108.in	2016-01-16 15:40:04.702704650 +0100
+--- src/testdir/test108.in	2016-01-16 22:06:08.451903765 +0100
+***************
+*** 2,7 ****
+--- 2,8 ----
+  
+  STARTTEST
+  :so small.vim
++ :lang mess C
+  :function! Foo()
+  :   let var1 = 1
+  :   let var2 = Bar(var1) + 9
+*** ../vim-7.4.1109/src/version.c	2016-01-16 22:02:52.942046118 +0100
+--- src/version.c	2016-01-16 22:06:54.591398219 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1110,
+  /**/
+
+-- 
+Lower life forms have more fun!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

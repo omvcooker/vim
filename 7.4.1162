@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1162
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1162
+Problem:    Missing error number in MzScheme. (Dominique Pelle)
+Solution:   Add a proper error number.
+Files:      src/if_mzsch.c
+
+
+*** ../vim-7.4.1161/src/if_mzsch.c	2016-01-23 19:45:48.622931332 +0100
+--- src/if_mzsch.c	2016-01-24 13:55:40.075039794 +0100
+***************
+*** 1290,1296 ****
+  #endif
+  	if (load_base_module_failed || startup_mzscheme())
+  	{
+! 	    EMSG(_("Exxx: Sorry, this command is disabled, the MzScheme's racket/base module could not be loaded."));
+  	    return -1;
+  	}
+  	initialized = TRUE;
+--- 1290,1296 ----
+  #endif
+  	if (load_base_module_failed || startup_mzscheme())
+  	{
+! 	    EMSG(_("E895: Sorry, this command is disabled, the MzScheme's racket/base module could not be loaded."));
+  	    return -1;
+  	}
+  	initialized = TRUE;
+*** ../vim-7.4.1161/src/version.c	2016-01-23 23:02:30.252636325 +0100
+--- src/version.c	2016-01-24 13:57:00.314209556 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1162,
+  /**/
+
+-- 
+I am also told that there is a logical proof out there somewhere
+that demonstrates that there is no task which duct tape cannot handle.
+					-- Paul Brannan
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

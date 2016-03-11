@@ -1,0 +1,144 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1302
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1302
+Problem:    Typo in struct field name. (Ken Takata)
+Solution:   Rename jf_pi to jv_pi.
+Files:      src/eval.c, src/os_win32.c, src/structs.h
+
+
+*** ../vim-7.4.1301/src/eval.c	2016-02-10 22:23:02.256605792 +0100
+--- src/eval.c	2016-02-11 12:39:39.305579653 +0100
+***************
+*** 21622,21628 ****
+  			    "process %ld %s", (long)job->jv_pid, status);
+  # elif defined(WIN32)
+  		vim_snprintf((char *)buf, NUMBUFLEN,
+! 			    "process %ld %s", (long)job->jf_pi.dwProcessId,
+  			    status);
+  # else
+  		/* fall-back */
+--- 21622,21628 ----
+  			    "process %ld %s", (long)job->jv_pid, status);
+  # elif defined(WIN32)
+  		vim_snprintf((char *)buf, NUMBUFLEN,
+! 			    "process %ld %s", (long)job->jv_pi.dwProcessId,
+  			    status);
+  # else
+  		/* fall-back */
+*** ../vim-7.4.1301/src/os_win32.c	2016-02-07 19:57:12.192788494 +0100
+--- src/os_win32.c	2016-02-11 12:39:55.573410921 +0100
+***************
+*** 5050,5056 ****
+  	job->jv_status = JOB_FAILED;
+      else
+      {
+! 	job->jf_pi = pi;
+  	job->jv_status = JOB_STARTED;
+      }
+  }
+--- 5050,5056 ----
+  	job->jv_status = JOB_FAILED;
+      else
+      {
+! 	job->jv_pi = pi;
+  	job->jv_status = JOB_STARTED;
+      }
+  }
+***************
+*** 5060,5071 ****
+  {
+      DWORD dwExitCode = 0;
+  
+!     if (!GetExitCodeProcess(job->jf_pi.hProcess, &dwExitCode))
+  	return "dead";
+      if (dwExitCode != STILL_ACTIVE)
+      {
+! 	CloseHandle(job->jf_pi.hProcess);
+! 	CloseHandle(job->jf_pi.hThread);
+  	return "dead";
+      }
+      return "run";
+--- 5060,5071 ----
+  {
+      DWORD dwExitCode = 0;
+  
+!     if (!GetExitCodeProcess(job->jv_pi.hProcess, &dwExitCode))
+  	return "dead";
+      if (dwExitCode != STILL_ACTIVE)
+      {
+! 	CloseHandle(job->jv_pi.hProcess);
+! 	CloseHandle(job->jv_pi.hThread);
+  	return "dead";
+      }
+      return "run";
+***************
+*** 5075,5086 ****
+  mch_stop_job(job_T *job, char_u *how)
+  {
+      if (STRCMP(how, "kill") == 0)
+! 	TerminateProcess(job->jf_pi.hProcess, 0);
+      else
+  	return GenerateConsoleCtrlEvent(
+  	    STRCMP(how, "hup") == 0 ?
+  		    CTRL_BREAK_EVENT : CTRL_C_EVENT,
+! 		job->jf_pi.dwProcessId) ? OK : FAIL;
+      return OK;
+  }
+  #endif
+--- 5075,5086 ----
+  mch_stop_job(job_T *job, char_u *how)
+  {
+      if (STRCMP(how, "kill") == 0)
+! 	TerminateProcess(job->jv_pi.hProcess, 0);
+      else
+  	return GenerateConsoleCtrlEvent(
+  	    STRCMP(how, "hup") == 0 ?
+  		    CTRL_BREAK_EVENT : CTRL_C_EVENT,
+! 		job->jv_pi.dwProcessId) ? OK : FAIL;
+      return OK;
+  }
+  #endif
+*** ../vim-7.4.1301/src/structs.h	2016-02-07 19:16:24.238303734 +0100
+--- src/structs.h	2016-02-11 12:39:58.965375728 +0100
+***************
+*** 1249,1255 ****
+      int		jv_exitval;
+  #endif
+  #ifdef WIN32
+!     PROCESS_INFORMATION	jf_pi;
+  #endif
+      jobstatus_T	jv_status;
+  
+--- 1249,1255 ----
+      int		jv_exitval;
+  #endif
+  #ifdef WIN32
+!     PROCESS_INFORMATION	jv_pi;
+  #endif
+      jobstatus_T	jv_status;
+  
+*** ../vim-7.4.1301/src/version.c	2016-02-10 23:28:15.283268981 +0100
+--- src/version.c	2016-02-11 12:40:22.365133025 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1302,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+223. You set up a web-cam as your home's security system.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

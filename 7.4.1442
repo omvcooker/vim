@@ -1,0 +1,62 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1442
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1442
+Problem:    MS-Windows: more compilation warnings for destructor.
+Solution:   Add "virtual". (Ken Takata)
+Files:      src/if_ole.cpp
+
+
+*** ../vim-7.4.1441/src/if_ole.cpp	2013-05-06 04:06:04.000000000 +0200
+--- src/if_ole.cpp	2016-02-27 21:58:11.411020991 +0100
+***************
+*** 96,102 ****
+  class CVim : public IVim
+  {
+  public:
+!     ~CVim();
+      static CVim *Create(int *pbDoRestart);
+  
+      // IUnknown members
+--- 96,102 ----
+  class CVim : public IVim
+  {
+  public:
+!     virtual ~CVim();
+      static CVim *Create(int *pbDoRestart);
+  
+      // IUnknown members
+***************
+*** 432,437 ****
+--- 432,438 ----
+  {
+  public:
+      static CVimCF *Create();
++     virtual ~CVimCF() {};
+  
+      STDMETHOD(QueryInterface)(REFIID riid, void ** ppv);
+      STDMETHOD_(unsigned long, AddRef)(void);
+*** ../vim-7.4.1441/src/version.c	2016-02-27 21:52:56.622336150 +0100
+--- src/version.c	2016-02-27 21:57:23.191528758 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1442,
+  /**/
+
+-- 
+No children may attend school with their breath smelling of "wild onions."
+		[real standing law in West Virginia, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

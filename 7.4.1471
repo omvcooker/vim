@@ -1,0 +1,50 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1471
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1471
+Problem:    Missing out-of-memory check.  And Coverity warning.
+Solution:   Bail out when msg is NULL.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1470/src/channel.c	2016-03-02 21:09:28.670516946 +0100
+--- src/channel.c	2016-03-02 21:15:00.111028733 +0100
+***************
+*** 1516,1521 ****
+--- 1516,1524 ----
+  	     * get everything we have. */
+  	    msg = channel_get_all(channel, part);
+  
++ 	if (msg == NULL)
++ 	    return FALSE; /* out of memory (and avoids Coverity warning) */
++ 
+  	argv[1].v_type = VAR_STRING;
+  	argv[1].vval.v_string = msg;
+      }
+*** ../vim-7.4.1470/src/version.c	2016-03-02 21:09:28.670516946 +0100
+--- src/version.c	2016-03-02 21:16:08.682307593 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1471,
+  /**/
+
+-- 
+LARGE MAN:   Who's that then?
+CART DRIVER: (Grudgingly) I dunno, Must be a king.
+LARGE MAN:   Why?
+CART DRIVER: He hasn't got shit all over him.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

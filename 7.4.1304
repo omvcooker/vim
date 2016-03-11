@@ -1,0 +1,909 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1304
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1304
+Problem:    Function names are difficult to read.
+Solution:   Rename jsonencode to json_encode, jsondecode to json_decode,
+            jsencode to js_encode and jsdecode to js_decode.
+Files:      src/eval.c, runtime/doc/eval.txt, src/testdir/test_json.vim
+
+
+*** ../vim-7.4.1303/src/eval.c	2016-02-11 20:48:28.341164377 +0100
+--- src/eval.c	2016-02-11 20:52:50.318406224 +0100
+***************
+*** 629,638 ****
+  static void f_job_status(typval_T *argvars, typval_T *rettv);
+  #endif
+  static void f_join(typval_T *argvars, typval_T *rettv);
+! static void f_jsdecode(typval_T *argvars, typval_T *rettv);
+! static void f_jsencode(typval_T *argvars, typval_T *rettv);
+! static void f_jsondecode(typval_T *argvars, typval_T *rettv);
+! static void f_jsonencode(typval_T *argvars, typval_T *rettv);
+  static void f_keys(typval_T *argvars, typval_T *rettv);
+  static void f_last_buffer_nr(typval_T *argvars, typval_T *rettv);
+  static void f_len(typval_T *argvars, typval_T *rettv);
+--- 629,638 ----
+  static void f_job_status(typval_T *argvars, typval_T *rettv);
+  #endif
+  static void f_join(typval_T *argvars, typval_T *rettv);
+! static void f_js_decode(typval_T *argvars, typval_T *rettv);
+! static void f_js_encode(typval_T *argvars, typval_T *rettv);
+! static void f_json_decode(typval_T *argvars, typval_T *rettv);
+! static void f_json_encode(typval_T *argvars, typval_T *rettv);
+  static void f_keys(typval_T *argvars, typval_T *rettv);
+  static void f_last_buffer_nr(typval_T *argvars, typval_T *rettv);
+  static void f_len(typval_T *argvars, typval_T *rettv);
+***************
+*** 8213,8222 ****
+      {"job_stop",	1, 2, f_job_stop},
+  #endif
+      {"join",		1, 2, f_join},
+!     {"jsdecode",	1, 1, f_jsdecode},
+!     {"jsencode",	1, 1, f_jsencode},
+!     {"jsondecode",	1, 1, f_jsondecode},
+!     {"jsonencode",	1, 1, f_jsonencode},
+      {"keys",		1, 1, f_keys},
+      {"last_buffer_nr",	0, 0, f_last_buffer_nr},/* obsolete */
+      {"len",		1, 1, f_len},
+--- 8213,8222 ----
+      {"job_stop",	1, 2, f_job_stop},
+  #endif
+      {"join",		1, 2, f_join},
+!     {"js_decode",	1, 1, f_js_decode},
+!     {"js_encode",	1, 1, f_js_encode},
+!     {"json_decode",	1, 1, f_json_decode},
+!     {"json_encode",	1, 1, f_json_encode},
+      {"keys",		1, 1, f_keys},
+      {"last_buffer_nr",	0, 0, f_last_buffer_nr},/* obsolete */
+      {"len",		1, 1, f_len},
+***************
+*** 14488,14497 ****
+  }
+  
+  /*
+!  * "jsdecode()" function
+   */
+      static void
+! f_jsdecode(typval_T *argvars, typval_T *rettv)
+  {
+      js_read_T	reader;
+  
+--- 14488,14497 ----
+  }
+  
+  /*
+!  * "js_decode()" function
+   */
+      static void
+! f_js_decode(typval_T *argvars, typval_T *rettv)
+  {
+      js_read_T	reader;
+  
+***************
+*** 14503,14522 ****
+  }
+  
+  /*
+!  * "jsencode()" function
+   */
+      static void
+! f_jsencode(typval_T *argvars, typval_T *rettv)
+  {
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = json_encode(&argvars[0], JSON_JS);
+  }
+  
+  /*
+!  * "jsondecode()" function
+   */
+      static void
+! f_jsondecode(typval_T *argvars, typval_T *rettv)
+  {
+      js_read_T	reader;
+  
+--- 14503,14522 ----
+  }
+  
+  /*
+!  * "js_encode()" function
+   */
+      static void
+! f_js_encode(typval_T *argvars, typval_T *rettv)
+  {
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = json_encode(&argvars[0], JSON_JS);
+  }
+  
+  /*
+!  * "json_decode()" function
+   */
+      static void
+! f_json_decode(typval_T *argvars, typval_T *rettv)
+  {
+      js_read_T	reader;
+  
+***************
+*** 14528,14537 ****
+  }
+  
+  /*
+!  * "jsonencode()" function
+   */
+      static void
+! f_jsonencode(typval_T *argvars, typval_T *rettv)
+  {
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = json_encode(&argvars[0], 0);
+--- 14528,14537 ----
+  }
+  
+  /*
+!  * "json_encode()" function
+   */
+      static void
+! f_json_encode(typval_T *argvars, typval_T *rettv)
+  {
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = json_encode(&argvars[0], 0);
+*** ../vim-7.4.1303/runtime/doc/eval.txt	2016-02-07 19:16:24.242303692 +0100
+--- runtime/doc/eval.txt	2016-02-11 20:55:47.796533999 +0100
+***************
+*** 1408,1414 ****
+  
+  					*v:false* *false-variable*
+  v:false		A Number with value zero. Used to put "false" in JSON.  See
+! 		|jsonencode()|.
+  
+  					*v:fcs_reason* *fcs_reason-variable*
+  v:fcs_reason	The reason why the |FileChangedShell| event was triggered.
+--- 1416,1425 ----
+  
+  					*v:false* *false-variable*
+  v:false		A Number with value zero. Used to put "false" in JSON.  See
+! 		|json_encode()|.
+! 		When used as a string this evaluates to "false". >
+! 			echo v:false
+! <			false ~
+  
+  					*v:fcs_reason* *fcs_reason-variable*
+  v:fcs_reason	The reason why the |FileChangedShell| event was triggered.
+***************
+*** 1543,1553 ****
+  
+  					*v:none* *none-variable*
+  v:none		An empty String. Used to put an empty item in JSON.  See
+! 		|jsonencode()|.
+  
+  					*v:null* *null-variable*
+  v:null		An empty String. Used to put "null" in JSON.  See
+! 		|jsonencode()|.
+  
+  					*v:oldfiles* *oldfiles-variable*
+  v:oldfiles	List of file names that is loaded from the |viminfo| file on
+--- 1556,1574 ----
+  
+  					*v:none* *none-variable*
+  v:none		An empty String. Used to put an empty item in JSON.  See
+! 		|json_encode()|.
+! 		When used as a number this evaluates to zero.
+! 		When used as a string this evaluates to "none". >
+! 			echo v:none
+! <			none ~
+  
+  					*v:null* *null-variable*
+  v:null		An empty String. Used to put "null" in JSON.  See
+! 		|json_encode()|.
+! 		When used as a number this evaluates to zero.
+! 		When used as a string this evaluates to "null". >
+! 			echo v:null
+! <			null ~
+  
+  					*v:oldfiles* *oldfiles-variable*
+  v:oldfiles	List of file names that is loaded from the |viminfo| file on
+***************
+*** 1716,1723 ****
+  
+  						*v:true* *true-variable*
+  v:true		A Number with value one. Used to put "true" in JSON.  See
+! 		|jsonencode()|.
+! 
+  						*v:val* *val-variable*
+  v:val		Value of the current item of a |List| or |Dictionary|.	Only
+  		valid while evaluating the expression used with |map()| and
+--- 1737,1746 ----
+  
+  						*v:true* *true-variable*
+  v:true		A Number with value one. Used to put "true" in JSON.  See
+! 		|json_encode()|.
+! 		When used as a string this evaluates to "true". >
+! 			echo v:true
+! <			true ~
+  						*v:val* *val-variable*
+  v:val		Value of the current item of a |List| or |Dictionary|.	Only
+  		valid while evaluating the expression used with |map()| and
+***************
+*** 1823,1828 ****
+--- 1846,1852 ----
+  did_filetype()			Number	TRUE if FileType autocommand event used
+  diff_filler( {lnum})		Number	diff filler lines about {lnum}
+  diff_hlID( {lnum}, {col})	Number	diff highlighting at {lnum}/{col}
++ disable_char_avail_for_testing({expr})  none  test without typeahead
+  empty( {expr})			Number	TRUE if {expr} is empty
+  escape( {string}, {chars})	String	escape {chars} in {string} with '\'
+  eval( {string})			any	evaluate {string} into its value
+***************
+*** 1929,1942 ****
+  isdirectory( {directory})	Number	TRUE if {directory} is a directory
+  islocked( {expr})		Number	TRUE if {expr} is locked
+  items( {dict})			List	key-value pairs in {dict}
+! job_start({command} [, {options}]) Job	start a job	
+! job_status({job})		String	get the status of a job
+! job_stop({job} [, {how}])	Number	stop a job
+  join( {list} [, {sep}])		String	join {list} items into one String
+! jsdecode( {string})		any	decode JS style JSON
+! jsencode( {expr})		String	encode JS style JSON
+! jsondecode( {string})		any	decode JSON
+! jsonencode( {expr})		String	encode JSON
+  keys( {dict})			List	keys in {dict}
+  len( {expr})			Number	the length of {expr}
+  libcall( {lib}, {func}, {arg})	String	call {func} in library {lib} with {arg}
+--- 1953,1966 ----
+  isdirectory( {directory})	Number	TRUE if {directory} is a directory
+  islocked( {expr})		Number	TRUE if {expr} is locked
+  items( {dict})			List	key-value pairs in {dict}
+! job_start( {command} [, {options}]) Job	start a job	
+! job_status( {job})		String	get the status of a job
+! job_stop( {job} [, {how}])	Number	stop a job
+  join( {list} [, {sep}])		String	join {list} items into one String
+! js_decode( {string})		any	decode JS style JSON
+! js_encode( {expr})		String	encode JS style JSON
+! json_decode( {string})		any	decode JSON
+! json_encode( {expr})		String	encode JSON
+  keys( {dict})			List	keys in {dict}
+  len( {expr})			Number	the length of {expr}
+  libcall( {lib}, {func}, {arg})	String	call {func} in library {lib} with {arg}
+***************
+*** 2660,2684 ****
+  		{address} has the form "hostname:port", e.g.,
+  		"localhost:8765".
+  
+! 		If {argdict} is given it must be a |Directory|.  The optional
+  		items are:
+! 			mode        "raw" or "json".
+  				    Default "json".
+  			callback    function to call for requests with a zero
+  				    sequence number.  See |channel-callback|.
+  				    Default: none.
+  			waittime    Specify connect timeout as milliseconds.
+  				    Negative means forever.
+! 				    Default: 0.
+  			timeout	    Specify response read timeout value as
+  				    milliseconds. 
+  				    Default: 2000.
+  
+  ch_sendexpr({handle}, {expr} [, {callback}])		*ch_sendexpr()*
+! 		Send {expr} over JSON channel {handle}.  See |channel-use|.
+  
+  		When {callback} is given returns immediately.  Without
+! 		{callback} waits for a JSON response and returns the decoded
+  		expression.  When there is an error or timeout returns an
+  		empty string.
+  
+--- 2688,2715 ----
+  		{address} has the form "hostname:port", e.g.,
+  		"localhost:8765".
+  
+! 		If {argdict} is given it must be a |Dictionary|.  The optional
+  		items are:
+! 			mode        "raw", "js" or "json".
+  				    Default "json".
+  			callback    function to call for requests with a zero
+  				    sequence number.  See |channel-callback|.
+  				    Default: none.
+  			waittime    Specify connect timeout as milliseconds.
+  				    Negative means forever.
+! 				    Default: 0 (don't wait)
+  			timeout	    Specify response read timeout value as
+  				    milliseconds. 
+  				    Default: 2000.
++ 		{only available when compiled with the |+channel| feature}
+  
+  ch_sendexpr({handle}, {expr} [, {callback}])		*ch_sendexpr()*
+! 		Send {expr} over channel {handle}.  The {expr} is encoded
+! 		according to the type of channel.  The function cannot be used
+! 		with a raw channel.  See |channel-use|.  *E912*
+  
+  		When {callback} is given returns immediately.  Without
+! 		{callback} waits for a response and returns the decoded
+  		expression.  When there is an error or timeout returns an
+  		empty string.
+  
+***************
+*** 2687,2695 ****
+  		function.  It is called when the response is received.  See
+  		|channel-callback|.
+  
+  ch_sendraw({handle}, {string} [, {callback}])		*ch_sendraw()*
+! 		Send {string} over raw channel {handle}.  See |channel-raw|.
+! 		Works like |ch_sendexpr()|, but does not decode the response.
+  
+  							*copy()*
+  copy({expr})	Make a copy of {expr}.	For Numbers and Strings this isn't
+--- 2718,2732 ----
+  		function.  It is called when the response is received.  See
+  		|channel-callback|.
+  
++ 		{only available when compiled with the |+channel| feature}
++ 
+  ch_sendraw({handle}, {string} [, {callback}])		*ch_sendraw()*
+! 		Send {string} over channel {handle}.
+! 		Works like |ch_sendexpr()|, but does not encode the request or
+! 		decode the response.  The caller is responsible for the
+! 		correct contents.  See |channel-use|.
+! 
+! 		{only available when compiled with the |+channel| feature}
+  
+  							*copy()*
+  copy({expr})	Make a copy of {expr}.	For Numbers and Strings this isn't
+***************
+*** 2697,2704 ****
+  		When {expr} is a |List| a shallow copy is created.  This means
+  		that the original |List| can be changed without changing the
+  		copy, and vice versa.  But the items are identical, thus
+! 		changing an item changes the contents of both |Lists|.	Also
+! 		see |deepcopy()|.
+  
+  cos({expr})						*cos()*
+  		Return the cosine of {expr}, measured in radians, as a |Float|.
+--- 2734,2742 ----
+  		When {expr} is a |List| a shallow copy is created.  This means
+  		that the original |List| can be changed without changing the
+  		copy, and vice versa.  But the items are identical, thus
+! 		changing an item changes the contents of both |Lists|.
+! 		A |Dictionary| is copied in a similar way as a |List|.
+! 		Also see |deepcopy()|.
+  
+  cos({expr})						*cos()*
+  		Return the cosine of {expr}, measured in radians, as a |Float|.
+***************
+*** 2868,2877 ****
+  		The highlight ID can be used with |synIDattr()| to obtain
+  		syntax information about the highlighting.
+  
+  empty({expr})						*empty()*
+  		Return the Number 1 if {expr} is empty, zero otherwise.
+! 		A |List| or |Dictionary| is empty when it does not have any
+! 		items.	A Number is empty when its value is zero.
+  		For a long |List| this is much faster than comparing the
+  		length with zero.
+  
+--- 2909,2930 ----
+  		The highlight ID can be used with |synIDattr()| to obtain
+  		syntax information about the highlighting.
+  
++ 					*disable_char_avail_for_testing()*
++ disable_char_avail_for_testing({expr})
++ 		When {expr} is 1 the internal char_avail() function will
++ 		return FALSE.  When {expr} is 0 the char_avail() function will
++ 		function normally.
++ 		Only use this for a test where typeahead causes the test not
++ 		to work.  E.g., to trigger the CursorMovedI autocommand event.
++ 
+  empty({expr})						*empty()*
+  		Return the Number 1 if {expr} is empty, zero otherwise.
+! 		- A |List| or |Dictionary| is empty when it does not have any
+! 		  items.
+! 		- A Number and Float is empty when its value is zero.
+! 		- |v:false|, |v:none| and |v:null| are empty, |v:true| is not.
+! 		- A Job is empty when it failed to start.
+! 
+  		For a long |List| this is much faster than comparing the
+  		length with zero.
+  
+***************
+*** 4290,4319 ****
+  		converted into a string like with |string()|.
+  		The opposite function is |split()|.
+  
+! jsdecode({string})					*jsdecode()*
+! 		This is similar to |jsondecode()| with these differences:
+  		- Object key names do not have to be in quotes.
+  		- Empty items in an array (between two commas) are allowed and
+  		  result in v:none items.
+  
+! jsencode({expr})					*jsencode()*
+! 		This is similar to |jsonencode()| with these differences:
+  		- Object key names are not in quotes.
+  		- v:none items in an array result in an empty item between
+  		  commas.
+  		For example, the Vim object:
+! 			[1,v:none,{"one":1}],v:none ~
+  		Will be encoded as:
+  			[1,,{one:1},,] ~
+! 		While jsonencode() would produce:
+  			[1,null,{"one":1},null] ~
+  		This encoding is valid for JavaScript. It is more efficient
+  		than JSON, especially when using an array with optional items.
+  
+  
+! jsondecode({string})					*jsondecode()*
+  		This parses a JSON formatted string and returns the equivalent
+! 		in Vim values.  See |jsonencode()| for the relation between
+  		JSON and Vim values.
+  		The decoding is permissive:
+  		- A trailing comma in an array and object is ignored.
+--- 4403,4432 ----
+  		converted into a string like with |string()|.
+  		The opposite function is |split()|.
+  
+! js_decode({string})					*js_decode()*
+! 		This is similar to |json_decode()| with these differences:
+  		- Object key names do not have to be in quotes.
+  		- Empty items in an array (between two commas) are allowed and
+  		  result in v:none items.
+  
+! js_encode({expr})					*js_encode()*
+! 		This is similar to |json_encode()| with these differences:
+  		- Object key names are not in quotes.
+  		- v:none items in an array result in an empty item between
+  		  commas.
+  		For example, the Vim object:
+! 			[1,v:none,{"one":1},v:none] ~
+  		Will be encoded as:
+  			[1,,{one:1},,] ~
+! 		While json_encode() would produce:
+  			[1,null,{"one":1},null] ~
+  		This encoding is valid for JavaScript. It is more efficient
+  		than JSON, especially when using an array with optional items.
+  
+  
+! json_decode({string})					*json_decode()*
+  		This parses a JSON formatted string and returns the equivalent
+! 		in Vim values.  See |json_encode()| for the relation between
+  		JSON and Vim values.
+  		The decoding is permissive:
+  		- A trailing comma in an array and object is ignored.
+***************
+*** 4323,4329 ****
+  		- An empty object member name is not allowed.
+  		- Duplicate object member names are not allowed.
+  
+! jsonencode({expr})					*jsonencode()*
+  		Encode {expr} as JSON and return this as a string.
+  		The encoding is specified in:
+  		https://tools.ietf.org/html/rfc7159.html
+--- 4436,4442 ----
+  		- An empty object member name is not allowed.
+  		- Duplicate object member names are not allowed.
+  
+! json_encode({expr})					*json_encode()*
+  		Encode {expr} as JSON and return this as a string.
+  		The encoding is specified in:
+  		https://tools.ietf.org/html/rfc7159.html
+*** ../vim-7.4.1303/src/testdir/test_json.vim	2016-02-07 19:22:28.318517817 +0100
+--- src/testdir/test_json.vim	2016-02-11 20:54:31.473338998 +0100
+***************
+*** 55,253 ****
+  let s:varvals = [v:true, v:false, v:null, v:null]
+  
+  func Test_json_encode()
+!   call assert_equal(s:json1, jsonencode(s:var1))
+!   call assert_equal(s:json2, jsonencode(s:var2))
+!   call assert_equal(s:json3, jsonencode(s:var3))
+!   call assert_equal(s:json4, jsonencode(s:var4))
+!   call assert_equal(s:json5, jsonencode(s:var5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:jsonmb, jsonencode(s:varmb))
+    endif
+  
+!   call assert_equal(s:jsonnr, jsonencode(s:varnr))
+    if has('float')
+!     call assert_equal(s:jsonfl, jsonencode(s:varfl))
+    endif
+  
+!   call assert_equal(s:jsonl1, jsonencode(s:varl1))
+!   call assert_equal(s:jsonl2, jsonencode(s:varl2))
+!   call assert_equal(s:jsonl3, jsonencode(s:varl3))
+  
+!   call assert_equal(s:jsond1, jsonencode(s:vard1))
+!   call assert_equal(s:jsond2, jsonencode(s:vard2))
+!   call assert_equal(s:jsond3, jsonencode(s:vard3))
+!   call assert_equal(s:jsond4, jsonencode(s:vard4))
+  
+!   call assert_equal(s:jsonvals, jsonencode(s:varvals))
+  
+!   call assert_fails('echo jsonencode(function("tr"))', 'E474:')
+!   call assert_fails('echo jsonencode([function("tr")])', 'E474:')
+  
+!   silent! let res = jsonencode(function("tr"))
+    call assert_equal("", res)
+  endfunc
+  
+  func Test_json_decode()
+!   call assert_equal(s:var1, jsondecode(s:json1))
+!   call assert_equal(s:var2, jsondecode(s:json2))
+!   call assert_equal(s:var3, jsondecode(s:json3))
+!   call assert_equal(s:var4, jsondecode(s:json4))
+!   call assert_equal(s:var5, jsondecode(s:json5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:varmb, jsondecode(s:jsonmb))
+    endif
+  
+!   call assert_equal(s:varnr, jsondecode(s:jsonnr))
+    if has('float')
+!     call assert_equal(s:varfl, jsondecode(s:jsonfl))
+    endif
+  
+!   call assert_equal(s:varl1, jsondecode(s:jsonl1))
+!   call assert_equal(s:varl2x, jsondecode(s:jsonl2))
+!   call assert_equal(s:varl2x, jsondecode(s:jsonl2s))
+!   call assert_equal(s:varl3, jsondecode(s:jsonl3))
+! 
+!   call assert_equal(s:vard1, jsondecode(s:jsond1))
+!   call assert_equal(s:vard2x, jsondecode(s:jsond2))
+!   call assert_equal(s:vard2x, jsondecode(s:jsond2s))
+!   call assert_equal(s:vard3, jsondecode(s:jsond3))
+!   call assert_equal(s:vard4x, jsondecode(s:jsond4))
+! 
+!   call assert_equal(s:varvals, jsondecode(s:jsonvals))
+! 
+!   call assert_equal(v:true, jsondecode('true'))
+!   call assert_equal(type(v:true), type(jsondecode('true')))
+!   call assert_equal(v:none, jsondecode(''))
+!   call assert_equal(type(v:none), type(jsondecode('')))
+!   call assert_equal("", jsondecode('""'))
+! 
+!   call assert_equal({'n': 1}, jsondecode('{"n":1,}'))
+! 
+!   call assert_fails('call jsondecode("\"")', "E474:")
+!   call assert_fails('call jsondecode("blah")', "E474:")
+!   call assert_fails('call jsondecode("true blah")', "E474:")
+!   call assert_fails('call jsondecode("<foobar>")', "E474:")
+! 
+!   call assert_fails('call jsondecode("{")', "E474:")
+!   call assert_fails('call jsondecode("{foobar}")', "E474:")
+!   call assert_fails('call jsondecode("{\"n\",")', "E474:")
+!   call assert_fails('call jsondecode("{\"n\":")', "E474:")
+!   call assert_fails('call jsondecode("{\"n\":1")', "E474:")
+!   call assert_fails('call jsondecode("{\"n\":1,")', "E474:")
+!   call assert_fails('call jsondecode("{\"n\",1}")', "E474:")
+!   call assert_fails('call jsondecode("{-}")', "E474:")
+! 
+!   call assert_fails('call jsondecode("[foobar]")', "E474:")
+!   call assert_fails('call jsondecode("[")', "E474:")
+!   call assert_fails('call jsondecode("[1")', "E474:")
+!   call assert_fails('call jsondecode("[1,")', "E474:")
+!   call assert_fails('call jsondecode("[1 2]")', "E474:")
+  
+!   call assert_fails('call jsondecode("[1,,2]")', "E474:")
+  endfunc
+  
+  let s:jsl5 = '[7,,,]'
+  let s:varl5 = [7, v:none, v:none]
+  
+  func Test_js_encode()
+!   call assert_equal(s:json1, jsencode(s:var1))
+!   call assert_equal(s:json2, jsencode(s:var2))
+!   call assert_equal(s:json3, jsencode(s:var3))
+!   call assert_equal(s:json4, jsencode(s:var4))
+!   call assert_equal(s:json5, jsencode(s:var5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:jsonmb, jsencode(s:varmb))
+    endif
+  
+!   call assert_equal(s:jsonnr, jsencode(s:varnr))
+    if has('float')
+!     call assert_equal(s:jsonfl, jsencode(s:varfl))
+    endif
+  
+!   call assert_equal(s:jsonl1, jsencode(s:varl1))
+!   call assert_equal(s:jsonl2, jsencode(s:varl2))
+!   call assert_equal(s:jsonl3, jsencode(s:varl3))
+  
+!   call assert_equal(s:jsd1, jsencode(s:vard1))
+!   call assert_equal(s:jsd2, jsencode(s:vard2))
+!   call assert_equal(s:jsd3, jsencode(s:vard3))
+!   call assert_equal(s:jsd4, jsencode(s:vard4))
+  
+!   call assert_equal(s:jsonvals, jsencode(s:varvals))
+  
+!   call assert_fails('echo jsencode(function("tr"))', 'E474:')
+!   call assert_fails('echo jsencode([function("tr")])', 'E474:')
+  
+!   silent! let res = jsencode(function("tr"))
+    call assert_equal("", res)
+  
+!   call assert_equal(s:jsl5, jsencode(s:varl5))
+  endfunc
+  
+  func Test_js_decode()
+!   call assert_equal(s:var1, jsdecode(s:json1))
+!   call assert_equal(s:var2, jsdecode(s:json2))
+!   call assert_equal(s:var3, jsdecode(s:json3))
+!   call assert_equal(s:var4, jsdecode(s:json4))
+!   call assert_equal(s:var5, jsdecode(s:json5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:varmb, jsdecode(s:jsonmb))
+    endif
+  
+!   call assert_equal(s:varnr, jsdecode(s:jsonnr))
+    if has('float')
+!     call assert_equal(s:varfl, jsdecode(s:jsonfl))
+    endif
+  
+!   call assert_equal(s:varl1, jsdecode(s:jsonl1))
+!   call assert_equal(s:varl2x, jsdecode(s:jsonl2))
+!   call assert_equal(s:varl2x, jsdecode(s:jsonl2s))
+!   call assert_equal(s:varl3, jsdecode(s:jsonl3))
+! 
+!   call assert_equal(s:vard1, jsdecode(s:jsond1))
+!   call assert_equal(s:vard1, jsdecode(s:jsd1))
+!   call assert_equal(s:vard2x, jsdecode(s:jsond2))
+!   call assert_equal(s:vard2x, jsdecode(s:jsd2))
+!   call assert_equal(s:vard2x, jsdecode(s:jsond2s))
+!   call assert_equal(s:vard2x, jsdecode(s:jsd2s))
+!   call assert_equal(s:vard3, jsdecode(s:jsond3))
+!   call assert_equal(s:vard3, jsdecode(s:jsd3))
+!   call assert_equal(s:vard4x, jsdecode(s:jsond4))
+!   call assert_equal(s:vard4x, jsdecode(s:jsd4))
+! 
+!   call assert_equal(s:varvals, jsdecode(s:jsonvals))
+! 
+!   call assert_equal(v:true, jsdecode('true'))
+!   call assert_equal(type(v:true), type(jsdecode('true')))
+!   call assert_equal(v:none, jsdecode(''))
+!   call assert_equal(type(v:none), type(jsdecode('')))
+!   call assert_equal("", jsdecode('""'))
+! 
+!   call assert_equal({'n': 1}, jsdecode('{"n":1,}'))
+! 
+!   call assert_fails('call jsdecode("\"")', "E474:")
+!   call assert_fails('call jsdecode("blah")', "E474:")
+!   call assert_fails('call jsdecode("true blah")', "E474:")
+!   call assert_fails('call jsdecode("<foobar>")', "E474:")
+! 
+!   call assert_fails('call jsdecode("{")', "E474:")
+!   call assert_fails('call jsdecode("{foobar}")', "E474:")
+!   call assert_fails('call jsdecode("{\"n\",")', "E474:")
+!   call assert_fails('call jsdecode("{\"n\":")', "E474:")
+!   call assert_fails('call jsdecode("{\"n\":1")', "E474:")
+!   call assert_fails('call jsdecode("{\"n\":1,")', "E474:")
+!   call assert_fails('call jsdecode("{\"n\",1}")', "E474:")
+!   call assert_fails('call jsdecode("{-}")', "E474:")
+! 
+!   call assert_fails('call jsdecode("[foobar]")', "E474:")
+!   call assert_fails('call jsdecode("[")', "E474:")
+!   call assert_fails('call jsdecode("[1")', "E474:")
+!   call assert_fails('call jsdecode("[1,")', "E474:")
+!   call assert_fails('call jsdecode("[1 2]")', "E474:")
+  
+!   call assert_equal(s:varl5, jsdecode(s:jsl5))
+  endfunc
+--- 55,253 ----
+  let s:varvals = [v:true, v:false, v:null, v:null]
+  
+  func Test_json_encode()
+!   call assert_equal(s:json1, json_encode(s:var1))
+!   call assert_equal(s:json2, json_encode(s:var2))
+!   call assert_equal(s:json3, json_encode(s:var3))
+!   call assert_equal(s:json4, json_encode(s:var4))
+!   call assert_equal(s:json5, json_encode(s:var5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:jsonmb, json_encode(s:varmb))
+    endif
+  
+!   call assert_equal(s:jsonnr, json_encode(s:varnr))
+    if has('float')
+!     call assert_equal(s:jsonfl, json_encode(s:varfl))
+    endif
+  
+!   call assert_equal(s:jsonl1, json_encode(s:varl1))
+!   call assert_equal(s:jsonl2, json_encode(s:varl2))
+!   call assert_equal(s:jsonl3, json_encode(s:varl3))
+  
+!   call assert_equal(s:jsond1, json_encode(s:vard1))
+!   call assert_equal(s:jsond2, json_encode(s:vard2))
+!   call assert_equal(s:jsond3, json_encode(s:vard3))
+!   call assert_equal(s:jsond4, json_encode(s:vard4))
+  
+!   call assert_equal(s:jsonvals, json_encode(s:varvals))
+  
+!   call assert_fails('echo json_encode(function("tr"))', 'E474:')
+!   call assert_fails('echo json_encode([function("tr")])', 'E474:')
+  
+!   silent! let res = json_encode(function("tr"))
+    call assert_equal("", res)
+  endfunc
+  
+  func Test_json_decode()
+!   call assert_equal(s:var1, json_decode(s:json1))
+!   call assert_equal(s:var2, json_decode(s:json2))
+!   call assert_equal(s:var3, json_decode(s:json3))
+!   call assert_equal(s:var4, json_decode(s:json4))
+!   call assert_equal(s:var5, json_decode(s:json5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:varmb, json_decode(s:jsonmb))
+    endif
+  
+!   call assert_equal(s:varnr, json_decode(s:jsonnr))
+    if has('float')
+!     call assert_equal(s:varfl, json_decode(s:jsonfl))
+    endif
+  
+!   call assert_equal(s:varl1, json_decode(s:jsonl1))
+!   call assert_equal(s:varl2x, json_decode(s:jsonl2))
+!   call assert_equal(s:varl2x, json_decode(s:jsonl2s))
+!   call assert_equal(s:varl3, json_decode(s:jsonl3))
+! 
+!   call assert_equal(s:vard1, json_decode(s:jsond1))
+!   call assert_equal(s:vard2x, json_decode(s:jsond2))
+!   call assert_equal(s:vard2x, json_decode(s:jsond2s))
+!   call assert_equal(s:vard3, json_decode(s:jsond3))
+!   call assert_equal(s:vard4x, json_decode(s:jsond4))
+! 
+!   call assert_equal(s:varvals, json_decode(s:jsonvals))
+! 
+!   call assert_equal(v:true, json_decode('true'))
+!   call assert_equal(type(v:true), type(json_decode('true')))
+!   call assert_equal(v:none, json_decode(''))
+!   call assert_equal(type(v:none), type(json_decode('')))
+!   call assert_equal("", json_decode('""'))
+! 
+!   call assert_equal({'n': 1}, json_decode('{"n":1,}'))
+! 
+!   call assert_fails('call json_decode("\"")', "E474:")
+!   call assert_fails('call json_decode("blah")', "E474:")
+!   call assert_fails('call json_decode("true blah")', "E474:")
+!   call assert_fails('call json_decode("<foobar>")', "E474:")
+! 
+!   call assert_fails('call json_decode("{")', "E474:")
+!   call assert_fails('call json_decode("{foobar}")', "E474:")
+!   call assert_fails('call json_decode("{\"n\",")', "E474:")
+!   call assert_fails('call json_decode("{\"n\":")', "E474:")
+!   call assert_fails('call json_decode("{\"n\":1")', "E474:")
+!   call assert_fails('call json_decode("{\"n\":1,")', "E474:")
+!   call assert_fails('call json_decode("{\"n\",1}")', "E474:")
+!   call assert_fails('call json_decode("{-}")', "E474:")
+! 
+!   call assert_fails('call json_decode("[foobar]")', "E474:")
+!   call assert_fails('call json_decode("[")', "E474:")
+!   call assert_fails('call json_decode("[1")', "E474:")
+!   call assert_fails('call json_decode("[1,")', "E474:")
+!   call assert_fails('call json_decode("[1 2]")', "E474:")
+  
+!   call assert_fails('call json_decode("[1,,2]")', "E474:")
+  endfunc
+  
+  let s:jsl5 = '[7,,,]'
+  let s:varl5 = [7, v:none, v:none]
+  
+  func Test_js_encode()
+!   call assert_equal(s:json1, js_encode(s:var1))
+!   call assert_equal(s:json2, js_encode(s:var2))
+!   call assert_equal(s:json3, js_encode(s:var3))
+!   call assert_equal(s:json4, js_encode(s:var4))
+!   call assert_equal(s:json5, js_encode(s:var5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:jsonmb, js_encode(s:varmb))
+    endif
+  
+!   call assert_equal(s:jsonnr, js_encode(s:varnr))
+    if has('float')
+!     call assert_equal(s:jsonfl, js_encode(s:varfl))
+    endif
+  
+!   call assert_equal(s:jsonl1, js_encode(s:varl1))
+!   call assert_equal(s:jsonl2, js_encode(s:varl2))
+!   call assert_equal(s:jsonl3, js_encode(s:varl3))
+  
+!   call assert_equal(s:jsd1, js_encode(s:vard1))
+!   call assert_equal(s:jsd2, js_encode(s:vard2))
+!   call assert_equal(s:jsd3, js_encode(s:vard3))
+!   call assert_equal(s:jsd4, js_encode(s:vard4))
+  
+!   call assert_equal(s:jsonvals, js_encode(s:varvals))
+  
+!   call assert_fails('echo js_encode(function("tr"))', 'E474:')
+!   call assert_fails('echo js_encode([function("tr")])', 'E474:')
+  
+!   silent! let res = js_encode(function("tr"))
+    call assert_equal("", res)
+  
+!   call assert_equal(s:jsl5, js_encode(s:varl5))
+  endfunc
+  
+  func Test_js_decode()
+!   call assert_equal(s:var1, js_decode(s:json1))
+!   call assert_equal(s:var2, js_decode(s:json2))
+!   call assert_equal(s:var3, js_decode(s:json3))
+!   call assert_equal(s:var4, js_decode(s:json4))
+!   call assert_equal(s:var5, js_decode(s:json5))
+  
+    if has('multi_byte')
+!     call assert_equal(s:varmb, js_decode(s:jsonmb))
+    endif
+  
+!   call assert_equal(s:varnr, js_decode(s:jsonnr))
+    if has('float')
+!     call assert_equal(s:varfl, js_decode(s:jsonfl))
+    endif
+  
+!   call assert_equal(s:varl1, js_decode(s:jsonl1))
+!   call assert_equal(s:varl2x, js_decode(s:jsonl2))
+!   call assert_equal(s:varl2x, js_decode(s:jsonl2s))
+!   call assert_equal(s:varl3, js_decode(s:jsonl3))
+! 
+!   call assert_equal(s:vard1, js_decode(s:jsond1))
+!   call assert_equal(s:vard1, js_decode(s:jsd1))
+!   call assert_equal(s:vard2x, js_decode(s:jsond2))
+!   call assert_equal(s:vard2x, js_decode(s:jsd2))
+!   call assert_equal(s:vard2x, js_decode(s:jsond2s))
+!   call assert_equal(s:vard2x, js_decode(s:jsd2s))
+!   call assert_equal(s:vard3, js_decode(s:jsond3))
+!   call assert_equal(s:vard3, js_decode(s:jsd3))
+!   call assert_equal(s:vard4x, js_decode(s:jsond4))
+!   call assert_equal(s:vard4x, js_decode(s:jsd4))
+! 
+!   call assert_equal(s:varvals, js_decode(s:jsonvals))
+! 
+!   call assert_equal(v:true, js_decode('true'))
+!   call assert_equal(type(v:true), type(js_decode('true')))
+!   call assert_equal(v:none, js_decode(''))
+!   call assert_equal(type(v:none), type(js_decode('')))
+!   call assert_equal("", js_decode('""'))
+! 
+!   call assert_equal({'n': 1}, js_decode('{"n":1,}'))
+! 
+!   call assert_fails('call js_decode("\"")', "E474:")
+!   call assert_fails('call js_decode("blah")', "E474:")
+!   call assert_fails('call js_decode("true blah")', "E474:")
+!   call assert_fails('call js_decode("<foobar>")', "E474:")
+! 
+!   call assert_fails('call js_decode("{")', "E474:")
+!   call assert_fails('call js_decode("{foobar}")', "E474:")
+!   call assert_fails('call js_decode("{\"n\",")', "E474:")
+!   call assert_fails('call js_decode("{\"n\":")', "E474:")
+!   call assert_fails('call js_decode("{\"n\":1")', "E474:")
+!   call assert_fails('call js_decode("{\"n\":1,")', "E474:")
+!   call assert_fails('call js_decode("{\"n\",1}")', "E474:")
+!   call assert_fails('call js_decode("{-}")', "E474:")
+! 
+!   call assert_fails('call js_decode("[foobar]")', "E474:")
+!   call assert_fails('call js_decode("[")', "E474:")
+!   call assert_fails('call js_decode("[1")', "E474:")
+!   call assert_fails('call js_decode("[1,")', "E474:")
+!   call assert_fails('call js_decode("[1 2]")', "E474:")
+  
+!   call assert_equal(s:varl5, js_decode(s:jsl5))
+  endfunc
+*** ../vim-7.4.1303/src/version.c	2016-02-11 20:48:28.341164377 +0100
+--- src/version.c	2016-02-11 20:51:44.031104429 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1304,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+233. You start dreaming about web pages...in html.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

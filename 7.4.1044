@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1044
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1044 (after 7.4.1042)
+Problem:    Can't build without the +eval feature.
+Solution:   Add #ifdef.
+Files:      src/ops.c
+
+
+*** ../vim-7.4.1043/src/ops.c	2016-01-03 22:47:52.987427330 +0100
+--- src/ops.c	2016-01-03 22:55:26.466465621 +0100
+***************
+*** 7205,7210 ****
+--- 7205,7211 ----
+  	    p_shm = p;
+  	}
+      }
++ #if defined(FEAT_EVAL)
+      if (dict != NULL)
+      {
+  	dict_add_nr_str(dict, "words", (long)word_count, NULL);
+***************
+*** 7223,7226 ****
+--- 7224,7228 ----
+  	    dict_add_nr_str(dict, "cursor_words", (long)word_count_cursor, NULL);
+  	}
+      }
++ #endif
+  }
+*** ../vim-7.4.1043/src/version.c	2016-01-03 22:51:12.241247186 +0100
+--- src/version.c	2016-01-03 22:56:11.205976193 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1044,
+  /**/
+
+-- 
+Shaw's Principle: Build a system that even a fool can use, and
+only a fool will want to use it.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

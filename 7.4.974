@@ -1,0 +1,96 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.974
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.974
+Problem:    When using :diffsplit the cursor jumps to the first line.
+Solution:   Put the cursor on the line related to where the cursor was before
+            the split.
+Files:      src/diff.c
+
+
+*** ../vim-7.4.973/src/diff.c	2015-08-04 21:51:20.522881723 +0200
+--- src/diff.c	2015-12-17 14:54:23.153799160 +0100
+***************
+*** 1087,1092 ****
+--- 1087,1093 ----
+      exarg_T	*eap;
+  {
+      win_T	*old_curwin = curwin;
++     buf_T	*old_curbuf = curbuf;
+  
+  #ifdef FEAT_GUI
+      need_mouse_correct = TRUE;
+***************
+*** 1105,1111 ****
+  	{
+  	    /* Set 'diff', 'scrollbind' on and 'wrap' off. */
+  	    diff_win_options(curwin, TRUE);
+! 	    diff_win_options(old_curwin, TRUE);
+  	}
+      }
+  }
+--- 1106,1123 ----
+  	{
+  	    /* Set 'diff', 'scrollbind' on and 'wrap' off. */
+  	    diff_win_options(curwin, TRUE);
+! 	    if (win_valid(old_curwin))
+! 	    {
+! 		diff_win_options(old_curwin, TRUE);
+! 
+! 		if (buf_valid(old_curbuf))
+! 		    /* Move the cursor position to that of the old window. */
+! 		    curwin->w_cursor.lnum = diff_get_corresponding_line(
+! 			    old_curbuf,
+! 			    old_curwin->w_cursor.lnum,
+! 			    curbuf,
+! 			    curwin->w_cursor.lnum);
+! 	    }
+  	}
+      }
+  }
+***************
+*** 2541,2547 ****
+      return OK;
+  }
+  
+- #if defined(FEAT_CURSORBIND) || defined(PROTO)
+      linenr_T
+  diff_get_corresponding_line(buf1, lnum1, buf2, lnum3)
+      buf_T	*buf1;
+--- 2553,2558 ----
+***************
+*** 2610,2616 ****
+  
+      return lnum2;
+  }
+- #endif
+  
+  #if defined(FEAT_FOLDING) || defined(PROTO)
+  /*
+--- 2621,2626 ----
+*** ../vim-7.4.973/src/version.c	2015-12-17 14:04:20.341240206 +0100
+--- src/version.c	2015-12-17 14:57:01.328144938 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     974,
+  /**/
+
+-- 
+FIRST HEAD:  Oh! quick! get the sword out I want to cut his head off.
+THIRD HEAD:  Oh, cut your own head off.
+SECOND HEAD: Yes - do us all a favour.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

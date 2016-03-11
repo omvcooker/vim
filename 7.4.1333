@@ -1,0 +1,95 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1333
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1333
+Problem:    Channel test fails on non-darwin builds.
+Solution:   Add the "osx" feature and test for that. (Kazunobu Kuriyama)
+Files:      runtime/doc/eval.txt, src/eval.c, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1332/runtime/doc/eval.txt	2016-02-13 17:04:08.426819018 +0100
+--- runtime/doc/eval.txt	2016-02-16 13:53:51.111035195 +0100
+***************
+*** 7182,7188 ****
+  localmap		Compiled with local mappings and abbr. |:map-local|
+  lua			Compiled with Lua interface |Lua|.
+  mac			Macintosh version of Vim.
+! macunix			Macintosh version of Vim, using Unix files (OS-X).
+  menu			Compiled with support for |:menu|.
+  mksession		Compiled with support for |:mksession|.
+  modify_fname		Compiled with file name modifiers. |filename-modifiers|
+--- 7275,7282 ----
+  localmap		Compiled with local mappings and abbr. |:map-local|
+  lua			Compiled with Lua interface |Lua|.
+  mac			Macintosh version of Vim.
+! macunix			Compiled for OS X, with darwin
+! osx			Compiled for OS X, with or without darwin
+  menu			Compiled with support for |:menu|.
+  mksession		Compiled with support for |:mksession|.
+  modify_fname		Compiled with file name modifiers. |filename-modifiers|
+*** ../vim-7.4.1332/src/eval.c	2016-02-16 12:44:21.998282540 +0100
+--- src/eval.c	2016-02-16 13:55:07.242246299 +0100
+***************
+*** 13117,13123 ****
+  	"mac",
+  #endif
+  #if defined(MACOS_X_UNIX)
+! 	"macunix",
+  #endif
+  #ifdef __QNX__
+  	"qnx",
+--- 13117,13126 ----
+  	"mac",
+  #endif
+  #if defined(MACOS_X_UNIX)
+! 	"macunix",  /* built with 'darwin' enabled */
+! #endif
+! #if defined(__APPLE__) && __APPLE__ == 1
+! 	"osx",	    /* built with or without 'darwin' enabled */
+  #endif
+  #ifdef __QNX__
+  	"qnx",
+*** ../vim-7.4.1332/src/testdir/test_channel.vim	2016-02-16 13:33:46.995504250 +0100
+--- src/testdir/test_channel.vim	2016-02-16 13:55:18.982124643 +0100
+***************
+*** 28,34 ****
+    finish
+  endif
+  
+! let s:chopt = has('macunix') ? {'waittime' : 1} : {}
+  
+  " Run "testfunc" after sarting the server and stop the server afterwards.
+  func s:run_server(testfunc)
+--- 28,34 ----
+    finish
+  endif
+  
+! let s:chopt = has('osx') ? {'waittime' : 1} : {}
+  
+  " Run "testfunc" after sarting the server and stop the server afterwards.
+  func s:run_server(testfunc)
+*** ../vim-7.4.1332/src/version.c	2016-02-16 13:42:20.286190997 +0100
+--- src/version.c	2016-02-16 13:57:40.868654205 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1333,
+  /**/
+
+-- 
+   A cow comes flying over the battlements,  lowing aggressively.  The cow
+   lands on GALAHAD'S PAGE, squashing him completely.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

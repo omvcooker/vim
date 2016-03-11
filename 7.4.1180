@@ -1,0 +1,81 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1180
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1180
+Problem:    Crash with invalid argument to glob2regpat().
+Solution:   Check for NULL. (Justin M. Keyes, closes #596)  Add a test.
+Files:      src/eval.c, src/testdir/test_glob2regpat.vim,
+            src/testdir/test_alot.vim
+
+
+*** ../vim-7.4.1179/src/eval.c	2016-01-25 20:22:49.966245416 +0100
+--- src/eval.c	2016-01-25 21:57:02.307139548 +0100
+***************
+*** 12993,12999 ****
+      char_u	*pat = get_tv_string_chk(&argvars[0]);
+  
+      rettv->v_type = VAR_STRING;
+!     rettv->vval.v_string = file_pat_to_reg_pat(pat, NULL, NULL, FALSE);
+  }
+  
+  /*
+--- 12993,13000 ----
+      char_u	*pat = get_tv_string_chk(&argvars[0]);
+  
+      rettv->v_type = VAR_STRING;
+!     rettv->vval.v_string = (pat == NULL)
+! 			 ? NULL : file_pat_to_reg_pat(pat, NULL, NULL, FALSE);
+  }
+  
+  /*
+*** ../vim-7.4.1179/src/testdir/test_glob2regpat.vim	2016-01-25 22:19:57.172686794 +0100
+--- src/testdir/test_glob2regpat.vim	2016-01-25 22:16:56.858591713 +0100
+***************
+*** 0 ****
+--- 1,10 ----
++ " Test glob2regpat()
++ 
++ func Test_invalid()
++   call assert_fails('call glob2regpat(1.33)', 'E806:')
++ endfunc
++ 
++ func Test_valid()
++   call assert_equal('^foo\.', glob2regpat('foo.*'))
++   call assert_equal('\.vim$', glob2regpat('*.vim'))
++ endfunc
+*** ../vim-7.4.1179/src/testdir/test_alot.vim	2016-01-23 19:45:48.626931291 +0100
+--- src/testdir/test_alot.vim	2016-01-25 21:55:38.344022487 +0100
+***************
+*** 5,10 ****
+--- 5,11 ----
+  source test_cursor_func.vim
+  source test_delete.vim
+  source test_expand.vim
++ source test_glob2regpat.vim
+  source test_json.vim
+  source test_lispwords.vim
+  source test_menu.vim
+*** ../vim-7.4.1179/src/version.c	2016-01-25 20:38:26.252524128 +0100
+--- src/version.c	2016-01-25 21:56:09.659693160 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1180,
+  /**/
+
+-- 
+Light travels faster than sound.  This is why some people
+appear bright until you hear them speak
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

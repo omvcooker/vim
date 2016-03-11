@@ -1,0 +1,183 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1221
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1221
+Problem:    Including netbeans and channel support in small and tiny builds.
+            Build fails with some interfaces.
+Solution:   Only include these features in small build and above.  Let
+            configure fail if trying to enable an interface that won't build.
+Files:      src/configure.in, src/auto/configure
+
+
+*** ../vim-7.4.1220/src/configure.in	2016-01-30 23:26:28.931356949 +0100
+--- src/configure.in	2016-01-31 14:28:30.044463484 +0100
+***************
+*** 490,495 ****
+--- 490,499 ----
+  AC_MSG_RESULT($enable_luainterp)
+  
+  if test "$enable_luainterp" = "yes" -o "$enable_luainterp" = "dynamic"; then
++   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
++     AC_MSG_ERROR([cannot use Lua with tiny or small features])
++   fi
++ 
+    dnl -- find the lua executable
+    AC_SUBST(vi_cv_path_lua)
+  
+***************
+*** 950,955 ****
+--- 954,962 ----
+  	[enable_perlinterp="no"])
+  AC_MSG_RESULT($enable_perlinterp)
+  if test "$enable_perlinterp" = "yes" -o "$enable_perlinterp" = "dynamic"; then
++   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
++     AC_MSG_ERROR([cannot use Perl with tiny or small features])
++   fi
+    AC_SUBST(vi_cv_path_perl)
+    AC_PATH_PROG(vi_cv_path_perl, perl)
+    if test "X$vi_cv_path_perl" != "X"; then
+***************
+*** 1937,1943 ****
+  	[  --disable-netbeans      Disable NetBeans integration support.],
+  	, [enable_netbeans="yes"])
+  if test "$enable_netbeans" = "yes"; then
+!   AC_MSG_RESULT(no)
+  else
+    AC_MSG_RESULT(yes)
+  fi
+--- 1944,1955 ----
+  	[  --disable-netbeans      Disable NetBeans integration support.],
+  	, [enable_netbeans="yes"])
+  if test "$enable_netbeans" = "yes"; then
+!   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+!     AC_MSG_RESULT([cannot use NetBeans with tiny or small features])
+!     enable_netbeans="no"
+!   else
+!     AC_MSG_RESULT(no)
+!   fi
+  else
+    AC_MSG_RESULT(yes)
+  fi
+***************
+*** 1947,1953 ****
+  	[  --disable-channel      Disable process communication support.],
+  	, [enable_channel="yes"])
+  if test "$enable_channel" = "yes"; then
+!   AC_MSG_RESULT(no)
+  else
+    if test "$enable_netbeans" = "yes"; then
+      AC_MSG_RESULT([yes, netbeans also disabled])
+--- 1959,1970 ----
+  	[  --disable-channel      Disable process communication support.],
+  	, [enable_channel="yes"])
+  if test "$enable_channel" = "yes"; then
+!   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+!     AC_MSG_RESULT([cannot use channels with tiny or small features])
+!     enable_channel="no"
+!   else
+!     AC_MSG_RESULT(no)
+!   fi
+  else
+    if test "$enable_netbeans" = "yes"; then
+      AC_MSG_RESULT([yes, netbeans also disabled])
+*** ../vim-7.4.1220/src/auto/configure	2016-01-30 21:48:44.329034406 +0100
+--- src/auto/configure	2016-01-31 14:28:33.280429745 +0100
+***************
+*** 4858,4863 ****
+--- 4858,4867 ----
+  $as_echo "$enable_luainterp" >&6; }
+  
+  if test "$enable_luainterp" = "yes" -o "$enable_luainterp" = "dynamic"; then
++   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
++     as_fn_error $? "cannot use Lua with tiny or small features" "$LINENO" 5
++   fi
++ 
+  
+  
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking --with-lua-prefix argument" >&5
+***************
+*** 5598,5603 ****
+--- 5602,5610 ----
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_perlinterp" >&5
+  $as_echo "$enable_perlinterp" >&6; }
+  if test "$enable_perlinterp" = "yes" -o "$enable_perlinterp" = "dynamic"; then
++   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
++     as_fn_error $? "cannot use Perl with tiny or small features" "$LINENO" 5
++   fi
+  
+    # Extract the first word of "perl", so it can be a program name with args.
+  set dummy perl; ac_word=$2
+***************
+*** 7235,7242 ****
+  fi
+  
+  if test "$enable_netbeans" = "yes"; then
+!   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+  $as_echo "no" >&6; }
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+  $as_echo "yes" >&6; }
+--- 7242,7255 ----
+  fi
+  
+  if test "$enable_netbeans" = "yes"; then
+!   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot use NetBeans with tiny or small features" >&5
+! $as_echo "cannot use NetBeans with tiny or small features" >&6; }
+!     enable_netbeans="no"
+!   else
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+  $as_echo "no" >&6; }
++   fi
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+  $as_echo "yes" >&6; }
+***************
+*** 7252,7259 ****
+  fi
+  
+  if test "$enable_channel" = "yes"; then
+!   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+  $as_echo "no" >&6; }
+  else
+    if test "$enable_netbeans" = "yes"; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes, netbeans also disabled" >&5
+--- 7265,7278 ----
+  fi
+  
+  if test "$enable_channel" = "yes"; then
+!   if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot use channels with tiny or small features" >&5
+! $as_echo "cannot use channels with tiny or small features" >&6; }
+!     enable_channel="no"
+!   else
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+  $as_echo "no" >&6; }
++   fi
+  else
+    if test "$enable_netbeans" = "yes"; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes, netbeans also disabled" >&5
+*** ../vim-7.4.1220/src/version.c	2016-01-31 14:13:18.113955970 +0100
+--- src/version.c	2016-01-31 14:32:37.137887701 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1221,
+  /**/
+
+-- 
+From "know your smileys":
+ ...---...   SOS
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

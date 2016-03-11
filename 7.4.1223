@@ -1,0 +1,124 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1223
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1223
+Problem:    Crash when setting v:errors to a number.
+Solution:   Free the typval without assuming its type. (Yasuhiro Matsumoto)
+Files:      src/eval.c, src/testdir/test_assert.vim
+
+
+*** ../vim-7.4.1222/src/eval.c	2016-01-31 14:55:35.223538514 +0100
+--- src/eval.c	2016-01-31 16:25:07.895472330 +0100
+***************
+*** 919,924 ****
+--- 919,926 ----
+  	    /* add to compat scope dict */
+  	    hash_add(&compat_hashtab, p->vv_di.di_key);
+      }
++     vimvars[VV_VERSION].vv_nr = VIM_VERSION_100;
++ 
+      set_vim_var_nr(VV_SEARCHFORWARD, 1L);
+      set_vim_var_nr(VV_HLSEARCH, 1L);
+      set_vim_var_dict(VV_COMPLETED_ITEM, dict_alloc());
+***************
+*** 20616,20626 ****
+      char_u	*val,
+      int		len)	    /* length of "val" to use or -1 (whole string) */
+  {
+!     /* Need to do this (at least) once, since we can't initialize a union.
+!      * Will always be invoked when "v:progname" is set. */
+!     vimvars[VV_VERSION].vv_nr = VIM_VERSION_100;
+! 
+!     vim_free(vimvars[idx].vv_str);
+      if (val == NULL)
+  	vimvars[idx].vv_str = NULL;
+      else if (len == -1)
+--- 20618,20625 ----
+      char_u	*val,
+      int		len)	    /* length of "val" to use or -1 (whole string) */
+  {
+!     clear_tv(&vimvars[idx].vv_di.di_tv);
+!     vimvars[idx].vv_type = VAR_STRING;
+      if (val == NULL)
+  	vimvars[idx].vv_str = NULL;
+      else if (len == -1)
+***************
+*** 20635,20641 ****
+      void
+  set_vim_var_list(int idx, list_T *val)
+  {
+!     list_unref(vimvars[idx].vv_list);
+      vimvars[idx].vv_list = val;
+      if (val != NULL)
+  	++val->lv_refcount;
+--- 20634,20641 ----
+      void
+  set_vim_var_list(int idx, list_T *val)
+  {
+!     clear_tv(&vimvars[idx].vv_di.di_tv);
+!     vimvars[idx].vv_type = VAR_LIST;
+      vimvars[idx].vv_list = val;
+      if (val != NULL)
+  	++val->lv_refcount;
+***************
+*** 20650,20656 ****
+      int		todo;
+      hashitem_T	*hi;
+  
+!     dict_unref(vimvars[idx].vv_dict);
+      vimvars[idx].vv_dict = val;
+      if (val != NULL)
+      {
+--- 20650,20657 ----
+      int		todo;
+      hashitem_T	*hi;
+  
+!     clear_tv(&vimvars[idx].vv_di.di_tv);
+!     vimvars[idx].vv_type = VAR_DICT;
+      vimvars[idx].vv_dict = val;
+      if (val != NULL)
+      {
+*** ../vim-7.4.1222/src/testdir/test_assert.vim	2016-01-19 14:31:14.448578407 +0100
+--- src/testdir/test_assert.vim	2016-01-31 15:20:49.219713567 +0100
+***************
+*** 37,42 ****
+--- 37,51 ----
+    endtry
+  endfunc
+  
++ func Test_wrong_error_type()
++   let save_verrors = v:errors
++   let v:['errors'] = {'foo': 3}
++   call assert_equal('yes', 'no')
++   let verrors = v:errors
++   let v:errors = save_verrors
++   call assert_equal(type([]), type(verrors))
++ endfunc
++ 
+  func Test_user_is_happy()
+    smile
+    sleep 300m
+*** ../vim-7.4.1222/src/version.c	2016-01-31 14:55:35.231538430 +0100
+--- src/version.c	2016-01-31 14:59:18.449205207 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1223,
+  /**/
+
+-- 
+From "know your smileys":
+ :-X	My lips are sealed
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

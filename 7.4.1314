@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1314
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1314
+Problem:    Warning for uninitialzed variable.
+Solution:   Initialize it. (Dominique Pelle)
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1313/src/channel.c	2016-02-13 17:04:08.418819101 +0100
+--- src/channel.c	2016-02-13 18:48:40.153721181 +0100
+***************
+*** 1537,1543 ****
+      channel_T	*channel = &channels[ch_idx];
+      int		len = (int)STRLEN(buf);
+      int		res;
+!     int		fd;
+      int		use_socket = FALSE;
+  
+      if (channel->ch_sock >= 0)
+--- 1537,1543 ----
+      channel_T	*channel = &channels[ch_idx];
+      int		len = (int)STRLEN(buf);
+      int		res;
+!     int		fd = -1;
+      int		use_socket = FALSE;
+  
+      if (channel->ch_sock >= 0)
+*** ../vim-7.4.1313/src/version.c	2016-02-13 18:40:26.750849403 +0100
+--- src/version.c	2016-02-13 18:50:10.928777939 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1314,
+  /**/
+
+-- 
+"Marriage is the process of finding out what kind of man your wife
+would have preferred"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

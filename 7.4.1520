@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1520
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1520
+Problem:    Channel test: Waiting for a file to appear doesn't work.
+Solution:   In waitFor() ignore errors.
+Files:      src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1519/src/testdir/test_channel.vim	2016-03-08 18:40:47.220948931 +0100
+--- src/testdir/test_channel.vim	2016-03-08 19:04:33.510166008 +0100
+***************
+*** 103,111 ****
+  " Wait for up to a second for "expr" to become true.
+  func s:waitFor(expr)
+    for i in range(100)
+!     if eval(a:expr)
+!       return
+!     endif
+      sleep 10m
+    endfor
+  endfunc
+--- 103,114 ----
+  " Wait for up to a second for "expr" to become true.
+  func s:waitFor(expr)
+    for i in range(100)
+!     try
+!       if eval(a:expr)
+! 	return
+!       endif
+!     catch
+!     endtry
+      sleep 10m
+    endfor
+  endfunc
+*** ../vim-7.4.1519/src/version.c	2016-03-08 18:40:47.220948931 +0100
+--- src/version.c	2016-03-08 19:06:29.048967109 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1520,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+15. Your heart races faster and beats irregularly each time you see a new WWW
+    site address in print or on TV, even though you've never had heart
+    problems before.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

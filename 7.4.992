@@ -1,0 +1,523 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.992
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.992
+Problem:    Makefiles for MS-Windows in src/po are outdated.
+Solution:   Make them work. (Ken Takata, Taro Muraoka)
+Files:      src/po/Make_cyg.mak, src/po/Make_ming.mak, src/po/Make_mvc.mak,
+            src/po/README_mingw.txt, src/po/README_mvc.txt
+
+
+*** ../vim-7.4.991/src/po/Make_cyg.mak	2010-05-15 13:04:07.000000000 +0200
+--- src/po/Make_cyg.mak	2015-12-29 16:00:09.575034011 +0100
+***************
+*** 12,18 ****
+  VIMRUNTIME = ../../runtime
+  endif
+  
+! LANGUAGES =	af \
+  		ca \
+  		cs \
+  		cs.cp1250 \
+--- 12,19 ----
+  VIMRUNTIME = ../../runtime
+  endif
+  
+! LANGUAGES = \
+! 		af \
+  		ca \
+  		cs \
+  		cs.cp1250 \
+***************
+*** 25,36 ****
+--- 26,41 ----
+  		ga \
+  		it \
+  		ja \
++ 		ja.euc-jp \
+  		ja.sjis \
+  		ko \
+  		ko.UTF-8 \
++ 		nb \
++ 		nl \
+  		no \
+  		pl \
+  		pl.cp1250 \
++ 		pl.UTF-8 \
+  		pt_BR \
+  		ru \
+  		ru.cp1251 \
+***************
+*** 41,52 ****
+  		uk.cp1251 \
+  		vi \
+  		zh_CN \
+- 		zh_CN.UTF-8 \
+  		zh_CN.cp936 \
+  		zh_TW \
+  		zh_TW.UTF-8 \
+  
+! MOFILES =	af.mo \
+  		ca.mo \
+  		cs.cp1250.mo \
+  		cs.mo \
+--- 46,58 ----
+  		uk.cp1251 \
+  		vi \
+  		zh_CN \
+  		zh_CN.cp936 \
++ 		zh_CN.UTF-8 \
+  		zh_TW \
+  		zh_TW.UTF-8 \
+  
+! MOFILES = \
+! 		af.mo \
+  		ca.mo \
+  		cs.cp1250.mo \
+  		cs.mo \
+***************
+*** 58,70 ****
+--- 64,80 ----
+  		fr.mo \
+  		ga.mo \
+  		it.mo \
++ 		ja.euc-jp.mo \
+  		ja.mo \
+  		ja.sjis.mo \
+  		ko.mo \
+  		ko.UTF-8.mo \
++ 		nb.mo \
++ 		nl.mo \
+  		no.mo \
+  		pl.cp1250.mo \
+  		pl.mo \
++ 		pl.UTF-8.mo \
+  		pt_BR.mo \
+  		ru.cp1251.mo \
+  		ru.mo \
+***************
+*** 74,84 ****
+  		uk.cp1251.mo \
+  		uk.mo \
+  		vi.mo \
+- 		zh_CN.UTF-8.mo \
+- 		zh_CN.cp936.mo \
+  		zh_CN.mo \
+! 		zh_TW.UTF-8.mo \
+  		zh_TW.mo \
+  
+  PACKAGE = vim
+  
+--- 84,94 ----
+  		uk.cp1251.mo \
+  		uk.mo \
+  		vi.mo \
+  		zh_CN.mo \
+! 		zh_CN.cp936.mo \
+! 		zh_CN.UTF-8.mo \
+  		zh_TW.mo \
++ 		zh_TW.UTF-8.mo \
+  
+  PACKAGE = vim
+  
+***************
+*** 135,140 ****
+--- 145,152 ----
+  		$(CP) $$TARGET.mo $(VIMRUNTIME)/lang/$$TARGET/LC_MESSAGES/$(PACKAGE).mo ; \
+  	done
+  
++ install-all: install
++ 
+  clean:
+  	$(RM) *.mo
+  	$(RM) *.pot
+*** ../vim-7.4.991/src/po/Make_ming.mak	2010-05-15 13:04:08.000000000 +0200
+--- src/po/Make_ming.mak	2015-12-29 16:00:09.575034011 +0100
+***************
+*** 10,19 ****
+--- 10,24 ----
+  # language (xx) and add it to the next three lines.
+  #
+  
++ ifndef VIMRUNTIME
++ VIMRUNTIME = ..\..\runtime
++ endif
++ 
+  LANGUAGES = \
+  		af \
+  		ca \
+  		cs \
++ 		cs.cp1250 \
+  		de \
+  		en_GB \
+  		eo \
+***************
+*** 23,45 ****
+  		ga \
+  		it \
+  		ja \
+  		ko \
+  		no \
+  		pl \
+  		pt_BR \
+  		ru \
+  		sk \
+  		sv \
+  		uk \
+  		vi \
+  		zh_CN \
+! 		zh_CN.UTF-8\
+  		zh_TW \
+  		zh_TW.UTF-8 \
+  
+  MOFILES = \
+  		af.mo \
+  		ca.mo \
+  		cs.mo \
+  		de.mo \
+  		en_GB.mo \
+--- 28,62 ----
+  		ga \
+  		it \
+  		ja \
++ 		ja.euc-jp \
++ 		ja.sjis \
+  		ko \
++ 		ko.UTF-8 \
++ 		nb \
++ 		nl \
+  		no \
+  		pl \
++ 		pl.cp1250 \
++ 		pl.UTF-8 \
+  		pt_BR \
+  		ru \
++ 		ru.cp1251 \
+  		sk \
++ 		sk.cp1250 \
+  		sv \
+  		uk \
++ 		uk.cp1251 \
+  		vi \
+  		zh_CN \
+! 		zh_CN.cp936 \
+! 		zh_CN.UTF-8 \
+  		zh_TW \
+  		zh_TW.UTF-8 \
+  
+  MOFILES = \
+  		af.mo \
+  		ca.mo \
++ 		cs.cp1250.mo \
+  		cs.mo \
+  		de.mo \
+  		en_GB.mo \
+***************
+*** 49,68 ****
+  		fr.mo \
+  		ga.mo \
+  		it.mo \
+  		ja.mo \
+  		ko.mo \
+  		no.mo \
+  		pl.mo \
+  		pt_BR.mo \
+  		ru.mo \
+  		sk.mo \
+  		sv.mo \
+  		uk.mo \
+  		vi.mo \
+- 		zh_CN.UTF-8.mo \
+  		zh_CN.mo \
+! 		zh_TW.UTF-8.mo \
+  		zh_TW.mo \
+  
+  PACKAGE = vim
+  
+--- 66,96 ----
+  		fr.mo \
+  		ga.mo \
+  		it.mo \
++ 		ja.euc-jp.mo \
+  		ja.mo \
++ 		ja.sjis.mo \
+  		ko.mo \
++ 		ko.UTF-8.mo \
++ 		nb.mo \
++ 		nl.mo \
+  		no.mo \
++ 		pl.cp1250.mo \
+  		pl.mo \
++ 		pl.UTF-8.mo \
+  		pt_BR.mo \
++ 		ru.cp1251.mo \
+  		ru.mo \
++ 		sk.cp1250.mo \
+  		sk.mo \
+  		sv.mo \
++ 		uk.cp1251.mo \
+  		uk.mo \
+  		vi.mo \
+  		zh_CN.mo \
+! 		zh_CN.cp936.mo \
+! 		zh_CN.UTF-8.mo \
+  		zh_TW.mo \
++ 		zh_TW.UTF-8.mo \
+  
+  PACKAGE = vim
+  
+***************
+*** 72,80 ****
+  #GETTEXT_PATH = C:/gettext-0.10.35-w32/win32/Release/
+  #GETTEXT_PATH = C:/cygwin/bin/
+  
+! MSGFMT = $(GETTEXT_PATH)msgfmt
+! XGETTEXT = $(GETTEXT_PATH)xgettext
+! MSGMERGE = $(GETTEXT_PATH)msgmerge
+  
+  MV = move
+  CP = copy
+--- 100,108 ----
+  #GETTEXT_PATH = C:/gettext-0.10.35-w32/win32/Release/
+  #GETTEXT_PATH = C:/cygwin/bin/
+  
+! MSGFMT = set OLD_PO_FILE_INPUT=yes && $(GETTEXT_PATH)msgfmt -v
+! XGETTEXT = set OLD_PO_FILE_INPUT=yes && set OLD_PO_FILE_OUTPUT=yes && $(GETTEXT_PATH)xgettext
+! MSGMERGE = set OLD_PO_FILE_INPUT=yes && set OLD_PO_FILE_OUTPUT=yes && $(GETTEXT_PATH)msgmerge
+  
+  MV = move
+  CP = copy
+***************
+*** 108,113 ****
+--- 136,146 ----
+  	$(MKD) $(VIMRUNTIME)\lang\$(LANGUAGE)\LC_MESSAGES
+  	$(CP) $(LANGUAGE).mo $(VIMRUNTIME)\lang\$(LANGUAGE)\LC_MESSAGES\$(PACKAGE).mo
+  
++ install-all: all
++ 	FOR %%l IN ($(LANGUAGES)) DO @IF NOT EXIST $(VIMRUNTIME)\lang\%%l $(MKD) $(VIMRUNTIME)\lang\%%l
++ 	FOR %%l IN ($(LANGUAGES)) DO @IF NOT EXIST $(VIMRUNTIME)\lang\%%l\LC_MESSAGES $(MKD) $(VIMRUNTIME)\lang\%%l\LC_MESSAGES
++ 	FOR %%l IN ($(LANGUAGES)) DO @$(CP) %%l.mo $(VIMRUNTIME)\lang\%%l\LC_MESSAGES\$(PACKAGE).mo
++ 
+  clean:
+  	$(RM) *.mo
+  	$(RM) *.pot
+*** ../vim-7.4.991/src/po/Make_mvc.mak	2010-08-02 21:40:59.000000000 +0200
+--- src/po/Make_mvc.mak	2015-12-29 16:00:09.575034011 +0100
+***************
+*** 6,15 ****
+--- 6,20 ----
+  # Please read README_mvc.txt before using this file.
+  #
+  
++ !ifndef VIMRUNTIME
++ VIMRUNTIME = ..\..\runtime
++ !endif
++ 
+  LANGUAGES = \
+  		af \
+  		ca \
+  		cs \
++ 		cs.cp1250 \
+  		de \
+  		en_GB \
+  		eo \
+***************
+*** 19,34 ****
+--- 24,50 ----
+  		ga \
+  		it \
+  		ja \
++ 		ja.euc-jp \
++ 		ja.sjis \
+  		ko \
++ 		ko.UTF-8 \
++ 		nb \
++ 		nl \
+  		no \
+  		pl \
++ 		pl.cp1250 \
++ 		pl.UTF-8 \
+  		pt_BR \
+  		ru \
++ 		ru.cp1251 \
+  		sk \
++ 		sk.cp1250 \
+  		sv \
+  		uk \
++ 		uk.cp1251 \
+  		vi \
+  		zh_CN \
++ 		zh_CN.cp936 \
+  		zh_CN.UTF-8 \
+  		zh_TW \
+  		zh_TW.UTF-8 \
+***************
+*** 36,41 ****
+--- 52,58 ----
+  MOFILES = \
+  		af.mo \
+  		ca.mo \
++ 		cs.cp1250.mo \
+  		cs.mo \
+  		de.mo \
+  		en_GB.mo \
+***************
+*** 45,71 ****
+  		fr.mo \
+  		ga.mo \
+  		it.mo \
+  		ja.mo \
+  		ko.mo \
+  		no.mo \
+  		pl.mo \
+  		pt_BR.mo \
+  		ru.mo \
+  		sk.mo \
+  		sv.mo \
+  		uk.mo \
+  		vi.mo \
+- 		zh_CN.UTF-8.mo \
+  		zh_CN.mo \
+! 		zh_TW.UTF-8.mo \
+  		zh_TW.mo \
+  
+  PACKAGE = vim
+  
+  # Correct the following line for the directory where gettext et al is installed
+  GETTEXT_PATH = H:\gettext.0.14.4\bin
+  
+! MSGFMT = $(GETTEXT_PATH)\msgfmt
+  XGETTEXT = $(GETTEXT_PATH)\xgettext
+  MSGMERGE = $(GETTEXT_PATH)\msgmerge
+  
+--- 62,99 ----
+  		fr.mo \
+  		ga.mo \
+  		it.mo \
++ 		ja.euc-jp.mo \
+  		ja.mo \
++ 		ja.sjis.mo \
+  		ko.mo \
++ 		ko.UTF-8.mo \
++ 		nb.mo \
++ 		nl.mo \
+  		no.mo \
++ 		pl.cp1250.mo \
+  		pl.mo \
++ 		pl.UTF-8.mo \
+  		pt_BR.mo \
++ 		ru.cp1251.mo \
+  		ru.mo \
++ 		sk.cp1250.mo \
+  		sk.mo \
+  		sv.mo \
++ 		uk.cp1251.mo \
+  		uk.mo \
+  		vi.mo \
+  		zh_CN.mo \
+! 		zh_CN.cp936.mo \
+! 		zh_CN.UTF-8.mo \
+  		zh_TW.mo \
++ 		zh_TW.UTF-8.mo \
+  
+  PACKAGE = vim
+  
+  # Correct the following line for the directory where gettext et al is installed
+  GETTEXT_PATH = H:\gettext.0.14.4\bin
+  
+! MSGFMT = $(GETTEXT_PATH)\msgfmt -v
+  XGETTEXT = $(GETTEXT_PATH)\xgettext
+  MSGMERGE = $(GETTEXT_PATH)\msgmerge
+  
+***************
+*** 83,88 ****
+--- 111,117 ----
+  .SUFFIXES: .po .mo .pot
+  
+  .po.mo:
++ 	set OLD_PO_FILE_INPUT=yes
+  	$(MSGFMT) -o $@ $<
+  
+  all: $(MOFILES)
+***************
+*** 91,99 ****
+--- 120,132 ----
+  	$(LS) $(LSFLAGS) ..\*.c ..\if_perl.xs ..\globals.h > .\files
+  
+  first_time: files
++ 	set OLD_PO_FILE_INPUT=yes
++ 	set OLD_PO_FILE_OUTPUT=yes
+  	$(XGETTEXT) --default-domain=$(LANGUAGE) --add-comments --keyword=_ --keyword=N_ --files-from=.\files
+  
+  $(LANGUAGES): files
++ 	set OLD_PO_FILE_INPUT=yes
++ 	set OLD_PO_FILE_OUTPUT=yes
+  	$(XGETTEXT) --default-domain=$(PACKAGE) --add-comments --keyword=_ --keyword=N_ --files-from=.\files
+  	$(MV) $(PACKAGE).po $(PACKAGE).pot
+  	$(CP) $@.po $@.po.orig
+***************
+*** 105,110 ****
+--- 138,147 ----
+  	if not exist $(INSTALLDIR) $(MKD) $(INSTALLDIR)
+  	$(CP) $(LANGUAGE).mo $(INSTALLDIR)\$(PACKAGE).mo
+  
++ install-all: all
++ 	FOR %%l IN ($(LANGUAGES)) DO @IF NOT EXIST $(VIMRUNTIME)\lang\%%l\LC_MESSAGES $(MKD) $(VIMRUNTIME)\lang\%%l\LC_MESSAGES
++ 	FOR %%l IN ($(LANGUAGES)) DO @$(CP) %%l.mo $(VIMRUNTIME)\lang\%%l\LC_MESSAGES\$(PACKAGE).mo
++ 
+  clean:
+  	$(RM) *.mo
+  	$(RM) *.pot
+*** ../vim-7.4.991/src/po/README_mingw.txt	2010-08-01 14:36:08.000000000 +0200
+--- src/po/README_mingw.txt	2015-12-29 16:00:09.575034011 +0100
+***************
+*** 86,91 ****
+--- 86,94 ----
+  
+      This will create the xx\LC_MESSAGES directory (if it does not exist) and
+      will copy vim.po to it.
++     You can also use the following command to install all languages:
++ 
++ 	make -f Make_ming.mak install-all
+  
+  (6) Another extra step ;-)). The command:
+  
+*** ../vim-7.4.991/src/po/README_mvc.txt	2010-08-02 21:41:23.000000000 +0200
+--- src/po/README_mvc.txt	2015-12-29 16:00:09.575034011 +0100
+***************
+*** 111,116 ****
+--- 111,119 ----
+  
+  This will create the xx\LC_MESSAGES directory in runtime\lang if it does not
+  already exist.
++ You can also use the following command to install all languages:
++ 
++ 	nmake -f make_mvc.mak install-all
+  
+  
+  vim:tw=78:
+*** ../vim-7.4.991/src/version.c	2015-12-29 14:26:51.835787563 +0100
+--- src/version.c	2015-12-29 16:01:54.353902349 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     992,
+  /**/
+
+-- 
+A computer programmer is a device for turning requirements into
+undocumented features.  It runs on cola, pizza and Dilbert cartoons.
+					Bram Moolenaar
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

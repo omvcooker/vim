@@ -1,0 +1,78 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1392
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1392
+Problem:    Some tests fail for Win32 console version.
+Solution:   Move the tests to SCRIPTS_MORE2.  Pass VIMRUNTIME. (Christian
+            Brabandt)
+Files:      src/testdir/Make_all.mak
+
+
+*** ../vim-7.4.1391/src/testdir/Make_all.mak	2016-02-02 23:22:38.101181704 +0100
+--- src/testdir/Make_all.mak	2016-02-22 21:51:11.055778339 +0100
+***************
+*** 15,21 ****
+  	test7.out \
+  	test8.out \
+  	test9.out \
+- 	test13.out \
+  	test14.out \
+  	test15.out \
+  	test18.out \
+--- 15,20 ----
+***************
+*** 104,110 ****
+  	test_insertcount.out \
+  	test_listchars.out \
+  	test_listlbr.out \
+- 	test_listlbr_utf8.out \
+  	test_mapping.out \
+  	test_marks.out \
+  	test_match_conceal.out \
+--- 103,108 ----
+***************
+*** 135,143 ****
+  	test2.out \
+  	test10.out \
+  	test12.out \
+  	test25.out \
+  	test49.out \
+! 	test97.out
+  
+  
+  # Tests that run on most systems, but not MingW and Cygwin.
+--- 133,143 ----
+  	test2.out \
+  	test10.out \
+  	test12.out \
++ 	test13.out \
+  	test25.out \
+  	test49.out \
+! 	test97.out \
+! 	test_listlbr_utf8.out
+  
+  
+  # Tests that run on most systems, but not MingW and Cygwin.
+*** ../vim-7.4.1391/src/version.c	2016-02-22 21:48:26.817500361 +0100
+--- src/version.c	2016-02-22 21:55:08.797286813 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1392,
+  /**/
+
+-- 
+No letters of the alphabet were harmed in the creation of this message.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

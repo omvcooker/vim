@@ -1,0 +1,67 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1427
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1427
+Problem:    Trailing comma in enums is not ANSI C.
+Solution:   Remove the trailing commas.
+Files:      src/alloc.h, src/gui_mac.c
+
+
+*** ../vim-7.4.1426/src/alloc.h	2016-01-15 20:48:09.866003187 +0100
+--- src/alloc.h	2016-02-27 15:13:43.809241724 +0100
+***************
+*** 17,21 ****
+  	aid_qf_namebuf,
+  	aid_qf_errmsg,
+  	aid_qf_pattern,
+! 	aid_last,
+  } alloc_id_T;
+--- 17,21 ----
+  	aid_qf_namebuf,
+  	aid_qf_errmsg,
+  	aid_qf_pattern,
+! 	aid_last
+  } alloc_id_T;
+*** ../vim-7.4.1426/src/gui_mac.c	2016-01-30 16:39:20.438376481 +0100
+--- src/gui_mac.c	2016-02-27 15:16:57.211219404 +0100
+***************
+*** 6513,6519 ****
+  static MenuRef contextMenu = NULL;
+  enum
+  {
+!     kTabContextMenuId = 42,
+  };
+  
+  // the caller has to CFRelease() the returned string
+--- 6513,6519 ----
+  static MenuRef contextMenu = NULL;
+  enum
+  {
+!     kTabContextMenuId = 42
+  };
+  
+  // the caller has to CFRelease() the returned string
+*** ../vim-7.4.1426/src/version.c	2016-02-27 14:44:21.335585337 +0100
+--- src/version.c	2016-02-27 15:12:18.802128528 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1427,
+  /**/
+
+-- 
+Sometimes I think the surest sign that intelligent life exists elsewhere
+in the universe is that none of it has tried to contact us.     (Calvin)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

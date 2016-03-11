@@ -1,0 +1,90 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.981
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.981
+Problem:    An error in a test script goes unnoticed.
+Solution:   Source the test script inside try/catch. (Hirohito Higashi)
+Files:      src/testdir/runtest.vim
+
+
+*** ../vim-7.4.980/src/testdir/runtest.vim	2015-12-03 17:21:24.520567777 +0100
+--- src/testdir/runtest.vim	2015-12-28 14:30:16.307812720 +0100
+***************
+*** 21,29 ****
+  " It will be called after each Test_ function.
+  
+  " Without the +eval feature we can't run these tests, bail out.
+! if 0
+!   quit!
+! endif
+  
+  " Check that the screen size is at least 24 x 80 characters.
+  if &lines < 24 || &columns < 80 
+--- 21,27 ----
+  " It will be called after each Test_ function.
+  
+  " Without the +eval feature we can't run these tests, bail out.
+! so small.vim
+  
+  " Check that the screen size is at least 24 x 80 characters.
+  if &lines < 24 || &columns < 80 
+***************
+*** 38,44 ****
+  " Source the test script.  First grab the file name, in case the script
+  " navigates away.
+  let testname = expand('%')
+! source %
+  
+  " Locate Test_ functions and execute them.
+  redir @q
+--- 36,50 ----
+  " Source the test script.  First grab the file name, in case the script
+  " navigates away.
+  let testname = expand('%')
+! let done = 0
+! let fail = 0
+! let errors = []
+! try
+!   source %
+! catch
+!   let fail += 1
+!   call add(errors, 'Caught exception: ' . v:exception . ' @ ' . v:throwpoint)
+! endtry
+  
+  " Locate Test_ functions and execute them.
+  redir @q
+***************
+*** 46,54 ****
+  redir END
+  let tests = split(substitute(@q, 'function \(\k*()\)', '\1', 'g'))
+  
+- let done = 0
+- let fail = 0
+- let errors = []
+  for test in tests
+    if exists("*SetUp")
+      call SetUp()
+--- 52,57 ----
+*** ../vim-7.4.980/src/version.c	2015-12-28 14:03:57.088941627 +0100
+--- src/version.c	2015-12-28 14:31:47.746820045 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     981,
+  /**/
+
+-- 
+Nothing is impossible for the man who doesn't have to do it.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

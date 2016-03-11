@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1192
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1192
+Problem:    Can't build with FEAT_EVAL but without FEAT_MBYTE. (John
+            Marriott)
+Solution:   Add #ifdef for FEAT_MBYTE.
+Files:      src/json.c
+
+
+*** ../vim-7.4.1191/src/json.c	2016-01-28 14:11:33.835370481 +0100
+--- src/json.c	2016-01-28 22:44:29.430847275 +0100
+***************
+*** 68,74 ****
+--- 68,79 ----
+  		default:
+  		    if (c >= 0x20)
+  		    {
++ #ifdef FEAT_MBYTE
+  			numbuf[mb_char2bytes(c, numbuf)] = NUL;
++ #else
++ 			numbuf[0] = c;
++ 			numbuf[1] = NUL;
++ #endif
+  			ga_concat(gap, numbuf);
+  		    }
+  		    else
+*** ../vim-7.4.1191/src/version.c	2016-01-28 22:36:15.056065002 +0100
+--- src/version.c	2016-01-28 22:45:52.389972089 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1192,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+61. Your best friends know your e-mail address, but neither your phone number
+    nor the address where you live.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

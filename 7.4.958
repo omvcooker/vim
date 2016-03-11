@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.958
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.958
+Problem:    Vim checks if the directory "$TMPDIR" exists.
+Solution:   Do not check if the name starts with "$".
+Files:      src/fileio.c
+
+
+*** ../vim-7.4.957/src/fileio.c	2015-12-03 13:52:48.439584211 +0100
+--- src/fileio.c	2015-12-03 20:53:35.725775742 +0100
+***************
+*** 7388,7397 ****
+  	    long	off;
+  # endif
+  
+! 	    /* expand $TMP, leave room for "/v1100000/999999999" */
+  	    expand_env((char_u *)tempdirs[i], itmp, TEMPNAMELEN - 20);
+! 	    if (mch_isdir(itmp))		/* directory exists */
+  	    {
+  # ifdef __EMX__
+  		/* If $TMP contains a forward slash (perhaps using bash or
+  		 * tcsh), don't add a backslash, use a forward slash!
+--- 7388,7399 ----
+  	    long	off;
+  # endif
+  
+! 	    /* Expand $TMP, leave room for "/v1100000/999999999".
+! 	     * Skip the directory check if the expansion fails. */
+  	    expand_env((char_u *)tempdirs[i], itmp, TEMPNAMELEN - 20);
+! 	    if (itmp[0] != '$' && mch_isdir(itmp))
+  	    {
++ 		/* directory exists */
+  # ifdef __EMX__
+  		/* If $TMP contains a forward slash (perhaps using bash or
+  		 * tcsh), don't add a backslash, use a forward slash!
+*** ../vim-7.4.957/src/version.c	2015-12-03 20:46:16.462602318 +0100
+--- src/version.c	2015-12-03 21:01:34.008523103 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     958,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+187. You promise yourself that you'll only stay online for another
+     15 minutes...at least once every hour.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

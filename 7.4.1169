@@ -1,0 +1,1333 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1169
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1169
+Problem:    The socket I/O is intertwined with the netbeans code.
+Solution:   Start refactoring the netbeans communication to split off the
+            socket I/O.  Add the +channel feature.
+Files:      src/channel.c, src/netbeans.c, src/proto/channel.pro,
+            src/proto/netbeans.pro, src/proto/gui_w32.pro, src/gui_w32.c,
+            src/eval.c, src/os_mswin.c, src/ui.c, src/macros.h, Makefile,
+            src/proto.h, src/feature.h, src/os_unix.c, src/vim.h,
+            src/configure.in, src/auto/configure, src/config.mk.in,
+            src/config.aap.in, src/config.h.in, src/Make_bc5.mak,
+            src/Make_cyg_ming.mak, src/Make_mvc.mak
+
+
+*** ../vim-7.4.1168/src/channel.c	2016-01-24 20:31:32.161071711 +0100
+--- src/channel.c	2016-01-24 20:20:11.172172343 +0100
+***************
+*** 0 ****
+--- 1,187 ----
++ /* vi:set ts=8 sts=4 sw=4:
++  *
++  * VIM - Vi IMproved	by Bram Moolenaar
++  *
++  * Do ":help uganda"  in Vim to read copying and usage conditions.
++  * Do ":help credits" in Vim to see a list of people who contributed.
++  */
++ 
++ /*
++  * Implements communication through a socket or any file handle.
++  */
++ 
++ #include "vim.h"
++ 
++ #if defined(FEAT_CHANNEL) || defined(PROTO)
++ 
++ typedef struct {
++     sock_T  ch_fd;
++     int	    ch_idx;
++ } channel_T;
++ 
++ static channel_T *channels = NULL;
++ static int channel_count = 0;
++ 
++ /*
++  * Add a new channel slot, return the index.
++  * Returns -1 if out of space.
++  */
++     static int
++ add_channel(void)
++ {
++     int		idx;
++     channel_T	*new_channels;
++ 
++     if (channels != NULL)
++ 	for (idx = 0; idx < channel_count; ++idx)
++ 	    if (channels[idx].ch_fd < 0)
++ 		/* re-use a closed channel slot */
++ 		return idx;
++     if (channel_count == MAX_OPEN_CHANNELS)
++ 	return -1;
++     new_channels = (channel_T *)alloc(sizeof(channel_T) * channel_count + 1);
++     if (new_channels == NULL)
++ 	return -1;
++     if (channels != NULL)
++ 	mch_memmove(new_channels, channels, sizeof(channel_T) * channel_count);
++     channels = new_channels;
++     channels[channel_count].ch_fd = (sock_T)-1;
++ 
++     return channel_count++;
++ }
++ 
++ #if defined(FEAT_NETBEANS_INTG) || defined(PROTO)
++ static int netbeans_channel = -1;
++ 
++ /*
++  * Add the netbeans socket to the channels.
++  * Return the channel index.
++  */
++     int
++ channel_add_netbeans(sock_T fd)
++ {
++     int idx = add_channel();
++ 
++     if (idx >= 0)
++     {
++ 	channels[idx].ch_fd = fd;
++ 	netbeans_channel = idx;
++     }
++     return idx;
++ }
++ 
++     void
++ channel_remove_netbeans()
++ {
++     channels[netbeans_channel].ch_fd = (sock_T)-1;
++     netbeans_channel = -1;
++ }
++ #endif
++ 
++     static void
++ channel_read(int idx)
++ {
++ # ifdef FEAT_NETBEANS_INTG
++     if (idx == netbeans_channel)
++ 	netbeans_read();
++     else
++ # endif
++     {
++ 	; /* TODO: read */
++     }
++ }
++ 
++ #if (defined(UNIX) && !defined(HAVE_SELECT)) || defined(PROTO)
++ /*
++  * Add open channels to the poll struct.
++  * Return the adjusted struct index.
++  * The type of "fds" is hidden to avoid problems with the function proto.
++  */
++     int
++ channel_poll_setup(int nfd_in, void *fds_in)
++ {
++     int nfd = nfd_in;
++     int i;
++     struct pollfd *fds = fds_in;
++ 
++     for (i = 0; i < channel_count; ++i)
++ 	if (channels[i].ch_fd >= 0)
++ 	{
++ 	    channels[i].ch_idx = nfd;
++ 	    fds[nfd].fd = channels[i].ch_fd;
++ 	    fds[nfd].events = POLLIN;
++ 	    nfd++;
++ 	}
++ 	else
++ 	    channels[i].ch_idx = -1;
++ 
++     return nfd;
++ }
++ 
++ /*
++  * The type of "fds" is hidden to avoid problems with the function proto.
++  */
++     int
++ channel_poll_check(int ret_in, void *fds_in)
++ {
++     int ret = ret_in;
++     int i;
++     struct pollfd *fds = fds_in;
++ 
++     for (i = 0; i < channel_count; ++i)
++ 	if (ret > 0 && channels[i].ch_idx != -1
++ 				 && fds[channels[i].ch_idx].revents & POLLIN)
++ 	{
++ 	    channel_read(i);
++ 	    --ret;
++ 	}
++ 
++     return ret;
++ }
++ #endif /* UNIX && !HAVE_SELECT */
++ 
++ #if (defined(UNIX) && defined(HAVE_SELECT)) || defined(PROTO)
++ /*
++  * The type of "rfds" is hidden to avoid problems with the function proto.
++  */
++     int
++ channel_select_setup(int maxfd_in, void *rfds_in)
++ {
++     int	    maxfd = maxfd_in;
++     int	    i;
++     fd_set  *rfds = rfds_in;
++ 
++     for (i = 0; i < channel_count; ++i)
++ 	if (channels[i].ch_fd >= 0)
++ 	{
++ 	    FD_SET(channels[i].ch_fd, rfds);
++ 	    if (maxfd < channels[i].ch_fd)
++ 		maxfd = channels[i].ch_fd;
++ 	}
++ 
++     return maxfd;
++ }
++ 
++ /*
++  * The type of "rfds" is hidden to avoid problems with the function proto.
++  */
++     int
++ channel_select_check(int ret_in, void *rfds_in)
++ {
++     int	    ret = ret_in;
++     int	    i;
++     fd_set  *rfds = rfds_in;
++ 
++     for (i = 0; i < channel_count; ++i)
++ 	if (ret > 0 && channels[i].ch_fd >= 0
++ 				       && FD_ISSET(channels[i].ch_fd, rfds))
++ 	{
++ 	    channel_read(i);
++ 	    --ret;
++ 	}
++ 
++     return ret;
++ }
++ #endif /* UNIX && HAVE_SELECT */
++ 
++ #endif /* FEAT_CHANNEL */
+*** ../vim-7.4.1168/src/netbeans.c	2015-12-31 19:06:56.052081865 +0100
+--- src/netbeans.c	2016-01-24 20:02:48.859023505 +0100
+***************
+*** 106,118 ****
+  # define NB_HAS_GUI (gui.in_use || gui.starting)
+  #endif
+  
+! #ifdef WIN64
+! typedef __int64 NBSOCK;
+! #else
+! typedef int NBSOCK;
+! #endif
+! 
+! static NBSOCK nbsock = -1;		/* socket fd for Netbeans connection */
+  #define NETBEANS_OPEN (nbsock != -1)
+  
+  #ifdef FEAT_GUI_X11
+--- 106,112 ----
+  # define NB_HAS_GUI (gui.in_use || gui.starting)
+  #endif
+  
+! static sock_T nbsock = -1;		/* socket fd for Netbeans connection */
+  #define NETBEANS_OPEN (nbsock != -1)
+  
+  #ifdef FEAT_GUI_X11
+***************
+*** 175,180 ****
+--- 169,175 ----
+  
+      sock_close(nbsock);
+      nbsock = -1;
++     channel_remove_netbeans();
+  }
+  
+  /*
+***************
+*** 243,250 ****
+      if (*params == '=')
+      {
+  	/* "=fname": Read info from specified file. */
+! 	if (getConnInfo(params + 1, &hostname, &address, &password)
+! 								      == FAIL)
+  	    return FAIL;
+      }
+      else
+--- 238,244 ----
+      if (*params == '=')
+      {
+  	/* "=fname": Read info from specified file. */
+! 	if (getConnInfo(params + 1, &hostname, &address, &password) == FAIL)
+  	    return FAIL;
+      }
+      else
+***************
+*** 312,324 ****
+  	goto theend;	    /* out of memory */
+  
+  #ifdef FEAT_GUI_W32
+!     netbeans_init_winsock();
+  #endif
+  
+  #ifdef INET_SOCKETS
+      port = atoi(address);
+  
+!     if ((sd = (NBSOCK)socket(AF_INET, SOCK_STREAM, 0)) == (NBSOCK)-1)
+      {
+  	nbdebug(("error in socket() in netbeans_connect()\n"));
+  	PERROR("socket() in netbeans_connect()");
+--- 306,318 ----
+  	goto theend;	    /* out of memory */
+  
+  #ifdef FEAT_GUI_W32
+!     channel_init_winsock();
+  #endif
+  
+  #ifdef INET_SOCKETS
+      port = atoi(address);
+  
+!     if ((sd = (sock_T)socket(AF_INET, SOCK_STREAM, 0)) == (sock_T)-1)
+      {
+  	nbdebug(("error in socket() in netbeans_connect()\n"));
+  	PERROR("socket() in netbeans_connect()");
+***************
+*** 358,364 ****
+  	{
+  	    sock_close(sd);
+  #ifdef INET_SOCKETS
+! 	    if ((sd = (NBSOCK)socket(AF_INET, SOCK_STREAM, 0)) == (NBSOCK)-1)
+  	    {
+  		SOCK_ERRNO;
+  		nbdebug(("socket()#2 in netbeans_connect()\n"));
+--- 352,358 ----
+  	{
+  	    sock_close(sd);
+  #ifdef INET_SOCKETS
+! 	    if ((sd = (sock_T)socket(AF_INET, SOCK_STREAM, 0)) == (sock_T)-1)
+  	    {
+  		SOCK_ERRNO;
+  		nbdebug(("socket()#2 in netbeans_connect()\n"));
+***************
+*** 423,428 ****
+--- 417,423 ----
+      }
+  
+      nbsock = sd;
++     channel_add_netbeans(nbsock);
+      vim_snprintf(buf, sizeof(buf), "AUTH %s\n", password);
+      nb_send(buf, "netbeans_connect");
+  
+***************
+*** 2954,2960 ****
+  #endif
+  
+  /*
+!  * Return TRUE when the netbeans connection is closed.
+   */
+      int
+  netbeans_active(void)
+--- 2949,2955 ----
+  #endif
+  
+  /*
+!  * Return TRUE when the netbeans connection is active.
+   */
+      int
+  netbeans_active(void)
+***************
+*** 2962,2976 ****
+      return NETBEANS_OPEN;
+  }
+  
+- /*
+-  * Return netbeans file descriptor.
+-  */
+-     int
+- netbeans_filedesc(void)
+- {
+-     return nbsock;
+- }
+- 
+  #if defined(FEAT_GUI) || defined(PROTO)
+  /*
+   * Register our file descriptor with the gui event handling system.
+--- 2957,2962 ----
+*** ../vim-7.4.1168/src/proto/channel.pro	2016-01-24 20:31:32.173071585 +0100
+--- src/proto/channel.pro	2016-01-24 20:08:17.379606035 +0100
+***************
+*** 0 ****
+--- 1,8 ----
++ /* channel.c */
++ int channel_add_netbeans(sock_T fd);
++ void channel_remove_netbeans(void);
++ int channel_poll_setup(int nfd_in, void *fds_in);
++ int channel_poll_check(int ret_in, void *fds_in);
++ int channel_select_setup(int maxfd_in, void *rfds_in);
++ int channel_select_check(int ret_in, void *rfds_in);
++ /* vim: set ft=c : */
+*** ../vim-7.4.1168/src/proto/netbeans.pro	2016-01-19 13:21:55.845334290 +0100
+--- src/proto/netbeans.pro	2016-01-24 20:33:11.404036846 +0100
+***************
+*** 9,15 ****
+  void ex_nbstart(exarg_T *eap);
+  void netbeans_beval_cb(BalloonEval *beval, int state);
+  int netbeans_active(void);
+- int netbeans_filedesc(void);
+  void netbeans_gui_register(void);
+  void netbeans_open(char *params, int doabort);
+  void netbeans_send_disconnect(void);
+--- 9,14 ----
+*** ../vim-7.4.1168/src/gui_w32.c	2016-01-10 16:07:39.848871814 +0100
+--- src/gui_w32.c	2016-01-24 19:46:27.161212172 +0100
+***************
+*** 553,559 ****
+  static TMonitorFromWindow   pMonitorFromWindow = NULL;
+  static TGetMonitorInfo	    pGetMonitorInfo = NULL;
+  static HANDLE		    user32_lib = NULL;
+! #ifdef FEAT_NETBEANS_INTG
+  int WSInitialized = FALSE; /* WinSock is initialized */
+  #endif
+  /*
+--- 553,559 ----
+  static TMonitorFromWindow   pMonitorFromWindow = NULL;
+  static TGetMonitorInfo	    pGetMonitorInfo = NULL;
+  static HANDLE		    user32_lib = NULL;
+! #ifdef FEAT_CHANNEL
+  int WSInitialized = FALSE; /* WinSock is initialized */
+  #endif
+  /*
+***************
+*** 5048,5059 ****
+      SetPixel(s_hdc, x+3, y++, gui.currFgColor);
+      SetPixel(s_hdc, x+2, y, gui.currFgColor);
+  }
+  
+  /*
+   * Initialize the Winsock dll.
+   */
+      void
+! netbeans_init_winsock()
+  {
+      WSADATA wsaData;
+      int wsaerr;
+--- 5048,5061 ----
+      SetPixel(s_hdc, x+3, y++, gui.currFgColor);
+      SetPixel(s_hdc, x+2, y, gui.currFgColor);
+  }
++ #endif
+  
++ #if defined(FEAT_CHANNEL) || defined(PROTO)
+  /*
+   * Initialize the Winsock dll.
+   */
+      void
+! channel_init_winsock()
+  {
+      WSADATA wsaData;
+      int wsaerr;
+*** ../vim-7.4.1168/src/eval.c	2016-01-24 17:54:19.031096454 +0100
+--- src/eval.c	2016-01-24 19:48:03.536211790 +0100
+***************
+*** 13083,13088 ****
+--- 13083,13091 ----
+  #ifdef FEAT_BYTEOFF
+  	"byte_offset",
+  #endif
++ #ifdef FEAT_CHANNEL
++ 	"channel",
++ #endif
+  #ifdef FEAT_CINDENT
+  	"cindent",
+  #endif
+*** ../vim-7.4.1168/src/os_mswin.c	2016-01-19 19:00:24.107668109 +0100
+--- src/os_mswin.c	2016-01-24 19:58:01.042010329 +0100
+***************
+*** 231,237 ****
+  # ifdef FEAT_OLE
+      UninitOLE();
+  # endif
+! # ifdef FEAT_NETBEANS_INTG
+      if (WSInitialized)
+      {
+  	WSInitialized = FALSE;
+--- 231,237 ----
+  # ifdef FEAT_OLE
+      UninitOLE();
+  # endif
+! # ifdef FEAT_CHANNEL
+      if (WSInitialized)
+      {
+  	WSInitialized = FALSE;
+*** ../vim-7.4.1168/src/ui.c	2015-12-31 19:06:56.060081779 +0100
+--- src/ui.c	2016-01-24 19:58:46.317540465 +0100
+***************
+*** 1562,1568 ****
+   * descriptions which would otherwise overflow.  The buffer is considered full
+   * when only this extra space (or part of it) remains.
+   */
+! #if defined(FEAT_SUN_WORKSHOP) || defined(FEAT_NETBEANS_INTG) \
+  	|| defined(FEAT_CLIENTSERVER)
+     /*
+      * Sun WorkShop and NetBeans stuff debugger commands into the input buffer.
+--- 1562,1568 ----
+   * descriptions which would otherwise overflow.  The buffer is considered full
+   * when only this extra space (or part of it) remains.
+   */
+! #if defined(FEAT_SUN_WORKSHOP) || defined(FEAT_CHANNEL) \
+  	|| defined(FEAT_CLIENTSERVER)
+     /*
+      * Sun WorkShop and NetBeans stuff debugger commands into the input buffer.
+*** ../vim-7.4.1168/src/macros.h	2016-01-20 22:47:57.653335842 +0100
+--- src/macros.h	2016-01-24 20:00:18.832580375 +0100
+***************
+*** 317,322 ****
+  # define PLINES_NOFILL(x) plines(x)
+  #endif
+  
+! #if defined(FEAT_NETBEANS_INTG) || defined(FEAT_CLIENTSERVER)
+  # define MESSAGE_QUEUE
+  #endif
+--- 317,322 ----
+  # define PLINES_NOFILL(x) plines(x)
+  #endif
+  
+! #if defined(FEAT_CHANNEL) || defined(FEAT_CLIENTSERVER)
+  # define MESSAGE_QUEUE
+  #endif
+*** ../vim-7.4.1168/src/proto.h	2016-01-23 19:45:48.618931375 +0100
+--- src/proto.h	2016-01-24 18:15:57.189644050 +0100
+***************
+*** 209,214 ****
+--- 209,217 ----
+  # ifdef FEAT_NETBEANS_INTG
+  #  include "netbeans.pro"
+  # endif
++ # ifdef FEAT_CHANNEL
++ #  include "channel.pro"
++ # endif
+  
+  # ifdef FEAT_GUI
+  #  include "gui.pro"
+*** ../vim-7.4.1168/src/feature.h	2016-01-20 22:11:53.249565738 +0100
+--- src/feature.h	2016-01-24 18:19:40.915326075 +0100
+***************
+*** 1237,1242 ****
+--- 1237,1243 ----
+   * +sniff		Sniff interface: "--enable-sniff"
+   * +sun_workshop	Sun Workshop integration
+   * +netbeans_intg	Netbeans integration
++  * +channel		Inter process communication
+   */
+  
+  /*
+***************
+*** 1261,1266 ****
+--- 1262,1274 ----
+  #endif
+  
+  /*
++  * The Channel feature requires +eval.
++  */
++ #if !defined(FEAT_EVAL) && defined(FEAT_CHANNEL)
++ # undef FEAT_CHANNEL
++ #endif
++ 
++ /*
+   * +signs		Allow signs to be displayed to the left of text lines.
+   *			Adds the ":sign" command.
+   */
+*** ../vim-7.4.1168/src/os_unix.c	2016-01-17 15:56:29.366605222 +0100
+--- src/os_unix.c	2016-01-24 20:06:33.352689736 +0100
+***************
+*** 5189,5197 ****
+      int		*check_for_gpm UNUSED;
+  {
+      int		ret;
+- #ifdef FEAT_NETBEANS_INTG
+-     int		nb_fd = netbeans_filedesc();
+- #endif
+  #if defined(FEAT_XCLIPBOARD) || defined(USE_XSMP) || defined(FEAT_MZSCHEME)
+      static int	busy = FALSE;
+  
+--- 5189,5194 ----
+***************
+*** 5241,5247 ****
+  # endif
+  #endif
+  #ifndef HAVE_SELECT
+! 	struct pollfd   fds[6];
+  	int		nfd;
+  # ifdef FEAT_XCLIPBOARD
+  	int		xterm_idx = -1;
+--- 5238,5244 ----
+  # endif
+  #endif
+  #ifndef HAVE_SELECT
+! 	struct pollfd   fds[6 + MAX_OPEN_CHANNELS];
+  	int		nfd;
+  # ifdef FEAT_XCLIPBOARD
+  	int		xterm_idx = -1;
+***************
+*** 5252,5260 ****
+  # ifdef USE_XSMP
+  	int		xsmp_idx = -1;
+  # endif
+- # ifdef FEAT_NETBEANS_INTG
+- 	int		nb_idx = -1;
+- # endif
+  	int		towait = (int)msec;
+  
+  # ifdef FEAT_MZSCHEME
+--- 5249,5254 ----
+***************
+*** 5306,5319 ****
+  	    nfd++;
+  	}
+  # endif
+! #ifdef FEAT_NETBEANS_INTG
+! 	if (nb_fd != -1)
+! 	{
+! 	    nb_idx = nfd;
+! 	    fds[nfd].fd = nb_fd;
+! 	    fds[nfd].events = POLLIN;
+! 	    nfd++;
+! 	}
+  #endif
+  
+  	ret = poll(fds, nfd, towait);
+--- 5300,5307 ----
+  	    nfd++;
+  	}
+  # endif
+! #ifdef FEAT_CHANNEL
+! 	nfd = channel_poll_setup(nfd, &fds);
+  #endif
+  
+  	ret = poll(fds, nfd, towait);
+***************
+*** 5368,5379 ****
+  		finished = FALSE;	/* Try again */
+  	}
+  # endif
+! #ifdef FEAT_NETBEANS_INTG
+! 	if (ret > 0 && nb_idx != -1 && fds[nb_idx].revents & POLLIN)
+! 	{
+! 	    netbeans_read();
+! 	    --ret;
+! 	}
+  #endif
+  
+  
+--- 5356,5364 ----
+  		finished = FALSE;	/* Try again */
+  	}
+  # endif
+! #ifdef FEAT_CHANNEL
+! 	if (ret > 0)
+! 	    ret = channel_poll_check(ret, &fds);
+  #endif
+  
+  
+***************
+*** 5462,5474 ****
+  		maxfd = xsmp_icefd;
+  	}
+  # endif
+! # ifdef FEAT_NETBEANS_INTG
+! 	if (nb_fd != -1)
+! 	{
+! 	    FD_SET(nb_fd, &rfds);
+! 	    if (maxfd < nb_fd)
+! 		maxfd = nb_fd;
+! 	}
+  # endif
+  
+  	ret = select(maxfd + 1, &rfds, NULL, &efds, tvp);
+--- 5447,5454 ----
+  		maxfd = xsmp_icefd;
+  	}
+  # endif
+! # ifdef FEAT_CHANNEL
+! 	maxfd = channel_select_setup(maxfd, &rfds);
+  # endif
+  
+  	ret = select(maxfd + 1, &rfds, NULL, &efds, tvp);
+***************
+*** 5556,5567 ****
+  	    }
+  	}
+  # endif
+! #ifdef FEAT_NETBEANS_INTG
+! 	if (ret > 0 && nb_fd != -1 && FD_ISSET(nb_fd, &rfds))
+! 	{
+! 	    netbeans_read();
+! 	    --ret;
+! 	}
+  #endif
+  
+  #endif /* HAVE_SELECT */
+--- 5536,5544 ----
+  	    }
+  	}
+  # endif
+! #ifdef FEAT_CHANNEL
+! 	if (ret > 0)
+! 	    ret = channel_select_check(ret, &rfds);
+  #endif
+  
+  #endif /* HAVE_SELECT */
+*** ../vim-7.4.1168/src/vim.h	2016-01-23 19:45:48.618931375 +0100
+--- src/vim.h	2016-01-24 20:03:23.598663010 +0100
+***************
+*** 1929,1936 ****
+  #  ifdef FEAT_OLE
+  #   define WM_OLE (WM_APP+0)
+  #  endif
+! #  ifdef FEAT_NETBEANS_INTG
+!     /* message for Netbeans socket event */
+  #   define WM_NETBEANS (WM_APP+1)
+  #  endif
+  # endif
+--- 1929,1936 ----
+  #  ifdef FEAT_OLE
+  #   define WM_OLE (WM_APP+0)
+  #  endif
+! #  ifdef FEAT_CHANNEL
+!     /* message for channel socket event */
+  #   define WM_NETBEANS (WM_APP+1)
+  #  endif
+  # endif
+***************
+*** 1979,1984 ****
+--- 1979,1992 ----
+  # define stat(a,b) (access(a,0) ? -1 : stat(a,b))
+  #endif
+  
++ #ifdef FEAT_CHANNEL
++ # ifdef WIN64
++ typedef __int64 sock_T;
++ # else
++ typedef int sock_T;
++ # endif
++ #endif
++ 
+  #include "ex_cmds.h"	    /* Ex command defines */
+  #include "proto.h"	    /* function prototypes */
+  
+***************
+*** 2312,2315 ****
+--- 2320,2329 ----
+  # define SET_NO_HLSEARCH(flag) no_hlsearch = (flag)
+  #endif
+  
++ #ifdef FEAT_CHANNEL
++ # define MAX_OPEN_CHANNELS 10
++ #else
++ # define MAX_OPEN_CHANNELS 0
++ #endif
++ 
+  #endif /* VIM__H */
+*** ../vim-7.4.1168/src/configure.in	2016-01-20 22:11:53.253565698 +0100
+--- src/configure.in	2016-01-24 18:36:43.424711424 +0100
+***************
+*** 1938,1947 ****
+  	, [enable_netbeans="yes"])
+  if test "$enable_netbeans" = "yes"; then
+    AC_MSG_RESULT(no)
+    dnl On Solaris we need the socket and nsl library.
+    AC_CHECK_LIB(socket, socket)
+    AC_CHECK_LIB(nsl, gethostbyname)
+!   AC_MSG_CHECKING(whether compiling netbeans integration is possible)
+    AC_TRY_LINK([
+  #include <stdio.h>
+  #include <stdlib.h>
+--- 1938,1967 ----
+  	, [enable_netbeans="yes"])
+  if test "$enable_netbeans" = "yes"; then
+    AC_MSG_RESULT(no)
++ else
++   AC_MSG_RESULT(yes)
++ fi
++ 
++ AC_MSG_CHECKING(--disable-channel argument)
++ AC_ARG_ENABLE(channel,
++ 	[  --disable-channel      Disable process communication support.],
++ 	, [enable_channel="yes"])
++ if test "$enable_channel" = "yes"; then
++   AC_MSG_RESULT(no)
++ else
++   if test "$enable_netbeans" = "yes"; then
++     AC_MSG_RESULT(yes, netbeans also disabled)
++     enable_netbeans="no"
++   else
++     AC_MSG_RESULT(yes)
++   fi
++ fi
++ 
++ if "$enable_channel" = "yes"; then
+    dnl On Solaris we need the socket and nsl library.
+    AC_CHECK_LIB(socket, socket)
+    AC_CHECK_LIB(nsl, gethostbyname)
+!   AC_MSG_CHECKING(whether compiling with process communication is possible)
+    AC_TRY_LINK([
+  #include <stdio.h>
+  #include <stdlib.h>
+***************
+*** 1967,1975 ****
+  		  (void)connect(1, (struct sockaddr *)&server, sizeof(server));
+  	    ],
+  	AC_MSG_RESULT(yes),
+! 	AC_MSG_RESULT(no); enable_netbeans="no")
+! else
+!   AC_MSG_RESULT(yes)
+  fi
+  if test "$enable_netbeans" = "yes"; then
+    AC_DEFINE(FEAT_NETBEANS_INTG)
+--- 1987,1993 ----
+  		  (void)connect(1, (struct sockaddr *)&server, sizeof(server));
+  	    ],
+  	AC_MSG_RESULT(yes),
+! 	AC_MSG_RESULT(no); enable_netbeans="no"; enable_channel="no")
+  fi
+  if test "$enable_netbeans" = "yes"; then
+    AC_DEFINE(FEAT_NETBEANS_INTG)
+***************
+*** 1978,1983 ****
+--- 1996,2008 ----
+    NETBEANS_OBJ="objects/netbeans.o"
+    AC_SUBST(NETBEANS_OBJ)
+  fi
++ if test "$enable_channel" = "yes"; then
++   AC_DEFINE(FEAT_CHANNEL)
++   CHANNEL_SRC="channel.c"
++   AC_SUBST(CHANNEL_SRC)
++   CHANNEL_OBJ="objects/channel.o"
++   AC_SUBST(CHANNEL_OBJ)
++ fi
+  
+  AC_MSG_CHECKING(--enable-sniff argument)
+  AC_ARG_ENABLE(sniff,
+*** ../vim-7.4.1168/src/auto/configure	2016-01-20 22:11:53.257565658 +0100
+--- src/auto/configure	2016-01-24 18:13:23.887232449 +0100
+***************
+*** 656,661 ****
+--- 656,663 ----
+  xmkmfpath
+  SNIFF_OBJ
+  SNIFF_SRC
++ CHANNEL_OBJ
++ CHANNEL_SRC
+  NETBEANS_OBJ
+  NETBEANS_SRC
+  WORKSHOP_OBJ
+***************
+*** 810,815 ****
+--- 812,818 ----
+  enable_cscope
+  enable_workshop
+  enable_netbeans
++ enable_channel
+  enable_sniff
+  enable_multibyte
+  enable_hangulinput
+***************
+*** 1473,1478 ****
+--- 1476,1482 ----
+    --enable-cscope         Include cscope interface.
+    --enable-workshop       Include Sun Visual Workshop support.
+    --disable-netbeans      Disable NetBeans integration support.
++   --disable-channel      Disable process communication support.
+    --enable-sniff          Include Sniff interface.
+    --enable-multibyte      Include multibyte editing support.
+    --enable-hangulinput    Include Hangul input support.
+***************
+*** 7227,7232 ****
+--- 7231,7259 ----
+  if test "$enable_netbeans" = "yes"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+  $as_echo "no" >&6; }
++ else
++   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++ $as_echo "yes" >&6; }
++ fi
++ 
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking --disable-channel argument" >&5
++ $as_echo_n "checking --disable-channel argument... " >&6; }
++ # Check whether --enable-channel was given.
++ if test "${enable_channel+set}" = set; then :
++   enableval=$enable_channel;
++ else
++   enable_channel="yes"
++ fi
++ 
++ if test "$enable_channel" = "yes"; then
++   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++ $as_echo "no" >&6; }
++ else
++   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++ $as_echo "yes" >&6; }
++ fi
++ 
++ if test "$enable_netbeans" = "yes" -o "$enable_channel" = "yes"; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lsocket" >&5
+  $as_echo_n "checking for socket in -lsocket... " >&6; }
+  if ${ac_cv_lib_socket_socket+:} false; then :
+***************
+*** 7317,7324 ****
+  
+  fi
+  
+!   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether compiling netbeans integration is possible" >&5
+! $as_echo_n "checking whether compiling netbeans integration is possible... " >&6; }
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  /* end confdefs.h.  */
+  
+--- 7344,7351 ----
+  
+  fi
+  
+!   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether compiling with process communication is possible" >&5
+! $as_echo_n "checking whether compiling with process communication is possible... " >&6; }
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  /* end confdefs.h.  */
+  
+***************
+*** 7358,7370 ****
+  $as_echo "yes" >&6; }
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+! $as_echo "no" >&6; }; enable_netbeans="no"
+  fi
+  rm -f core conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+- else
+-   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+- $as_echo "yes" >&6; }
+  fi
+  if test "$enable_netbeans" = "yes"; then
+    $as_echo "#define FEAT_NETBEANS_INTG 1" >>confdefs.h
+--- 7385,7394 ----
+  $as_echo "yes" >&6; }
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+! $as_echo "no" >&6; }; enable_netbeans="no"; enable_channel="no"
+  fi
+  rm -f core conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+  fi
+  if test "$enable_netbeans" = "yes"; then
+    $as_echo "#define FEAT_NETBEANS_INTG 1" >>confdefs.h
+***************
+*** 7374,7379 ****
+--- 7398,7411 ----
+    NETBEANS_OBJ="objects/netbeans.o"
+  
+  fi
++ if test "$enable_channel" = "yes"; then
++   $as_echo "#define FEAT_CHANNEL 1" >>confdefs.h
++ 
++   CHANNEL_SRC="channel.c"
++ 
++   CHANNEL_OBJ="objects/channel.o"
++ 
++ fi
+  
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-sniff argument" >&5
+  $as_echo_n "checking --enable-sniff argument... " >&6; }
+*** ../vim-7.4.1168/src/config.mk.in	2015-12-29 18:52:33.344054429 +0100
+--- src/config.mk.in	2016-01-24 18:11:51.860185985 +0100
+***************
+*** 89,94 ****
+--- 89,96 ----
+  
+  NETBEANS_SRC	= @NETBEANS_SRC@
+  NETBEANS_OBJ	= @NETBEANS_OBJ@
++ CHANNEL_SRC	= @CHANNEL_SRC@
++ CHANNEL_OBJ	= @CHANNEL_OBJ@
+  
+  RUBY		= @vi_cv_path_ruby@
+  RUBY_SRC	= @RUBY_SRC@
+*** ../vim-7.4.1168/src/config.aap.in	2010-07-14 22:59:55.000000000 +0200
+--- src/config.aap.in	2016-01-24 18:12:29.307797966 +0100
+***************
+*** 65,70 ****
+--- 65,72 ----
+  
+  NETBEANS_SRC	= @NETBEANS_SRC@
+  NETBEANS_OBJ	= @NETBEANS_OBJ@
++ CHANNEL_SRC	= @CHANNEL_SRC@
++ CHANNEL_OBJ	= @CHANNEL_OBJ@
+  
+  RUBY		= @vi_cv_path_ruby@
+  RUBY_SRC	= @RUBY_SRC@
+*** ../vim-7.4.1168/src/config.h.in	2016-01-09 19:39:39.277685945 +0100
+--- src/config.h.in	2016-01-24 18:12:58.023500434 +0100
+***************
+*** 435,440 ****
+--- 435,443 ----
+  /* Define if you want to include NetBeans integration. */
+  #undef FEAT_NETBEANS_INTG
+  
++ /* Define if you want to include process communication. */
++ #undef FEAT_CHANNEL
++ 
+  /* Define default global runtime path */
+  #undef RUNTIME_GLOBAL
+  
+*** ../vim-7.4.1168/src/Make_bc5.mak	2016-01-23 19:45:48.622931332 +0100
+--- src/Make_bc5.mak	2016-01-24 18:40:18.666474776 +0100
+***************
+*** 86,94 ****
+  #		(BIG for WIN32, SMALL for DOS16)
+  # WINVER	0x0400 or 0x0500: minimum Win32 version to support (0x0400)
+  # CSCOPE	no or yes: include support for Cscope interface (yes)
+! # NETBEANS	no or yes: include support for Netbeans interface (yes if GUI
+  #		is yes)
+  # NBDEBUG	no or yes: include support for debugging Netbeans interface (no)
+  # XPM		define to path to XPM dir to get support for loading XPM images.
+  
+  ### BOR: root of the BC installation
+--- 86,97 ----
+  #		(BIG for WIN32, SMALL for DOS16)
+  # WINVER	0x0400 or 0x0500: minimum Win32 version to support (0x0400)
+  # CSCOPE	no or yes: include support for Cscope interface (yes)
+! # NETBEANS	no or yes: include support for Netbeans interface; also
+! #		requires CHANNEL (yes if GUI
+  #		is yes)
+  # NBDEBUG	no or yes: include support for debugging Netbeans interface (no)
++ # CHANNEL	no or yes: include support for inter process communication (yes
++ #		if GUI is yes)
+  # XPM		define to path to XPM dir to get support for loading XPM images.
+  
+  ### BOR: root of the BC installation
+***************
+*** 137,142 ****
+--- 140,150 ----
+  NETBEANS = yes
+  !endif
+  
++ ### CHANNEL: yes to enable inter process communication, no to disable it
++ !if ("$(CHANNEL)"=="") && ("$(GUI)"=="yes")
++ CHANNEL = yes
++ !endif
++ 
+  ### LUA: uncomment this line if you want lua support in vim
+  # LUA=c:\lua
+  
+***************
+*** 466,471 ****
+--- 474,480 ----
+  RESFILE = vim.res
+  !else
+  !undef NETBEANS
++ !undef CHANNEL
+  !undef XPM
+  !undef VIMDLL
+  !if ("$(DEBUG)"=="yes")
+***************
+*** 488,499 ****
+--- 497,517 ----
+  !endif
+  
+  !if ("$(NETBEANS)"=="yes")
++ !if ("$(CHANNEL)"!="yes")
++ # cannot use Netbeans without CHANNEL
++ NETBEANS = no
++ !else
+  DEFINES = $(DEFINES) -DFEAT_NETBEANS_INTG
+  !if ("$(NBDEBUG)"=="yes")
+  DEFINES = $(DEFINES) -DNBDEBUG
+  NBDEBUG_DEP = nbdebug.h nbdebug.c
+  !endif
+  !endif
++ !endif
++ 
++ !if ("$(CHANNEL)"=="yes")
++ DEFINES = $(DEFINES) -DFEAT_CHANNEL
++ !endif
+  
+  !ifdef XPM
+  !if ("$(GUI)"=="yes")
+***************
+*** 673,678 ****
+--- 691,701 ----
+      $(OBJDIR)\netbeans.obj
+  !endif
+  
++ !if ("$(CHANNEL)"=="yes")
++ vimobj = $(vimobj) \
++     $(OBJDIR)\channel.obj
++ !endif
++ 
+  !ifdef XPM
+  vimobj = $(vimobj) \
+      $(OBJDIR)\xpm_w32.obj
+***************
+*** 748,753 ****
+--- 771,779 ----
+  !if ("$(NETBEANS)"=="yes")
+  MSG = $(MSG) NETBEANS
+  !endif
++ !if ("$(CHANNEL)"=="yes")
++ MSG = $(MSG) CHANNEL
++ !endif
+  !ifdef XPM
+  MSG = $(MSG) XPM
+  !endif
+***************
+*** 1029,1034 ****
+--- 1055,1063 ----
+  $(OBJDIR)\netbeans.obj: netbeans.c $(NBDEBUG_DEP)
+  	$(CC) $(CCARG) $(CC1) $(CC2)$@ netbeans.c
+  
++ $(OBJDIR)\channel.obj: channel.c
++ 	$(CC) $(CCARG) $(CC1) $(CC2)$@ channel.c
++ 
+  $(OBJDIR)\vim.res: vim.rc version.h tools.bmp tearoff.bmp \
+  		vim.ico vim_error.ico vim_alert.ico vim_info.ico vim_quest.ico
+  	$(BRC) -fo$(OBJDIR)\vim.res -i $(BOR)\include -w32 -r vim.rc @&&|
+*** ../vim-7.4.1168/src/Make_cyg_ming.mak	2016-01-23 19:45:48.622931332 +0100
+--- src/Make_cyg_ming.mak	2016-01-24 18:41:36.221668634 +0100
+***************
+*** 64,71 ****
+  endif
+  # Set to yes to enable Cscope support.
+  CSCOPE=yes
+! # Set to yes to enable Netbeans support.
+  NETBEANS=$(GUI)
+  
+  
+  # Link against the shared version of libstdc++ by default.  Set
+--- 64,73 ----
+  endif
+  # Set to yes to enable Cscope support.
+  CSCOPE=yes
+! # Set to yes to enable Netbeans support (requires CHANNEL).
+  NETBEANS=$(GUI)
++ # Set to yes to enable inter process communication.
++ CHANNEL=$(GUI)
+  
+  
+  # Link against the shared version of libstdc++ by default.  Set
+***************
+*** 526,531 ****
+--- 528,537 ----
+  endif
+  endif
+  
++ ifeq ($(CHANNEL),yes)
++ DEFINES += -DFEAT_CHANNEL
++ endif
++ 
+  # DirectWrite (DirectX)
+  ifeq ($(DIRECTX),yes)
+  # Only allow DirectWrite for a GUI build.
+***************
+*** 667,679 ****
+--- 673,700 ----
+  ifeq ($(CSCOPE),yes)
+  OBJ += $(OUTDIR)/if_cscope.o
+  endif
++ 
+  ifeq ($(NETBEANS),yes)
++ ifneq ($(CHANNEL),yes)
++ # Cannot use Netbeans without CHANNEL
++ NETBEANS=no
++ else
+  # Only allow NETBEANS for a GUI build.
+  ifeq (yes, $(GUI))
+  OBJ += $(OUTDIR)/netbeans.o
+  LIB += -lwsock32
+  endif
+  endif
++ endif
++ 
++ ifeq ($(CHANNEL),yes)
++ OBJ += $(OUTDIR)/channel.o
++ ifneq ($(NETBEANS),yes)
++ LIB += -lwsock32
++ endif
++ endif
++ endif
++ 
+  ifeq ($(DIRECTX),yes)
+  # Only allow DIRECTX for a GUI build.
+  ifeq (yes, $(GUI))
+***************
+*** 866,871 ****
+--- 887,895 ----
+  $(OUTDIR)/netbeans.o:	netbeans.c $(INCL) $(NBDEBUG_INCL) $(NBDEBUG_SRC)
+  	$(CC) -c $(CFLAGS) netbeans.c -o $(OUTDIR)/netbeans.o
+  
++ $(OUTDIR)/channel.o:	channel.c $(INCL)
++ 	$(CC) -c $(CFLAGS) channel.c -o $(OUTDIR)/channel.o
++ 
+  $(OUTDIR)/regexp.o:		regexp.c regexp_nfa.c $(INCL)
+  	$(CC) -c $(CFLAGS) regexp.c -o $(OUTDIR)/regexp.o
+  
+*** ../vim-7.4.1168/src/Make_mvc.mak	2016-01-23 19:45:48.626931291 +0100
+--- src/Make_mvc.mak	2016-01-24 18:45:45.635076419 +0100
+***************
+*** 96,101 ****
+--- 96,108 ----
+  #	PostScript printing: POSTSCRIPT=yes (default is no)
+  #
+  #	Netbeans Support: NETBEANS=[yes or no] (default is yes if GUI is yes)
++ #	Requires CHANNEL.
++ #
++ #	Netbeans Debugging Support: NBDEBUG=[yes or no] (should be no, yes
++ #	doesn't work)
++ #
++ #	Inter process communication: CHANNEL=[yes or no] (default is yes if GUI
++ #	is yes)
+  #
+  #	XPM Image Support: XPM=[path to XPM directory]
+  #	Default is "xpm", using the files included in the distribution.
+***************
+*** 114,122 ****
+  #	  yes:   Write a normal mapfile.
+  #	  lines: Write a mapfile with line numbers (only for VC6 and later)
+  #
+- #	Netbeans Debugging Support: NBDEBUG=[yes or no] (should be no, yes
+- #	doesn't work)
+- #
+  #	Static Code Analysis: ANALYZE=yes (works with VS2012 only)
+  #
+  # You can combine any of these interfaces
+--- 121,126 ----
+***************
+*** 290,298 ****
+  NETBEANS = $(GUI)
+  !endif
+  
+! # Only allow NETBEANS and XPM for a GUI build.
+  !if "$(GUI)" == "yes"
+! !if "$(NETBEANS)" == "yes"
+  # NETBEANS - Include support for Netbeans integration
+  NETBEANS_PRO	= proto/netbeans.pro
+  NETBEANS_OBJ	= $(OBJDIR)/netbeans.obj
+--- 294,306 ----
+  NETBEANS = $(GUI)
+  !endif
+  
+! !ifndef CHANNEL
+! CHANNEL = $(GUI)
+! !endif
+! 
+! # Only allow NETBEANS and XPM for a GUI build and CHANNEL.
+  !if "$(GUI)" == "yes"
+! !if "$(NETBEANS)" == "yes" && "$(CHANNEL)" == "yes"
+  # NETBEANS - Include support for Netbeans integration
+  NETBEANS_PRO	= proto/netbeans.pro
+  NETBEANS_OBJ	= $(OBJDIR)/netbeans.obj
+***************
+*** 333,338 ****
+--- 341,354 ----
+  !endif
+  !endif
+  
++ !if "$(CHANNEL)" == "yes"
++ CHANNEL_PRO	= proto/channel.pro
++ CHANNEL_OBJ	= $(OBJDIR)/channel.obj
++ CHANNEL_DEFS	= -DFEAT_CHANNEL
++ 
++ NETBEANS_LIB	= WSock32.lib
++ !endif
++ 
+  # Set which version of the CRT to use
+  !if defined(USE_MSVCRT)
+  # CVARS = $(cvarsdll)
+***************
+*** 365,371 ****
+  #VIMRUNTIMEDIR = somewhere
+  
+  CFLAGS = -c /W3 /nologo $(CVARS) -I. -Iproto -DHAVE_PATHDEF -DWIN32 \
+! 		$(SNIFF_DEFS) $(CSCOPE_DEFS) $(NETBEANS_DEFS) \
+  		$(NBDEBUG_DEFS) $(XPM_DEFS) \
+  		$(DEFINES) -DWINVER=$(WINVER) -D_WIN32_WINNT=$(WINVER) \
+  		/Fo$(OUTDIR)/ 
+--- 381,387 ----
+  #VIMRUNTIMEDIR = somewhere
+  
+  CFLAGS = -c /W3 /nologo $(CVARS) -I. -Iproto -DHAVE_PATHDEF -DWIN32 \
+! 		$(SNIFF_DEFS) $(CSCOPE_DEFS) $(NETBEANS_DEFS) $(CHANNEL_DEFS) \
+  		$(NBDEBUG_DEFS) $(XPM_DEFS) \
+  		$(DEFINES) -DWINVER=$(WINVER) -D_WIN32_WINNT=$(WINVER) \
+  		/Fo$(OUTDIR)/ 
+***************
+*** 1005,1016 ****
+  
+  $(VIM).exe: $(OUTDIR) $(OBJ) $(GUI_OBJ) $(OLE_OBJ) $(OLE_IDL) $(MZSCHEME_OBJ) \
+  		$(LUA_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(PYTHON3_OBJ) $(RUBY_OBJ) $(TCL_OBJ) \
+! 		$(SNIFF_OBJ) $(CSCOPE_OBJ) $(NETBEANS_OBJ) $(XPM_OBJ) \
+  		version.c version.h
+  	$(CC) $(CFLAGS) version.c
+  	$(link) $(LINKARGS1) -out:$(VIM).exe $(OBJ) $(GUI_OBJ) $(OLE_OBJ) \
+  		$(LUA_OBJ) $(MZSCHEME_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(PYTHON3_OBJ) $(RUBY_OBJ) \
+! 		$(TCL_OBJ) $(SNIFF_OBJ) $(CSCOPE_OBJ) $(NETBEANS_OBJ) \
+  		$(XPM_OBJ) $(OUTDIR)\version.obj $(LINKARGS2)
+  	if exist $(VIM).exe.manifest mt.exe -nologo -manifest $(VIM).exe.manifest -updateresource:$(VIM).exe;1
+  
+--- 1021,1032 ----
+  
+  $(VIM).exe: $(OUTDIR) $(OBJ) $(GUI_OBJ) $(OLE_OBJ) $(OLE_IDL) $(MZSCHEME_OBJ) \
+  		$(LUA_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(PYTHON3_OBJ) $(RUBY_OBJ) $(TCL_OBJ) \
+! 		$(SNIFF_OBJ) $(CSCOPE_OBJ) $(NETBEANS_OBJ) $(CHANNEL_OBJ) $(XPM_OBJ) \
+  		version.c version.h
+  	$(CC) $(CFLAGS) version.c
+  	$(link) $(LINKARGS1) -out:$(VIM).exe $(OBJ) $(GUI_OBJ) $(OLE_OBJ) \
+  		$(LUA_OBJ) $(MZSCHEME_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(PYTHON3_OBJ) $(RUBY_OBJ) \
+! 		$(TCL_OBJ) $(SNIFF_OBJ) $(CSCOPE_OBJ) $(NETBEANS_OBJ) $(CHANNEL_OBJ) \
+  		$(XPM_OBJ) $(OUTDIR)\version.obj $(LINKARGS2)
+  	if exist $(VIM).exe.manifest mt.exe -nologo -manifest $(VIM).exe.manifest -updateresource:$(VIM).exe;1
+  
+***************
+*** 1227,1232 ****
+--- 1243,1250 ----
+  
+  $(OUTDIR)/netbeans.obj: $(OUTDIR) netbeans.c $(NBDEBUG_SRC) $(INCL)
+  
++ $(OUTDIR)/channel.obj: $(OUTDIR) channel.c $(INCL)
++ 
+  $(OUTDIR)/normal.obj:	$(OUTDIR) normal.c  $(INCL)
+  
+  $(OUTDIR)/option.obj:	$(OUTDIR) option.c  $(INCL)
+***************
+*** 1362,1368 ****
+  	proto/ui.pro \
+  	proto/undo.pro \
+  	proto/window.pro \
+! 	$(NETBEANS_PRO)
+  
+  .SUFFIXES: .cod .i
+  
+--- 1380,1387 ----
+  	proto/ui.pro \
+  	proto/undo.pro \
+  	proto/window.pro \
+! 	$(NETBEANS_PRO) \
+! 	$(CHANNEL_PRO)
+  
+  .SUFFIXES: .cod .i
+  
+*** ../vim-7.4.1168/src/version.c	2016-01-24 17:54:19.031096454 +0100
+--- src/version.c	2016-01-24 20:31:43.984948410 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1169,
+  /**/
+
+-- 
+He who laughs last, thinks slowest.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

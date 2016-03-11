@@ -1,0 +1,495 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1142
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1142
+Problem:    Cannot define keyword characters for a syntax file.
+Solution:   Add the ":syn iskeyword" command. (Christian Brabandt)
+Files:      runtime/doc/options.txt, runtime/doc/syntax.txt, src/buffer.c,
+            src/option.c, src/structs.h, src/syntax.c,
+            src/testdir/Make_all.mak, src/testdir/test_syntax.vim
+
+
+*** ../vim-7.4.1141/runtime/doc/options.txt	2016-01-09 19:39:39.269686032 +0100
+--- runtime/doc/options.txt	2016-01-19 21:30:01.442488287 +0100
+***************
+*** 4474,4479 ****
+--- 4489,4496 ----
+  	'*', '"' and '|' (so that CTRL-] on a command finds the help for that
+  	command).
+  	When the 'lisp' option is on the '-' character is always included.
++ 	This option also influences syntax highlighting, unless the syntax
++ 	uses |:syn-iskeyword|.
+  	NOTE: This option is set to the Vi default value when 'compatible' is
+  	set and to the Vim default value when 'compatible' is reset.
+  
+*** ../vim-7.4.1141/runtime/doc/syntax.txt	2013-08-10 13:25:01.000000000 +0200
+--- runtime/doc/syntax.txt	2016-01-19 21:33:26.156237734 +0100
+***************
+*** 3325,3330 ****
+--- 3438,3469 ----
+  
+  	To activate spell checking the 'spell' option must be set.
+  
++ SYNTAX ISKEYWORD SETTING				*:syn-iskeyword*
++ 
++ :sy[ntax] iskeyword [clear | {option}]
++ 	This defines the keyword characters.  It's like the 'iskeyword' option
++ 	for but only applies to syntax highlighting.
++ 
++ 	clear:		Syntax specific iskeyword setting is disabled and the
++ 			buffer-local 'iskeyword' setting is used.
++ 	{option}        Set the syntax 'iskeyword' option to a new value. 
++ 
++ 	Example: >
++   :syntax iskeyword @,48-57,192-255,$,_
++ <
++ 	This would set the syntax specific iskeyword option to include all
++ 	alphabetic characters, plus the numeric characters, all accented
++ 	characters and also includes the "_" and the "$".
++ 
++ 	If no argument is given, the current value will be output.
++ 
++ 	Setting this option influences what |/\k| matches in syntax patterns
++ 	and also determines where |:syn-keywords| will be checked for a new
++ 	match.
++ 
++ 	It is recommended when writing syntax files, to use this command
++ 	to the correct value for the specific syntax language and not change
++ 	the 'iskeyword' option.
+  
+  DEFINING KEYWORDS					*:syn-keyword*
+  
+***************
+*** 3356,3361 ****
+--- 3495,3501 ----
+  	isn't, the keyword will never be recognized.
+  	Multi-byte characters can also be used.  These do not have to be in
+  	'iskeyword'.
++ 	See |:syn-iskeyword| for defining syntax specific iskeyword settings.
+  
+  	A keyword always has higher priority than a match or region, the
+  	keyword is used if more than one item matches.	Keywords do not nest
+*** ../vim-7.4.1141/src/buffer.c	2016-01-10 20:54:11.827626122 +0100
+--- src/buffer.c	2016-01-19 21:27:08.264381494 +0100
+***************
+*** 1955,1960 ****
+--- 1955,1961 ----
+      clear_string_option(&buf->b_p_nf);
+  #ifdef FEAT_SYN_HL
+      clear_string_option(&buf->b_p_syn);
++     clear_string_option(&buf->b_s.b_syn_isk);
+  #endif
+  #ifdef FEAT_SPELL
+      clear_string_option(&buf->b_s.b_p_spc);
+*** ../vim-7.4.1141/src/option.c	2016-01-09 19:39:39.281685901 +0100
+--- src/option.c	2016-01-19 21:35:21.074967397 +0100
+***************
+*** 5494,5499 ****
+--- 5494,5500 ----
+  #endif
+  #ifdef FEAT_SYN_HL
+      check_string_option(&buf->b_p_syn);
++     check_string_option(&buf->b_s.b_syn_isk);
+  #endif
+  #ifdef FEAT_SPELL
+      check_string_option(&buf->b_s.b_p_spc);
+***************
+*** 10821,10826 ****
+--- 10822,10828 ----
+  	    /* Don't copy 'syntax', it must be set */
+  	    buf->b_p_syn = empty_option;
+  	    buf->b_p_smc = p_smc;
++ 	    buf->b_s.b_syn_isk = empty_option;
+  #endif
+  #ifdef FEAT_SPELL
+  	    buf->b_s.b_p_spc = vim_strsave(p_spc);
+*** ../vim-7.4.1141/src/structs.h	2016-01-18 23:28:44.157810770 +0100
+--- src/structs.h	2016-01-19 21:27:08.268381451 +0100
+***************
+*** 1362,1367 ****
+--- 1362,1369 ----
+  #if !defined(FEAT_SYN_HL) && !defined(FEAT_SPELL)
+      int		dummy;
+  #endif
++     char_u	b_syn_chartab[32];	/* syntax iskeyword option */
++     char_u	*b_syn_isk;		/* iskeyword option */
+  } synblock_T;
+  
+  
+*** ../vim-7.4.1141/src/syntax.c	2016-01-19 20:52:39.102986014 +0100
+--- src/syntax.c	2016-01-19 22:16:13.619962539 +0100
+***************
+*** 376,381 ****
+--- 376,383 ----
+  #define CUR_STATE(idx)	((stateitem_T *)(current_state.ga_data))[idx]
+  
+  static void syn_sync __ARGS((win_T *wp, linenr_T lnum, synstate_T *last_valid));
++ static void save_chartab(char_u *chartab);
++ static void restore_chartab(char_u *chartab);
+  static int syn_match_linecont __ARGS((linenr_T lnum));
+  static void syn_start_line __ARGS((void));
+  static void syn_update_ends __ARGS((int startofline));
+***************
+*** 458,463 ****
+--- 460,466 ----
+  static char_u *get_group_name __ARGS((char_u *arg, char_u **name_end));
+  static char_u *get_syn_options __ARGS((char_u *arg, syn_opt_arg_T *opt, int *conceal_char));
+  static void syn_cmd_include __ARGS((exarg_T *eap, int syncing));
++ static void syn_cmd_iskeyword __ARGS((exarg_T *eap, int syncing));
+  static void syn_cmd_keyword __ARGS((exarg_T *eap, int syncing));
+  static void syn_cmd_match __ARGS((exarg_T *eap, int syncing));
+  static void syn_cmd_region __ARGS((exarg_T *eap, int syncing));
+***************
+*** 984,989 ****
+--- 987,1010 ----
+      validate_current_state();
+  }
+  
++     static void
++ save_chartab(char_u *chartab)
++ {
++     if (syn_block->b_syn_isk != empty_option)
++     {
++ 	mch_memmove(chartab, syn_buf->b_chartab, (size_t)32);
++ 	mch_memmove(syn_buf->b_chartab, syn_win->w_s->b_syn_chartab,
++ 								  (size_t)32);
++     }
++ }
++ 
++     static void
++ restore_chartab(char_u *chartab)
++ {
++     if (syn_win->w_s->b_syn_isk != empty_option)
++ 	mch_memmove(syn_buf->b_chartab, chartab, (size_t)32);
++ }
++ 
+  /*
+   * Return TRUE if the line-continuation pattern matches in line "lnum".
+   */
+***************
+*** 993,1006 ****
+--- 1014,1031 ----
+  {
+      regmmatch_T regmatch;
+      int r;
++     char_u	buf_chartab[32];  /* chartab array for syn iskyeyword */
+  
+      if (syn_block->b_syn_linecont_prog != NULL)
+      {
++ 	/* use syntax iskeyword option */
++ 	save_chartab(buf_chartab);
+  	regmatch.rmm_ic = syn_block->b_syn_linecont_ic;
+  	regmatch.regprog = syn_block->b_syn_linecont_prog;
+  	r = syn_regexec(&regmatch, lnum, (colnr_T)0,
+  				IF_SYN_TIME(&syn_block->b_syn_linecont_time));
+  	syn_block->b_syn_linecont_prog = regmatch.regprog;
++ 	restore_chartab(buf_chartab);
+  	return r;
+      }
+      return FALSE;
+***************
+*** 1891,1896 ****
+--- 1916,1922 ----
+      lpos_T	pos;
+      int		lc_col;
+      reg_extmatch_T *cur_extmatch = NULL;
++     char_u	buf_chartab[32];  /* chartab array for syn iskyeyword */
+      char_u	*line;		/* current line.  NOTE: becomes invalid after
+  				   looking for a pattern match! */
+  
+***************
+*** 1945,1950 ****
+--- 1971,1979 ----
+       * avoid matching the same item in the same position twice. */
+      ga_init2(&zero_width_next_ga, (int)sizeof(int), 10);
+  
++     /* use syntax iskeyword option */
++     save_chartab(buf_chartab);
++ 
+      /*
+       * Repeat matching keywords and patterns, to find contained items at the
+       * same column.  This stops when there are no extra matches at the current
+***************
+*** 1956,1961 ****
+--- 1985,1991 ----
+  	keep_next_list = FALSE;
+  	syn_id = 0;
+  
++ 
+  	/*
+  	 * 1. Check for a current state.
+  	 *    Only when there is no current state, or if the current state may
+***************
+*** 2309,2314 ****
+--- 2339,2346 ----
+  
+      } while (found_match);
+  
++     restore_chartab(buf_chartab);
++ 
+      /*
+       * Use attributes from the current state, if within its highlighting.
+       * If not, use attributes from the current-but-one state, etc.
+***************
+*** 2915,2920 ****
+--- 2947,2953 ----
+      lpos_T	pos;
+      char_u	*line;
+      int		had_match = FALSE;
++     char_u	buf_chartab[32];  /* chartab array for syn option iskyeyword */
+  
+      /* just in case we are invoked for a keyword */
+      if (idx < 0)
+***************
+*** 2961,2966 ****
+--- 2994,3003 ----
+      matchcol = startpos->col;	/* start looking for a match at sstart */
+      start_idx = idx;		/* remember the first END pattern. */
+      best_regmatch.startpos[0].col = 0;		/* avoid compiler warning */
++ 
++     /* use syntax iskeyword option */
++     save_chartab(buf_chartab);
++ 
+      for (;;)
+      {
+  	/*
+***************
+*** 3117,3122 ****
+--- 3154,3161 ----
+      if (!had_match)
+  	m_endpos->lnum = 0;
+  
++     restore_chartab(buf_chartab);
++ 
+      /* Remove external matches. */
+      unref_extmatch(re_extmatch_in);
+      re_extmatch_in = NULL;
+***************
+*** 3482,3487 ****
+--- 3521,3577 ----
+  }
+  
+  /*
++  * Handle ":syntax iskeyword" command.
++  */
++     static void
++ syn_cmd_iskeyword(eap, syncing)
++     exarg_T	*eap;
++     int		syncing UNUSED;
++ {
++     char_u	*arg = eap->arg;
++     char_u	save_chartab[32];
++     char_u	*save_isk;
++ 
++     if (eap->skip)
++ 	return;
++ 
++     arg = skipwhite(arg);
++     if (*arg == NUL)
++     {
++ 	MSG_PUTS("\n");
++ 	MSG_PUTS(_("syntax iskeyword "));
++ 	if (curwin->w_s->b_syn_isk != empty_option)
++ 	    msg_outtrans(curwin->w_s->b_syn_isk);
++ 	else
++ 	    msg_outtrans((char_u *)"not set");
++     }
++     else
++     {
++ 	if (STRNICMP(arg, "clear", 5) == 0)
++ 	{
++ 	    mch_memmove(curwin->w_s->b_syn_chartab, curbuf->b_chartab,
++ 								  (size_t)32);
++ 	    clear_string_option(&curwin->w_s->b_syn_isk);
++ 	}
++ 	else
++ 	{
++ 	    mch_memmove(save_chartab, curbuf->b_chartab, (size_t)32);
++ 	    save_isk = curbuf->b_p_isk;
++ 	    curbuf->b_p_isk = vim_strsave(arg);
++ 
++ 	    buf_init_chartab(curbuf, FALSE);
++ 	    mch_memmove(curwin->w_s->b_syn_chartab, curbuf->b_chartab,
++ 								  (size_t)32);
++ 	    mch_memmove(curbuf->b_chartab, save_chartab, (size_t)32);
++ 	    clear_string_option(&curwin->w_s->b_syn_isk);
++ 	    curwin->w_s->b_syn_isk = curbuf->b_p_isk;
++ 	    curbuf->b_p_isk = save_isk;
++ 	}
++     }
++     redraw_win_later(curwin, NOT_VALID);
++ }
++ 
++ /*
+   * Clear all syntax info for one buffer.
+   */
+      void
+***************
+*** 3523,3528 ****
+--- 3613,3619 ----
+  #ifdef FEAT_FOLDING
+      block->b_syn_folditems = 0;
+  #endif
++     clear_string_option(&block->b_syn_isk);
+  
+      /* free the stored states */
+      syn_stack_free_all(block);
+***************
+*** 3569,3576 ****
+      curwin->w_s->b_syn_linecont_prog = NULL;
+      vim_free(curwin->w_s->b_syn_linecont_pat);
+      curwin->w_s->b_syn_linecont_pat = NULL;
+  
+!     syn_stack_free_all(curwin->w_s);		/* Need to recompute all syntax. */
+  }
+  
+  /*
+--- 3660,3668 ----
+      curwin->w_s->b_syn_linecont_prog = NULL;
+      vim_free(curwin->w_s->b_syn_linecont_pat);
+      curwin->w_s->b_syn_linecont_pat = NULL;
++     clear_string_option(&curwin->w_s->b_syn_isk);
+  
+!     syn_stack_free_all(curwin->w_s);	/* Need to recompute all syntax. */
+  }
+  
+  /*
+***************
+*** 3777,3782 ****
+--- 3869,3875 ----
+      eap->nextcmd = check_nextcmd(eap->arg);
+      if (!eap->skip)
+      {
++ 	clear_string_option(&curwin->w_s->b_syn_isk);
+  	set_internal_string_var((char_u *)"syntax_cmd", (char_u *)"reset");
+  	do_cmdline_cmd((char_u *)"runtime! syntax/syncolor.vim");
+  	do_unlet((char_u *)"g:syntax_cmd", TRUE);
+***************
+*** 6253,6258 ****
+--- 6346,6352 ----
+      {"conceal",		syn_cmd_conceal},
+      {"enable",		syn_cmd_enable},
+      {"include",		syn_cmd_include},
++     {"iskeyword",	syn_cmd_iskeyword},
+      {"keyword",		syn_cmd_keyword},
+      {"list",		syn_cmd_list},
+      {"manual",		syn_cmd_manual},
+***************
+*** 6331,6336 ****
+--- 6425,6431 ----
+  	clear_string_option(&curwin->w_s->b_p_spf);
+  	clear_string_option(&curwin->w_s->b_p_spl);
+  #endif
++ 	clear_string_option(&curwin->w_s->b_syn_isk);
+      }
+  
+      /* save value of b:current_syntax */
+*** ../vim-7.4.1141/src/testdir/Make_all.mak	2016-01-19 13:07:08.758882600 +0100
+--- src/testdir/Make_all.mak	2016-01-19 21:46:25.843632115 +0100
+***************
+*** 175,180 ****
+--- 175,181 ----
+  	    test_increment.res \
+  	    test_perl.res \
+  	    test_quickfix.res \
++ 	    test_syntax.res \
+  	    test_viminfo.res \
+  	    test_viml.res \
+  	    test_alot.res
+*** ../vim-7.4.1141/src/testdir/test_syntax.vim	2016-01-19 22:27:23.888588580 +0100
+--- src/testdir/test_syntax.vim	2016-01-19 22:06:19.322511215 +0100
+***************
+*** 0 ****
+--- 1,67 ----
++ " Test for syntax and syntax iskeyword option
++ 
++ if !has("syntax")
++   finish
++ endif
++ 
++ func GetSyntaxItem(pat)
++   let c = ''
++   let a = ['a', getreg('a'), getregtype('a')]
++   0
++   redraw!
++   call search(a:pat, 'W')
++   let synid = synID(line('.'), col('.'), 1)
++   while synid == synID(line('.'), col('.'), 1)
++     norm! v"ay
++     " stop at whitespace
++     if @a =~# '\s'
++       break
++     endif
++     let c .= @a
++     norm! l
++   endw
++   call call('setreg', a)
++   0
++   return c
++ endfunc
++ 
++ func Test_syn_iskeyword()
++   new
++   call setline(1, [
++ 	\ 'CREATE TABLE FOOBAR(',
++ 	\ '    DLTD_BY VARCHAR2(100)',
++ 	\ ');',
++   	\ ''])
++ 
++   syntax on
++   set ft=sql
++   syn match SYN /C\k\+\>/
++   hi link SYN ErrorMsg
++   call assert_equal('DLTD_BY', GetSyntaxItem('DLTD'))
++   /\<D\k\+\>/:norm! ygn
++   call assert_equal('DLTD_BY', @0)
++   redir @c
++   syn iskeyword
++   redir END
++   call assert_equal("\nsyntax iskeyword not set", @c)
++ 
++   syn iskeyword @,48-57,_,192-255
++   redir @c
++   syn iskeyword
++   redir END
++   call assert_equal("\nsyntax iskeyword @,48-57,_,192-255", @c)
++ 
++   setlocal isk-=_
++   call assert_equal('DLTD_BY', GetSyntaxItem('DLTD'))
++   /\<D\k\+\>/:norm! ygn
++   let b2=@0
++   call assert_equal('DLTD', @0)
++ 
++   syn iskeyword clear
++   redir @c
++   syn iskeyword
++   redir END
++   call assert_equal("\nsyntax iskeyword not set", @c)
++ 
++   quit!
++ endfunc
+*** ../vim-7.4.1141/src/version.c	2016-01-19 20:52:39.106985972 +0100
+--- src/version.c	2016-01-19 22:17:08.911353422 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1142,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+11. You find yourself typing "com" after every period when using a word
+    processor.com
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

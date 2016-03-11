@@ -1,0 +1,91 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1240
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1240
+Problem:    Visual studio tools are noisy.
+Solution:   Suppress startup info. (Mike Williams)
+Files:      src/GvimExt/Makefile, src/Make_mvc.mak, src/tee/Make_mvc.mak
+
+
+*** ../vim-7.4.1239/src/GvimExt/Makefile	2016-01-15 18:03:26.869250872 +0100
+--- src/GvimExt/Makefile	2016-02-02 18:48:30.784954902 +0100
+***************
+*** 52,58 ****
+  	$(cc) $(cflags) -DFEAT_GETTEXT $(cvarsmt) $*.cpp
+  
+  gvimext.res: gvimext.rc
+! 	$(rc) $(rcflags) $(rcvars)  gvimext.rc
+  
+  clean:
+  	- if exist gvimext.dll del gvimext.dll
+--- 52,58 ----
+  	$(cc) $(cflags) -DFEAT_GETTEXT $(cvarsmt) $*.cpp
+  
+  gvimext.res: gvimext.rc
+! 	$(rc) /nologo $(rcflags) $(rcvars)  gvimext.rc
+  
+  clean:
+  	- if exist gvimext.dll del gvimext.dll
+*** ../vim-7.4.1239/src/Make_mvc.mak	2016-01-24 20:36:18.870082307 +0100
+--- src/Make_mvc.mak	2016-02-02 18:48:52.400731174 +0100
+***************
+*** 1294,1300 ****
+  $(OUTDIR)/vim.res:	$(OUTDIR) vim.rc gvim.exe.mnf version.h tools.bmp \
+  				tearoff.bmp vim.ico vim_error.ico \
+  				vim_alert.ico vim_info.ico vim_quest.ico
+! 	$(RC) /l 0x409 /Fo$(OUTDIR)/vim.res $(RCFLAGS) vim.rc
+  
+  iid_ole.c if_ole.h vim.tlb: if_ole.idl
+  	midl /nologo /error none /proxy nul /iid iid_ole.c /tlb vim.tlb \
+--- 1294,1300 ----
+  $(OUTDIR)/vim.res:	$(OUTDIR) vim.rc gvim.exe.mnf version.h tools.bmp \
+  				tearoff.bmp vim.ico vim_error.ico \
+  				vim_alert.ico vim_info.ico vim_quest.ico
+! 	$(RC) /nologo /l 0x409 /Fo$(OUTDIR)/vim.res $(RCFLAGS) vim.rc
+  
+  iid_ole.c if_ole.h vim.tlb: if_ole.idl
+  	midl /nologo /error none /proxy nul /iid iid_ole.c /tlb vim.tlb \
+*** ../vim-7.4.1239/src/tee/Make_mvc.mak	2016-01-03 16:55:55.552237028 +0100
+--- src/tee/Make_mvc.mak	2016-02-02 18:47:03.773855427 +0100
+***************
+*** 1,7 ****
+  # A very (if not the most) simplistic Makefile for MSVC
+  
+  CC=cl
+! CFLAGS=/O2
+  
+  tee.exe: tee.obj
+  	$(CC) $(CFLAGS) /Fo$@ $**
+--- 1,7 ----
+  # A very (if not the most) simplistic Makefile for MSVC
+  
+  CC=cl
+! CFLAGS=/O2 /nologo
+  
+  tee.exe: tee.obj
+  	$(CC) $(CFLAGS) /Fo$@ $**
+*** ../vim-7.4.1239/src/version.c	2016-02-02 18:43:13.436238859 +0100
+--- src/version.c	2016-02-02 18:49:16.676479909 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1240,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+108. While reading a magazine, you look for the Zoom icon for a better
+     look at a photograph.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

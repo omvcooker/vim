@@ -1,0 +1,302 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1009
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1009
+Problem:    There are still #ifdefs for ARCHIE.
+Solution:   Remove references to ARCHIE, the code was removed in Vim 5.
+Files:      src/ex_cmds.c, src/ex_docmd.c, src/fileio.c, src/main.c,
+            src/memline.c, src/option.c, src/term.c
+
+
+*** ../vim-7.4.1008/src/ex_cmds.c	2015-12-31 19:06:56.044081952 +0100
+--- src/ex_cmds.c	2015-12-31 19:40:43.838205516 +0100
+***************
+*** 1570,1576 ****
+      char_u	*buf;
+      long_u	len;
+  
+! #if defined(UNIX) && !defined(ARCHIE)
+      int		is_fish_shell;
+      char_u	*shell_name = get_isolated_shell_name();
+  
+--- 1570,1576 ----
+      char_u	*buf;
+      long_u	len;
+  
+! #if defined(UNIX)
+      int		is_fish_shell;
+      char_u	*shell_name = get_isolated_shell_name();
+  
+***************
+*** 1590,1596 ****
+      if (buf == NULL)
+  	return NULL;
+  
+! #if defined(UNIX) && !defined(ARCHIE)
+      /*
+       * Put braces around the command (for concatenated commands) when
+       * redirecting input and/or output.
+--- 1590,1596 ----
+      if (buf == NULL)
+  	return NULL;
+  
+! #if defined(UNIX)
+      /*
+       * Put braces around the command (for concatenated commands) when
+       * redirecting input and/or output.
+*** ../vim-7.4.1008/src/ex_docmd.c	2015-12-31 19:06:56.048081908 +0100
+--- src/ex_docmd.c	2015-12-31 19:41:00.914021286 +0100
+***************
+*** 7835,7841 ****
+  # endif
+  #endif
+  
+! #if (!defined(UNIX) && !defined(__EMX__)) || defined(ARCHIE) || defined(PROTO)
+  /*
+   * Expand the file names in the global argument list.
+   * If "fnum_list" is not NULL, use "fnum_list[fnum_len]" as a list of buffer
+--- 7835,7841 ----
+  # endif
+  #endif
+  
+! #if (!defined(UNIX) && !defined(__EMX__)) || defined(PROTO)
+  /*
+   * Expand the file names in the global argument list.
+   * If "fnum_list" is not NULL, use "fnum_list[fnum_len]" as a list of buffer
+*** ../vim-7.4.1008/src/fileio.c	2015-12-31 19:06:56.048081908 +0100
+--- src/fileio.c	2015-12-31 19:41:20.401811033 +0100
+***************
+*** 3510,3516 ****
+      /*
+       * Get information about original file (if there is one).
+       */
+! #if defined(UNIX) && !defined(ARCHIE)
+      st_old.st_dev = 0;
+      st_old.st_ino = 0;
+      perm = -1;
+--- 3510,3516 ----
+      /*
+       * Get information about original file (if there is one).
+       */
+! #if defined(UNIX)
+      st_old.st_dev = 0;
+      st_old.st_ino = 0;
+      perm = -1;
+***************
+*** 4126,4132 ****
+  	}
+      }
+  
+! #if defined(UNIX) && !defined(ARCHIE)
+      /* When using ":w!" and the file was read-only: make it writable */
+      if (forceit && perm >= 0 && !(perm & 0200) && st_old.st_uid == getuid()
+  				     && vim_strchr(p_cpo, CPO_FWRITE) == NULL)
+--- 4126,4132 ----
+  	}
+      }
+  
+! #if defined(UNIX)
+      /* When using ":w!" and the file was read-only: make it writable */
+      if (forceit && perm >= 0 && !(perm & 0200) && st_old.st_uid == getuid()
+  				     && vim_strchr(p_cpo, CPO_FWRITE) == NULL)
+*** ../vim-7.4.1008/src/main.c	2015-07-12 16:21:17.795908369 +0200
+--- src/main.c	2015-12-31 19:52:29.722589901 +0100
+***************
+*** 74,80 ****
+      char_u	*serverStrEnc;		/* encoding of serverStr */
+      char_u	*servername;		/* allocated name for our server */
+  #endif
+! #if (!defined(UNIX) && !defined(__EMX__)) || defined(ARCHIE)
+      int		literal;		/* don't expand file names */
+  #endif
+  #ifdef MSWIN
+--- 74,81 ----
+      char_u	*serverStrEnc;		/* encoding of serverStr */
+      char_u	*servername;		/* allocated name for our server */
+  #endif
+! #if !defined(UNIX) && !defined(__EMX__)
+! # define EXPAND_FILENAMES
+      int		literal;		/* don't expand file names */
+  #endif
+  #ifdef MSWIN
+***************
+*** 401,407 ****
+  
+      if (GARGCOUNT > 0)
+      {
+! #if (!defined(UNIX) && !defined(__EMX__)) || defined(ARCHIE)
+  	/*
+  	 * Expand wildcards in file names.
+  	 */
+--- 402,408 ----
+  
+      if (GARGCOUNT > 0)
+      {
+! #ifdef EXPAND_FILENAMES
+  	/*
+  	 * Expand wildcards in file names.
+  	 */
+***************
+*** 987,992 ****
+--- 988,994 ----
+       * main loop. */
+      {
+  	int default_regname = 0;
++ 
+  	adjust_clip_reg(&default_regname);
+  	set_reg_var(default_regname);
+      }
+***************
+*** 1879,1885 ****
+  		}
+  		else if (STRNICMP(argv[0] + argv_idx, "literal", 7) == 0)
+  		{
+! #if (!defined(UNIX) && !defined(__EMX__)) || defined(ARCHIE)
+  		    parmp->literal = TRUE;
+  #endif
+  		}
+--- 1881,1887 ----
+  		}
+  		else if (STRNICMP(argv[0] + argv_idx, "literal", 7) == 0)
+  		{
+! #ifdef EXPAND_FILENAMES
+  		    parmp->literal = TRUE;
+  #endif
+  		}
+***************
+*** 2456,2462 ****
+  #endif
+  
+  	    alist_add(&global_alist, p,
+! #if (!defined(UNIX) && !defined(__EMX__)) || defined(ARCHIE)
+  		    parmp->literal ? 2 : 0	/* add buffer nr after exp. */
+  #else
+  		    2		/* add buffer number now and use curbuf */
+--- 2458,2464 ----
+  #endif
+  
+  	    alist_add(&global_alist, p,
+! #ifdef EXPAND_FILENAMES
+  		    parmp->literal ? 2 : 0	/* add buffer nr after exp. */
+  #else
+  		    2		/* add buffer number now and use curbuf */
+***************
+*** 3268,3274 ****
+  
+      mch_msg(_("\n\nArguments:\n"));
+      main_msg(_("--\t\t\tOnly file names after this"));
+! #if (!defined(UNIX) && !defined(__EMX__)) || defined(ARCHIE)
+      main_msg(_("--literal\t\tDon't expand wildcards"));
+  #endif
+  #ifdef FEAT_OLE
+--- 3270,3276 ----
+  
+      mch_msg(_("\n\nArguments:\n"));
+      main_msg(_("--\t\t\tOnly file names after this"));
+! #ifdef EXPAND_FILENAMES
+      main_msg(_("--literal\t\tDon't expand wildcards"));
+  #endif
+  #ifdef FEAT_OLE
+*** ../vim-7.4.1008/src/memline.c	2015-12-31 19:06:56.052081865 +0100
+--- src/memline.c	2015-12-31 19:43:58.408106316 +0100
+***************
+*** 4211,4217 ****
+  #endif
+      char_u	*buf_fname = buf->b_fname;
+  
+! #if !defined(SHORT_FNAME) && (!defined(UNIX) || defined(ARCHIE))
+  # define CREATE_DUMMY_FILE
+      FILE	*dummyfd = NULL;
+  
+--- 4211,4217 ----
+  #endif
+      char_u	*buf_fname = buf->b_fname;
+  
+! #if !defined(SHORT_FNAME) && !defined(UNIX)
+  # define CREATE_DUMMY_FILE
+      FILE	*dummyfd = NULL;
+  
+***************
+*** 4271,4277 ****
+  	    fname = NULL;
+  	    break;
+  	}
+! #if defined(UNIX) && !defined(ARCHIE) && !defined(SHORT_FNAME)
+  /*
+   * Some systems have a MS-DOS compatible filesystem that use 8.3 character
+   * file names. If this is the first try and the swap file name does not fit in
+--- 4271,4277 ----
+  	    fname = NULL;
+  	    break;
+  	}
+! #if defined(UNIX) && !defined(SHORT_FNAME)
+  /*
+   * Some systems have a MS-DOS compatible filesystem that use 8.3 character
+   * file names. If this is the first try and the swap file name does not fit in
+*** ../vim-7.4.1008/src/option.c	2015-12-31 19:06:56.056081823 +0100
+--- src/option.c	2015-12-31 19:44:39.255665619 +0100
+***************
+*** 2297,2307 ****
+  #   if defined(WIN3264)
+  			    (char_u *)"",	/* set in set_init_1() */
+  #   else
+- #    if defined(ARCHIE)
+- 			    (char_u *)"gos",
+- #    else
+  			    (char_u *)"sh",
+- #    endif
+  #   endif
+  #  endif
+  # endif
+--- 2297,2303 ----
+***************
+*** 2321,2331 ****
+  			    (char_u *)&p_sp, PV_NONE,
+  			    {
+  #if defined(UNIX)
+- # ifdef ARCHIE
+- 			    (char_u *)"2>",
+- # else
+  			    (char_u *)"| tee",
+- # endif
+  #else
+  			    (char_u *)">",
+  #endif
+--- 2317,2323 ----
+*** ../vim-7.4.1008/src/term.c	2015-12-31 19:06:56.056081823 +0100
+--- src/term.c	2015-12-31 19:45:01.095429993 +0100
+***************
+*** 1532,1540 ****
+      "Co",
+  #endif
+      "ku", "kd", "kr", "kl",
+- # ifdef ARCHIE
+-     "su", "sd",		/* Termcap code made up! */
+- # endif
+      "#2", "#4", "%i", "*7",
+      "k1", "k2", "k3", "k4", "k5", "k6",
+      "k7", "k8", "k9", "k;", "F1", "F2",
+--- 1532,1537 ----
+*** ../vim-7.4.1008/src/version.c	2015-12-31 19:06:56.064081736 +0100
+--- src/version.c	2015-12-31 19:46:55.034200733 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1009,
+  /**/
+
+-- 
+The early bird gets the worm. The second mouse gets the cheese.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

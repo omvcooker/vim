@@ -1,0 +1,79 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1450
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1450
+Problem:    Json encoding still fails when encoding is not utf-8.
+Solution:   Set 'encoding' before :scriptencoding.  Run the json test
+            separately to avoid affecting other tests.
+Files:      src/testdir/test_json.vim, src/testdir/Make_all.mak,
+            src/testdir/test_alot.vim
+
+
+*** ../vim-7.4.1449/src/testdir/test_json.vim	2016-02-28 16:29:46.213263102 +0100
+--- src/testdir/test_json.vim	2016-02-28 17:55:37.903836795 +0100
+***************
+*** 5,12 ****
+  if !has('multi_byte')
+    finish
+  endif
+- scriptencoding utf-8
+  set encoding=utf-8
+  
+  let s:json1 = '"str\"in\\g"'
+  let s:var1 = "str\"in\\g"
+--- 5,12 ----
+  if !has('multi_byte')
+    finish
+  endif
+  set encoding=utf-8
++ scriptencoding utf-8
+  
+  let s:json1 = '"str\"in\\g"'
+  let s:var1 = "str\"in\\g"
+*** ../vim-7.4.1449/src/testdir/Make_all.mak	2016-02-25 22:37:34.969945642 +0100
+--- src/testdir/Make_all.mak	2016-02-28 17:58:13.242221124 +0100
+***************
+*** 176,181 ****
+--- 176,182 ----
+  	    test_channel.res \
+  	    test_hardcopy.res \
+  	    test_increment.res \
++ 	    test_json.res \
+  	    test_langmap.res \
+  	    test_perl.res \
+  	    test_quickfix.res \
+*** ../vim-7.4.1449/src/testdir/test_alot.vim	2016-02-07 21:19:24.145042290 +0100
+--- src/testdir/test_alot.vim	2016-02-28 17:58:21.074139669 +0100
+***************
+*** 6,12 ****
+  source test_delete.vim
+  source test_expand.vim
+  source test_glob2regpat.vim
+- source test_json.vim
+  source test_lispwords.vim
+  source test_menu.vim
+  source test_reltime.vim
+--- 6,11 ----
+*** ../vim-7.4.1449/src/version.c	2016-02-28 16:41:59.801677399 +0100
+--- src/version.c	2016-02-28 17:57:20.906765446 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1450,
+  /**/
+
+-- 
+Every time I lose weight, it finds me again!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

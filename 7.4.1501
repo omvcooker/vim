@@ -1,0 +1,48 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1501
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1501
+Problem:    Garbage collection with an open channel is not tested.
+Solution:   Call garbagecollect() in the test.
+Files:      src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1500/src/testdir/test_channel.vim	2016-03-05 20:54:28.216563776 +0100
+--- src/testdir/test_channel.vim	2016-03-06 16:23:36.376248233 +0100
+***************
+*** 146,151 ****
+--- 146,154 ----
+    endif
+    call assert_equal('got it', s:responseMsg)
+  
++   " Collect garbage, tests that our handle isn't collected.
++   call garbagecollect()
++ 
+    " check setting options (without testing the effect)
+    call ch_setoptions(handle, {'callback': 's:NotUsed'})
+    call ch_setoptions(handle, {'timeout': 1111})
+*** ../vim-7.4.1500/src/version.c	2016-03-06 14:58:24.041667964 +0100
+--- src/version.c	2016-03-06 16:37:30.275608465 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1501,
+  /**/
+
+-- 
+Engineers understand that their appearance only bothers other people and
+therefore it is not worth optimizing.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

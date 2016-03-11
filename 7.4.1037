@@ -1,0 +1,278 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1037
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1037
+Problem:    Using "q!" when there is a modified hidden buffer does not unload
+            the current buffer, resulting in the need to abandon it again.
+Solution:   When using "q!" unload the current buffer when needed. (Yasuhiro
+            Matsumoto, Hirohito Higashi)
+Files:      src/testdir/test31.in, src/testdir/test31.ok,
+            runtime/doc/editing.txt, src/ex_cmds2.c, src/ex_docmd.c,
+            src/gui.c, src/gui_gtk_x11.c, src/os_unix.c,
+            src/proto/ex_cmds2.pro
+
+
+*** ../vim-7.4.1036/src/testdir/test31.in	2012-02-12 23:57:42.000000000 +0100
+--- src/testdir/test31.in	2016-01-02 22:13:18.166838164 +0100
+***************
+*** 69,74 ****
+--- 69,94 ----
+  GA 4:all!
+  :1wincmd w
+  :w >>test.out
++ :"
++ :" test ":q!" and hidden buffer.
++ :bw! Xtest1 Xtest2 Xtest3 Xtest4
++ :sp Xtest1
++ :wincmd w
++ :bw!
++ :set modified
++ :bot sp Xtest2
++ :set modified
++ :bot sp Xtest3
++ :set modified
++ :wincmd t
++ :hide
++ :q!
++ :w >>test.out
++ :q!
++ :w >>test.out
++ :q!
++ :call append(line('$'), "Oh, Not finished yet.")
++ :w >>test.out
+  :qa!
+  ENDTEST
+  
+*** ../vim-7.4.1036/src/testdir/test31.ok	2012-02-13 00:00:13.000000000 +0100
+--- src/testdir/test31.ok	2016-01-02 22:13:18.166838164 +0100
+***************
+*** 10,12 ****
+--- 10,14 ----
+  testtext 3 3 3
+  testtext 1
+  testtext 2 2 2
++ testtext 3
++ testtext 1
+*** ../vim-7.4.1036/runtime/doc/editing.txt	2015-09-08 18:46:04.337233673 +0200
+--- runtime/doc/editing.txt	2016-01-02 22:15:50.757167261 +0100
+***************
+*** 1091,1100 ****
+  			the last file in the argument list has not been
+  			edited.  See |:confirm| and 'confirm'.  {not in Vi}
+  
+! :q[uit]!		Quit without writing, also when currently visible
+! 			buffers have changes.  Does not exit when this is the
+! 			last window and there is a changed hidden buffer.
+! 			In this case, the first changed hidden buffer becomes
+  			the current buffer.
+  			Use ":qall!" to exit always.
+  
+--- 1105,1114 ----
+  			the last file in the argument list has not been
+  			edited.  See |:confirm| and 'confirm'.  {not in Vi}
+  
+! :q[uit]!		Quit without writing, also when currentl buffer has
+! 			changes.  If this is the last window and there is a
+! 			modified hidden buffer, the current buffer is
+! 			abandoned and the first changed hidden buffer becomes
+  			the current buffer.
+  			Use ":qall!" to exit always.
+  
+*** ../vim-7.4.1036/src/ex_cmds2.c	2015-09-09 22:35:25.792564584 +0200
+--- src/ex_cmds2.c	2016-01-02 22:18:39.275322271 +0100
+***************
+*** 1636,1645 ****
+  /*
+   * Return TRUE if any buffer was changed and cannot be abandoned.
+   * That changed buffer becomes the current buffer.
+   */
+      int
+! check_changed_any(hidden)
+      int		hidden;		/* Only check hidden buffers */
+  {
+      int		ret = FALSE;
+      buf_T	*buf;
+--- 1636,1648 ----
+  /*
+   * Return TRUE if any buffer was changed and cannot be abandoned.
+   * That changed buffer becomes the current buffer.
++  * When "unload" is true the current buffer is unloaded instead of making it
++  * hidden.  This is used for ":q!".
+   */
+      int
+! check_changed_any(hidden, unload)
+      int		hidden;		/* Only check hidden buffers */
++     int		unload;
+  {
+      int		ret = FALSE;
+      buf_T	*buf;
+***************
+*** 1750,1756 ****
+  
+      /* Open the changed buffer in the current window. */
+      if (buf != curbuf)
+! 	set_curbuf(buf, DOBUF_GOTO);
+  
+  theend:
+      vim_free(bufnrs);
+--- 1753,1759 ----
+  
+      /* Open the changed buffer in the current window. */
+      if (buf != curbuf)
+! 	set_curbuf(buf, unload ? DOBUF_UNLOAD : DOBUF_GOTO);
+  
+  theend:
+      vim_free(bufnrs);
+*** ../vim-7.4.1036/src/ex_docmd.c	2016-01-02 21:40:46.600201059 +0100
+--- src/ex_docmd.c	2016-01-02 22:13:48.710503680 +0100
+***************
+*** 7143,7149 ****
+  				       | (eap->forceit ? CCGD_FORCEIT : 0)
+  				       | CCGD_EXCMD))
+  	    || check_more(TRUE, eap->forceit) == FAIL
+! 	    || (only_one_window() && check_changed_any(eap->forceit)))
+      {
+  	not_exiting();
+      }
+--- 7143,7149 ----
+  				       | (eap->forceit ? CCGD_FORCEIT : 0)
+  				       | CCGD_EXCMD))
+  	    || check_more(TRUE, eap->forceit) == FAIL
+! 	    || (only_one_window() && check_changed_any(eap->forceit, TRUE)))
+      {
+  	not_exiting();
+      }
+***************
+*** 7214,7220 ****
+  #endif
+  
+      exiting = TRUE;
+!     if (eap->forceit || !check_changed_any(FALSE))
+  	getout(0);
+      not_exiting();
+  }
+--- 7214,7220 ----
+  #endif
+  
+      exiting = TRUE;
+!     if (eap->forceit || !check_changed_any(FALSE, FALSE))
+  	getout(0);
+      not_exiting();
+  }
+***************
+*** 7609,7615 ****
+  		    || curbufIsChanged())
+  		&& do_write(eap) == FAIL)
+  	    || check_more(TRUE, eap->forceit) == FAIL
+! 	    || (only_one_window() && check_changed_any(eap->forceit)))
+      {
+  	not_exiting();
+      }
+--- 7609,7615 ----
+  		    || curbufIsChanged())
+  		&& do_write(eap) == FAIL)
+  	    || check_more(TRUE, eap->forceit) == FAIL
+! 	    || (only_one_window() && check_changed_any(eap->forceit, FALSE)))
+      {
+  	not_exiting();
+      }
+*** ../vim-7.4.1036/src/gui.c	2015-11-10 14:35:14.308069835 +0100
+--- src/gui.c	2016-01-02 22:13:48.714503636 +0100
+***************
+*** 825,831 ****
+  # endif
+      /* If there are changed buffers, present the user with a dialog if
+       * possible, otherwise give an error message. */
+!     if (!check_changed_any(FALSE))
+  	getout(0);
+  
+      exiting = FALSE;
+--- 825,831 ----
+  # endif
+      /* If there are changed buffers, present the user with a dialog if
+       * possible, otherwise give an error message. */
+!     if (!check_changed_any(FALSE, FALSE))
+  	getout(0);
+  
+      exiting = FALSE;
+*** ../vim-7.4.1036/src/gui_gtk_x11.c	2015-12-29 18:52:33.348054385 +0100
+--- src/gui_gtk_x11.c	2016-01-02 22:13:48.714503636 +0100
+***************
+*** 2003,2009 ****
+       * If there are changed buffers, present the user with
+       * a dialog if possible, otherwise give an error message.
+       */
+!     shutdown_cancelled = check_changed_any(FALSE);
+  
+      exiting = FALSE;
+      cmdmod = save_cmdmod;
+--- 2003,2009 ----
+       * If there are changed buffers, present the user with
+       * a dialog if possible, otherwise give an error message.
+       */
+!     shutdown_cancelled = check_changed_any(FALSE, FALSE);
+  
+      exiting = FALSE;
+      cmdmod = save_cmdmod;
+*** ../vim-7.4.1036/src/os_unix.c	2015-12-31 21:26:50.649266887 +0100
+--- src/os_unix.c	2016-01-02 22:13:48.718503593 +0100
+***************
+*** 7132,7138 ****
+  
+      save_cmdmod = cmdmod;
+      cmdmod.confirm = TRUE;
+!     if (check_changed_any(FALSE))
+  	/* Mustn't logout */
+  	cancel_shutdown = True;
+      cmdmod = save_cmdmod;
+--- 7132,7138 ----
+  
+      save_cmdmod = cmdmod;
+      cmdmod.confirm = TRUE;
+!     if (check_changed_any(FALSE, FALSE))
+  	/* Mustn't logout */
+  	cancel_shutdown = True;
+      cmdmod = save_cmdmod;
+*** ../vim-7.4.1036/src/proto/ex_cmds2.pro	2013-11-09 03:31:45.000000000 +0100
+--- src/proto/ex_cmds2.pro	2016-01-02 22:13:48.718503593 +0100
+***************
+*** 39,45 ****
+  void browse_save_fname __ARGS((buf_T *buf));
+  void dialog_changed __ARGS((buf_T *buf, int checkall));
+  int can_abandon __ARGS((buf_T *buf, int forceit));
+! int check_changed_any __ARGS((int hidden));
+  int check_fname __ARGS((void));
+  int buf_write_all __ARGS((buf_T *buf, int forceit));
+  int get_arglist __ARGS((garray_T *gap, char_u *str));
+--- 39,45 ----
+  void browse_save_fname __ARGS((buf_T *buf));
+  void dialog_changed __ARGS((buf_T *buf, int checkall));
+  int can_abandon __ARGS((buf_T *buf, int forceit));
+! int check_changed_any __ARGS((int hidden, int unload));
+  int check_fname __ARGS((void));
+  int buf_write_all __ARGS((buf_T *buf, int forceit));
+  int get_arglist __ARGS((garray_T *gap, char_u *str));
+*** ../vim-7.4.1036/src/version.c	2016-01-02 22:02:56.201651969 +0100
+--- src/version.c	2016-01-02 22:12:44.887202623 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1037,
+  /**/
+
+-- 
+An indication you must be a manager:
+You feel sorry for Dilbert's boss.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

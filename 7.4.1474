@@ -1,0 +1,95 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1474
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1474
+Problem:    Compiler warnings without the float feature.
+Solution:   Move #ifdefs. (John Marriott)
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1473/src/eval.c	2016-02-29 23:12:44.210899417 +0100
+--- src/eval.c	2016-03-02 22:14:53.125445524 +0100
+***************
+*** 3152,3159 ****
+  		}
+  		return OK;
+  
+- #ifdef FEAT_FLOAT
+  	    case VAR_FLOAT:
+  		{
+  		    float_T f;
+  
+--- 3152,3159 ----
+  		}
+  		return OK;
+  
+  	    case VAR_FLOAT:
++ #ifdef FEAT_FLOAT
+  		{
+  		    float_T f;
+  
+***************
+*** 3170,3177 ****
+  		    else
+  			tv1->vval.v_float -= f;
+  		}
+- 		return OK;
+  #endif
+  	}
+      }
+  
+--- 3170,3177 ----
+  		    else
+  			tv1->vval.v_float -= f;
+  		}
+  #endif
++ 		return OK;
+  	}
+      }
+  
+***************
+*** 8011,8018 ****
+  	case VAR_STRING:
+  	    *tofree = string_quote(tv->vval.v_string, FALSE);
+  	    return *tofree;
+- #ifdef FEAT_FLOAT
+  	case VAR_FLOAT:
+  	    *tofree = NULL;
+  	    vim_snprintf((char *)numbuf, NUMBUFLEN - 1, "%g", tv->vval.v_float);
+  	    return numbuf;
+--- 8011,8018 ----
+  	case VAR_STRING:
+  	    *tofree = string_quote(tv->vval.v_string, FALSE);
+  	    return *tofree;
+  	case VAR_FLOAT:
++ #ifdef FEAT_FLOAT
+  	    *tofree = NULL;
+  	    vim_snprintf((char *)numbuf, NUMBUFLEN - 1, "%g", tv->vval.v_float);
+  	    return numbuf;
+*** ../vim-7.4.1473/src/version.c	2016-03-02 21:51:52.151805147 +0100
+--- src/version.c	2016-03-02 22:15:41.004947909 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1474,
+  /**/
+
+-- 
+DENNIS: Oh, very nice. King, eh!  I expect you've got a palace and fine
+        clothes and courtiers and plenty of food.  And how d'you get that?  By
+        exploiting the workers! By hanging on to outdated imperialist dogma
+        which perpetuates the social and economic differences in our society!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1236
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1236
+Problem:    When "syntax manual" was used switching between buffers removes
+            the highlighting.
+Solution:   Set the syntax option without changing the value. (Anton
+            Lindqvist)
+Files:      runtime/syntax/manual.vim
+
+
+*** ../vim-7.4.1235/runtime/syntax/manual.vim	2010-05-15 13:03:55.000000000 +0200
+--- runtime/syntax/manual.vim	2016-02-01 22:51:46.772788539 +0100
+***************
+*** 1,6 ****
+  " Vim syntax support file
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2008 Jan 26
+  
+  " This file is used for ":syntax manual".
+  " It installs the Syntax autocommands, but no the FileType autocommands.
+--- 1,6 ----
+  " Vim syntax support file
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2016 Feb 01
+  
+  " This file is used for ":syntax manual".
+  " It installs the Syntax autocommands, but no the FileType autocommands.
+***************
+*** 16,25 ****
+  
+  let syntax_manual = 1
+  
+! " Remove the connection between FileType and Syntax autocommands.
+! if exists('#syntaxset')
+!   au! syntaxset FileType
+! endif
+  
+  " If the GUI is already running, may still need to install the FileType menu.
+  " Don't do it when the 'M' flag is included in 'guioptions'.
+--- 16,26 ----
+  
+  let syntax_manual = 1
+  
+! " Overrule the connection between FileType and Syntax autocommands.  This sets
+! " the syntax when the file type is detected, without changing the value.
+! augroup syntaxset
+!   au! FileType *	exe "set syntax=" . &syntax
+! augroup END
+  
+  " If the GUI is already running, may still need to install the FileType menu.
+  " Don't do it when the 'M' flag is included in 'guioptions'.
+*** ../vim-7.4.1235/src/version.c	2016-02-01 22:40:55.615627178 +0100
+--- src/version.c	2016-02-01 22:53:04.939968019 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1236,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+99. The hum of a cooling fan and the click of keys is comforting to you.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

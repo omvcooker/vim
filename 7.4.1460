@@ -1,0 +1,77 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1460
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1460
+Problem:    Syntax error in rarily used code.
+Solution:   Fix the mch_rename() declaration. (Ken Takata)
+Files:      src/os_unix.c, src/proto/os_unix.pro
+
+
+*** ../vim-7.4.1459/src/os_unix.c	2016-02-27 18:13:05.236593109 +0100
+--- src/os_unix.c	2016-02-29 12:47:50.877852401 +0100
+***************
+*** 6454,6467 ****
+  }
+  #endif	/* ifndef __EMX__ */
+  
+! #ifndef HAVE_RENAME
+  /*
+   * Scaled-down version of rename(), which is missing in Xenix.
+   * This version can only move regular files and will fail if the
+   * destination exists.
+   */
+      int
+! mch_rename(const char *src, *dest)
+  {
+      struct stat	    st;
+  
+--- 6454,6467 ----
+  }
+  #endif	/* ifndef __EMX__ */
+  
+! #if !defined(HAVE_RENAME) || defined(PROTO)
+  /*
+   * Scaled-down version of rename(), which is missing in Xenix.
+   * This version can only move regular files and will fail if the
+   * destination exists.
+   */
+      int
+! mch_rename(const char *src, const char *dest)
+  {
+      struct stat	    st;
+  
+*** ../vim-7.4.1459/src/proto/os_unix.pro	2016-02-16 19:25:07.580925715 +0100
+--- src/proto/os_unix.pro	2016-02-29 12:47:54.945810352 +0100
+***************
+*** 66,71 ****
+--- 66,72 ----
+  int mch_expand_wildcards(int num_pat, char_u **pat, int *num_file, char_u ***file, int flags);
+  int mch_has_exp_wildcard(char_u *p);
+  int mch_has_wildcard(char_u *p);
++ int mch_rename(const char *src, const char *dest);
+  int mch_libcall(char_u *libname, char_u *funcname, char_u *argstring, int argint, char_u **string_result, int *number_result);
+  void setup_term_clip(void);
+  void start_xterm_trace(int button);
+*** ../vim-7.4.1459/src/version.c	2016-02-28 22:33:43.032904895 +0100
+--- src/version.c	2016-02-29 12:48:48.517256595 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1460,
+  /**/
+
+-- 
+Mushrooms always grow in damp places and so they look like umbrellas.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

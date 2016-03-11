@@ -1,0 +1,172 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1108
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1108
+Problem:    Expanding "~" halfway a file name.
+Solution:   Handle the file name as one name. (Marco Hinz)  Add a test.
+            Closes #564.
+Files:      src/testdir/test27.in, src/testdir/test27.ok,
+            src/testdir/test_expand.vim, src/testdir/test_alot.vim,
+            src/Makefile, src/misc2.c
+
+
+*** ../vim-7.4.1107/src/testdir/test27.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test27.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,20 ****
+- Test for expanding file names
+- 
+- STARTTEST
+- :!mkdir Xdir1
+- :!mkdir Xdir2
+- :!mkdir Xdir3
+- :cd Xdir3
+- :!mkdir Xdir4
+- :cd ..
+- :w Xdir1/file
+- :w Xdir3/Xdir4/file
+- :n Xdir?/*/file
+- Go%:.w! test.out
+- :n! Xdir?/*/nofile
+- Go%:.w >>test.out
+- :e! xx
+- :!rm -rf Xdir1 Xdir2 Xdir3
+- :qa!
+- ENDTEST
+- 
+--- 0 ----
+*** ../vim-7.4.1107/src/testdir/test27.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test27.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,2 ****
+- Xdir3/Xdir4/file
+- Xdir?/*/nofile
+--- 0 ----
+*** ../vim-7.4.1107/src/testdir/test_expand.vim	2016-01-16 21:49:54.086583614 +0100
+--- src/testdir/test_expand.vim	2016-01-16 21:46:41.940690641 +0100
+***************
+*** 0 ****
+--- 1,36 ----
++ " Test for expanding file names
++ 
++ func Test_with_directories()
++   call mkdir('Xdir1')
++   call mkdir('Xdir2')
++   call mkdir('Xdir3')
++   cd Xdir3
++   call mkdir('Xdir4')
++   cd ..
++ 
++   split Xdir1/file
++   call setline(1, ['a', 'b'])
++   w
++   w Xdir3/Xdir4/file
++   close
++ 
++   next Xdir?/*/file
++   call assert_equal('Xdir3/Xdir4/file', expand('%'))
++   next! Xdir?/*/nofile
++   call assert_equal('Xdir?/*/nofile', expand('%'))
++ 
++   call delete('Xdir1', 'rf')
++   call delete('Xdir2', 'rf')
++   call delete('Xdir3', 'rf')
++ endfunc
++ 
++ func Test_with_tilde()
++   let dir = getcwd()
++   call mkdir('Xdir ~ dir')
++   call assert_true(isdirectory('Xdir ~ dir'))
++   cd Xdir\ ~\ dir
++   call assert_true(getcwd() =~ 'Xdir \~ dir')
++   exe 'cd ' . fnameescape(dir)
++   call delete('Xdir ~ dir', 'd')
++   call assert_false(isdirectory('Xdir ~ dir'))
++ endfunc
+*** ../vim-7.4.1107/src/testdir/test_alot.vim	2016-01-16 21:26:30.501956438 +0100
+--- src/testdir/test_alot.vim	2016-01-16 21:31:55.774396714 +0100
+***************
+*** 4,9 ****
+--- 4,10 ----
+  source test_backspace_opt.vim
+  source test_cursor_func.vim
+  source test_delete.vim
++ source test_expand.vim
+  source test_lispwords.vim
+  source test_menu.vim
+  source test_searchpos.vim
+*** ../vim-7.4.1107/src/Makefile	2016-01-14 22:10:23.793193870 +0100
+--- src/Makefile	2016-01-16 21:32:08.734254892 +0100
+***************
+*** 1975,1986 ****
+  	test70 test71 test72 test73 test74 test75 test76 test77 test78 test79 \
+  	test80 test81 test82 test83 test84 test85 test86 test87 test88 test89 \
+  	test90 test91 test92 test93 test94 test95 test96 test97 test98 test99 \
+! 	test100 test101 test102 test103 test104 test105 test106 test107:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+  test_assert \
+  	test_backspace_opt \
+  	test_cdo \
+  	test_hardcopy \
+  	test_increment \
+  	test_lispwords \
+--- 1975,1989 ----
+  	test70 test71 test72 test73 test74 test75 test76 test77 test78 test79 \
+  	test80 test81 test82 test83 test84 test85 test86 test87 test88 test89 \
+  	test90 test91 test92 test93 test94 test95 test96 test97 test98 test99 \
+! 	test100 test101 test102 test103 test104 test105 test106 test107 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+  test_assert \
+  	test_backspace_opt \
+  	test_cdo \
++ 	test_cursor_func \
++ 	test_delete \
++ 	test_expand \
+  	test_hardcopy \
+  	test_increment \
+  	test_lispwords \
+*** ../vim-7.4.1107/src/misc2.c	2016-01-15 20:48:09.866003187 +0100
+--- src/misc2.c	2016-01-16 21:39:37.365345840 +0100
+***************
+*** 5543,5549 ****
+  	/* copy file name into NameBuff, expanding environment variables */
+  	save_char = ptr[len];
+  	ptr[len] = NUL;
+! 	expand_env(ptr, NameBuff, MAXPATHL);
+  	ptr[len] = save_char;
+  
+  	vim_free(ff_file_to_find);
+--- 5543,5549 ----
+  	/* copy file name into NameBuff, expanding environment variables */
+  	save_char = ptr[len];
+  	ptr[len] = NUL;
+! 	expand_env_esc(ptr, NameBuff, MAXPATHL, FALSE, TRUE, NULL);
+  	ptr[len] = save_char;
+  
+  	vim_free(ff_file_to_find);
+*** ../vim-7.4.1107/src/version.c	2016-01-16 21:26:30.505956395 +0100
+--- src/version.c	2016-01-16 21:28:15.332809141 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1108,
+  /**/
+
+-- 
+Back off man, I'm a scientist.
+              -- Peter, Ghostbusters
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

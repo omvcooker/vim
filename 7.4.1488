@@ -1,0 +1,86 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1488
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1488 (after 7.4.1475)
+Problem:    Not using key when result from hangul_string_convert() is NULL.
+Solution:   Fall back to not converted string.
+Files:      src/ui.c
+
+
+*** ../vim-7.4.1487/src/ui.c	2016-03-03 11:45:11.002143294 +0100
+--- src/ui.c	2016-03-04 22:45:41.087211109 +0100
+***************
+*** 1686,1709 ****
+  push_raw_key(char_u *s, int len)
+  {
+      char_u *tmpbuf;
+  
+      tmpbuf = hangul_string_convert(s, &len);
+      if (tmpbuf != NULL)
+!     {
+! 	s = tmpbuf;
+  
+! 	for (; len--; s++)
+  	{
+! 	    inbuf[inbufcount++] = *s;
+! 	    if (*s == CSI)
+! 	    {
+! 		/* Turn CSI into K_CSI. */
+! 		inbuf[inbufcount++] = KS_EXTRA;
+! 		inbuf[inbufcount++] = (int)KE_CSI;
+! 	    }
+  	}
+- 	vim_free(tmpbuf);
+      }
+  }
+  #endif
+  
+--- 1686,1709 ----
+  push_raw_key(char_u *s, int len)
+  {
+      char_u *tmpbuf;
++     char_u *inp = s;
+  
++     /* use the conversion result if possible */
+      tmpbuf = hangul_string_convert(s, &len);
+      if (tmpbuf != NULL)
+! 	inp = tmpbuf;
+  
+!     for (; len--; inp++)
+!     {
+! 	inbuf[inbufcount++] = *inp;
+! 	if (*inp == CSI)
+  	{
+! 	    /* Turn CSI into K_CSI. */
+! 	    inbuf[inbufcount++] = KS_EXTRA;
+! 	    inbuf[inbufcount++] = (int)KE_CSI;
+  	}
+      }
++     vim_free(tmpbuf);
+  }
+  #endif
+  
+*** ../vim-7.4.1487/src/version.c	2016-03-04 22:19:17.667973504 +0100
+--- src/version.c	2016-03-04 22:50:34.452105096 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1488,
+  /**/
+
+-- 
+BEDEVERE: And that, my lord, is how we know the Earth to be banana-shaped.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

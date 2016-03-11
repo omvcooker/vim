@@ -1,0 +1,85 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1136
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1136
+Problem:    Wrong argument to assert_exception() causes a crash. (reported by
+            Coverity)
+Solution:   Check for NULL pointer.  Add a test.
+Files:      src/eval.c, src/testdir/test_assert.vim
+
+
+*** ../vim-7.4.1135/src/eval.c	2016-01-18 23:28:44.157810770 +0100
+--- src/eval.c	2016-01-19 14:18:33.176760081 +0100
+***************
+*** 9278,9284 ****
+  	assert_error(&ga);
+  	ga_clear(&ga);
+      }
+!     else if (strstr((char *)vimvars[VV_EXCEPTION].vv_str, error) == NULL)
+      {
+  	prepare_assert_error(&ga);
+  	fill_assert_error(&ga, &argvars[1], NULL, &argvars[0],
+--- 9278,9285 ----
+  	assert_error(&ga);
+  	ga_clear(&ga);
+      }
+!     else if (error != NULL
+! 	    && strstr((char *)vimvars[VV_EXCEPTION].vv_str, error) == NULL)
+      {
+  	prepare_assert_error(&ga);
+  	fill_assert_error(&ga, &argvars[1], NULL, &argvars[0],
+*** ../vim-7.4.1135/src/testdir/test_assert.vim	2015-12-31 20:46:34.703494577 +0100
+--- src/testdir/test_assert.vim	2016-01-19 14:27:28.375008352 +0100
+***************
+*** 18,23 ****
+--- 18,42 ----
+    call assert_equal([1, 2, 3], l)
+  endfunc
+  
++ func Test_assert_exception()
++   try
++     nocommand
++   catch
++     call assert_exception('E492:')
++   endtry
++ 
++   try
++     nocommand
++   catch
++     try
++       " illegal argument, get NULL for error
++       call assert_exception([])
++     catch
++       call assert_exception('E730:')
++     endtry
++   endtry
++ endfunc
++ 
+  func Test_user_is_happy()
+    smile
+    sleep 300m
+*** ../vim-7.4.1135/src/version.c	2016-01-19 14:14:01.859675412 +0100
+--- src/version.c	2016-01-19 14:25:29.948281179 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1136,
+  /**/
+
+-- 
+Contrary to popular belief, it's often your clothing that gets promoted, not
+you.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

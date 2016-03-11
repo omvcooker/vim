@@ -1,0 +1,84 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1230
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1230
+Problem:    Win32: opening a channel may hang.  Not checking for messages
+            while waiting for characters.
+Solution:   Add a zero timeout.  Call parse_queued_messages(). (Yasuhiro
+            Matsumoto)
+Files:      src/os_win32.c
+
+
+*** ../vim-7.4.1229/src/os_win32.c	2016-01-30 20:31:21.249607913 +0100
+--- src/os_win32.c	2016-02-01 21:23:33.944203992 +0100
+***************
+*** 1461,1470 ****
+       */
+      for (;;)
+      {
+  #ifdef FEAT_MZSCHEME
+  	mzvim_check_threads();
+  #endif
+- 
+  #ifdef FEAT_CLIENTSERVER
+  	serverProcessPendingMessages();
+  #endif
+--- 1461,1472 ----
+       */
+      for (;;)
+      {
++ #ifdef MESSAGE_QUEUE
++ 	parse_queued_messages();
++ #endif
+  #ifdef FEAT_MZSCHEME
+  	mzvim_check_threads();
+  #endif
+  #ifdef FEAT_CLIENTSERVER
+  	serverProcessPendingMessages();
+  #endif
+***************
+*** 1474,1480 ****
+  	maxfd = channel_select_setup(-1, &rfds);
+  	if (maxfd >= 0)
+  	{
+! 	    ret = select(maxfd + 1, &rfds, NULL, NULL, NULL);
+  	    if (ret > 0 && channel_select_check(ret, &rfds) > 0)
+  		return TRUE;
+  	}
+--- 1476,1486 ----
+  	maxfd = channel_select_setup(-1, &rfds);
+  	if (maxfd >= 0)
+  	{
+! 	    struct timeval  tv;
+! 
+! 	    tv.tv_sec = 0;
+! 	    tv.tv_usec = 0;
+! 	    ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+  	    if (ret > 0 && channel_select_check(ret, &rfds) > 0)
+  		return TRUE;
+  	}
+*** ../vim-7.4.1229/src/version.c	2016-01-31 20:24:09.970066843 +0100
+--- src/version.c	2016-02-01 21:21:05.409752928 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1230,
+  /**/
+
+-- 
+From "know your smileys":
+ C=}>;*{)) Drunk, devilish chef with a toupee in an updraft,
+	   a mustache, and a double chin
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

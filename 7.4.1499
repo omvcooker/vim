@@ -1,0 +1,212 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1499
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1499
+Problem:    No error message when :packadd does not find anything.
+Solution:   Add an error message. (Hirohito Higashi)
+Files:      runtime/doc/repeat.txt, src/ex_cmds.h, src/ex_cmds2.c,
+            src/globals.h, src/testdir/test_packadd.vim
+
+
+*** ../vim-7.4.1498/runtime/doc/repeat.txt	2016-03-04 22:12:07.448524475 +0100
+--- runtime/doc/repeat.txt	2016-03-06 14:21:48.216846045 +0100
+***************
+*** 206,212 ****
+  			about each searched file.
+  			{not in Vi}
+  
+! 							*:pa* *:packadd*
+  :pa[ckadd][!] {name}	Search for an optional plugin directory in 'packpath'
+  			and source any plugin files found.  The directory must
+  			match:
+--- 213,219 ----
+  			about each searched file.
+  			{not in Vi}
+  
+! 							*:pa* *:packadd* *E919*
+  :pa[ckadd][!] {name}	Search for an optional plugin directory in 'packpath'
+  			and source any plugin files found.  The directory must
+  			match:
+*** ../vim-7.4.1498/src/ex_cmds.h	2016-03-04 22:12:07.448524475 +0100
+--- src/ex_cmds.h	2016-03-06 14:26:28.773872754 +0100
+***************
+*** 1012,1018 ****
+  			RANGE|WHOLEFOLD|COUNT|EXFLAGS|TRLBAR|CMDWIN|SBOXOK,
+  			ADDR_LINES),
+  EX(CMD_packadd,		"packadd",	ex_packadd,
+! 			BANG|FILE1|TRLBAR|SBOXOK|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_pclose,		"pclose",	ex_pclose,
+  			BANG|TRLBAR,
+--- 1012,1018 ----
+  			RANGE|WHOLEFOLD|COUNT|EXFLAGS|TRLBAR|CMDWIN|SBOXOK,
+  			ADDR_LINES),
+  EX(CMD_packadd,		"packadd",	ex_packadd,
+! 			BANG|FILE1|NEEDARG|TRLBAR|SBOXOK|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_pclose,		"pclose",	ex_pclose,
+  			BANG|TRLBAR,
+*** ../vim-7.4.1498/src/ex_cmds2.c	2016-03-04 22:12:07.448524475 +0100
+--- src/ex_cmds2.c	2016-03-06 14:40:11.961179403 +0100
+***************
+*** 2918,2925 ****
+  /*
+   * Source the file "name" from all directories in 'runtimepath'.
+   * "name" can contain wildcards.
+!  * When "flags" has DIP_ALL: source all files, otherwise only the first one.
+!  * When "flags" has DIP_DIR: find directories instead of files.
+   *
+   * return FAIL when no file could be sourced, OK otherwise.
+   */
+--- 2918,2924 ----
+  /*
+   * Source the file "name" from all directories in 'runtimepath'.
+   * "name" can contain wildcards.
+!  * When "all" is TRUE: source all files, otherwise only the first one.
+   *
+   * return FAIL when no file could be sourced, OK otherwise.
+   */
+***************
+*** 2931,2937 ****
+--- 2930,2947 ----
+  
+  #define DIP_ALL	1	/* all matches, not just the first one */
+  #define DIP_DIR	2	/* find directories instead of files. */
++ #define DIP_ERR	4	/* give an error message when none found. */
+  
++ /*
++  * Find the file "name" in all directories in "path" and invoke
++  * "callback(fname, cookie)".
++  * "name" can contain wildcards.
++  * When "flags" has DIP_ALL: source all files, otherwise only the first one.
++  * When "flags" has DIP_DIR: find directories instead of files.
++  * When "flags" has DIP_ERR: give an error message if there is no match.
++  *
++  * return FAIL when no file could be sourced, OK otherwise.
++  */
+      static int
+  do_in_path(
+      char_u	*path,
+***************
+*** 3022,3032 ****
+      }
+      vim_free(buf);
+      vim_free(rtp_copy);
+!     if (p_verbose > 0 && !did_one && name != NULL)
+      {
+! 	verbose_enter();
+! 	smsg((char_u *)_("not found in 'runtimepath': \"%s\""), name);
+! 	verbose_leave();
+      }
+  
+  #ifdef AMIGA
+--- 3032,3049 ----
+      }
+      vim_free(buf);
+      vim_free(rtp_copy);
+!     if (!did_one && name != NULL)
+      {
+! 	char *basepath = path == p_rtp ? "runtimepath" : "packpath";
+! 
+! 	if (flags & DIP_ERR)
+! 	    EMSG3(_(e_dirnotf), basepath, name);
+! 	else if (p_verbose > 0)
+! 	{
+! 	    verbose_enter();
+! 	    smsg((char_u *)_("not found in '%s': \"%s\""), basepath, name);
+! 	    verbose_leave();
+! 	}
+      }
+  
+  #ifdef AMIGA
+***************
+*** 3178,3185 ****
+      void
+  source_packages()
+  {
+!     do_in_path(p_pp, (char_u *)"pack/*/ever/*",
+! 				    DIP_ALL + DIP_DIR, add_pack_plugin, p_pp);
+  }
+  
+  /*
+--- 3195,3202 ----
+      void
+  source_packages()
+  {
+!     do_in_path(p_pp, (char_u *)"pack/*/ever/*", DIP_ALL + DIP_DIR,
+! 							add_pack_plugin, p_pp);
+  }
+  
+  /*
+***************
+*** 3197,3204 ****
+      if (pat == NULL)
+  	return;
+      vim_snprintf(pat, len, plugpat, eap->arg);
+!     do_in_path(p_pp, (char_u *)pat, DIP_ALL + DIP_DIR, add_pack_plugin,
+! 						  eap->forceit ? NULL : p_pp);
+      vim_free(pat);
+  }
+  
+--- 3214,3221 ----
+      if (pat == NULL)
+  	return;
+      vim_snprintf(pat, len, plugpat, eap->arg);
+!     do_in_path(p_pp, (char_u *)pat, DIP_ALL + DIP_DIR + DIP_ERR,
+! 				 add_pack_plugin, eap->forceit ? NULL : p_pp);
+      vim_free(pat);
+  }
+  
+*** ../vim-7.4.1498/src/globals.h	2016-02-23 14:52:31.881232212 +0100
+--- src/globals.h	2016-03-06 14:21:48.220846002 +0100
+***************
+*** 1577,1582 ****
+--- 1577,1583 ----
+  #ifndef FEAT_CLIPBOARD
+  EXTERN char_u e_invalidreg[]    INIT(= N_("E850: Invalid register name"));
+  #endif
++ EXTERN char_u e_dirnotf[]	INIT(= N_("E919: Directory not found in '%s': \"%s\""));
+  
+  #ifdef MACOS_X_UNIX
+  EXTERN short disallow_gui	INIT(= FALSE);
+*** ../vim-7.4.1498/src/testdir/test_packadd.vim	2016-03-05 17:41:43.113188948 +0100
+--- src/testdir/test_packadd.vim	2016-03-06 14:31:11.190888469 +0100
+***************
+*** 31,36 ****
+--- 31,40 ----
+    call assert_equal(17, g:ftdetect_works)
+    call assert_true(len(&rtp) > len(rtp))
+    call assert_true(&rtp =~ 'testdir/Xdir/pack/mine/opt/mytest\($\|,\)')
++ 
++   " Check exception
++   call assert_fails("packadd directorynotfound", 'E919:')
++   call assert_fails("packadd", 'E471:')
+  endfunc
+  
+  func Test_packadd_noload()
+*** ../vim-7.4.1498/src/version.c	2016-03-05 23:22:57.781396509 +0100
+--- src/version.c	2016-03-06 14:23:02.000063830 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1499,
+  /**/
+
+-- 
+An alien life briefly visits earth.  Just before departing it leaves a
+message in the dust on the back of a white van.  The world is shocked
+and wants to know what it means.  After months of studies the worlds
+best linguistic scientists are able to decipher the message: "Wash me!".
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

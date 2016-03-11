@@ -1,0 +1,91 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.986
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.986
+Problem:    Test49 doesn't work on MS-Windows.  test70 is listed twice.
+Solution:   Move test49 to the group not used on Amiga and MS-Windows.
+            Remove test70 from SCRIPTS_WIN32.
+Files:      src/testdir/Make_all.mak, src/testdir/Make_dos.mak
+
+
+*** ../vim-7.4.985/src/testdir/Make_all.mak	2015-12-28 16:26:36.363773987 +0100
+--- src/testdir/Make_all.mak	2015-12-28 21:26:01.711224491 +0100
+***************
+*** 127,133 ****
+  # Tests that run on most systems, but not on Amiga.
+  SCRIPTS_MORE1 = \
+  	test11.out \
+- 	test49.out \
+  	test52.out \
+  	test85.out \
+  	test86.out \
+--- 127,132 ----
+***************
+*** 141,146 ****
+--- 140,146 ----
+  	test12.out \
+  	test25.out \
+  	test27.out \
++ 	test49.out \
+  	test97.out
+  
+  
+***************
+*** 163,169 ****
+  
+  
+  # Tests specifically for MS-Windows.
+! SCRIPTS_WIN32 = test50.out test70.out
+  
+  
+  # Tests for the GUI.
+--- 163,169 ----
+  
+  
+  # Tests specifically for MS-Windows.
+! SCRIPTS_WIN32 = test50.out
+  
+  
+  # Tests for the GUI.
+*** ../vim-7.4.985/src/testdir/Make_dos.mak	2015-12-28 16:26:36.363773987 +0100
+--- src/testdir/Make_dos.mak	2015-12-28 21:12:46.715941163 +0100
+***************
+*** 13,18 ****
+--- 13,19 ----
+  # test12	can't unlink a swap file
+  # test25	uses symbolic link
+  # test27	can't edit file with "*" in file name
++ # test49	fails in various ways
+  # test97	\{ and \$ are not escaped characters.
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+*** ../vim-7.4.985/src/version.c	2015-12-28 20:57:07.246255490 +0100
+--- src/version.c	2015-12-28 21:10:44.577281429 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     986,
+  /**/
+
+-- 
+MORTICIAN:    Bring out your dead!
+              [clang]
+              Bring out your dead!
+              [clang]
+              Bring out your dead!
+CUSTOMER:     Here's one -- nine pence.
+DEAD PERSON:  I'm not dead!
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

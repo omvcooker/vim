@@ -1,0 +1,415 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1398
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1398
+Problem:    The close-cb option is not implemented yet.
+Solution:   Implemente close-cb. (Yasuhiro Matsumoto)
+Files:      src/channel.c, src/eval.c, src/structs.h, src/proto/channel.pro,
+            src/testdir/test_channel.py, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1397/src/channel.c	2016-02-22 23:13:28.639798334 +0100
+--- src/channel.c	2016-02-23 13:08:16.957914189 +0100
+***************
+*** 485,491 ****
+   * Returns NULL for failure.
+   */
+      channel_T *
+! channel_open(char *hostname, int port_in, int waittime, void (*close_cb)(void))
+  {
+      int			sd = -1;
+      struct sockaddr_in	server;
+--- 485,495 ----
+   * Returns NULL for failure.
+   */
+      channel_T *
+! channel_open(
+! 	char *hostname,
+! 	int port_in,
+! 	int waittime,
+! 	void (*nb_close_cb)(void))
+  {
+      int			sd = -1;
+      struct sockaddr_in	server;
+***************
+*** 711,717 ****
+      }
+  
+      channel->CH_SOCK_FD = (sock_T)sd;
+!     channel->ch_close_cb = close_cb;
+  
+  #ifdef FEAT_GUI
+      channel_gui_register(channel);
+--- 715,721 ----
+      }
+  
+      channel->CH_SOCK_FD = (sock_T)sd;
+!     channel->ch_nb_close_cb = nb_close_cb;
+  
+  #ifdef FEAT_GUI
+      channel_gui_register(channel);
+***************
+*** 790,795 ****
+--- 794,808 ----
+  	else
+  	    *cbp = NULL;
+      }
++     if (opt->jo_set & JO_CLOSE_CALLBACK)
++     {
++ 	cbp = &channel->ch_close_cb;
++ 	vim_free(*cbp);
++ 	if (opt->jo_close_cb != NULL && *opt->jo_close_cb != NUL)
++ 	    *cbp = vim_strsave(opt->jo_close_cb);
++ 	else
++ 	    *cbp = NULL;
++     }
+  }
+  
+  /*
+***************
+*** 1255,1261 ****
+      ch_mode_T	ch_mode = channel->ch_part[part].ch_mode;
+      char_u	*callback = NULL;
+  
+!     if (channel->ch_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+--- 1268,1274 ----
+      ch_mode_T	ch_mode = channel->ch_part[part].ch_mode;
+      char_u	*callback = NULL;
+  
+!     if (channel->ch_nb_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+***************
+*** 1477,1483 ****
+      }
+  #endif
+  
+!     channel->ch_close_cb = NULL;
+      channel_clear(channel);
+  }
+  
+--- 1490,1517 ----
+      }
+  #endif
+  
+!     if (channel->ch_close_cb != NULL)
+!     {
+! 	  typval_T	argv[1];
+! 	  typval_T	rettv;
+! 	  int		dummy;
+! 
+! 	  /* invoke the close callback; increment the refcount to avoid it
+! 	   * being freed halfway */
+! 	  argv[0].v_type = VAR_CHANNEL;
+! 	  argv[0].vval.v_channel = channel;
+! 	  ++channel->ch_refcount;
+! 	  call_func(channel->ch_close_cb, (int)STRLEN(channel->ch_close_cb),
+! 				 &rettv, 1, argv, 0L, 0L, &dummy, TRUE, NULL);
+! 	  clear_tv(&rettv);
+! 	  --channel->ch_refcount;
+! 
+! 	  /* the callback is only called once */
+! 	  vim_free(channel->ch_close_cb);
+! 	  channel->ch_close_cb = NULL;
+!     }
+! 
+!     channel->ch_nb_close_cb = NULL;
+      channel_clear(channel);
+  }
+  
+***************
+*** 1539,1544 ****
+--- 1573,1580 ----
+  #endif
+      vim_free(channel->ch_callback);
+      channel->ch_callback = NULL;
++     vim_free(channel->ch_close_cb);
++     channel->ch_close_cb = NULL;
+  }
+  
+  #if defined(EXITFREE) || defined(PROTO)
+***************
+*** 1732,1739 ****
+  	 * keep stdin and stderr open?  Probably not, assume the other side
+  	 * has died. */
+  	channel_close(channel);
+! 	if (channel->ch_close_cb != NULL)
+! 	    (*channel->ch_close_cb)();
+  
+  	if (len < 0)
+  	{
+--- 1768,1775 ----
+  	 * keep stdin and stderr open?  Probably not, assume the other side
+  	 * has died. */
+  	channel_close(channel);
+! 	if (channel->ch_nb_close_cb != NULL)
+! 	    (*channel->ch_nb_close_cb)();
+  
+  	if (len < 0)
+  	{
+*** ../vim-7.4.1397/src/eval.c	2016-02-22 22:51:27.521723233 +0100
+--- src/eval.c	2016-02-23 12:56:08.501434117 +0100
+***************
+*** 10067,10072 ****
+--- 10067,10084 ----
+  		    return FAIL;
+  		}
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "close-cb") == 0)
++ 	    {
++ 		if (!(supported & JO_CLOSE_CALLBACK))
++ 		    break;
++ 		opt->jo_set |= JO_CLOSE_CALLBACK;
++ 		opt->jo_close_cb = get_callback(item);
++ 		if (opt->jo_close_cb == NULL)
++ 		{
++ 		    EMSG2(_(e_invarg2), "close-cb");
++ 		    return FAIL;
++ 		}
++ 	    }
+  	    else if (STRCMP(hi->hi_key, "waittime") == 0)
+  	    {
+  		if (!(supported & JO_WAITTIME))
+***************
+*** 18924,18930 ****
+  
+      rettv.v_type = VAR_UNKNOWN;		/* clear_tv() uses this */
+      res = call_func(sortinfo->item_compare_func,
+! 		 		 (int)STRLEN(sortinfo->item_compare_func),
+  				 &rettv, 2, argv, 0L, 0L, &dummy, TRUE,
+  				 sortinfo->item_compare_selfdict);
+      clear_tv(&argv[0]);
+--- 18936,18942 ----
+  
+      rettv.v_type = VAR_UNKNOWN;		/* clear_tv() uses this */
+      res = call_func(sortinfo->item_compare_func,
+! 				 (int)STRLEN(sortinfo->item_compare_func),
+  				 &rettv, 2, argv, 0L, 0L, &dummy, TRUE,
+  				 sortinfo->item_compare_selfdict);
+      clear_tv(&argv[0]);
+*** ../vim-7.4.1397/src/structs.h	2016-02-21 19:31:58.117130763 +0100
+--- src/structs.h	2016-02-23 13:00:04.490998486 +0100
+***************
+*** 1366,1374 ****
+  				 * first error until the connection works
+  				 * again. */
+  
+!     void	(*ch_close_cb)(void); /* callback for when channel is closed */
+  
+      char_u	*ch_callback;	/* call when any msg is not handled */
+  
+      job_T	*ch_job;	/* Job that uses this channel; this does not
+  				 * count as a reference to avoid a circular
+--- 1366,1377 ----
+  				 * first error until the connection works
+  				 * again. */
+  
+!     void	(*ch_nb_close_cb)(void);
+! 				/* callback for Netbeans when channel is
+! 				 * closed */
+  
+      char_u	*ch_callback;	/* call when any msg is not handled */
++     char_u	*ch_close_cb;	/* call when channel is closed */
+  
+      job_T	*ch_job;	/* Job that uses this channel; this does not
+  				 * count as a reference to avoid a circular
+***************
+*** 1377,1401 ****
+      int		ch_refcount;	/* reference count */
+  };
+  
+! #define JO_MODE		0x0001	/* channel mode */
+! #define JO_IN_MODE	0x0002	/* stdin mode */
+! #define JO_OUT_MODE	0x0004	/* stdout mode */
+! #define JO_ERR_MODE	0x0008	/* stderr mode */
+! #define JO_CALLBACK	0x0010	/* channel callback */
+! #define JO_OUT_CALLBACK	0x0020	/* stdout callback */
+! #define JO_ERR_CALLBACK	0x0040	/* stderr callback */
+! #define JO_WAITTIME	0x0080	/* only for ch_open() */
+! #define JO_TIMEOUT	0x0100	/* all timeouts */
+! #define JO_OUT_TIMEOUT	0x0200	/* stdout timeouts */
+! #define JO_ERR_TIMEOUT	0x0400	/* stderr timeouts */
+! #define JO_PART		0x0800	/* "part" */
+! #define JO_ID		0x1000	/* "id" */
+! #define JO_STOPONEXIT	0x2000	/* "stoponexit" */
+! #define JO_EXIT_CB	0x4000	/* "exit-cb" */
+! #define JO_ALL		0xffffff
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+! #define JO_CB_ALL	(JO_CALLBACK + JO_OUT_CALLBACK + JO_ERR_CALLBACK)
+  #define JO_TIMEOUT_ALL	(JO_TIMEOUT + JO_OUT_TIMEOUT + JO_ERR_TIMEOUT)
+  
+  /*
+--- 1380,1406 ----
+      int		ch_refcount;	/* reference count */
+  };
+  
+! #define JO_MODE		    0x0001	/* channel mode */
+! #define JO_IN_MODE	    0x0002	/* stdin mode */
+! #define JO_OUT_MODE	    0x0004	/* stdout mode */
+! #define JO_ERR_MODE	    0x0008	/* stderr mode */
+! #define JO_CALLBACK	    0x0010	/* channel callback */
+! #define JO_OUT_CALLBACK	    0x0020	/* stdout callback */
+! #define JO_ERR_CALLBACK	    0x0040	/* stderr callback */
+! #define JO_CLOSE_CALLBACK   0x0080	/* close callback */
+! #define JO_WAITTIME	    0x0100	/* only for ch_open() */
+! #define JO_TIMEOUT	    0x0200	/* all timeouts */
+! #define JO_OUT_TIMEOUT	    0x0400	/* stdout timeouts */
+! #define JO_ERR_TIMEOUT	    0x0800	/* stderr timeouts */
+! #define JO_PART		    0x1000	/* "part" */
+! #define JO_ID		    0x2000	/* "id" */
+! #define JO_STOPONEXIT	    0x4000	/* "stoponexit" */
+! #define JO_EXIT_CB	    0x8000	/* "exit-cb" */
+! #define JO_ALL		    0xffffff
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+! #define JO_CB_ALL \
+!     (JO_CALLBACK + JO_OUT_CALLBACK + JO_ERR_CALLBACK + JO_CLOSE_CALLBACK)
+  #define JO_TIMEOUT_ALL	(JO_TIMEOUT + JO_OUT_TIMEOUT + JO_ERR_TIMEOUT)
+  
+  /*
+***************
+*** 1412,1417 ****
+--- 1417,1423 ----
+      char_u	*jo_callback;	/* not allocated! */
+      char_u	*jo_out_cb;	/* not allocated! */
+      char_u	*jo_err_cb;	/* not allocated! */
++     char_u	*jo_close_cb;	/* not allocated! */
+      int		jo_waittime;
+      int		jo_timeout;
+      int		jo_out_timeout;
+*** ../vim-7.4.1397/src/proto/channel.pro	2016-02-20 19:56:09.011279432 +0100
+--- src/proto/channel.pro	2016-02-23 13:08:45.949614829 +0100
+***************
+*** 7,16 ****
+  void channel_free(channel_T *channel);
+  void channel_gui_register(channel_T *channel);
+  void channel_gui_register_all(void);
+! channel_T *channel_open(char *hostname, int port_in, int waittime, void (*close_cb)(void));
+  void channel_set_pipes(channel_T *channel, sock_T in, sock_T out, sock_T err);
+  void channel_set_job(channel_T *channel, job_T *job);
+! void channel_set_options(channel_T *channel, jobopt_T *options);
+  void channel_set_req_callback(channel_T *channel, int part, char_u *callback, int id);
+  char_u *channel_get(channel_T *channel, int part);
+  int channel_collapse(channel_T *channel, int part);
+--- 7,16 ----
+  void channel_free(channel_T *channel);
+  void channel_gui_register(channel_T *channel);
+  void channel_gui_register_all(void);
+! channel_T *channel_open(char *hostname, int port_in, int waittime, void (*nb_close_cb)(void));
+  void channel_set_pipes(channel_T *channel, sock_T in, sock_T out, sock_T err);
+  void channel_set_job(channel_T *channel, job_T *job);
+! void channel_set_options(channel_T *channel, jobopt_T *opt);
+  void channel_set_req_callback(channel_T *channel, int part, char_u *callback, int id);
+  char_u *channel_get(channel_T *channel, int part);
+  int channel_collapse(channel_T *channel, int part);
+*** ../vim-7.4.1397/src/testdir/test_channel.py	2016-02-20 21:38:58.770661562 +0100
+--- src/testdir/test_channel.py	2016-02-23 12:48:40.262063326 +0100
+***************
+*** 140,145 ****
+--- 140,149 ----
+                          print("sending: {}".format(cmd))
+                          self.request.sendall(cmd.encode('utf-8'))
+                          response = ""
++                     elif decoded[1] == 'close me':
++                         print("closing")
++                         self.request.close()
++                         response = ""
+                      elif decoded[1] == 'wait a bit':
+                          time.sleep(0.2)
+                          response = "waited"
+*** ../vim-7.4.1397/src/testdir/test_channel.vim	2016-02-21 19:14:36.679958696 +0100
+--- src/testdir/test_channel.vim	2016-02-23 12:47:58.314497695 +0100
+***************
+*** 471,479 ****
+  
+  """""""""
+  
+! let s:job_ret = 'not yet'
+  function MyExitCb(job, status)
+!   let s:job_ret = 'done'
+  endfunc
+  
+  function s:test_exit_callback(port)
+--- 471,479 ----
+  
+  """""""""
+  
+! let s:job_exit_ret = 'not yet'
+  function MyExitCb(job, status)
+!   let s:job_exit_ret = 'done'
+  endfunc
+  
+  function s:test_exit_callback(port)
+***************
+*** 490,495 ****
+  
+      " calling job_status() triggers the callback
+      call job_status(s:exit_job)
+!     call assert_equal('done', s:job_ret)
+    endif
+  endfunc
+--- 490,521 ----
+  
+      " calling job_status() triggers the callback
+      call job_status(s:exit_job)
+!     call assert_equal('done', s:job_exit_ret)
+    endif
+  endfunc
++ 
++ """""""""
++ 
++ let s:ch_close_ret = 'alive'
++ function MyCloseCb(ch)
++   let s:ch_close_ret = 'closed'
++ endfunc
++ 
++ function s:test_close_callback(port)
++   let handle = ch_open('localhost:' . a:port, s:chopt)
++   if ch_status(handle) == "fail"
++     call assert_false(1, "Can't open channel")
++     return
++   endif
++   call ch_setoptions(handle, {'close-cb': 'MyCloseCb'})
++ 
++   call assert_equal('', ch_sendexpr(handle, 'close me'))
++   sleep 20m
++   call assert_equal('closed', s:ch_close_ret)
++ endfunc
++ 
++ func Test_close_callback()
++   call ch_log('Test_close_callback()')
++   call s:run_server('s:test_close_callback')
++ endfunc
++ 
+*** ../vim-7.4.1397/src/version.c	2016-02-22 23:50:24.256520848 +0100
+--- src/version.c	2016-02-23 13:16:01.089120905 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1398,
+  /**/
+
+-- 
+FATHER: We are here today to witness the union of two young people in the
+        joyful bond of the holy wedlock.  Unfortunately, one of them, my son
+        Herbert, has just fallen to his death.
+   [Murmurs from CROWD;  the BRIDE smiles with relief, coughs.]
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

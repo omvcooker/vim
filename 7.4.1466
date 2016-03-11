@@ -1,0 +1,47 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1466
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1466
+Problem:    Coverity reports dead code.
+Solution:   Remove the two lines.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1465/src/channel.c	2016-02-29 22:55:51.693608630 +0100
+--- src/channel.c	2016-02-29 23:02:26.917430198 +0100
+***************
+*** 1602,1609 ****
+  	    invoke_callback(channel, callback, argv);
+  	}
+      }
+-     else if (msg != NULL)
+- 	ch_logs(channel, "Dropping message '%s'", (char *)msg);
+      else
+  	ch_log(channel, "Dropping message");
+  
+--- 1602,1607 ----
+*** ../vim-7.4.1465/src/version.c	2016-02-29 22:55:51.697608588 +0100
+--- src/version.c	2016-02-29 23:02:55.017132892 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1466,
+  /**/
+
+-- 
+SOLDIER: What? A swallow carrying a coconut?
+ARTHUR:  It could grip it by the husk ...
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

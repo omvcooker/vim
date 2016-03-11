@@ -1,0 +1,69 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1138
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1138
+Problem:    When running gvim in the foreground some icons are missing.
+            (Taylor Venable)
+Solution:   Move the call to gui_gtk_register_resource(). (Kazunobu Kuriyama)
+Files:      src/gui_gtk_x11.c
+
+
+*** ../vim-7.4.1137/src/gui_gtk_x11.c	2016-01-02 22:25:40.674710064 +0100
+--- src/gui_gtk_x11.c	2016-01-19 17:45:46.663764326 +0100
+***************
+*** 1437,1445 ****
+  	EMSG(_((char *)e_opendisp));
+  	return FAIL;
+      }
+- #ifdef USE_GRESOURCE
+-     gui_gtk_register_resource();
+- #endif
+      return OK;
+  }
+  
+--- 1437,1442 ----
+***************
+*** 1451,1456 ****
+--- 1448,1465 ----
+      int
+  gui_mch_init_check(void)
+  {
++ #ifdef USE_GRESOURCE
++     static int res_registered = FALSE;
++ 
++     if (!res_registered)
++     {
++ 	/* Call this function in the GUI process; otherwise, the resources
++ 	 * won't be available.  Don't call it twice. */
++ 	res_registered = TRUE;
++ 	gui_gtk_register_resource();
++     }
++ #endif
++ 
+  #ifdef FEAT_GUI_GNOME
+      if (gtk_socket_id == 0)
+  	using_gnome = 1;
+*** ../vim-7.4.1137/src/version.c	2016-01-19 14:51:49.555315465 +0100
+--- src/version.c	2016-01-19 17:47:04.122934810 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1138,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+3. Your bookmark takes 15 minutes to scroll from top to bottom.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

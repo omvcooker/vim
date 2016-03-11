@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1415
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1415 (after 7.4.1414)
+Problem:    Dropped the skip-tags setting.
+Solution:   Put it back.
+Files:      appveyor.yml
+
+
+*** ../vim-7.4.1414/appveyor.yml	2016-02-24 21:02:01.397693481 +0100
+--- appveyor.yml	2016-02-24 22:25:30.017665555 +0100
+***************
+*** 1,5 ****
+--- 1,7 ----
+  version: "{build}"
+  
++ skip_tags: true
++ 
+  environment:
+    matrix:
+      - FEATURE: HUGE
+*** ../vim-7.4.1414/src/version.c	2016-02-24 21:02:01.397693481 +0100
+--- src/version.c	2016-02-24 22:26:13.521210562 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1415,
+  /**/
+
+-- 
+MONK: ... and the Lord spake, saying, "First shalt thou take out the Holy Pin,
+      then shalt thou count to three, no more, no less.  Three shalt be the
+      number thou shalt count, and the number of the counting shalt be three.
+      Four shalt thou not count, neither count thou two, excepting that thou
+      then proceed to three.  Five is right out.  Once the number three, being
+      the third number, be reached, then lobbest thou thy Holy Hand Grenade of
+      Antioch towards thou foe, who being naughty in my sight, shall snuff it.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

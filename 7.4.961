@@ -1,0 +1,107 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.961
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.961
+Problem:    Test107 fails in some circunstances.
+Solution:   When using "zt", "zb" and "z=" recompute the fraction.
+Files:      src/normal.c, src/window.c, src/proto/window.pro
+
+
+*** ../vim-7.4.960/src/normal.c	2015-11-19 20:11:50.022118268 +0100
+--- src/normal.c	2015-12-05 19:39:58.639177900 +0100
+***************
+*** 4880,4885 ****
+--- 4880,4886 ----
+  
+      case 't':	scroll_cursor_top(0, TRUE);
+  		redraw_later(VALID);
++ 		set_fraction(curwin);
+  		break;
+  
+  		/* "z." and "zz": put cursor in middle of screen */
+***************
+*** 4888,4893 ****
+--- 4889,4895 ----
+  
+      case 'z':	scroll_cursor_halfway(TRUE);
+  		redraw_later(VALID);
++ 		set_fraction(curwin);
+  		break;
+  
+  		/* "z^", "z-" and "zb": put cursor at bottom of screen */
+***************
+*** 4910,4915 ****
+--- 4912,4918 ----
+  
+      case 'b':	scroll_cursor_bot(0, TRUE);
+  		redraw_later(VALID);
++ 		set_fraction(curwin);
+  		break;
+  
+  		/* "zH" - scroll screen right half-page */
+*** ../vim-7.4.960/src/window.c	2015-11-22 19:39:33.606109024 +0100
+--- src/window.c	2015-12-05 19:42:39.081451847 +0100
+***************
+*** 75,81 ****
+  #endif /* FEAT_WINDOWS */
+  
+  static win_T *win_alloc __ARGS((win_T *after, int hidden));
+- static void set_fraction __ARGS((win_T *wp));
+  
+  #define URL_SLASH	1		/* path_is_url() has found "://" */
+  #define URL_BACKSLASH	2		/* path_is_url() has found ":\\" */
+--- 75,80 ----
+***************
+*** 5828,5834 ****
+  /*
+   * Set wp->w_fraction for the current w_wrow and w_height.
+   */
+!     static void
+  set_fraction(wp)
+      win_T	*wp;
+  {
+--- 5827,5833 ----
+  /*
+   * Set wp->w_fraction for the current w_wrow and w_height.
+   */
+!     void
+  set_fraction(wp)
+      win_T	*wp;
+  {
+*** ../vim-7.4.960/src/proto/window.pro	2015-07-21 15:48:13.589517950 +0200
+--- src/proto/window.pro	2015-12-05 19:37:53.332525850 +0100
+***************
+*** 53,58 ****
+--- 53,59 ----
+  void win_setminheight __ARGS((void));
+  void win_drag_status_line __ARGS((win_T *dragwin, int offset));
+  void win_drag_vsep_line __ARGS((win_T *dragwin, int offset));
++ void set_fraction __ARGS((win_T *wp));
+  void win_new_height __ARGS((win_T *wp, int height));
+  void win_new_width __ARGS((win_T *wp, int width));
+  void win_comp_scroll __ARGS((win_T *wp));
+*** ../vim-7.4.960/src/version.c	2015-12-03 22:37:12.677263826 +0100
+--- src/version.c	2015-12-05 19:41:11.230396976 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     961,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+198. You read all the quotes at Netaholics Anonymous and keep thinking
+     "What's wrong with that?"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

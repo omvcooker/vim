@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1391
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1391
+Problem:    Warning for uninitialzed variable.
+Solution:   Set it to zero. (Christian Brabandt)
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1390/src/eval.c	2016-02-22 20:20:21.404530530 +0100
+--- src/eval.c	2016-02-22 21:45:29.599359250 +0100
+***************
+*** 9489,9495 ****
+      static void
+  f_atan(typval_T *argvars, typval_T *rettv)
+  {
+!     float_T	f;
+  
+      rettv->v_type = VAR_FLOAT;
+      if (get_float_arg(argvars, &f) == OK)
+--- 9489,9495 ----
+      static void
+  f_atan(typval_T *argvars, typval_T *rettv)
+  {
+!     float_T	f = 0.0;
+  
+      rettv->v_type = VAR_FLOAT;
+      if (get_float_arg(argvars, &f) == OK)
+*** ../vim-7.4.1390/src/version.c	2016-02-22 21:07:01.887474438 +0100
+--- src/version.c	2016-02-22 21:48:17.137601875 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1391,
+  /**/
+
+-- 
+BLACK KNIGHT:  I move for no man.
+ARTHUR:        So be it!
+    [hah] [parry thrust]
+    [ARTHUR chops the BLACK KNIGHT's left arm off]
+ARTHUR:        Now stand aside, worthy adversary.
+BLACK KNIGHT:  'Tis but a scratch.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,607 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1042
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1042
+Problem:    g-CTRL-G shows the word count, but there is no way to get the word
+            count in a script.
+Solution:   Add the wordcount() function. (Christian Brabandt)
+Files:      runtime/doc/editing.txt, runtime/doc/eval.txt,
+            runtime/doc/usr_41.txt, src/eval.c, src/normal.c, src/ops.c,
+            src/proto/ops.pro, src/testdir/test_wordcount.in,
+            src/testdir/test_wordcount.ok, src/testdir/Make_all.mak
+
+
+*** ../vim-7.4.1041/runtime/doc/editing.txt	2016-01-02 22:25:40.666710151 +0100
+--- runtime/doc/editing.txt	2016-01-03 22:28:11.760313436 +0100
+***************
+*** 78,84 ****
+  			than one position on the screen (<Tab> or special
+  			character), both the "real" column and the screen
+  			column are shown, separated with a dash.
+! 			See also 'ruler' option.  {not in Vi}
+  
+  							*v_g_CTRL-G*
+  {Visual}g CTRL-G	Similar to "g CTRL-G", but Word, Character, Line, and
+--- 78,86 ----
+  			than one position on the screen (<Tab> or special
+  			character), both the "real" column and the screen
+  			column are shown, separated with a dash.
+! 			Also see the 'ruler' option and the |wordcount()|
+! 			function.
+! 			{not in Vi}
+  
+  							*v_g_CTRL-G*
+  {Visual}g CTRL-G	Similar to "g CTRL-G", but Word, Character, Line, and
+*** ../vim-7.4.1041/runtime/doc/eval.txt	2016-01-02 17:54:04.407793439 +0100
+--- runtime/doc/eval.txt	2016-01-03 22:29:41.835330215 +0100
+***************
+*** 2071,2076 ****
+--- 2075,2081 ----
+  winrestview( {dict})		none	restore view of current window
+  winsaveview()			Dict	save view of current window
+  winwidth( {nr})			Number	width of window {nr}
++ wordcount()			Dict	get byte/char/word statistics
+  writefile( {list}, {fname} [, {flags}])
+  				Number	write list of lines to file {fname}
+  xor( {expr}, {expr})		Number  bitwise XOR
+***************
+*** 6674,6679 ****
+--- 6745,6772 ----
+    :  exe "normal 50\<C-W>|"
+    :endif
+  <
++ wordcount()						*wordcount()*
++ 		The result is a dictionary of byte/chars/word statistics for
++ 		the current buffer.  This is the same info as provided by
++ 		|g_CTRL-G|
++ 		The return value includes:
++ 			bytes		Number of bytes in the buffer
++ 			chars		Number of chars in the buffer
++ 			words		Number of words in the buffer
++ 			cursor_bytes    Number of bytes before cursor position
++ 					(not in Visual mode)
++ 			cursor_chars    Number of chars before cursor position
++ 					(not in Visual mode)
++ 			cursor_words    Number of words before cursor position
++ 					(not in Visual mode)
++ 			visual_bytes    Number of bytes visually selected
++ 			                (only in Visual mode)
++ 			visual_chars    Number of chars visually selected
++ 			                (only in Visual mode)
++ 			visual_words    Number of chars visually selected
++ 			                (only in Visual mode)
++ 
++ 
+  							*writefile()*
+  writefile({list}, {fname} [, {flags}])
+  		Write |List| {list} to file {fname}.  Each list item is
+*** ../vim-7.4.1041/runtime/doc/usr_41.txt	2015-11-30 21:37:23.592219629 +0100
+--- runtime/doc/usr_41.txt	2016-01-03 22:26:33.421386983 +0100
+***************
+*** 919,924 ****
+--- 923,929 ----
+  	mzeval()		evaluate |MzScheme| expression
+  	py3eval()		evaluate Python expression (|+python3|)
+  	pyeval()		evaluate Python expression (|+python|)
++ 	wordcount()             get byte/word/char count of buffer
+  
+  ==============================================================================
+  *41.7*	Defining a function
+*** ../vim-7.4.1041/src/eval.c	2016-01-02 20:59:05.607566224 +0100
+--- src/eval.c	2016-01-03 22:30:36.714731227 +0100
+***************
+*** 780,785 ****
+--- 780,786 ----
+  static void f_winsaveview __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_winwidth __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_writefile __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_wordcount __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_xor __ARGS((typval_T *argvars, typval_T *rettv));
+  
+  static int list2fpos __ARGS((typval_T *arg, pos_T *posp, int *fnump, colnr_T *curswantp));
+***************
+*** 8387,8392 ****
+--- 8388,8394 ----
+      {"winrestview",	1, 1, f_winrestview},
+      {"winsaveview",	0, 0, f_winsaveview},
+      {"winwidth",	1, 1, f_winwidth},
++     {"wordcount",	0, 0, f_wordcount},
+      {"writefile",	2, 3, f_writefile},
+      {"xor",		2, 2, f_xor},
+  };
+***************
+*** 20220,20225 ****
+--- 20222,20240 ----
+  }
+  
+  /*
++  * "wordcount()" function
++  */
++     static void
++ f_wordcount(argvars, rettv)
++     typval_T	*argvars UNUSED;
++     typval_T	*rettv;
++ {
++     if (rettv_dict_alloc(rettv) == FAIL)
++ 	return;
++     cursor_pos_info(rettv->vval.v_dict);
++ }
++ 
++ /*
+   * Write list of strings to file
+   */
+      static int
+*** ../vim-7.4.1041/src/normal.c	2015-12-05 19:47:00.730636672 +0100
+--- src/normal.c	2016-01-03 22:26:33.429386896 +0100
+***************
+*** 8270,8276 ****
+       * "g CTRL-G": display info about cursor position
+       */
+      case Ctrl_G:
+! 	cursor_pos_info();
+  	break;
+  
+      /*
+--- 8270,8276 ----
+       * "g CTRL-G": display info about cursor position
+       */
+      case Ctrl_G:
+! 	cursor_pos_info(NULL);
+  	break;
+  
+      /*
+*** ../vim-7.4.1041/src/ops.c	2016-01-02 17:54:04.419793309 +0100
+--- src/ops.c	2016-01-03 22:31:28.042171041 +0100
+***************
+*** 6963,6977 ****
+   * Give some info about the position of the cursor (for "g CTRL-G").
+   * In Visual mode, give some info about the selected region.  (In this case,
+   * the *_count_cursor variables store running totals for the selection.)
+   */
+      void
+! cursor_pos_info()
+  {
+      char_u	*p;
+      char_u	buf1[50];
+      char_u	buf2[40];
+      linenr_T	lnum;
+      long	byte_count = 0;
+      long	byte_count_cursor = 0;
+      long	char_count = 0;
+      long	char_count_cursor = 0;
+--- 6963,6980 ----
+   * Give some info about the position of the cursor (for "g CTRL-G").
+   * In Visual mode, give some info about the selected region.  (In this case,
+   * the *_count_cursor variables store running totals for the selection.)
++  * When "dict" is not NULL store the info there instead of showing it.
+   */
+      void
+! cursor_pos_info(dict)
+!     dict_T	*dict;
+  {
+      char_u	*p;
+      char_u	buf1[50];
+      char_u	buf2[40];
+      linenr_T	lnum;
+      long	byte_count = 0;
++     long	bom_count  = 0;
+      long	byte_count_cursor = 0;
+      long	char_count = 0;
+      long	char_count_cursor = 0;
+***************
+*** 6989,6995 ****
+       */
+      if (curbuf->b_ml.ml_flags & ML_EMPTY)
+      {
+! 	MSG(_(no_lines_msg));
+      }
+      else
+      {
+--- 6992,7002 ----
+       */
+      if (curbuf->b_ml.ml_flags & ML_EMPTY)
+      {
+! 	if (dict == NULL)
+! 	{
+! 	    MSG(_(no_lines_msg));
+! 	    return;
+! 	}
+      }
+      else
+      {
+***************
+*** 7122,7195 ****
+  	if (!curbuf->b_p_eol && (curbuf->b_p_bin || !curbuf->b_p_fixeol))
+  	    byte_count -= eol_size;
+  
+! 	if (VIsual_active)
+  	{
+! 	    if (VIsual_mode == Ctrl_V && curwin->w_curswant < MAXCOL)
+  	    {
+! 		getvcols(curwin, &min_pos, &max_pos, &min_pos.col,
+! 								&max_pos.col);
+! 		vim_snprintf((char *)buf1, sizeof(buf1), _("%ld Cols; "),
+! 			(long)(oparg.end_vcol - oparg.start_vcol + 1));
+  	    }
+  	    else
+! 		buf1[0] = NUL;
+! 
+! 	    if (char_count_cursor == byte_count_cursor
+! 						  && char_count == byte_count)
+! 		vim_snprintf((char *)IObuff, IOSIZE,
+! 			_("Selected %s%ld of %ld Lines; %ld of %ld Words; %ld of %ld Bytes"),
+! 			buf1, line_count_selected,
+  			(long)curbuf->b_ml.ml_line_count,
+  			word_count_cursor, word_count,
+  			byte_count_cursor, byte_count);
+! 	    else
+! 		vim_snprintf((char *)IObuff, IOSIZE,
+! 			_("Selected %s%ld of %ld Lines; %ld of %ld Words; %ld of %ld Chars; %ld of %ld Bytes"),
+! 			buf1, line_count_selected,
+  			(long)curbuf->b_ml.ml_line_count,
+  			word_count_cursor, word_count,
+  			char_count_cursor, char_count,
+  			byte_count_cursor, byte_count);
+! 	}
+! 	else
+! 	{
+! 	    p = ml_get_curline();
+! 	    validate_virtcol();
+! 	    col_print(buf1, sizeof(buf1), (int)curwin->w_cursor.col + 1,
+! 		    (int)curwin->w_virtcol + 1);
+! 	    col_print(buf2, sizeof(buf2), (int)STRLEN(p),
+! 				linetabsize(p));
+! 
+! 	    if (char_count_cursor == byte_count_cursor
+! 		    && char_count == byte_count)
+! 		vim_snprintf((char *)IObuff, IOSIZE,
+! 		    _("Col %s of %s; Line %ld of %ld; Word %ld of %ld; Byte %ld of %ld"),
+! 		    (char *)buf1, (char *)buf2,
+! 		    (long)curwin->w_cursor.lnum,
+! 		    (long)curbuf->b_ml.ml_line_count,
+! 		    word_count_cursor, word_count,
+! 		    byte_count_cursor, byte_count);
+! 	    else
+! 		vim_snprintf((char *)IObuff, IOSIZE,
+! 		    _("Col %s of %s; Line %ld of %ld; Word %ld of %ld; Char %ld of %ld; Byte %ld of %ld"),
+! 		    (char *)buf1, (char *)buf2,
+! 		    (long)curwin->w_cursor.lnum,
+! 		    (long)curbuf->b_ml.ml_line_count,
+! 		    word_count_cursor, word_count,
+! 		    char_count_cursor, char_count,
+! 		    byte_count_cursor, byte_count);
+  	}
+  
+  #ifdef FEAT_MBYTE
+! 	byte_count = bomb_size();
+! 	if (byte_count > 0)
+  	    sprintf((char *)IObuff + STRLEN(IObuff), _("(+%ld for BOM)"),
+! 								  byte_count);
+  #endif
+! 	/* Don't shorten this message, the user asked for it. */
+! 	p = p_shm;
+! 	p_shm = (char_u *)"";
+! 	msg(IObuff);
+! 	p_shm = p;
+      }
+  }
+--- 7129,7226 ----
+  	if (!curbuf->b_p_eol && (curbuf->b_p_bin || !curbuf->b_p_fixeol))
+  	    byte_count -= eol_size;
+  
+! 	if (dict == NULL)
+  	{
+! 	    if (VIsual_active)
+  	    {
+! 		if (VIsual_mode == Ctrl_V && curwin->w_curswant < MAXCOL)
+! 		{
+! 		    getvcols(curwin, &min_pos, &max_pos, &min_pos.col,
+! 								    &max_pos.col);
+! 		    vim_snprintf((char *)buf1, sizeof(buf1), _("%ld Cols; "),
+! 			    (long)(oparg.end_vcol - oparg.start_vcol + 1));
+! 		}
+! 		else
+! 		    buf1[0] = NUL;
+! 
+! 		if (char_count_cursor == byte_count_cursor
+! 						    && char_count == byte_count)
+! 		    vim_snprintf((char *)IObuff, IOSIZE,
+! 			    _("Selected %s%ld of %ld Lines; %ld of %ld Words; %ld of %ld Bytes"),
+! 			    buf1, line_count_selected,
+! 			    (long)curbuf->b_ml.ml_line_count,
+! 			    word_count_cursor, word_count,
+! 			    byte_count_cursor, byte_count);
+! 		else
+! 		    vim_snprintf((char *)IObuff, IOSIZE,
+! 			    _("Selected %s%ld of %ld Lines; %ld of %ld Words; %ld of %ld Chars; %ld of %ld Bytes"),
+! 			    buf1, line_count_selected,
+! 			    (long)curbuf->b_ml.ml_line_count,
+! 			    word_count_cursor, word_count,
+! 			    char_count_cursor, char_count,
+! 			    byte_count_cursor, byte_count);
+  	    }
+  	    else
+! 	    {
+! 		p = ml_get_curline();
+! 		validate_virtcol();
+! 		col_print(buf1, sizeof(buf1), (int)curwin->w_cursor.col + 1,
+! 			(int)curwin->w_virtcol + 1);
+! 		col_print(buf2, sizeof(buf2), (int)STRLEN(p),
+! 				    linetabsize(p));
+! 
+! 		if (char_count_cursor == byte_count_cursor
+! 			&& char_count == byte_count)
+! 		    vim_snprintf((char *)IObuff, IOSIZE,
+! 			_("Col %s of %s; Line %ld of %ld; Word %ld of %ld; Byte %ld of %ld"),
+! 			(char *)buf1, (char *)buf2,
+! 			(long)curwin->w_cursor.lnum,
+  			(long)curbuf->b_ml.ml_line_count,
+  			word_count_cursor, word_count,
+  			byte_count_cursor, byte_count);
+! 		else
+! 		    vim_snprintf((char *)IObuff, IOSIZE,
+! 			_("Col %s of %s; Line %ld of %ld; Word %ld of %ld; Char %ld of %ld; Byte %ld of %ld"),
+! 			(char *)buf1, (char *)buf2,
+! 			(long)curwin->w_cursor.lnum,
+  			(long)curbuf->b_ml.ml_line_count,
+  			word_count_cursor, word_count,
+  			char_count_cursor, char_count,
+  			byte_count_cursor, byte_count);
+! 	    }
+  	}
+  
++ 	/* Don't shorten this message, the user asked for it. */
+  #ifdef FEAT_MBYTE
+! 	bom_count = bomb_size();
+! 	if (bom_count > 0)
+  	    sprintf((char *)IObuff + STRLEN(IObuff), _("(+%ld for BOM)"),
+! 								bom_count);
+  #endif
+! 	if (dict == NULL)
+! 	{
+! 	    p = p_shm;
+! 	    p_shm = (char_u *)"";
+! 	    msg(IObuff);
+! 	    p_shm = p;
+! 	}
+!     }
+!     if (dict != NULL)
+!     {
+! 	dict_add_nr_str(dict, "words", (long)word_count, NULL);
+! 	dict_add_nr_str(dict, "chars", (long)char_count, NULL);
+! 	dict_add_nr_str(dict, "bytes", (long)byte_count + bom_count, NULL);
+! 	if (VIsual_active)
+! 	{
+! 	    dict_add_nr_str(dict, "visual_bytes", (long)byte_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "visual_chars", (long)char_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "visual_words", (long)word_count_cursor, NULL);
+! 	}
+! 	else
+! 	{
+! 	    dict_add_nr_str(dict, "cursor_bytes", (long)byte_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "cursor_chars", (long)char_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "cursor_words", (long)word_count_cursor, NULL);
+! 	}
+      }
+  }
+*** ../vim-7.4.1041/src/proto/ops.pro	2015-06-25 13:57:20.033431073 +0200
+--- src/proto/ops.pro	2016-01-03 22:26:33.433386852 +0100
+***************
+*** 58,62 ****
+  void write_reg_contents_lst __ARGS((int name, char_u **strings, int maxlen, int must_append, int yank_type, long block_len));
+  void write_reg_contents_ex __ARGS((int name, char_u *str, int maxlen, int must_append, int yank_type, long block_len));
+  void clear_oparg __ARGS((oparg_T *oap));
+! void cursor_pos_info __ARGS((void));
+  /* vim: set ft=c : */
+--- 58,62 ----
+  void write_reg_contents_lst __ARGS((int name, char_u **strings, int maxlen, int must_append, int yank_type, long block_len));
+  void write_reg_contents_ex __ARGS((int name, char_u *str, int maxlen, int must_append, int yank_type, long block_len));
+  void clear_oparg __ARGS((oparg_T *oap));
+! void cursor_pos_info __ARGS((dict_T *eval));
+  /* vim: set ft=c : */
+*** ../vim-7.4.1041/src/testdir/test_wordcount.in	2016-01-03 22:46:13.980506817 +0100
+--- src/testdir/test_wordcount.in	2016-01-03 22:41:46.999418253 +0100
+***************
+*** 0 ****
+--- 1,125 ----
++ Test for wordcount() function
++ 
++ STARTTEST
++ :so small.vim
++ :so mbyte.vim
++ :set enc=utf8
++ :new
++ :fu DoRecordWin(...)
++ :	wincmd k
++ :       if exists("a:1")
++ :           call cursor(a:1)
++ :       endif
++ :       let result=[]
++ :       call add(result, g:test)
++ :       call add(result, getline(1, '$'))
++ :       call add(result, wordcount())
++ :	wincmd j
++ :       return result
++ :endfu
++ :fu PutInWindow(args)
++ :       wincmd k
++ :       %d _
++ :       call append(1, a:args)
++ :	wincmd j
++ :endfu
++ :fu Log()
++ :   $put ='----'
++ :   $put =remove(g:log,0)
++ :   $put =string(g:log)
++ :endfu
++ :fu! STL()
++ :    if mode() =~? 'V'
++ :       let g:visual_stat=wordcount()
++ :    endif
++ :    return string(wordcount())
++ :endfu
++ :let g:test="Test 1: empty window"
++ :let log=DoRecordWin()
++ :call Log()
++ :"
++ :let g:test="Test 2: some words, cursor at start"
++ :call PutInWindow('one two three')
++ :let log=DoRecordWin([1,1,0])
++ :call Log()
++ :"
++ :let g:test="Test 3: some words, cursor at end"
++ :call PutInWindow('one two three')
++ :let log=DoRecordWin([2,99,0])
++ :call Log()
++ :"
++ :let g:test="Test 4: some words, cursor at end, ve=all"
++ :set ve=all
++ :call PutInWindow('one two three')
++ :let log=DoRecordWin([2,99,0])
++ :call Log()
++ :set ve=
++ :"
++ :let g:test="Test 5: several lines with words"
++ :call PutInWindow(['one two three', 'one two three', 'one two three'])
++ :let log=DoRecordWin([4,99,0])
++ :call Log()
++ :"
++ :let g:test="Test 6: one line with BOM set"
++ :call PutInWindow('one two three')
++ :wincmd k
++ :set bomb
++ :w! Xtest
++ :wincmd j
++ :let log=DoRecordWin([2,99,0])
++ :call Log()
++ :wincmd k
++ :set nobomb
++ :w!
++ :wincmd j
++ :"
++ :let g:test="Test 7: one line with multibyte words"
++ :call PutInWindow(['Äne M¤ne Müh'])
++ :let log=DoRecordWin([2,99,0])
++ :call Log()
++ :"
++ :let g:test="Test 8: several lines with multibyte words"
++ :call PutInWindow(['Äne M¤ne Müh', 'und raus bist dü!'])
++ :let log=DoRecordWin([3,99,0])
++ :call Log()
++ :"
++ :let g:test="Test 9: visual mode, complete buffer"
++ :call PutInWindow(['Äne M¤ne Müh', 'und raus bist dü!'])
++ :wincmd k
++ :set ls=2 stl=%{STL()}
++ :" start visual mode quickly and select complete buffer
++ :0
++ V2jy
++ :set stl= ls=1
++ :let log=DoRecordWin([3,99,0])
++ :let log[2]=g:visual_stat
++ :call Log()
++ :"
++ :let g:test="Test 10: visual mode (empty)"
++ :call PutInWindow(['Äne M¤ne Müh', 'und raus bist dü!'])
++ :wincmd k
++ :set ls=2 stl=%{STL()}
++ :" start visual mode quickly and select complete buffer
++ :0
++ v$y
++ :set stl= ls=1
++ :let log=DoRecordWin([3,99,0])
++ :let log[2]=g:visual_stat
++ :call Log()
++ :"
++ :let g:test="Test 11: visual mode, single line"
++ :call PutInWindow(['Äne M¤ne Müh', 'und raus bist dü!'])
++ :wincmd k
++ :set ls=2 stl=%{STL()}
++ :" start visual mode quickly and select complete buffer
++ :2
++ 0v$y
++ :set stl= ls=1
++ :let log=DoRecordWin([3,99,0])
++ :let log[2]=g:visual_stat
++ :call Log()
++ :"
++ :/^RESULT test/,$w! test.out
++ :qa!
++ ENDTEST
++ RESULT test:
+*** ../vim-7.4.1041/src/testdir/test_wordcount.ok	2016-01-03 22:46:13.988506730 +0100
+--- src/testdir/test_wordcount.ok	2016-01-03 22:42:07.083199212 +0100
+***************
+*** 0 ****
+--- 1,34 ----
++ RESULT test:
++ ----
++ Test 1: empty window
++ [[''], {'chars': 0, 'cursor_chars': 0, 'words': 0, 'cursor_words': 0, 'bytes': 0, 'cursor_bytes': 0}]
++ ----
++ Test 2: some words, cursor at start
++ [['', 'one two three'], {'chars': 15, 'cursor_chars': 1, 'words': 3, 'cursor_words': 0, 'bytes': 15, 'cursor_bytes': 1}]
++ ----
++ Test 3: some words, cursor at end
++ [['', 'one two three'], {'chars': 15, 'cursor_chars': 14, 'words': 3, 'cursor_words': 3, 'bytes': 15, 'cursor_bytes': 14}]
++ ----
++ Test 4: some words, cursor at end, ve=all
++ [['', 'one two three'], {'chars': 15, 'cursor_chars': 15, 'words': 3, 'cursor_words': 3, 'bytes': 15, 'cursor_bytes': 15}]
++ ----
++ Test 5: several lines with words
++ [['', 'one two three', 'one two three', 'one two three'], {'chars': 43, 'cursor_chars': 42, 'words': 9, 'cursor_words': 9, 'bytes': 43, 'cursor_bytes': 42}]
++ ----
++ Test 6: one line with BOM set
++ [['', 'one two three'], {'chars': 15, 'cursor_chars': 14, 'words': 3, 'cursor_words': 3, 'bytes': 18, 'cursor_bytes': 14}]
++ ----
++ Test 7: one line with multibyte words
++ [['', 'Äne M¤ne Müh'], {'chars': 14, 'cursor_chars': 13, 'words': 3, 'cursor_words': 3, 'bytes': 17, 'cursor_bytes': 16}]
++ ----
++ Test 8: several lines with multibyte words
++ [['', 'Äne M¤ne Müh', 'und raus bist dü!'], {'chars': 32, 'cursor_chars': 31, 'words': 7, 'cursor_words': 7, 'bytes': 36, 'cursor_bytes': 35}]
++ ----
++ Test 9: visual mode, complete buffer
++ [['', 'Äne M¤ne Müh', 'und raus bist dü!'], {'chars': 32, 'words': 7, 'bytes': 36, 'visual_chars': 32, 'visual_words': 7, 'visual_bytes': 36}]
++ ----
++ Test 10: visual mode (empty)
++ [['', 'Äne M¤ne Müh', 'und raus bist dü!'], {'chars': 32, 'words': 7, 'bytes': 36, 'visual_chars': 1, 'visual_words': 0, 'visual_bytes': 1}]
++ ----
++ Test 11: visual mode, single line
++ [['', 'Äne M¤ne Müh', 'und raus bist dü!'], {'chars': 32, 'words': 7, 'bytes': 36, 'visual_chars': 13, 'visual_words': 3, 'visual_bytes': 16}]
+*** ../vim-7.4.1041/src/testdir/Make_all.mak	2016-01-01 14:57:46.688558639 +0100
+--- src/testdir/Make_all.mak	2016-01-03 22:27:33.164734760 +0100
+***************
+*** 120,125 ****
+--- 120,126 ----
+  	test_tagcase.out \
+  	test_textobjects.out \
+  	test_utf8.out \
++ 	test_wordcount.out \
+  	test_writefile.out
+  
+  
+*** ../vim-7.4.1041/src/version.c	2016-01-03 22:16:16.004130318 +0100
+--- src/version.c	2016-01-03 22:24:55.350457735 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1042,
+  /**/
+
+-- 
+LAUNCELOT: Isn't there a St. Aaaaarrrrrrggghhh's in Cornwall?
+ARTHUR:    No, that's Saint Ives.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

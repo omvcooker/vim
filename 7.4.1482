@@ -1,0 +1,236 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1482
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1482
+Problem:    "timeout" option not supported on ch_eval*().
+Solution:   Get and use the timeout option from the argument.
+Files:      src/eval.c, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1481/src/eval.c	2016-03-03 12:22:48.562554007 +0100
+--- src/eval.c	2016-03-03 18:08:18.398490543 +0100
+***************
+*** 10518,10532 ****
+   */
+      static channel_T *
+  send_common(
+! 	typval_T *argvars,
+! 	char_u *text,
+! 	int id,
+! 	int eval,
+! 	char *fun,
+! 	int *part_read)
+  {
+      channel_T	*channel;
+-     jobopt_T	opt;
+      int		part_send;
+  
+      channel = get_channel_arg(&argvars[0]);
+--- 10518,10532 ----
+   */
+      static channel_T *
+  send_common(
+! 	typval_T    *argvars,
+! 	char_u	    *text,
+! 	int	    id,
+! 	int	    eval,
+! 	jobopt_T    *opt,
+! 	char	    *fun,
+! 	int	    *part_read)
+  {
+      channel_T	*channel;
+      int		part_send;
+  
+      channel = get_channel_arg(&argvars[0]);
+***************
+*** 10535,10559 ****
+      part_send = channel_part_send(channel);
+      *part_read = channel_part_read(channel);
+  
+!     clear_job_options(&opt);
+!     if (get_job_options(&argvars[2], &opt, JO_CALLBACK) == FAIL)
+  	return NULL;
+  
+      /* Set the callback. An empty callback means no callback and not reading
+       * the response. With "ch_evalexpr()" and "ch_evalraw()" a callback is not
+       * allowed. */
+!     if (opt.jo_callback != NULL && *opt.jo_callback != NUL)
+      {
+  	if (eval)
+  	{
+  	    EMSG2(_("E917: Cannot use a callback with %s()"), fun);
+  	    return NULL;
+  	}
+! 	channel_set_req_callback(channel, part_send, opt.jo_callback, id);
+      }
+  
+      if (channel_send(channel, part_send, text, fun) == OK
+! 						   && opt.jo_callback == NULL)
+  	return channel;
+      return NULL;
+  }
+--- 10535,10559 ----
+      part_send = channel_part_send(channel);
+      *part_read = channel_part_read(channel);
+  
+!     clear_job_options(opt);
+!     if (get_job_options(&argvars[2], opt, JO_CALLBACK + JO_TIMEOUT) == FAIL)
+  	return NULL;
+  
+      /* Set the callback. An empty callback means no callback and not reading
+       * the response. With "ch_evalexpr()" and "ch_evalraw()" a callback is not
+       * allowed. */
+!     if (opt->jo_callback != NULL && *opt->jo_callback != NUL)
+      {
+  	if (eval)
+  	{
+  	    EMSG2(_("E917: Cannot use a callback with %s()"), fun);
+  	    return NULL;
+  	}
+! 	channel_set_req_callback(channel, part_send, opt->jo_callback, id);
+      }
+  
+      if (channel_send(channel, part_send, text, fun) == OK
+! 						  && opt->jo_callback == NULL)
+  	return channel;
+      return NULL;
+  }
+***************
+*** 10571,10576 ****
+--- 10571,10577 ----
+      ch_mode_T	ch_mode;
+      int		part_send;
+      int		part_read;
++     jobopt_T    opt;
+      int		timeout;
+  
+      /* return an empty string by default */
+***************
+*** 10595,10606 ****
+      if (text == NULL)
+  	return;
+  
+!     channel = send_common(argvars, text, id, eval,
+  			    eval ? "ch_evalexpr" : "ch_sendexpr", &part_read);
+      vim_free(text);
+      if (channel != NULL && eval)
+      {
+! 	/* TODO: timeout from options */
+  	timeout = channel_get_timeout(channel, part_read);
+  	if (channel_read_json_block(channel, part_read, timeout, id, &listtv)
+  									== OK)
+--- 10596,10610 ----
+      if (text == NULL)
+  	return;
+  
+!     channel = send_common(argvars, text, id, eval, &opt,
+  			    eval ? "ch_evalexpr" : "ch_sendexpr", &part_read);
+      vim_free(text);
+      if (channel != NULL && eval)
+      {
+! 	if (opt.jo_set & JO_TIMEOUT)
+! 	    timeout = opt.jo_timeout;
+! 	else
+! 	    timeout = channel_get_timeout(channel, part_read);
+  	timeout = channel_get_timeout(channel, part_read);
+  	if (channel_read_json_block(channel, part_read, timeout, id, &listtv)
+  									== OK)
+***************
+*** 10644,10649 ****
+--- 10648,10654 ----
+      char_u	*text;
+      channel_T	*channel;
+      int		part_read;
++     jobopt_T    opt;
+      int		timeout;
+  
+      /* return an empty string by default */
+***************
+*** 10651,10662 ****
+      rettv->vval.v_string = NULL;
+  
+      text = get_tv_string_buf(&argvars[1], buf);
+!     channel = send_common(argvars, text, 0, eval,
+  			      eval ? "ch_evalraw" : "ch_sendraw", &part_read);
+      if (channel != NULL && eval)
+      {
+! 	/* TODO: timeout from options */
+! 	timeout = channel_get_timeout(channel, part_read);
+  	rettv->vval.v_string = channel_read_block(channel, part_read, timeout);
+      }
+  }
+--- 10656,10669 ----
+      rettv->vval.v_string = NULL;
+  
+      text = get_tv_string_buf(&argvars[1], buf);
+!     channel = send_common(argvars, text, 0, eval, &opt,
+  			      eval ? "ch_evalraw" : "ch_sendraw", &part_read);
+      if (channel != NULL && eval)
+      {
+! 	if (opt.jo_set & JO_TIMEOUT)
+! 	    timeout = opt.jo_timeout;
+! 	else
+! 	    timeout = channel_get_timeout(channel, part_read);
+  	rettv->vval.v_string = channel_read_block(channel, part_read, timeout);
+      }
+  }
+*** ../vim-7.4.1481/src/testdir/test_channel.vim	2016-02-29 22:55:51.693608630 +0100
+--- src/testdir/test_channel.vim	2016-03-03 18:07:34.546944427 +0100
+***************
+*** 120,126 ****
+    call assert_equal('added1', getline(line('$') - 1))
+    call assert_equal('added2', getline('$'))
+  
+!   call assert_equal('ok', ch_evalexpr(handle, 'do normal'))
+    sleep 10m
+    call assert_equal('added more', getline('$'))
+  
+--- 120,126 ----
+    call assert_equal('added1', getline(line('$') - 1))
+    call assert_equal('added2', getline('$'))
+  
+!   call assert_equal('ok', ch_evalexpr(handle, 'do normal', {'timeout': 100}))
+    sleep 10m
+    call assert_equal('added more', getline('$'))
+  
+***************
+*** 342,348 ****
+      let msg = ch_readraw(handle)
+      call assert_equal("this\nAND this\n", substitute(msg, "\r", "", 'g'))
+  
+!     let reply = ch_evalraw(handle, "quit\n")
+      call assert_equal("Goodbye!\n", substitute(reply, "\r", "", 'g'))
+    finally
+      call job_stop(job)
+--- 342,348 ----
+      let msg = ch_readraw(handle)
+      call assert_equal("this\nAND this\n", substitute(msg, "\r", "", 'g'))
+  
+!     let reply = ch_evalraw(handle, "quit\n", {'timeout': 100})
+      call assert_equal("Goodbye!\n", substitute(reply, "\r", "", 'g'))
+    finally
+      call job_stop(job)
+*** ../vim-7.4.1481/src/version.c	2016-03-03 17:22:44.530735097 +0100
+--- src/version.c	2016-03-03 18:06:55.691346553 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1482,
+  /**/
+
+-- 
+Hacker: Someone skilled in computer programming (good guy).
+Cracker: A hacker that uses his skills to crack software (bad guy).
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

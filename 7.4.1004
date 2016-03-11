@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1004
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1004
+Problem:    Using Makefile when auto/config.mk does not exists results in
+            warnings.
+Solution:   Use default values for essential variables.
+Files:      src/Makefile
+
+
+*** ../vim-7.4.1003/src/Makefile	2015-12-30 15:49:01.813318492 +0100
+--- src/Makefile	2015-12-30 17:53:41.660891449 +0100
+***************
+*** 281,286 ****
+--- 281,292 ----
+  #GUI_LIB_LOC = -L/usr/X11R6/lib
+  # }}}
+  
++ # Defaults used when auto/config.mk does not exist.
++ srcdir = .
++ VIMNAME = vim
++ EXNAME = ex
++ VIEWNAME = view
++ 
+  ######################## auto/config.mk ######################## {{{1
+  # At this position auto/config.mk is included. When starting from the
+  # toplevel Makefile it is almost empty. After running auto/configure it
+*** ../vim-7.4.1003/src/version.c	2015-12-30 17:40:39.269325503 +0100
+--- src/version.c	2015-12-30 17:55:01.964025962 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1004,
+  /**/
+
+-- 
+Q:   How many hardware engineers does it take to change a lightbulb?
+A:   None.  We'll fix it in software.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

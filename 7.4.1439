@@ -1,0 +1,93 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1439
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1439 (after 7.4.1434)
+Problem:    Using uninitialzed variable.
+Solution:   Initialize vc_type.
+Files:      src/json.c
+
+
+*** ../vim-7.4.1438/src/json.c	2016-02-27 20:14:09.920546700 +0100
+--- src/json.c	2016-02-27 21:13:02.807474445 +0100
+***************
+*** 83,94 ****
+  	vimconv_T   conv;
+  	char_u	    *converted = NULL;
+  
+! 	convert_setup(&conv, p_enc, (char_u*)"utf-8");
+! 	if (conv.vc_type != CONV_NONE)
+! 	    converted = res = string_convert(&conv, res, NULL);
+! 	convert_setup(&conv, NULL, NULL);
+  #endif
+- 
+  	ga_append(gap, '"');
+  	while (*res != NUL)
+  	{
+--- 83,97 ----
+  	vimconv_T   conv;
+  	char_u	    *converted = NULL;
+  
+! 	if (!enc_utf8)
+! 	{
+! 	    conv.vc_type = CONV_NONE;
+! 	    convert_setup(&conv, p_enc, (char_u*)"utf-8");
+! 	    if (conv.vc_type != CONV_NONE)
+! 		converted = res = string_convert(&conv, res, NULL);
+! 	    convert_setup(&conv, NULL, NULL);
+! 	}
+  #endif
+  	ga_append(gap, '"');
+  	while (*res != NUL)
+  	{
+***************
+*** 540,549 ****
+  
+      p = reader->js_buf + reader->js_used + 1; /* skip over " */
+  #if defined(FEAT_MBYTE) && defined(USE_ICONV)
+!     convert_setup(&conv, (char_u*)"utf-8", p_enc);
+!     if (conv.vc_type != CONV_NONE)
+! 	converted = p = string_convert(&conv, p, NULL);
+!     convert_setup(&conv, NULL, NULL);
+  #endif
+      while (*p != '"')
+      {
+--- 543,556 ----
+  
+      p = reader->js_buf + reader->js_used + 1; /* skip over " */
+  #if defined(FEAT_MBYTE) && defined(USE_ICONV)
+!     if (!enc_utf8)
+!     {
+! 	conv.vc_type = CONV_NONE;
+! 	convert_setup(&conv, (char_u*)"utf-8", p_enc);
+! 	if (conv.vc_type != CONV_NONE)
+! 	    converted = p = string_convert(&conv, p, NULL);
+! 	convert_setup(&conv, NULL, NULL);
+!     }
+  #endif
+      while (*p != '"')
+      {
+*** ../vim-7.4.1438/src/version.c	2016-02-27 21:10:05.125338518 +0100
+--- src/version.c	2016-02-27 21:11:31.816429025 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1439,
+  /**/
+
+-- 
+Lawmakers made it obligatory for everybody to take at least one bath
+each week -- on Saturday night.
+		[real standing law in Vermont, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

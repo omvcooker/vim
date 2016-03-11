@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1273
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1273 (after 7.4.1271)
+Problem:    assert_false(v:false) still fails.
+Solution:   Fix the typo.
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1272/src/eval.c	2016-02-06 20:29:24.357275499 +0100
+--- src/eval.c	2016-02-06 23:56:35.150539328 +0100
+***************
+*** 9217,9223 ****
+      garray_T	ga;
+  
+      if (argvars[0].v_type == VAR_SPECIAL
+! 	    && argvars[0].vval.v_number == (isTrue ? VVAL_TRUE : VV_FALSE))
+  	return;
+      if (argvars[0].v_type != VAR_NUMBER
+  	    || (get_tv_number_chk(&argvars[0], &error) == 0) == isTrue
+--- 9274,9280 ----
+      garray_T	ga;
+  
+      if (argvars[0].v_type == VAR_SPECIAL
+! 	    && argvars[0].vval.v_number == (isTrue ? VVAL_TRUE : VVAL_FALSE))
+  	return;
+      if (argvars[0].v_type != VAR_NUMBER
+  	    || (get_tv_number_chk(&argvars[0], &error) == 0) == isTrue
+*** ../vim-7.4.1272/src/version.c	2016-02-06 20:32:20.879442156 +0100
+--- src/version.c	2016-02-06 23:59:26.220741366 +0100
+***************
+*** 744,745 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1273,
+  /**/
+
+-- 
+If you feel lonely, try schizophrenia.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

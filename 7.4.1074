@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1074
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1074
+Problem:    Warning from VX2015 compiler.
+Solution:   Add a type cast. (Mike Williams)
+Files:      src/gui_dwrite.cpp
+
+
+*** ../vim-7.4.1073/src/gui_dwrite.cpp	2014-08-07 13:55:05.894639758 +0200
+--- src/gui_dwrite.cpp	2016-01-10 13:24:42.834453025 +0100
+***************
+*** 686,692 ****
+  
+  	if (SUCCEEDED(hr))
+  	{
+! 	    DWRITE_TEXT_RANGE textRange = { 0, len };
+  	    textLayout->SetFontWeight(mFontWeight, textRange);
+  	    textLayout->SetFontStyle(mFontStyle, textRange);
+  	}
+--- 686,692 ----
+  
+  	if (SUCCEEDED(hr))
+  	{
+! 	    DWRITE_TEXT_RANGE textRange = { 0, (UINT32)len };
+  	    textLayout->SetFontWeight(mFontWeight, textRange);
+  	    textLayout->SetFontStyle(mFontStyle, textRange);
+  	}
+*** ../vim-7.4.1073/src/version.c	2016-01-09 22:28:13.343790730 +0100
+--- src/version.c	2016-01-10 13:24:05.686855063 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1074,
+  /**/
+
+-- 
+Did Adam and Eve have navels?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

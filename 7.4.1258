@@ -1,0 +1,55 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1258
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1258
+Problem:    The channel test can fail if messages arrive later.
+Solution:   Add a short sleep. (Jun T.)
+Files:      src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1257/src/testdir/test_channel.vim	2016-02-04 10:54:30.560662408 +0100
+--- src/testdir/test_channel.vim	2016-02-04 21:01:13.708096305 +0100
+***************
+*** 88,101 ****
+--- 88,104 ----
+  
+    " Send an eval request that works.
+    call assert_equal('ok', ch_sendexpr(handle, 'eval-works'))
++   sleep 10m
+    call assert_equal([-1, 'foo123'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send an eval request that fails.
+    call assert_equal('ok', ch_sendexpr(handle, 'eval-fails'))
++   sleep 10m
+    call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send a bad eval request. There will be no response.
+    call assert_equal('ok', ch_sendexpr(handle, 'eval-bad'))
++   sleep 10m
+    call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " make the server quit, can't check if this works, should not hang.
+*** ../vim-7.4.1257/src/version.c	2016-02-04 10:54:30.560662408 +0100
+--- src/version.c	2016-02-04 20:15:28.889235100 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1258,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+135. You cut classes or miss work so you can stay home and browse the web.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

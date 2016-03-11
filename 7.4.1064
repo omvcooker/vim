@@ -1,0 +1,268 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1064
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1064
+Problem:    When a spell file has single letter compounding creating
+            suggestions takes an awful long time.
+Solution:   Add th eNOCOMPOUNDSUGS flag.
+Files:      runtime/doc/spell.txt, src/spell.c
+
+
+*** ../vim-7.4.1063/runtime/doc/spell.txt	2014-09-19 16:04:08.050417797 +0200
+--- runtime/doc/spell.txt	2016-01-08 22:48:48.363994317 +0100
+***************
+*** 1385,1390 ****
+--- 1386,1399 ----
+  
+  The Hunspell feature to use three arguments and flags is not supported.
+  
++ 							*spell-NOCOMPOUNDSUGS*
++ This item indicates that using compounding to make suggestions is not a good
++ idea.  Use this when compounding is used with very short or one-character
++ words.  E.g. to make numbers out of digits.  Without this flag creating
++ suggestions would spend most time trying all kind of weird compound words.
++ 
++ 	NOCOMPOUNDSUGS ~
++ 
+  							*spell-SYLLABLE*
+  The SYLLABLE item defines characters or character sequences that are used to
+  count the number of syllables in a word.  Example:
+*** ../vim-7.4.1063/src/spell.c	2016-01-07 16:22:02.578752300 +0100
+--- src/spell.c	2016-01-08 22:54:35.104196848 +0100
+***************
+*** 59,64 ****
+--- 59,70 ----
+  # define SPELL_PRINTTREE
+  #endif
+  
++ /* Use SPELL_COMPRESS_ALLWAYS for debugging: compress the word tree after
++  * adding a word.  Only use it for small word lists! */
++ #if 0
++ # define SPELL_COMPRESS_ALLWAYS
++ #endif
++ 
+  /* Use DEBUG_TRIEWALK to print the changes made in suggest_trie_walk() for a
+   * specific word. */
+  #if 0
+***************
+*** 177,182 ****
+--- 183,190 ----
+   * <timestamp>   8 bytes    time in seconds that must match with .sug file
+   *
+   * sectionID == SN_NOSPLITSUGS: nothing
++ 	 *
++  * sectionID == SN_NOCOMPOUNDSUGS: nothing
+   *
+   * sectionID == SN_WORDS: <word> ...
+   * <word>	 N bytes    NUL terminated common word
+***************
+*** 501,506 ****
+--- 509,515 ----
+      garray_T	sl_repsal;	/* list of fromto_T entries from REPSAL lines */
+      short	sl_repsal_first[256];  /* sl_rep_first for REPSAL lines */
+      int		sl_nosplitsugs;	/* don't suggest splitting a word */
++     int		sl_nocompoundsugs; /* don't suggest compounding */
+  
+      /* Info from the .sug file.  Loaded on demand. */
+      time_t	sl_sugtime;	/* timestamp for .sug file */
+***************
+*** 570,575 ****
+--- 579,585 ----
+  #define SN_WORDS	13	/* common words */
+  #define SN_NOSPLITSUGS	14	/* don't split word for suggestions */
+  #define SN_INFO		15	/* info section */
++ #define SN_NOCOMPOUNDSUGS 16	/* don't compound for suggestions */
+  #define SN_END		255	/* end of sections */
+  
+  #define SNF_REQUIRED	1	/* <sectionflags>: required section */
+***************
+*** 2913,2919 ****
+  		break;
+  
+  	    case SN_NOSPLITSUGS:
+! 		lp->sl_nosplitsugs = TRUE;		/* <timestamp> */
+  		break;
+  
+  	    case SN_COMPOUND:
+--- 2923,2933 ----
+  		break;
+  
+  	    case SN_NOSPLITSUGS:
+! 		lp->sl_nosplitsugs = TRUE;
+! 		break;
+! 
+! 	    case SN_NOCOMPOUNDSUGS:
+! 		lp->sl_nocompoundsugs = TRUE;
+  		break;
+  
+  	    case SN_COMPOUND:
+***************
+*** 5005,5010 ****
+--- 5019,5025 ----
+      char_u	*si_sofoto;	/* SOFOTO text */
+      int		si_nosugfile;	/* NOSUGFILE item found */
+      int		si_nosplitsugs;	/* NOSPLITSUGS item found */
++     int		si_nocompoundsugs; /* NOCOMPOUNDSUGS item found */
+      int		si_followup;	/* soundsalike: ? */
+      int		si_collapse;	/* soundsalike: ? */
+      hashtab_T	si_commonwords;	/* hashtable for common words */
+***************
+*** 5130,5138 ****
+  	PRINTSOME(line1, depth, "(%d)", node->wn_nr, 0);
+  	PRINTSOME(line2, depth, "    ", 0, 0);
+  	PRINTSOME(line3, depth, "    ", 0, 0);
+! 	msg(line1);
+! 	msg(line2);
+! 	msg(line3);
+      }
+      else
+      {
+--- 5145,5153 ----
+  	PRINTSOME(line1, depth, "(%d)", node->wn_nr, 0);
+  	PRINTSOME(line2, depth, "    ", 0, 0);
+  	PRINTSOME(line3, depth, "    ", 0, 0);
+! 	msg((char_u *)line1);
+! 	msg((char_u *)line2);
+! 	msg((char_u *)line3);
+      }
+      else
+      {
+***************
+*** 5158,5166 ****
+  
+  	if (node->wn_byte == NUL)
+  	{
+! 	    msg(line1);
+! 	    msg(line2);
+! 	    msg(line3);
+  	}
+  
+  	/* do the children */
+--- 5173,5181 ----
+  
+  	if (node->wn_byte == NUL)
+  	{
+! 	    msg((char_u *)line1);
+! 	    msg((char_u *)line2);
+! 	    msg((char_u *)line3);
+  	}
+  
+  	/* do the children */
+***************
+*** 5598,5603 ****
+--- 5613,5622 ----
+  	    {
+  		spin->si_nosplitsugs = TRUE;
+  	    }
++ 	    else if (is_aff_rule(items, itemcnt, "NOCOMPOUNDSUGS", 1))
++ 	    {
++ 		spin->si_nocompoundsugs = TRUE;
++ 	    }
+  	    else if (is_aff_rule(items, itemcnt, "NOSUGFILE", 1))
+  	    {
+  		spin->si_nosugfile = TRUE;
+***************
+*** 7621,7627 ****
+  	node = *prev;
+      }
+  #ifdef SPELL_PRINTTREE
+!     smsg("Added \"%s\"", word);
+      spell_print_tree(root->wn_sibling);
+  #endif
+  
+--- 7640,7646 ----
+  	node = *prev;
+      }
+  #ifdef SPELL_PRINTTREE
+!     smsg((char_u *)"Added \"%s\"", word);
+      spell_print_tree(root->wn_sibling);
+  #endif
+  
+***************
+*** 7647,7653 ****
+       *    (si_compress_cnt == 1) and the number of free nodes drops below the
+       *    maximum word length.
+       */
+! #ifndef SPELL_PRINTTREE
+      if (spin->si_compress_cnt == 1
+  	    ? spin->si_free_count < MAXWLEN
+  	    : spin->si_blocks_cnt >= compress_start)
+--- 7666,7672 ----
+       *    (si_compress_cnt == 1) and the number of free nodes drops below the
+       *    maximum word length.
+       */
+! #ifndef SPELL_COMPRESS_ALLWAYS
+      if (spin->si_compress_cnt == 1
+  	    ? spin->si_free_count < MAXWLEN
+  	    : spin->si_blocks_cnt >= compress_start)
+***************
+*** 8295,8300 ****
+--- 8314,8329 ----
+  	put_bytes(fd, (long_u)0, 4);			/* <sectionlen> */
+      }
+  
++     /* SN_NOCOMPUNDSUGS: nothing
++      * This is used to notify that no suggestions with compounds are to be
++      * made. */
++     if (spin->si_nocompoundsugs)
++     {
++ 	putc(SN_NOCOMPOUNDSUGS, fd);			/* <sectionID> */
++ 	putc(0, fd);					/* <sectionflags> */
++ 	put_bytes(fd, (long_u)0, 4);			/* <sectionlen> */
++     }
++ 
+      /* SN_COMPOUND: compound info.
+       * We don't mark it required, when not supported all compound words will
+       * be bad words. */
+***************
+*** 11883,11888 ****
+--- 11912,11918 ----
+  		 */
+  		try_compound = FALSE;
+  		if (!soundfold
++ 			&& !slang->sl_nocompoundsugs
+  			&& slang->sl_compprog != NULL
+  			&& ((unsigned)flags >> 24) != 0
+  			&& sp->ts_twordlen - sp->ts_splitoff
+***************
+*** 11907,11913 ****
+  
+  		/* For NOBREAK we never try splitting, it won't make any word
+  		 * valid. */
+! 		if (slang->sl_nobreak)
+  		    try_compound = TRUE;
+  
+  		/* If we could add a compound word, and it's also possible to
+--- 11937,11943 ----
+  
+  		/* For NOBREAK we never try splitting, it won't make any word
+  		 * valid. */
+! 		if (slang->sl_nobreak && !slang->sl_nocompoundsugs)
+  		    try_compound = TRUE;
+  
+  		/* If we could add a compound word, and it's also possible to
+*** ../vim-7.4.1063/src/version.c	2016-01-07 22:50:00.089903996 +0100
+--- src/version.c	2016-01-08 22:59:16.657114547 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1064,
+  /**/
+
+-- 
+"Software is like sex... it's better when it's free."
+		-- Linus Torvalds, initiator of the free Linux OS
+Makes me wonder what FSF stands for...?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

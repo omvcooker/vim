@@ -1,0 +1,440 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1485
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1485
+Problem:    Job input from buffer is not implemented.
+Solution:   Implement it.  Add "in-top" and "in-bot" options.
+Files:      src/structs.h, src/eval.c, src/channel.c, src/proto/channel.pro,
+            src/os_unix.c, src/os_win32.c, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1484/src/structs.h	2016-02-27 18:13:05.240593068 +0100
+--- src/structs.h	2016-03-03 22:05:05.171599848 +0100
+***************
+*** 1267,1272 ****
+--- 1267,1274 ----
+      int		jv_exitval;
+      char_u	*jv_exit_cb;	/* allocated */
+  
++     buf_T	*jv_in_buf;	/* buffer from "in-name" */
++ 
+      int		jv_refcount;	/* reference count */
+      channel_T	*jv_channel;	/* channel for I/O, reference counted */
+  };
+***************
+*** 1347,1353 ****
+--- 1349,1358 ----
+  
+      cbq_T	ch_cb_head;	/* dummy node for per-request callbacks */
+      char_u	*ch_callback;	/* call when a msg is not handled */
++ 
+      buf_T	*ch_buffer;	/* buffer to read from or write to */
++     linenr_T	ch_buf_top;	/* next line to send */
++     linenr_T	ch_buf_bot;	/* last line to send */
+  } chanpart_T;
+  
+  struct channel_S {
+***************
+*** 1402,1407 ****
+--- 1407,1414 ----
+  #define JO_OUT_NAME	    0x80000	/* "out-name" */
+  #define JO_ERR_NAME	    0x100000	/* "err-name" (JO_OUT_NAME << 1) */
+  #define JO_IN_NAME	    0x200000	/* "in-name" (JO_OUT_NAME << 2) */
++ #define JO_IN_TOP	    0x400000	/* "in-top" */
++ #define JO_IN_BOT	    0x800000	/* "in-bot" */
+  #define JO_ALL		    0xffffff
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+***************
+*** 1433,1438 ****
+--- 1440,1448 ----
+      char_u	jo_io_name_buf[4][NUMBUFLEN];
+      char_u	*jo_io_name[4];	/* not allocated! */
+  
++     linenr_T	jo_in_top;
++     linenr_T	jo_in_bot;
++ 
+      char_u	*jo_callback;	/* not allocated! */
+      char_u	*jo_out_cb;	/* not allocated! */
+      char_u	*jo_err_cb;	/* not allocated! */
+*** ../vim-7.4.1484/src/eval.c	2016-03-03 18:09:06.009997674 +0100
+--- src/eval.c	2016-03-03 22:45:58.601399913 +0100
+***************
+*** 9662,9668 ****
+      rettv->vval.v_number = (buf != NULL && buf->b_ml.ml_mfp != NULL);
+  }
+  
+! static buf_T *get_buf_tv(typval_T *tv, int curtab_only);
+  
+  /*
+   * Get buffer by number or pattern.
+--- 9662,9687 ----
+      rettv->vval.v_number = (buf != NULL && buf->b_ml.ml_mfp != NULL);
+  }
+  
+!     static buf_T *
+! buflist_find_by_name(char_u *name, int curtab_only)
+! {
+!     int		save_magic;
+!     char_u	*save_cpo;
+!     buf_T	*buf;
+! 
+!     /* Ignore 'magic' and 'cpoptions' here to make scripts portable */
+!     save_magic = p_magic;
+!     p_magic = TRUE;
+!     save_cpo = p_cpo;
+!     p_cpo = (char_u *)"";
+! 
+!     buf = buflist_findnr(buflist_findpat(name, name + STRLEN(name),
+! 						    TRUE, FALSE, curtab_only));
+! 
+!     p_magic = save_magic;
+!     p_cpo = save_cpo;
+!     return buf;
+! }
+  
+  /*
+   * Get buffer by number or pattern.
+***************
+*** 9671,9678 ****
+  get_buf_tv(typval_T *tv, int curtab_only)
+  {
+      char_u	*name = tv->vval.v_string;
+-     int		save_magic;
+-     char_u	*save_cpo;
+      buf_T	*buf;
+  
+      if (tv->v_type == VAR_NUMBER)
+--- 9690,9695 ----
+***************
+*** 9684,9700 ****
+      if (name[0] == '$' && name[1] == NUL)
+  	return lastbuf;
+  
+!     /* Ignore 'magic' and 'cpoptions' here to make scripts portable */
+!     save_magic = p_magic;
+!     p_magic = TRUE;
+!     save_cpo = p_cpo;
+!     p_cpo = (char_u *)"";
+! 
+!     buf = buflist_findnr(buflist_findpat(name, name + STRLEN(name),
+! 						    TRUE, FALSE, curtab_only));
+! 
+!     p_magic = save_magic;
+!     p_cpo = save_cpo;
+  
+      /* If not found, try expanding the name, like done for bufexists(). */
+      if (buf == NULL)
+--- 9701,9707 ----
+      if (name[0] == '$' && name[1] == NUL)
+  	return lastbuf;
+  
+!     buf = buflist_find_by_name(name, curtab_only);
+  
+      /* If not found, try expanding the name, like done for bufexists(). */
+      if (buf == NULL)
+***************
+*** 10110,10115 ****
+--- 10117,10146 ----
+  		opt->jo_io_name[part] =
+  		       get_tv_string_buf_chk(item, opt->jo_io_name_buf[part]);
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "in-top") == 0
++ 		    || STRCMP(hi->hi_key, "in-bot") == 0)
++ 	    {
++ 		linenr_T *lp;
++ 
++ 		if (!(supported & JO_OUT_IO))
++ 		    break;
++ 		if (hi->hi_key[3] == 't')
++ 		{
++ 		    lp = &opt->jo_in_top;
++ 		    opt->jo_set |= JO_IN_TOP;
++ 		}
++ 		else
++ 		{
++ 		    lp = &opt->jo_in_bot;
++ 		    opt->jo_set |= JO_IN_BOT;
++ 		}
++ 		*lp = get_tv_number(item);
++ 		if (*lp < 0)
++ 		{
++ 		    EMSG2(_(e_invarg2), get_tv_string(item));
++ 		    return FAIL;
++ 		}
++ 	    }
+  	    else if (STRCMP(hi->hi_key, "callback") == 0)
+  	    {
+  		if (!(supported & JO_CALLBACK))
+***************
+*** 15103,15108 ****
+--- 15134,15162 ----
+  	    JO_MODE_ALL + JO_CB_ALL + JO_TIMEOUT_ALL
+  			    + JO_STOPONEXIT + JO_EXIT_CB + JO_OUT_IO) == FAIL)
+  	return;
++ 
++     if ((opt.jo_set & JO_IN_IO) && opt.jo_io[PART_IN] == JIO_BUFFER)
++     {
++ 	buf_T *buf;
++ 
++ 	/* check that we can find the buffer before starting the job */
++ 	if (!(opt.jo_set & JO_IN_NAME))
++ 	{
++ 	    EMSG(_("E915: in-io buffer requires in-name to be set"));
++ 	    return;
++ 	}
++ 	buf = buflist_find_by_name(opt.jo_io_name[PART_IN], FALSE);
++ 	if (buf == NULL)
++ 	    return;
++ 	if (buf->b_ml.ml_mfp == NULL)
++ 	{
++ 	    EMSG2(_("E918: buffer must be loaded: %s"),
++ 						     opt.jo_io_name[PART_IN]);
++ 	    return;
++ 	}
++ 	job->jv_in_buf = buf;
++     }
++ 
+      job_set_options(job, &opt);
+  
+  #ifndef USE_ARGV
+***************
+*** 15194,15199 ****
+--- 15248,15257 ----
+      mch_start_job((char *)cmd, job, &opt);
+  #endif
+  
++ #ifdef FEAT_CHANNEL
++     channel_write_in(job->jv_channel);
++ #endif
++ 
+  theend:
+  #ifdef USE_ARGV
+      vim_free(argv);
+*** ../vim-7.4.1484/src/channel.c	2016-03-03 19:34:58.221362693 +0100
+--- src/channel.c	2016-03-03 22:30:20.159399566 +0100
+***************
+*** 819,831 ****
+  #endif
+  
+  /*
+!  * Sets the job the channel is associated with.
+   * This does not keep a refcount, when the job is freed ch_job is cleared.
+   */
+      void
+! channel_set_job(channel_T *channel, job_T *job)
+  {
+      channel->ch_job = job;
+  }
+  
+  /*
+--- 819,850 ----
+  #endif
+  
+  /*
+!  * Sets the job the channel is associated with and associated options.
+   * This does not keep a refcount, when the job is freed ch_job is cleared.
+   */
+      void
+! channel_set_job(channel_T *channel, job_T *job, jobopt_T *options)
+  {
+      channel->ch_job = job;
++ 
++     channel_set_options(channel, options);
++ 
++     if (job->jv_in_buf != NULL)
++     {
++ 	chanpart_T *in_part = &channel->ch_part[PART_IN];
++ 
++ 	in_part->ch_buffer = job->jv_in_buf;
++ 	ch_logs(channel, "reading from buffer '%s'",
++ 					(char *)in_part->ch_buffer->b_ffname);
++ 	if (options->jo_set & JO_IN_TOP)
++ 	    in_part->ch_buf_top = options->jo_in_top;
++ 	else
++ 	    in_part->ch_buf_top = 1;
++ 	if (options->jo_set & JO_IN_BOT)
++ 	    in_part->ch_buf_bot = options->jo_in_bot;
++ 	else
++ 	    in_part->ch_buf_bot = in_part->ch_buffer->b_ml.ml_line_count;
++     }
+  }
+  
+  /*
+***************
+*** 964,969 ****
+--- 983,1029 ----
+  }
+  
+  /*
++  * Write any lines to the in channel.
++  */
++     void
++ channel_write_in(channel_T *channel)
++ {
++     chanpart_T *in_part = &channel->ch_part[PART_IN];
++     linenr_T    lnum;
++     buf_T	*buf = in_part->ch_buffer;
++ 
++     if (buf == NULL)
++ 	return;
++     if (!buf_valid(buf) || buf->b_ml.ml_mfp == NULL)
++     {
++ 	/* buffer was wiped out or unloaded */
++ 	in_part->ch_buffer = NULL;
++ 	return;
++     }
++     if (in_part->ch_fd == INVALID_FD)
++ 	/* pipe was closed */
++ 	return;
++ 
++     for (lnum = in_part->ch_buf_top; lnum <= in_part->ch_buf_bot
++ 				   && lnum <= buf->b_ml.ml_line_count; ++lnum)
++     {
++ 	char_u *line = ml_get_buf(buf, lnum, FALSE);
++ 	int	len = STRLEN(line);
++ 	char_u *p;
++ 
++ 	/* TODO: check if channel can be written to */
++ 	if ((p = alloc(len + 2)) == NULL)
++ 	    break;
++ 	STRCPY(p, line);
++ 	p[len] = NL;
++ 	p[len + 1] = NUL;
++ 	channel_send(channel, PART_IN, p, "channel_write_in()");
++ 	vim_free(p);
++     }
++     in_part->ch_buf_top = lnum;
++ }
++ 
++ /*
+   * Invoke the "callback" on channel "channel".
+   */
+      static void
+*** ../vim-7.4.1484/src/proto/channel.pro	2016-02-28 19:28:55.073515550 +0100
+--- src/proto/channel.pro	2016-03-03 22:21:16.181209882 +0100
+***************
+*** 10,18 ****
+  void channel_gui_register_all(void);
+  channel_T *channel_open(char *hostname, int port_in, int waittime, void (*nb_close_cb)(void));
+  void channel_set_pipes(channel_T *channel, sock_T in, sock_T out, sock_T err);
+! void channel_set_job(channel_T *channel, job_T *job);
+  void channel_set_options(channel_T *channel, jobopt_T *opt);
+  void channel_set_req_callback(channel_T *channel, int part, char_u *callback, int id);
+  char_u *channel_get(channel_T *channel, int part);
+  int channel_collapse(channel_T *channel, int part);
+  int channel_can_write_to(channel_T *channel);
+--- 10,19 ----
+  void channel_gui_register_all(void);
+  channel_T *channel_open(char *hostname, int port_in, int waittime, void (*nb_close_cb)(void));
+  void channel_set_pipes(channel_T *channel, sock_T in, sock_T out, sock_T err);
+! void channel_set_job(channel_T *channel, job_T *job, jobopt_T *options);
+  void channel_set_options(channel_T *channel, jobopt_T *opt);
+  void channel_set_req_callback(channel_T *channel, int part, char_u *callback, int id);
++ void channel_write_in(channel_T *channel);
+  char_u *channel_get(channel_T *channel, int part);
+  int channel_collapse(channel_T *channel, int part);
+  int channel_can_write_to(channel_T *channel);
+*** ../vim-7.4.1484/src/os_unix.c	2016-03-03 21:02:19.631252561 +0100
+--- src/os_unix.c	2016-03-03 21:47:43.706624668 +0100
+***************
+*** 5141,5148 ****
+  # ifdef FEAT_CHANNEL
+      channel_set_pipes(channel, fd_in[1], fd_out[0],
+  				    use_out_for_err ? INVALID_FD : fd_err[0]);
+!     channel_set_job(channel, job);
+!     channel_set_options(channel, options);
+  #  ifdef FEAT_GUI
+      channel_gui_register(channel);
+  #  endif
+--- 5141,5147 ----
+  # ifdef FEAT_CHANNEL
+      channel_set_pipes(channel, fd_in[1], fd_out[0],
+  				    use_out_for_err ? INVALID_FD : fd_err[0]);
+!     channel_set_job(channel, job, options);
+  #  ifdef FEAT_GUI
+      channel_gui_register(channel);
+  #  endif
+*** ../vim-7.4.1484/src/os_win32.c	2016-03-03 21:02:19.631252561 +0100
+--- src/os_win32.c	2016-03-03 21:49:10.981702576 +0100
+***************
+*** 5083,5091 ****
+      job->jv_channel = channel;
+      channel_set_pipes(channel, (sock_T)ifd[1], (sock_T)ofd[0],
+  			       use_out_for_err ? INVALID_FD : (sock_T)efd[0]);
+!     channel_set_job(channel, job);
+!     channel_set_options(channel, options);
+! 
+  #   ifdef FEAT_GUI
+       channel_gui_register(channel);
+  #   endif
+--- 5083,5089 ----
+      job->jv_channel = channel;
+      channel_set_pipes(channel, (sock_T)ifd[1], (sock_T)ofd[0],
+  			       use_out_for_err ? INVALID_FD : (sock_T)efd[0]);
+!     channel_set_job(channel, job, options);
+  #   ifdef FEAT_GUI
+       channel_gui_register(channel);
+  #   endif
+*** ../vim-7.4.1484/src/testdir/test_channel.vim	2016-03-03 21:02:19.631252561 +0100
+--- src/testdir/test_channel.vim	2016-03-03 22:34:44.496580025 +0100
+***************
+*** 479,484 ****
+--- 479,509 ----
+    endtry
+  endfunc
+  
++ func Test_pipe_from_buffer()
++   if !has('job')
++     return
++   endif
++ call ch_logfile('channellog', 'w')
++   call ch_log('Test_pipe_from_buffer()')
++ 
++   sp pipe-input
++   call setline(1, ['echo one', 'echo two', 'echo three'])
++ 
++   let job = job_start(s:python . " test_channel_pipe.py",
++ 	\ {'in-io': 'buffer', 'in-name': 'pipe-input'})
++   call assert_equal("run", job_status(job))
++   try
++     let handle = job_getchannel(job)
++     call assert_equal('one', ch_read(handle))
++     call assert_equal('two', ch_read(handle))
++     call assert_equal('three', ch_read(handle))
++     bwipe!
++   finally
++     call job_stop(job)
++   endtry
++ call ch_logfile('')
++ endfunc
++ 
+  func Test_pipe_to_nameless_buffer()
+    if !has('job')
+      return
+*** ../vim-7.4.1484/src/version.c	2016-03-03 21:02:19.635252518 +0100
+--- src/version.c	2016-03-03 22:40:21.584987842 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1485,
+  /**/
+
+-- 
+CRONE:  Who sent you?
+ARTHUR: The Knights Who Say GNU!
+CRONE:  Aaaagh!  (she looks around in rear) No!  We have no licenses here.
+           "Monty Python and the Holy editor wars" PYTHON (MONTY) SOFTWARE LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

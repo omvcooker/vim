@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1272
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1272 (after 7.4.1270)
+Problem:    Using future enum value.
+Solution:   Remove it.
+Files:      src/if_python.c, src/if_python3.c
+
+
+*** ../vim-7.4.1271/src/if_python.c	2016-02-06 19:57:11.601323655 +0100
+--- src/if_python.c	2016-02-06 20:31:06.272216997 +0100
+***************
+*** 1559,1565 ****
+  	case VAR_NUMBER:
+  	case VAR_STRING:
+  	case VAR_FLOAT:
+- 	case VAR_JOB:
+  	case VAR_SPECIAL:
+  	    break;
+      }
+--- 1559,1564 ----
+*** ../vim-7.4.1271/src/if_python3.c	2016-02-06 19:57:11.601323655 +0100
+--- src/if_python3.c	2016-02-06 20:30:14.668752950 +0100
+***************
+*** 1652,1658 ****
+  	case VAR_NUMBER:
+  	case VAR_STRING:
+  	case VAR_FLOAT:
+- 	case VAR_JOB:
+  	case VAR_SPECIAL:
+  	    break;
+      }
+--- 1652,1657 ----
+*** ../vim-7.4.1271/src/version.c	2016-02-06 20:29:24.357275499 +0100
+--- src/version.c	2016-02-06 20:32:16.535487268 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1272,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+163. You go outside for the fresh air (at -30 degrees) but open the
+     window first to hear new mail arrive.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

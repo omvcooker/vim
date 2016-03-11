@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1320
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1320
+Problem:    Building with Cygwin or MingW with channel but without Netbeans
+            doesn't work.
+Solution:   Set NETBEANS to "no" when not used.
+Files:      src/Make_cyg_ming.mak
+
+
+*** ../vim-7.4.1319/src/Make_cyg_ming.mak	2016-01-25 14:17:00.293476195 +0100
+--- src/Make_cyg_ming.mak	2016-02-14 23:06:35.348110857 +0100
+***************
+*** 679,686 ****
+  # Cannot use Netbeans without CHANNEL
+  NETBEANS=no
+  else
+! # Only allow NETBEANS for a GUI build.
+! ifeq (yes, $(GUI))
+  OBJ += $(OUTDIR)/netbeans.o
+  LIB += -lwsock32
+  endif
+--- 679,688 ----
+  # Cannot use Netbeans without CHANNEL
+  NETBEANS=no
+  else
+! ifneq (yes, $(GUI))
+! # Cannot use Netbeans without GUI.
+! NETBEANS=no
+! else
+  OBJ += $(OUTDIR)/netbeans.o
+  LIB += -lwsock32
+  endif
+*** ../vim-7.4.1319/src/version.c	2016-02-14 23:02:29.838701624 +0100
+--- src/version.c	2016-02-14 23:09:42.482136471 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1320,
+  /**/
+
+-- 
+Place mark here ->[ ]<- if you want a dirty monitor.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

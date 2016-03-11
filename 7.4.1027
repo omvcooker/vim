@@ -1,0 +1,1555 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1027
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1027
+Problem:    No support for binary numbers.
+Solution:   Add "bin" to nrformats. (Jason Schulz)
+Files:      runtime/doc/change.txt, runtime/doc/eval.txt,
+            runtime/doc/version7.txt, src/charset.c, src/eval.c,
+            src/ex_cmds.c, src/ex_getln.c, src/misc2.c, src/ops.c,
+            src/option.c, src/proto/charset.pro, src/spell.c,
+            src/testdir/test57.in, src/testdir/test57.ok,
+            src/testdir/test58.in, src/testdir/test58.ok,
+            src/testdir/test_increment.in, src/testdir/test_increment.ok,
+            src/vim.h
+
+
+
+*** ../vim-7.4.1026/runtime/doc/change.txt	2015-06-25 13:57:20.025431155 +0200
+--- runtime/doc/change.txt	2016-01-02 16:43:24.925363296 +0100
+***************
+*** 416,424 ****
+  			additional [count] (so effectively creating a [count]
+  			decrementing sequence).  {not in Vi}
+  
+! The CTRL-A and CTRL-X commands work for (signed) decimal numbers, unsigned
+! octal and hexadecimal numbers and alphabetic characters.  This depends on the
+! 'nrformats' option.
+  - When 'nrformats' includes "octal", Vim considers numbers starting with a '0'
+    to be octal, unless the number includes a '8' or '9'.  Other numbers are
+    decimal and may have a preceding minus sign.
+--- 416,429 ----
+  			additional [count] (so effectively creating a [count]
+  			decrementing sequence).  {not in Vi}
+  
+! The CTRL-A and CTRL-X commands can work for:
+! - signed and unsigned decimal numbers
+! - unsigned binary, octal and hexadecimal numbers
+! - alphabetic characters
+! 
+! This depends on the 'nrformats' option:
+! - When 'nrformats' includes "bin", Vim assumes numbers starting with '0b' or
+!   '0B' are binary.
+  - When 'nrformats' includes "octal", Vim considers numbers starting with a '0'
+    to be octal, unless the number includes a '8' or '9'.  Other numbers are
+    decimal and may have a preceding minus sign.
+***************
+*** 433,439 ****
+    index.
+  
+  For decimals a leading negative sign is considered for incrementing/
+! decrementing, for octal and hey values, it won't be considered.
+  
+  For numbers with leading zeros (including all octal and hexadecimal numbers),
+  Vim preserves the number of characters in the number when possible.  CTRL-A on
+--- 438,445 ----
+    index.
+  
+  For decimals a leading negative sign is considered for incrementing/
+! decrementing, for binary, octal and hex values, it won't be considered.  To
+! ignore the sign Visually select the number before using CTRL-A or CTRL-X. 
+  
+  For numbers with leading zeros (including all octal and hexadecimal numbers),
+  Vim preserves the number of characters in the number when possible.  CTRL-A on
+***************
+*** 446,451 ****
+--- 452,461 ----
+  Note that when 'nrformats' includes "octal", decimal numbers with leading
+  zeros cause mistakes, because they can be confused with octal numbers.
+  
++ Note similarly, when 'nrformats' includes "bin", binary numbers with a leading
++ '0x' or '0X' can be interpreted as hexadecimal rather than binary since '0b'
++ are valid hexadecimal digits.
++ 
+  The CTRL-A command is very useful in a macro.  Example: Use the following
+  steps to make a numbered list.
+  
+***************
+*** 1703,1709 ****
+  found here: |sort()|, |uniq()|.
+  
+  							*:sor* *:sort*
+! :[range]sor[t][!] [i][u][r][n][x][o] [/{pattern}/]
+  			Sort lines in [range].  When no range is given all
+  			lines are sorted.
+  
+--- 1745,1751 ----
+  found here: |sort()|, |uniq()|.
+  
+  							*:sor* *:sort*
+! :[range]sor[t][!] [i][u][r][n][x][o][b] [/{pattern}/]
+  			Sort lines in [range].  When no range is given all
+  			lines are sorted.
+  
+***************
+*** 1723,1728 ****
+--- 1765,1773 ----
+  			With [o] sorting is done on the first octal number in
+  			the line (after or inside a {pattern} match).
+  
++ 			With [b] sorting is done on the first binary number in
++ 			the line (after or inside a {pattern} match).
++ 
+  			With [u] only keep the first of a sequence of
+  			identical lines (ignoring case when [i] is used).
+  			Without this flag, a sequence of identical lines
+*** ../vim-7.4.1026/runtime/doc/eval.txt	2015-12-28 19:19:41.550241796 +0100
+--- runtime/doc/eval.txt	2016-01-02 16:44:20.928761810 +0100
+***************
+*** 4942,4948 ****
+  		separated with CR will result in a single long line (unless a
+  		NL appears somewhere).
+  		All NUL characters are replaced with a NL character.
+! 		When {binary} is equal to "b" binary mode is used:
+  		- When the last line ends in a NL an extra empty list item is
+  		  added.
+  		- No CR characters are removed.
+--- 4984,4990 ----
+  		separated with CR will result in a single long line (unless a
+  		NL appears somewhere).
+  		All NUL characters are replaced with a NL character.
+! 		When {binary} contains "b" binary mode is used:
+  		- When the last line ends in a NL an extra empty list item is
+  		  added.
+  		- No CR characters are removed.
+*** ../vim-7.4.1026/runtime/doc/version7.txt	2014-03-25 18:23:27.058087691 +0100
+--- runtime/doc/version7.txt	2016-01-02 16:33:15.963895938 +0100
+***************
+*** 931,937 ****
+  |spellbadword()|	get a badly spelled word
+  |spellsuggest()|	get suggestions for correct spelling
+  |split()|		split a String into a List
+! |str2nr()|		convert a string to a number, base 8, 10 or 16
+  |stridx()|		extra argument: start position
+  |strridx()|		extra argument: start position
+  |string()|		string representation of a List or Dictionary
+--- 931,937 ----
+  |spellbadword()|	get a badly spelled word
+  |spellsuggest()|	get suggestions for correct spelling
+  |split()|		split a String into a List
+! |str2nr()|		convert a string to a number, base 2, 8, 10 or 16
+  |stridx()|		extra argument: start position
+  |strridx()|		extra argument: start position
+  |string()|		string representation of a List or Dictionary
+*** ../vim-7.4.1026/src/charset.c	2015-09-01 18:51:35.126294303 +0200
+--- src/charset.c	2016-01-02 17:32:19.537827357 +0100
+***************
+*** 1570,1575 ****
+--- 1570,1589 ----
+  
+  #if defined(FEAT_SYN_HL) || defined(FEAT_SPELL) || defined(PROTO)
+  /*
++  * skip over binary digits
++  */
++     char_u *
++ skipbin(q)
++     char_u	*q;
++ {
++     char_u	*p = q;
++ 
++     while (vim_isbdigit(*p))	/* skip to next non-digit */
++ 	++p;
++     return p;
++ }
++ 
++ /*
+   * skip over digits and hex characters
+   */
+      char_u *
+***************
+*** 1586,1591 ****
+--- 1600,1619 ----
+  
+  #if defined(FEAT_EX_EXTRA) || defined(PROTO)
+  /*
++  * skip to bin digit (or NUL after the string)
++  */
++     char_u *
++ skiptobin(q)
++     char_u	*q;
++ {
++     char_u	*p = q;
++ 
++     while (*p != NUL && !vim_isbdigit(*p))	/* skip to next digit */
++ 	++p;
++     return p;
++ }
++ 
++ /*
+   * skip to digit (or NUL after the string)
+   */
+      char_u *
+***************
+*** 1641,1646 ****
+--- 1669,1685 ----
+  	|| (c >= 'A' && c <= 'F');
+  }
+  
++ /*
++  * Corollary of vim_isdigit and vim_isxdigit() that can handle
++  * characters > 0x100.
++  */
++     int
++ vim_isbdigit(c)
++     int		c;
++ {
++     return (c == '0' || c == '1');
++ }
++ 
+  #if defined(FEAT_MBYTE) || defined(PROTO)
+  /*
+   * Vim's own character class functions.  These exist because many library
+***************
+*** 1822,1856 ****
+  
+  /*
+   * Convert a string into a long and/or unsigned long, taking care of
+!  * hexadecimal and octal numbers.  Accepts a '-' sign.
+!  * If "hexp" is not NULL, returns a flag to indicate the type of the number:
+   *  0	    decimal
+   *  '0'	    octal
+   *  'X'	    hex
+   *  'x'	    hex
+   * If "len" is not NULL, the length of the number in characters is returned.
+   * If "nptr" is not NULL, the signed result is returned in it.
+   * If "unptr" is not NULL, the unsigned result is returned in it.
+!  * If "dooct" is non-zero recognize octal numbers, when > 1 always assume
+!  * octal number.
+!  * If "dohex" is non-zero recognize hex numbers, when > 1 always assume
+!  * hex number.
+   * If maxlen > 0, check at a maximum maxlen chars
+   */
+      void
+! vim_str2nr(start, hexp, len, dooct, dohex, nptr, unptr, maxlen)
+      char_u		*start;
+!     int			*hexp;	    /* return: type of number 0 = decimal, 'x'
+! 				       or 'X' is hex, '0' = octal */
+      int			*len;	    /* return: detected length of number */
+!     int			dooct;	    /* recognize octal number */
+!     int			dohex;	    /* recognize hex number */
+      long		*nptr;	    /* return: signed result */
+      unsigned long	*unptr;	    /* return: unsigned result */
+      int			maxlen;     /* max length of string to check */
+  {
+      char_u	    *ptr = start;
+!     int		    hex = 0;		/* default is decimal */
+      int		    negative = FALSE;
+      unsigned long   un = 0;
+      int		    n;
+--- 1861,1897 ----
+  
+  /*
+   * Convert a string into a long and/or unsigned long, taking care of
+!  * hexadecimal, octal, and binary numbers.  Accepts a '-' sign.
+!  * If "prep" is not NULL, returns a flag to indicate the type of the number:
+   *  0	    decimal
+   *  '0'	    octal
++  *  'B'	    bin
++  *  'b'	    bin
+   *  'X'	    hex
+   *  'x'	    hex
+   * If "len" is not NULL, the length of the number in characters is returned.
+   * If "nptr" is not NULL, the signed result is returned in it.
+   * If "unptr" is not NULL, the unsigned result is returned in it.
+!  * If "what" contains STR2NR_BIN recognize binary numbers
+!  * If "what" contains STR2NR_OCT recognize octal numbers
+!  * If "what" contains STR2NR_HEX recognize hex numbers
+!  * If "what" contains STR2NR_FORCE always assume bin/oct/hex.
+   * If maxlen > 0, check at a maximum maxlen chars
+   */
+      void
+! vim_str2nr(start, prep, len, what, nptr, unptr, maxlen)
+      char_u		*start;
+!     int			*prep;	    /* return: type of number 0 = decimal, 'x'
+! 				       or 'X' is hex, '0' = octal, 'b' or 'B'
+! 				       is bin */
+      int			*len;	    /* return: detected length of number */
+!     int			what;	    /* what numbers to recognize */
+      long		*nptr;	    /* return: signed result */
+      unsigned long	*unptr;	    /* return: unsigned result */
+      int			maxlen;     /* max length of string to check */
+  {
+      char_u	    *ptr = start;
+!     int		    pre = 0;		/* default is decimal */
+      int		    negative = FALSE;
+      unsigned long   un = 0;
+      int		    n;
+***************
+*** 1861,1889 ****
+  	++ptr;
+      }
+  
+!     /* Recognize hex and octal. */
+      if (ptr[0] == '0' && ptr[1] != '8' && ptr[1] != '9'
+  					       && (maxlen == 0 || maxlen > 1))
+      {
+! 	hex = ptr[1];
+! 	if (dohex && (hex == 'X' || hex == 'x') && vim_isxdigit(ptr[2])
+! 					       && (maxlen == 0 || maxlen > 2))
+! 	    ptr += 2;			/* hexadecimal */
+  	else
+  	{
+! 	    hex = 0;			/* default is decimal */
+! 	    if (dooct)
+  	    {
+  		/* Don't interpret "0", "08" or "0129" as octal. */
+  		for (n = 1; VIM_ISDIGIT(ptr[n]); ++n)
+  		{
+  		    if (ptr[n] > '7')
+  		    {
+! 			hex = 0;	/* can't be octal */
+  			break;
+  		    }
+  		    if (ptr[n] >= '0')
+! 			hex = '0';	/* assume octal */
+  		    if (n == maxlen)
+  			break;
+  		}
+--- 1902,1938 ----
+  	++ptr;
+      }
+  
+!     /* Recognize hex, octal, and bin. */
+      if (ptr[0] == '0' && ptr[1] != '8' && ptr[1] != '9'
+  					       && (maxlen == 0 || maxlen > 1))
+      {
+! 	pre = ptr[1];
+! 	if ((what & STR2NR_HEX)
+! 		&& (pre == 'X' || pre == 'x') && vim_isxdigit(ptr[2])
+! 		&& (maxlen == 0 || maxlen > 2))
+! 	    /* hexadecimal */
+! 	    ptr += 2;
+! 	else if ((what & STR2NR_BIN)
+! 		&& (pre == 'B' || pre == 'b') && vim_isbdigit(ptr[2])
+! 		&& (maxlen == 0 || maxlen > 2))
+! 	    /* binary */
+! 	    ptr += 2;
+  	else
+  	{
+! 	    /* decimal or octal, default is decimal */
+! 	    pre = 0;
+! 	    if (what & STR2NR_OCT)
+  	    {
+  		/* Don't interpret "0", "08" or "0129" as octal. */
+  		for (n = 1; VIM_ISDIGIT(ptr[n]); ++n)
+  		{
+  		    if (ptr[n] > '7')
+  		    {
+! 			pre = 0;	/* can't be octal */
+  			break;
+  		    }
+  		    if (ptr[n] >= '0')
+! 			pre = '0';	/* assume octal */
+  		    if (n == maxlen)
+  			break;
+  		}
+***************
+*** 1892,1901 ****
+      }
+  
+      /*
+!      * Do the string-to-numeric conversion "manually" to avoid sscanf quirks.
+!      */
+      n = 1;
+!     if (hex == '0' || dooct > 1)
+      {
+  	/* octal */
+  	while ('0' <= *ptr && *ptr <= '7')
+--- 1941,1963 ----
+      }
+  
+      /*
+!     * Do the string-to-numeric conversion "manually" to avoid sscanf quirks.
+!     */
+      n = 1;
+!     if (pre == 'B' || pre == 'b' || what == STR2NR_BIN + STR2NR_FORCE)
+!     {
+! 	/* bin */
+! 	if (pre != 0)
+! 	    n += 2;	    /* skip over "0b" */
+! 	while ('0' <= *ptr && *ptr <= '1')
+! 	{
+! 	    un = 2 * un + (unsigned long)(*ptr - '0');
+! 	    ++ptr;
+! 	    if (n++ == maxlen)
+! 		break;
+! 	}
+!     }
+!     else if (pre == '0' || what == STR2NR_OCT + STR2NR_FORCE)
+      {
+  	/* octal */
+  	while ('0' <= *ptr && *ptr <= '7')
+***************
+*** 1906,1915 ****
+  		break;
+  	}
+      }
+!     else if (hex != 0 || dohex > 1)
+      {
+  	/* hex */
+! 	if (hex != 0)
+  	    n += 2;	    /* skip over "0x" */
+  	while (vim_isxdigit(*ptr))
+  	{
+--- 1968,1977 ----
+  		break;
+  	}
+      }
+!     else if (pre != 0 || what == STR2NR_HEX + STR2NR_FORCE)
+      {
+  	/* hex */
+! 	if (pre != 0)
+  	    n += 2;	    /* skip over "0x" */
+  	while (vim_isxdigit(*ptr))
+  	{
+***************
+*** 1931,1938 ****
+  	}
+      }
+  
+!     if (hexp != NULL)
+! 	*hexp = hex;
+      if (len != NULL)
+  	*len = (int)(ptr - start);
+      if (nptr != NULL)
+--- 1993,2000 ----
+  	}
+      }
+  
+!     if (prep != NULL)
+! 	*prep = pre;
+      if (len != NULL)
+  	*len = (int)(ptr - start);
+      if (nptr != NULL)
+*** ../vim-7.4.1026/src/eval.c	2015-12-31 22:11:40.263983436 +0100
+--- src/eval.c	2016-01-02 17:01:38.645613231 +0100
+***************
+*** 1625,1631 ****
+  	    len = 0;
+  	else
+  	    /* Recognize a number argument, the others must be strings. */
+! 	    vim_str2nr(argv[i], NULL, &len, TRUE, TRUE, &n, NULL, 0);
+  	if (len != 0 && len == (int)STRLEN(argv[i]))
+  	{
+  	    argvars[i].v_type = VAR_NUMBER;
+--- 1625,1631 ----
+  	    len = 0;
+  	else
+  	    /* Recognize a number argument, the others must be strings. */
+! 	    vim_str2nr(argv[i], NULL, &len, STR2NR_ALL, &n, NULL, 0);
+  	if (len != 0 && len == (int)STRLEN(argv[i]))
+  	{
+  	    argvars[i].v_type = VAR_NUMBER;
+***************
+*** 5139,5145 ****
+  		else
+  #endif
+  		{
+! 		    vim_str2nr(*arg, NULL, &len, TRUE, TRUE, &n, NULL, 0);
+  		    *arg += len;
+  		    if (evaluate)
+  		    {
+--- 5139,5145 ----
+  		else
+  #endif
+  		{
+! 		    vim_str2nr(*arg, NULL, &len, STR2NR_ALL, &n, NULL, 0);
+  		    *arg += len;
+  		    if (evaluate)
+  		    {
+***************
+*** 18529,18539 ****
+      int		base = 10;
+      char_u	*p;
+      long	n;
+  
+      if (argvars[1].v_type != VAR_UNKNOWN)
+      {
+  	base = get_tv_number(&argvars[1]);
+! 	if (base != 8 && base != 10 && base != 16)
+  	{
+  	    EMSG(_(e_invarg));
+  	    return;
+--- 18529,18540 ----
+      int		base = 10;
+      char_u	*p;
+      long	n;
++     int		what;
+  
+      if (argvars[1].v_type != VAR_UNKNOWN)
+      {
+  	base = get_tv_number(&argvars[1]);
+! 	if (base != 2 && base != 8 && base != 10 && base != 16)
+  	{
+  	    EMSG(_(e_invarg));
+  	    return;
+***************
+*** 18543,18549 ****
+      p = skipwhite(get_tv_string(&argvars[0]));
+      if (*p == '+')
+  	p = skipwhite(p + 1);
+!     vim_str2nr(p, NULL, NULL, base == 8 ? 2 : 0, base == 16 ? 2 : 0, &n, NULL, 0);
+      rettv->vval.v_number = n;
+  }
+  
+--- 18544,18557 ----
+      p = skipwhite(get_tv_string(&argvars[0]));
+      if (*p == '+')
+  	p = skipwhite(p + 1);
+!     switch (base)
+!     {
+! 	case 2: what = STR2NR_BIN + STR2NR_FORCE; break;
+! 	case 8: what = STR2NR_OCT + STR2NR_FORCE; break;
+! 	case 16: what = STR2NR_HEX + STR2NR_FORCE; break;
+! 	default: what = 0;
+!     }
+!     vim_str2nr(p, NULL, NULL, what, &n, NULL, 0);
+      rettv->vval.v_number = n;
+  }
+  
+***************
+*** 21349,21355 ****
+  	case VAR_STRING:
+  	    if (varp->vval.v_string != NULL)
+  		vim_str2nr(varp->vval.v_string, NULL, NULL,
+! 						    TRUE, TRUE, &n, NULL, 0);
+  	    return n;
+  	case VAR_LIST:
+  	    EMSG(_("E745: Using a List as a Number"));
+--- 21357,21363 ----
+  	case VAR_STRING:
+  	    if (varp->vval.v_string != NULL)
+  		vim_str2nr(varp->vval.v_string, NULL, NULL,
+! 						    STR2NR_ALL, &n, NULL, 0);
+  	    return n;
+  	case VAR_LIST:
+  	    EMSG(_("E745: Using a List as a Number"));
+*** ../vim-7.4.1026/src/ex_cmds.c	2015-12-31 20:46:34.703494577 +0100
+--- src/ex_cmds.c	2016-01-02 17:37:11.258689916 +0100
+***************
+*** 365,372 ****
+      long	deleted;
+      colnr_T	start_col;
+      colnr_T	end_col;
+!     int		sort_oct;		/* sort on octal number */
+!     int		sort_hex;		/* sort on hex number */
+  
+      /* Sorting one line is really quick! */
+      if (count <= 1)
+--- 365,372 ----
+      long	deleted;
+      colnr_T	start_col;
+      colnr_T	end_col;
+!     int		sort_what = 0;
+!     int		format_found = 0;
+  
+      /* Sorting one line is really quick! */
+      if (count <= 1)
+***************
+*** 381,387 ****
+      if (nrs == NULL)
+  	goto sortend;
+  
+!     sort_abort = sort_ic = sort_rx = sort_nr = sort_oct = sort_hex = 0;
+  
+      for (p = eap->arg; *p != NUL; ++p)
+      {
+--- 381,387 ----
+      if (nrs == NULL)
+  	goto sortend;
+  
+!     sort_abort = sort_ic = sort_rx = sort_nr = 0;
+  
+      for (p = eap->arg; *p != NUL; ++p)
+      {
+***************
+*** 392,402 ****
+  	else if (*p == 'r')
+  	    sort_rx = TRUE;
+  	else if (*p == 'n')
+  	    sort_nr = 2;
+  	else if (*p == 'o')
+! 	    sort_oct = 2;
+  	else if (*p == 'x')
+! 	    sort_hex = 2;
+  	else if (*p == 'u')
+  	    unique = TRUE;
+  	else if (*p == '"')	/* comment start */
+--- 392,416 ----
+  	else if (*p == 'r')
+  	    sort_rx = TRUE;
+  	else if (*p == 'n')
++ 	{
+  	    sort_nr = 2;
++ 	    ++format_found;
++ 	}
++ 	else if (*p == 'b')
++ 	{
++ 	    sort_what = STR2NR_BIN + STR2NR_FORCE;
++ 	    ++format_found;
++ 	}
+  	else if (*p == 'o')
+! 	{
+! 	    sort_what = STR2NR_OCT + STR2NR_FORCE;
+! 	    ++format_found;
+! 	}
+  	else if (*p == 'x')
+! 	{
+! 	    sort_what = STR2NR_HEX + STR2NR_FORCE;
+! 	    ++format_found;
+! 	}
+  	else if (*p == 'u')
+  	    unique = TRUE;
+  	else if (*p == '"')	/* comment start */
+***************
+*** 439,453 ****
+  	}
+      }
+  
+!     /* Can only have one of 'n', 'o' and 'x'. */
+!     if (sort_nr + sort_oct + sort_hex > 2)
+      {
+  	EMSG(_(e_invarg));
+  	goto sortend;
+      }
+  
+      /* From here on "sort_nr" is used as a flag for any number sorting. */
+!     sort_nr += sort_oct + sort_hex;
+  
+      /*
+       * Make an array with all line numbers.  This avoids having to copy all
+--- 453,467 ----
+  	}
+      }
+  
+!     /* Can only have one of 'n', 'b', 'o' and 'x'. */
+!     if (format_found > 1)
+      {
+  	EMSG(_(e_invarg));
+  	goto sortend;
+      }
+  
+      /* From here on "sort_nr" is used as a flag for any number sorting. */
+!     sort_nr += sort_what;
+  
+      /*
+       * Make an array with all line numbers.  This avoids having to copy all
+***************
+*** 489,496 ****
+  	    *s2 = NUL;
+  	    /* Sorting on number: Store the number itself. */
+  	    p = s + start_col;
+! 	    if (sort_hex)
+  		s = skiptohex(p);
+  	    else
+  		s = skiptodigit(p);
+  	    if (s > p && s[-1] == '-')
+--- 503,512 ----
+  	    *s2 = NUL;
+  	    /* Sorting on number: Store the number itself. */
+  	    p = s + start_col;
+! 	    if (sort_what & STR2NR_HEX)
+  		s = skiptohex(p);
++ 	    else if (sort_what & STR2NR_BIN)
++ 		s = skiptobin(p);
+  	    else
+  		s = skiptodigit(p);
+  	    if (s > p && s[-1] == '-')
+***************
+*** 499,506 ****
+  		/* empty line should sort before any number */
+  		nrs[lnum - eap->line1].start_col_nr = -MAXLNUM;
+  	    else
+! 		vim_str2nr(s, NULL, NULL, sort_oct, sort_hex,
+! 				  &nrs[lnum - eap->line1].start_col_nr, NULL, 0);
+  	    *s2 = c;
+  	}
+  	else
+--- 515,522 ----
+  		/* empty line should sort before any number */
+  		nrs[lnum - eap->line1].start_col_nr = -MAXLNUM;
+  	    else
+! 		vim_str2nr(s, NULL, NULL, sort_what,
+! 			       &nrs[lnum - eap->line1].start_col_nr, NULL, 0);
+  	    *s2 = c;
+  	}
+  	else
+*** ../vim-7.4.1026/src/ex_getln.c	2015-12-31 19:06:56.048081908 +0100
+--- src/ex_getln.c	2016-01-02 17:12:20.654712743 +0100
+***************
+*** 5935,5941 ****
+      *str = skipwhite(*str);
+      if (**str == '-' || vim_isdigit(**str))  /* parse "from" part of range */
+      {
+! 	vim_str2nr(*str, NULL, &len, FALSE, FALSE, &num, NULL, 0);
+  	*str += len;
+  	*num1 = (int)num;
+  	first = TRUE;
+--- 5935,5941 ----
+      *str = skipwhite(*str);
+      if (**str == '-' || vim_isdigit(**str))  /* parse "from" part of range */
+      {
+! 	vim_str2nr(*str, NULL, &len, 0, &num, NULL, 0);
+  	*str += len;
+  	*num1 = (int)num;
+  	first = TRUE;
+***************
+*** 5944,5950 ****
+      if (**str == ',')			/* parse "to" part of range */
+      {
+  	*str = skipwhite(*str + 1);
+! 	vim_str2nr(*str, NULL, &len, FALSE, FALSE, &num, NULL, 0);
+  	if (len > 0)
+  	{
+  	    *num2 = (int)num;
+--- 5944,5950 ----
+      if (**str == ',')			/* parse "to" part of range */
+      {
+  	*str = skipwhite(*str + 1);
+! 	vim_str2nr(*str, NULL, &len, 0, &num, NULL, 0);
+  	if (len > 0)
+  	{
+  	    *num2 = (int)num;
+*** ../vim-7.4.1026/src/misc2.c	2015-12-31 19:06:56.052081865 +0100
+--- src/misc2.c	2016-01-02 17:12:40.398500540 +0100
+***************
+*** 2780,2786 ****
+  	    bp += 3;	/* skip t_xx, xx may be '-' or '>' */
+  	else if (STRNICMP(bp, "char-", 5) == 0)
+  	{
+! 	    vim_str2nr(bp + 5, NULL, &l, TRUE, TRUE, NULL, NULL, 0);
+  	    bp += l + 5;
+  	    break;
+  	}
+--- 2780,2786 ----
+  	    bp += 3;	/* skip t_xx, xx may be '-' or '>' */
+  	else if (STRNICMP(bp, "char-", 5) == 0)
+  	{
+! 	    vim_str2nr(bp + 5, NULL, &l, STR2NR_ALL, NULL, NULL, 0);
+  	    bp += l + 5;
+  	    break;
+  	}
+***************
+*** 2812,2818 ****
+  						 && VIM_ISDIGIT(last_dash[6]))
+  	    {
+  		/* <Char-123> or <Char-033> or <Char-0x33> */
+! 		vim_str2nr(last_dash + 6, NULL, NULL, TRUE, TRUE, NULL, &n, 0);
+  		key = (int)n;
+  	    }
+  	    else
+--- 2812,2818 ----
+  						 && VIM_ISDIGIT(last_dash[6]))
+  	    {
+  		/* <Char-123> or <Char-033> or <Char-0x33> */
+! 		vim_str2nr(last_dash + 6, NULL, NULL, STR2NR_ALL, NULL, &n, 0);
+  		key = (int)n;
+  	    }
+  	    else
+*** ../vim-7.4.1026/src/ops.c	2015-12-17 14:04:20.341240206 +0100
+--- src/ops.c	2016-01-02 17:38:53.653588702 +0100
+***************
+*** 5379,5385 ****
+      int		col;
+      char_u	*buf1;
+      char_u	buf2[NUMBUFLEN];
+!     int		hex;		/* 'X' or 'x': hex; '0': octal */
+      static int	hexupper = FALSE;	/* 0xABC */
+      unsigned long n;
+      unsigned long offset = 0;		/* line offset for Ctrl_V mode */
+--- 5379,5385 ----
+      int		col;
+      char_u	*buf1;
+      char_u	buf2[NUMBUFLEN];
+!     int		pre;		/* 'X'/'x': hex; '0': octal; 'B'/'b': bin */
+      static int	hexupper = FALSE;	/* 0xABC */
+      unsigned long n;
+      unsigned long offset = 0;		/* line offset for Ctrl_V mode */
+***************
+*** 5390,5395 ****
+--- 5390,5396 ----
+      int		todel;
+      int		dohex;
+      int		dooct;
++     int		dobin;
+      int		doalp;
+      int		firstdigit;
+      int		subtract;
+***************
+*** 5403,5411 ****
+--- 5404,5416 ----
+      int		did_change = FALSE;
+      pos_T	t = curwin->w_cursor;
+      int		maxlen = 0;
++     int		pos = 0;
++     int		bit = 0;
++     int		bits = sizeof(unsigned long) * 8;
+  
+      dohex = (vim_strchr(curbuf->b_p_nf, 'x') != NULL);	/* "heX" */
+      dooct = (vim_strchr(curbuf->b_p_nf, 'o') != NULL);	/* "Octal" */
++     dobin = (vim_strchr(curbuf->b_p_nf, 'b') != NULL);	/* "Bin" */
+      doalp = (vim_strchr(curbuf->b_p_nf, 'p') != NULL);	/* "alPha" */
+  
+      /*
+***************
+*** 5454,5470 ****
+  	ptr = ml_get_curline();
+  	RLADDSUBFIX(ptr);
+  
+  	if (dohex)
+  	    while (col > 0 && vim_isxdigit(ptr[col]))
+  		--col;
+! 	if (       dohex
+  		&& col > 0
+  		&& (ptr[col] == 'X'
+  		    || ptr[col] == 'x')
+  		&& ptr[col - 1] == '0'
+! 		&& vim_isxdigit(ptr[col + 1]))
+  	{
+! 	    /* Found hexadecimal number, move to its start. */
+  	    --col;
+  	}
+  	else
+--- 5459,5503 ----
+  	ptr = ml_get_curline();
+  	RLADDSUBFIX(ptr);
+  
++ 	if (dobin)
++ 	    while (col > 0 && vim_isbdigit(ptr[col]))
++ 		--col;
++ 
+  	if (dohex)
+  	    while (col > 0 && vim_isxdigit(ptr[col]))
+  		--col;
+! 
+! 	if (       dobin
+! 		&& dohex
+! 		&& ! ((col > 0
+! 		    && (ptr[col] == 'X'
+! 			|| ptr[col] == 'x')
+! 		    && ptr[col - 1] == '0'
+! 		    && vim_isxdigit(ptr[col + 1]))))
+! 	{
+! 
+! 	    /* In case of binary/hexadecimal pattern overlap match, rescan */
+! 
+! 	    col = curwin->w_cursor.col;
+! 
+! 	    while (col > 0 && vim_isdigit(ptr[col]))
+! 		col--;
+! 	}
+! 
+! 	if ((       dohex
+  		&& col > 0
+  		&& (ptr[col] == 'X'
+  		    || ptr[col] == 'x')
+  		&& ptr[col - 1] == '0'
+! 		&& vim_isxdigit(ptr[col + 1])) ||
+! 	    (       dobin
+! 		&& col > 0
+! 		&& (ptr[col] == 'B'
+! 		    || ptr[col] == 'b')
+! 		&& ptr[col - 1] == '0'
+! 		&& vim_isbdigit(ptr[col + 1])))
+  	{
+! 	    /* Found hexadecimal or binary number, move to its start. */
+  	    --col;
+  	}
+  	else
+***************
+*** 5609,5619 ****
+  					: curwin->w_cursor.col - col + 1);
+  	    }
+  
+! 	    vim_str2nr(ptr + col, &hex, &length, dooct, dohex, NULL, &n,
+! 								      maxlen);
+  
+! 	    /* ignore leading '-' for hex and octal numbers */
+! 	    if (hex && negative)
+  	    {
+  		++col;
+  		--length;
+--- 5642,5655 ----
+  					: curwin->w_cursor.col - col + 1);
+  	    }
+  
+! 	    vim_str2nr(ptr + col, &pre, &length,
+! 		    0 + (dobin ? STR2NR_BIN : 0)
+! 		      + (dooct ? STR2NR_OCT : 0)
+! 		      + (dohex ? STR2NR_HEX : 0),
+! 		    NULL, &n, maxlen);
+  
+! 	    /* ignore leading '-' for hex and octal and bin numbers */
+! 	    if (pre && negative)
+  	    {
+  		++col;
+  		--length;
+***************
+*** 5634,5640 ****
+  		n += (unsigned long)Prenum1;
+  
+  	    /* handle wraparound for decimal numbers */
+! 	    if (!hex)
+  	    {
+  		if (subtract)
+  		{
+--- 5670,5676 ----
+  		n += (unsigned long)Prenum1;
+  
+  	    /* handle wraparound for decimal numbers */
+! 	    if (!pre)
+  	    {
+  		if (subtract)
+  		{
+***************
+*** 5706,5730 ****
+  	    {
+  		*ptr++ = '-';
+  	    }
+! 	    if (hex)
+  	    {
+  		*ptr++ = '0';
+  		--length;
+  	    }
+! 	    if (hex == 'x' || hex == 'X')
+  	    {
+! 		*ptr++ = hex;
+  		--length;
+  	    }
+  
+  	    /*
+  	     * Put the number characters in buf2[].
+  	     */
+! 	    if (hex == 0)
+  		sprintf((char *)buf2, "%lu", n);
+! 	    else if (hex == '0')
+  		sprintf((char *)buf2, "%lo", n);
+! 	    else if (hex && hexupper)
+  		sprintf((char *)buf2, "%lX", n);
+  	    else
+  		sprintf((char *)buf2, "%lx", n);
+--- 5742,5778 ----
+  	    {
+  		*ptr++ = '-';
+  	    }
+! 	    if (pre)
+  	    {
+  		*ptr++ = '0';
+  		--length;
+  	    }
+! 	    if (pre == 'b' || pre == 'B' || 
+! 		pre == 'x' || pre == 'X')
+  	    {
+! 		*ptr++ = pre;
+  		--length;
+  	    }
+  
+  	    /*
+  	     * Put the number characters in buf2[].
+  	     */
+! 	    if (pre == 'b' || pre == 'B')
+! 	    {
+! 		/* leading zeros */
+! 		for (bit = bits; bit > 0; bit--)
+! 		    if ((n >> (bit - 1)) & 0x1) break;
+! 
+! 		for (pos = 0; bit > 0; bit--)
+! 		    buf2[pos++] = ((n >> (bit - 1)) & 0x1) ? '1' : '0';
+! 
+! 		buf2[pos] = '\0';
+! 	    }
+! 	    else if (pre == 0)
+  		sprintf((char *)buf2, "%lu", n);
+! 	    else if (pre == '0')
+  		sprintf((char *)buf2, "%lo", n);
+! 	    else if (pre && hexupper)
+  		sprintf((char *)buf2, "%lX", n);
+  	    else
+  		sprintf((char *)buf2, "%lx", n);
+***************
+*** 5736,5742 ****
+  	     * Don't do this when
+  	     * the result may look like an octal number.
+  	     */
+! 	    if (firstdigit == '0' && !(dooct && hex == 0))
+  		while (length-- > 0)
+  		    *ptr++ = '0';
+  	    *ptr = NUL;
+--- 5784,5790 ----
+  	     * Don't do this when
+  	     * the result may look like an octal number.
+  	     */
+! 	    if (firstdigit == '0' && !(dooct && pre == 0))
+  		while (length-- > 0)
+  		    *ptr++ = '0';
+  	    *ptr = NUL;
+***************
+*** 6359,6365 ****
+  #endif
+  
+      if (regname != NUL && !valid_yank_reg(regname, FALSE))
+!         return MAUTO;
+  
+      get_yank_register(regname, FALSE);
+  
+--- 6407,6413 ----
+  #endif
+  
+      if (regname != NUL && !valid_yank_reg(regname, FALSE))
+! 	return MAUTO;
+  
+      get_yank_register(regname, FALSE);
+  
+*** ../vim-7.4.1026/src/option.c	2016-01-01 14:48:00.646893076 +0100
+--- src/option.c	2016-01-02 17:15:26.476715574 +0100
+***************
+*** 1940,1946 ****
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"nrformats",   "nf",   P_STRING|P_ALLOCED|P_VI_DEF|P_ONECOMMA|P_NODUP,
+  			    (char_u *)&p_nf, PV_NF,
+! 			    {(char_u *)"octal,hex", (char_u *)0L}
+  			    SCRIPTID_INIT},
+      {"number",	    "nu",   P_BOOL|P_VI_DEF|P_RWIN,
+  			    (char_u *)VAR_WIN, PV_NU,
+--- 1940,1946 ----
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"nrformats",   "nf",   P_STRING|P_ALLOCED|P_VI_DEF|P_ONECOMMA|P_NODUP,
+  			    (char_u *)&p_nf, PV_NF,
+! 			    {(char_u *)"bin,octal,hex", (char_u *)0L}
+  			    SCRIPTID_INIT},
+      {"number",	    "nu",   P_BOOL|P_VI_DEF|P_RWIN,
+  			    (char_u *)VAR_WIN, PV_NU,
+***************
+*** 3031,3037 ****
+  static char *(p_ambw_values[]) = {"single", "double", NULL};
+  #endif
+  static char *(p_bg_values[]) = {"light", "dark", NULL};
+! static char *(p_nf_values[]) = {"octal", "hex", "alpha", NULL};
+  static char *(p_ff_values[]) = {FF_UNIX, FF_DOS, FF_MAC, NULL};
+  #ifdef FEAT_CRYPT
+  static char *(p_cm_values[]) = {"zip", "blowfish", "blowfish2", NULL};
+--- 3031,3037 ----
+  static char *(p_ambw_values[]) = {"single", "double", NULL};
+  #endif
+  static char *(p_bg_values[]) = {"light", "dark", NULL};
+! static char *(p_nf_values[]) = {"bin", "octal", "hex", "alpha", NULL};
+  static char *(p_ff_values[]) = {FF_UNIX, FF_DOS, FF_MAC, NULL};
+  #ifdef FEAT_CRYPT
+  static char *(p_cm_values[]) = {"zip", "blowfish", "blowfish2", NULL};
+***************
+*** 4579,4585 ****
+  			{
+  			    /* Allow negative (for 'undolevels'), octal and
+  			     * hex numbers. */
+! 			    vim_str2nr(arg, NULL, &i, TRUE, TRUE, &value, NULL, 0);
+  			    if (arg[i] != NUL && !vim_iswhite(arg[i]))
+  			    {
+  				errmsg = e_invarg;
+--- 4579,4586 ----
+  			{
+  			    /* Allow negative (for 'undolevels'), octal and
+  			     * hex numbers. */
+! 			    vim_str2nr(arg, NULL, &i, STR2NR_ALL,
+! 							     &value, NULL, 0);
+  			    if (arg[i] != NUL && !vim_iswhite(arg[i]))
+  			    {
+  				errmsg = e_invarg;
+*** ../vim-7.4.1026/src/proto/charset.pro	2015-07-17 13:03:42.108357465 +0200
+--- src/proto/charset.pro	2016-01-02 17:15:43.000537982 +0100
+***************
+*** 36,46 ****
+--- 36,49 ----
+  void getvcols __ARGS((win_T *wp, pos_T *pos1, pos_T *pos2, colnr_T *left, colnr_T *right));
+  char_u *skipwhite __ARGS((char_u *q));
+  char_u *skipdigits __ARGS((char_u *q));
++ char_u *skipbin __ARGS((char_u *q));
+  char_u *skiphex __ARGS((char_u *q));
++ char_u *skiptobin __ARGS((char_u *q));
+  char_u *skiptodigit __ARGS((char_u *q));
+  char_u *skiptohex __ARGS((char_u *q));
+  int vim_isdigit __ARGS((int c));
+  int vim_isxdigit __ARGS((int c));
++ int vim_isbdigit __ARGS((int c));
+  int vim_islower __ARGS((int c));
+  int vim_isupper __ARGS((int c));
+  int vim_toupper __ARGS((int c));
+***************
+*** 49,55 ****
+  char_u *skiptowhite_esc __ARGS((char_u *p));
+  long getdigits __ARGS((char_u **pp));
+  int vim_isblankline __ARGS((char_u *lbuf));
+! void vim_str2nr __ARGS((char_u *start, int *hexp, int *len, int dooct, int dohex, long *nptr, unsigned long *unptr, int strlen));
+  int hex2nr __ARGS((int c));
+  int hexhex2nr __ARGS((char_u *p));
+  int rem_backslash __ARGS((char_u *str));
+--- 52,58 ----
+  char_u *skiptowhite_esc __ARGS((char_u *p));
+  long getdigits __ARGS((char_u **pp));
+  int vim_isblankline __ARGS((char_u *lbuf));
+! void vim_str2nr __ARGS((char_u *start, int *prep, int *len, int what, long *nptr, unsigned long *unptr, int maxlen));
+  int hex2nr __ARGS((int c));
+  int hexhex2nr __ARGS((char_u *p));
+  int rem_backslash __ARGS((char_u *str));
+*** ../vim-7.4.1026/src/spell.c	2015-07-21 17:53:11.585527913 +0200
+--- src/spell.c	2016-01-02 17:42:40.063153829 +0100
+***************
+*** 1047,1053 ****
+       * julifeest". */
+      if (*ptr >= '0' && *ptr <= '9')
+      {
+! 	if (*ptr == '0' && (ptr[1] == 'x' || ptr[1] == 'X'))
+  	    mi.mi_end = skiphex(ptr + 2);
+  	else
+  	    mi.mi_end = skipdigits(ptr);
+--- 1047,1055 ----
+       * julifeest". */
+      if (*ptr >= '0' && *ptr <= '9')
+      {
+! 	if (*ptr == '0' && (ptr[1] == 'b' || ptr[1] == 'B'))
+! 	    mi.mi_end = skipbin(ptr + 2);
+! 	else if (*ptr == '0' && (ptr[1] == 'x' || ptr[1] == 'X'))
+  	    mi.mi_end = skiphex(ptr + 2);
+  	else
+  	    mi.mi_end = skipdigits(ptr);
+***************
+*** 15612,15618 ****
+  
+      /* enable spelling locally in the new window */
+      set_option_value((char_u*)"spell", TRUE, (char_u*)"", OPT_LOCAL);
+!     set_option_value((char_u*)"spl",  dummy,         spl, OPT_LOCAL);
+      vim_free(spl);
+  
+      if (!bufempty() || !buf_valid(curbuf))
+--- 15614,15620 ----
+  
+      /* enable spelling locally in the new window */
+      set_option_value((char_u*)"spell", TRUE, (char_u*)"", OPT_LOCAL);
+!     set_option_value((char_u*)"spl",  dummy, spl, OPT_LOCAL);
+      vim_free(spl);
+  
+      if (!bufempty() || !buf_valid(curbuf))
+*** ../vim-7.4.1026/src/testdir/test57.in	2010-10-15 20:12:23.000000000 +0200
+--- src/testdir/test57.in	2016-01-02 16:33:15.975895809 +0100
+***************
+*** 30,35 ****
+--- 30,37 ----
+  :/^t25:/+1,/^t26/-1sort/\d\d/rn
+  :/^t26:/+1,/^t27/-1sort/\d\d/rx
+  :/^t27:/+1,/^t28/-1sort no
++ :/^t28:/+1,/^t29/-1sort b
++ :/^t29:/+1,/^t30/-1sort b
+  :/^t01:/,$wq! test.out
+  ENDTEST
+  
+***************
+*** 494,500 ****
+  b322b
+  b321
+  b321b
+  
+  
+! t28: done
+! 
+--- 496,533 ----
+  b322b
+  b321
+  b321b
++ t28: binary
+  
+  
+! 0b111000
+! 0b101100
+! 0b101001
+! 0b101001
+! 0b101000
+! 0b000000
+! 0b001000
+! 0b010000
+! 0b101000
+! 0b100000
+! 0b101010
+! 0b100010
+! 0b100100
+! 0b100010
+! t29: binary with leading characters
+! 
+! 
+! 0b100010
+! 0b010000
+!  0b101001
+! b0b101100
+! 0b100010
+!  0b100100
+! a0b001000
+! 0b101000
+! 0b101000
+! a0b101001
+! ab0b100000
+! 0b101010
+! 0b000000
+! b0b111000
+! t30: done
+*** ../vim-7.4.1026/src/testdir/test57.ok	2010-10-15 20:11:42.000000000 +0200
+--- src/testdir/test57.ok	2016-01-02 16:33:15.975895809 +0100
+***************
+*** 453,459 ****
+  b322b
+  b321
+  b321b
+  
+  
+! t28: done
+  
+--- 453,490 ----
+  b322b
+  b321
+  b321b
++ t28: binary
+  
+  
+! 0b000000
+! 0b001000
+! 0b010000
+! 0b100000
+! 0b100010
+! 0b100010
+! 0b100100
+! 0b101000
+! 0b101000
+! 0b101001
+! 0b101001
+! 0b101010
+! 0b101100
+! 0b111000
+! t29: binary with leading characters
+  
++ 
++ 0b000000
++ a0b001000
++ 0b010000
++ ab0b100000
++ 0b100010
++ 0b100010
++  0b100100
++ 0b101000
++ 0b101000
++  0b101001
++ a0b101001
++ 0b101010
++ b0b101100
++ b0b111000
++ t30: done
+*** ../vim-7.4.1026/src/testdir/test58.in	2013-07-17 17:27:42.000000000 +0200
+--- src/testdir/test58.in	2016-01-02 16:33:15.975895809 +0100
+***************
+*** 104,109 ****
+--- 104,111 ----
+  :"
+  :" NOSLITSUGS
+  :call TestOne('8', '8')
++ :" Numbers
++ :call TestOne('9', '9')
+  :"
+  :" clean up for valgrind
+  :delfunc TestOne
+***************
+*** 636,639 ****
+--- 638,656 ----
+  badend
+  
+  
++ Test Numbers
++ 
++ 9affstart
++ 9affend
++ 
++ 9dicstart
++ 1234
++ foo
++ bar
++ 9dicend
++ 
++ 9good: 0b1011 0777 1234 0x01ff
++ badend
++ 
++ 
+  test output:
+*** ../vim-7.4.1026/src/testdir/test58.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test58.ok	2016-01-02 16:33:15.975895809 +0100
+***************
+*** 281,283 ****
+--- 281,289 ----
+  ['faabar', 'foo bar', 'bar']
+  barfoo
+  ['bar foo', 'bar', 'foo']
++ 
++ test 9-9
++ # file: Xtest.latin1.spl
++ bar
++ foo
++ -------
+*** ../vim-7.4.1026/src/testdir/test_increment.in	2015-09-01 18:51:35.126294303 +0200
+--- src/testdir/test_increment.in	2016-01-02 16:33:15.975895809 +0100
+***************
+*** 286,291 ****
+--- 286,334 ----
+    1) Ctrl-V f3 <ctrl-a>
+  0x124456
+  
++ 22) Block increment on 0b0
++ Text:
++ 0b1
++ 0b1
++     Expected:
++     1) Ctrl-A on visually block selected region (cursor at beginning):
++     0b10
++     0b10
++     2) Ctrl-A on visually block selected region (cursor at end)
++     0b10
++     0b10
++ 
++ 23) block-wise increment on part of binary
++ Text:
++ 0b1001
++ 
++   Expected:
++   1) Ctrl-V 5l <ctrl-a>
++ 0b1011
++ 
++ 24) increment hexadecimal
++ Text:
++ 0x0b1001
++ 
++   Expected:
++   1) <ctrl-a>
++ 0x0b1002
++ 
++ 25) increment binary with nrformats including alpha
++ Text:
++ 0b1001a
++ 
++   Expected:
++   1) <ctrl-a>
++ 0b1010a
++ 
++ 26) increment binary with 64 bits
++ Text:
++ 0b1111111111111111111111111111111111111111111111111111111111111110
++ 
++   Expected:
++   1) <ctrl-a>
++ 0b1111111111111111111111111111111111111111111111111111111111111111
+  
+  
+  STARTTEST
+***************
+*** 415,420 ****
+--- 458,495 ----
+  :set nrformats&vim
+  f3
+  
++ :" Test 22
++ :/^S22=/+,/^E22=/-y a
++ :/^E22=/+put a
++ kj$j:.+put a
++ k$+
++ 
++ :" Test 23
++ :/^S23=/+,/^E23=/-y a
++ :/^E23=/+put a
++ :set nrformats&vim
++ 4l
++ 
++ :" Test 24
++ :/^S24=/+,/^E24=/-y a
++ :/^E24=/+put a
++ :set nrformats&vim
++ $
++ 
++ :" Test 25
++ :set nrformats+=alpha
++ :/^S25=/+,/^E25=/-y a
++ :/^E25=/+put a
++ k$
++ :set nrformats&vim
++ 
++ :" Test 26
++ :set nrformats+=alpha
++ :/^S26=/+,/^E26=/-y a
++ :/^E26=/+put a
++ k$
++ :set nrformats&vim
++ 
+  :" Save the report
+  :/^# Test 1/,$w! test.out
+  :qa!
+***************
+*** 615,620 ****
+--- 690,734 ----
+  
+  
+  
++ # Test 22
++ S22====
++ 0b1
++ 0b1
++ E22====
++ 
++ 
++ 
++ 
++ # Test 23
++ S23====
++ 0b1001
++ E23====
++ 
++ 
++ 
++ 
++ # Test 24
++ S24====
++ 0x0b1001
++ E24====
++ 
++ 
++ 
++ 
++ # Test 25
++ S25====
++ 0b1001a
++ E25====
++ 
++ 
++ 
++ 
++ # Test 26
++ S26====
++ 0b1111111111111111111111111111111111111111111111111111111111111110
++ E26====
++ 
++ 
+  
+  ENDTEST
+  
+*** ../vim-7.4.1026/src/testdir/test_increment.ok	2015-09-01 18:51:35.126294303 +0200
+--- src/testdir/test_increment.ok	2016-01-02 16:33:15.975895809 +0100
+***************
+*** 288,293 ****
+--- 288,340 ----
+  0x124456
+  
+  
++ # Test 22
++ S22====
++ 0b1
++ 0b1
++ E22====
++ 
++ 0b10
++ 0b10
++ 
++ 0b10
++ 0b10
++ 
++ 
++ # Test 23
++ S23====
++ 0b1001
++ E23====
++ 
++ 0b1011
++ 
++ 
++ 
++ # Test 24
++ S24====
++ 0x0b1001
++ E24====
++ 
++ 0x0b1002
++ 
++ 
++ 
++ # Test 25
++ S25====
++ 0b1001a
++ E25====
++ 
++ 0b1010a
++ 
++ 
++ 
++ # Test 26
++ S26====
++ 0b1111111111111111111111111111111111111111111111111111111111111110
++ E26====
++ 
++ 0b1111111111111111111111111111111111111111111111111111111111111111
++ 
+  
+  ENDTEST
+  
+*** ../vim-7.4.1026/src/vim.h	2015-12-31 19:06:56.040081995 +0100
+--- src/vim.h	2016-01-02 17:06:14.334649984 +0100
+***************
+*** 392,398 ****
+  # endif
+  #endif
+  
+! #define NUMBUFLEN 30	    /* length of a buffer to store a number in ASCII */
+  
+  /*
+   * Shorthand for unsigned variables. Many systems, but not all, have u_char
+--- 392,406 ----
+  # endif
+  #endif
+  
+! /* length of a buffer to store a number in ASCII (64 bits binary + NUL) */
+! #define NUMBUFLEN 65
+! 
+! /* flags for vim_str2nr() */
+! #define STR2NR_BIN 1
+! #define STR2NR_OCT 2
+! #define STR2NR_HEX 4
+! #define STR2NR_ALL (STR2NR_BIN + STR2NR_OCT + STR2NR_HEX)
+! #define STR2NR_FORCE 8 /* only when ONE of the above is used */
+  
+  /*
+   * Shorthand for unsigned variables. Many systems, but not all, have u_char
+*** ../vim-7.4.1026/src/version.c	2016-01-02 16:00:15.893121887 +0100
+--- src/version.c	2016-01-02 17:24:59.438557762 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1027,
+  /**/
+
+-- 
+TIM: But follow only if you are men of valour.  For the entrance to this cave
+     is guarded by a monster, a creature so foul and cruel that no man yet has
+     fought with it and lived.  Bones of full fifty men lie strewn about its
+     lair ...
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

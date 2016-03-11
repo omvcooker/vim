@@ -1,0 +1,192 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1422
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1422
+Problem:    Error when reading fails uses wrong errno.  Keeping channel open
+            after job stops results in test failing.
+Solution:   Move the error up.  Add ch_job_killed.
+Files:      src/channel.c, src/eval.c, src/structs.h
+
+
+*** ../vim-7.4.1421/src/channel.c	2016-02-25 23:10:12.041219969 +0100
+--- src/channel.c	2016-02-26 11:15:52.696146670 +0100
+***************
+*** 307,317 ****
+  }
+  
+  /*
+!  * Return TRUE if "channel" has a callback.
+   */
+      static int
+! channel_has_callback(channel_T *channel)
+  {
+      return channel->ch_callback != NULL
+  #ifdef CHANNEL_PIPES
+  	    || channel->ch_part[PART_OUT].ch_callback != NULL
+--- 307,320 ----
+  }
+  
+  /*
+!  * Return TRUE if "channel" has a callback and the associated job wasn't
+!  * killed.
+   */
+      static int
+! channel_still_useful(channel_T *channel)
+  {
++     if (channel->ch_job_killed && channel->ch_job == NULL)
++ 	return FALSE;
+      return channel->ch_callback != NULL
+  #ifdef CHANNEL_PIPES
+  	    || channel->ch_part[PART_OUT].ch_callback != NULL
+***************
+*** 322,333 ****
+  
+  /*
+   * Close a channel and free all its resources if there is no further action
+!  * possible, there is no callback to be invoked.
+   */
+      void
+  channel_may_free(channel_T *channel)
+  {
+!     if (!channel_has_callback(channel))
+  	channel_free(channel);
+  }
+  
+--- 325,337 ----
+  
+  /*
+   * Close a channel and free all its resources if there is no further action
+!  * possible, there is no callback to be invoked or the associated job was
+!  * killed.
+   */
+      void
+  channel_may_free(channel_T *channel)
+  {
+!     if (!channel_still_useful(channel))
+  	channel_free(channel);
+  }
+  
+***************
+*** 1774,1779 ****
+--- 1778,1789 ----
+  	 *			-> channel_read()
+  	 */
+  	ch_errors(channel, "%s(): Cannot read", func);
++ 	if (len < 0)
++ 	{
++ 	    ch_error(channel, "channel_read(): cannot read from channel");
++ 	    PERROR(_("E896: read from channel"));
++ 	}
++ 
+  	msg = channel->ch_part[part].ch_mode == MODE_RAW
+  				  || channel->ch_part[part].ch_mode == MODE_NL
+  		    ? DETACH_MSG_RAW : DETACH_MSG_JSON;
+***************
+*** 1785,1796 ****
+  	channel_close(channel, TRUE);
+  	if (channel->ch_nb_close_cb != NULL)
+  	    (*channel->ch_nb_close_cb)();
+- 
+- 	if (len < 0)
+- 	{
+- 	    ch_error(channel, "channel_read(): cannot read from channel");
+- 	    PERROR(_("E896: read from channel"));
+- 	}
+      }
+  
+  #if defined(CH_HAS_GUI) && defined(FEAT_GUI_GTK)
+--- 1795,1800 ----
+***************
+*** 2174,2180 ****
+  
+      while (channel != NULL)
+      {
+! 	if (channel->ch_refcount == 0 && !channel_has_callback(channel))
+  	{
+  	    /* channel is no longer useful, free it */
+  	    channel_free(channel);
+--- 2178,2184 ----
+  
+      while (channel != NULL)
+      {
+! 	if (channel->ch_refcount == 0 && !channel_still_useful(channel))
+  	{
+  	    /* channel is no longer useful, free it */
+  	    channel_free(channel);
+*** ../vim-7.4.1421/src/eval.c	2016-02-25 23:10:12.041219969 +0100
+--- src/eval.c	2016-02-26 11:14:59.224699957 +0100
+***************
+*** 7770,7777 ****
+  # ifdef FEAT_CHANNEL
+      if (job->jv_channel != NULL)
+      {
+! 	/* The channel doesn't count as a references for the job, we need to
+! 	 * NULL the reference when the job is freed. */
+  	job->jv_channel->ch_job = NULL;
+  	channel_unref(job->jv_channel);
+      }
+--- 7770,7780 ----
+  # ifdef FEAT_CHANNEL
+      if (job->jv_channel != NULL)
+      {
+! 	/* The link from the channel to the job doesn't count as a reference,
+! 	 * thus don't decrement the refcount of the job.  The reference from
+! 	 * the job to the channel does count the refrence, decrement it and
+! 	 * NULL the reference.  We don't set ch_job_killed, unreferencing the
+! 	 * job doesn't mean it stops running. */
+  	job->jv_channel->ch_job = NULL;
+  	channel_unref(job->jv_channel);
+      }
+***************
+*** 15161,15167 ****
+--- 15164,15177 ----
+  	if (mch_stop_job(job, arg) == FAIL)
+  	    rettv->vval.v_number = 0;
+  	else
++ 	{
+  	    rettv->vval.v_number = 1;
++ 	    /* Assume that "hup" does not kill the job. */
++ 	    if (job->jv_channel != NULL && STRCMP(arg, "hup") != 0)
++ 		job->jv_channel->ch_job_killed = TRUE;
++ 	}
++ 	/* We don't try freeing the job, obviously the caller still has a
++ 	 * reference to it. */
+      }
+  }
+  #endif
+*** ../vim-7.4.1421/src/structs.h	2016-02-23 19:33:57.429544837 +0100
+--- src/structs.h	2016-02-26 10:54:16.197550587 +0100
+***************
+*** 1373,1378 ****
+--- 1373,1380 ----
+      job_T	*ch_job;	/* Job that uses this channel; this does not
+  				 * count as a reference to avoid a circular
+  				 * reference. */
++     int		ch_job_killed;	/* TRUE when there was a job and it was killed
++ 				 * or we know it died. */
+  
+      int		ch_refcount;	/* reference count */
+  };
+*** ../vim-7.4.1421/src/version.c	2016-02-25 23:10:12.041219969 +0100
+--- src/version.c	2016-02-26 11:16:30.035760269 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1422,
+  /**/
+
+-- 
+Every exit is an entrance into something else.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

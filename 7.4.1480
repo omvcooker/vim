@@ -1,0 +1,575 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1480
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1480
+Problem:    Cannot add a pack direcory without loading a plugin.
+Solution:   Add the :packadd command.
+Files:      src/ex_cmds.h, src/ex_cmds2.c, src/proto/ex_cmds2.pro,
+            src/testdir/test_loadplugin.vim, runtime/doc/repeat.txt
+
+
+*** ../vim-7.4.1479/src/ex_cmds.h	2016-02-27 18:13:05.240593068 +0100
+--- src/ex_cmds.h	2016-03-03 16:22:54.952674659 +0100
+***************
+*** 1014,1019 ****
+--- 1014,1022 ----
+  EX(CMD_print,		"print",	ex_print,
+  			RANGE|WHOLEFOLD|COUNT|EXFLAGS|TRLBAR|CMDWIN|SBOXOK,
+  			ADDR_LINES),
++ EX(CMD_packadd,		"packadd",	ex_packadd,
++ 			BANG|FILE1|TRLBAR|SBOXOK|CMDWIN,
++ 			ADDR_LINES),
+  EX(CMD_pclose,		"pclose",	ex_pclose,
+  			BANG|TRLBAR,
+  			ADDR_LINES),
+*** ../vim-7.4.1479/src/ex_cmds2.c	2016-03-03 15:46:51.230974004 +0100
+--- src/ex_cmds2.c	2016-03-03 17:03:33.098964628 +0100
+***************
+*** 2918,2924 ****
+  /*
+   * Source the file "name" from all directories in 'runtimepath'.
+   * "name" can contain wildcards.
+!  * When "all" is TRUE, source all files, otherwise only the first one.
+   * return FAIL when no file could be sourced, OK otherwise.
+   */
+      int
+--- 2918,2926 ----
+  /*
+   * Source the file "name" from all directories in 'runtimepath'.
+   * "name" can contain wildcards.
+!  * When "flags" has DIP_ALL: source all files, otherwise only the first one.
+!  * When "flags" has DIP_DIR: find directories instead of files.
+!  *
+   * return FAIL when no file could be sourced, OK otherwise.
+   */
+      int
+***************
+*** 2927,2937 ****
+      return do_in_runtimepath(name, all, source_callback, NULL);
+  }
+  
+      static int
+  do_in_path(
+      char_u	*path,
+      char_u	*name,
+!     int		all,
+      void	(*callback)(char_u *fname, void *ck),
+      void	*cookie)
+  {
+--- 2929,2942 ----
+      return do_in_runtimepath(name, all, source_callback, NULL);
+  }
+  
++ #define DIP_ALL	1	/* all matches, not just the first one */
++ #define DIP_DIR	2	/* find directories instead of files. */
++ 
+      static int
+  do_in_path(
+      char_u	*path,
+      char_u	*name,
+!     int		flags,
+      void	(*callback)(char_u *fname, void *ck),
+      void	*cookie)
+  {
+***************
+*** 2968,2974 ****
+  
+  	/* Loop over all entries in 'runtimepath'. */
+  	rtp = rtp_copy;
+! 	while (*rtp != NUL && (all || !did_one))
+  	{
+  	    /* Copy the path from 'runtimepath' to buf[]. */
+  	    copy_option_part(&rtp, buf, MAXPATHL, ",");
+--- 2973,2979 ----
+  
+  	/* Loop over all entries in 'runtimepath'. */
+  	rtp = rtp_copy;
+! 	while (*rtp != NUL && ((flags & DIP_ALL) || !did_one))
+  	{
+  	    /* Copy the path from 'runtimepath' to buf[]. */
+  	    copy_option_part(&rtp, buf, MAXPATHL, ",");
+***************
+*** 2985,2991 ****
+  
+  		/* Loop over all patterns in "name" */
+  		np = name;
+! 		while (*np != NUL && (all || !did_one))
+  		{
+  		    /* Append the pattern from "name" to buf[]. */
+  		    copy_option_part(&np, tail, (int)(MAXPATHL - (tail - buf)),
+--- 2990,2996 ----
+  
+  		/* Loop over all patterns in "name" */
+  		np = name;
+! 		while (*np != NUL && ((flags & DIP_ALL) || !did_one))
+  		{
+  		    /* Append the pattern from "name" to buf[]. */
+  		    copy_option_part(&np, tail, (int)(MAXPATHL - (tail - buf)),
+***************
+*** 3000,3012 ****
+  
+  		    /* Expand wildcards, invoke the callback for each match. */
+  		    if (gen_expand_wildcards(1, &buf, &num_files, &files,
+! 							       EW_FILE) == OK)
+  		    {
+  			for (i = 0; i < num_files; ++i)
+  			{
+  			    (*callback)(files[i], cookie);
+  			    did_one = TRUE;
+! 			    if (!all)
+  				break;
+  			}
+  			FreeWild(num_files, files);
+--- 3005,3017 ----
+  
+  		    /* Expand wildcards, invoke the callback for each match. */
+  		    if (gen_expand_wildcards(1, &buf, &num_files, &files,
+! 				  (flags & DIP_DIR) ? EW_DIR : EW_FILE) == OK)
+  		    {
+  			for (i = 0; i < num_files; ++i)
+  			{
+  			    (*callback)(files[i], cookie);
+  			    did_one = TRUE;
+! 			    if (!(flags & DIP_ALL))
+  				break;
+  			}
+  			FreeWild(num_files, files);
+***************
+*** 3049,3055 ****
+      void	(*callback)(char_u *fname, void *ck),
+      void	*cookie)
+  {
+!     return do_in_path(p_rtp, name, all, callback, cookie);
+  }
+  
+  /*
+--- 3054,3060 ----
+      void	(*callback)(char_u *fname, void *ck),
+      void	*cookie)
+  {
+!     return do_in_path(p_rtp, name, all ? DIP_ALL : 0, callback, cookie);
+  }
+  
+  /*
+***************
+*** 3065,3117 ****
+      if (cmd != NULL && eval_to_number(cmd) > 0)
+      {
+  	do_cmdline_cmd((char_u *)"augroup filetypedetect");
+! 	do_in_path(p_pp, pat, TRUE, source_callback, NULL);
+  	do_cmdline_cmd((char_u *)"augroup END");
+      }
+      vim_free(cmd);
+  }
+  
+      static void
+! source_pack_plugin(char_u *fname, void *cookie UNUSED)
+  {
+!     char_u *p6, *p5, *p4, *p3, *p2, *p1, *p;
+!     int c;
+!     char_u *new_rtp;
+!     int keep;
+!     int oldlen;
+!     int addlen;
+  
+!     p6 = p5 = p4 = p3 = p2 = p1 = get_past_head(fname);
+      for (p = p1; *p; mb_ptr_adv(p))
+  	if (vim_ispathsep_nocolon(*p))
+  	{
+  	    p6 = p5; p5 = p4; p4 = p3; p3 = p2; p2 = p1; p1 = p;
+  	}
+  
+!     /* now we have:
+       * rtp/pack/name/ever/name/plugin/name.vim
+       *    p6   p5   p4   p3   p2     p1
+       */
+  
+      /* find the part up to "pack" in 'runtimepath' */
+!     c = *p6;
+!     *p6 = NUL;
+!     p = (char_u *)strstr((char *)p_rtp, (char *)fname);
+      if (p == NULL)
+  	/* not found, append at the end */
+  	p = p_rtp + STRLEN(p_rtp);
+      else
+  	/* append after the matching directory. */
+! 	p += STRLEN(fname);
+!     *p6 = c;
+  
+!     c = *p2;
+!     *p2 = NUL;
+!     if (strstr((char *)p_rtp, (char *)fname) == NULL)
+      {
+  	/* directory not in 'runtimepath', add it */
+  	oldlen = (int)STRLEN(p_rtp);
+! 	addlen = (int)STRLEN(fname);
+  	new_rtp = alloc(oldlen + addlen + 2);
+  	if (new_rtp == NULL)
+  	{
+--- 3070,3135 ----
+      if (cmd != NULL && eval_to_number(cmd) > 0)
+      {
+  	do_cmdline_cmd((char_u *)"augroup filetypedetect");
+! 	do_in_path(p_pp, pat, DIP_ALL, source_callback, NULL);
+  	do_cmdline_cmd((char_u *)"augroup END");
+      }
+      vim_free(cmd);
+  }
+  
+      static void
+! add_pack_plugin(char_u *fname, void *cookie)
+  {
+!     char_u  *p6, *p5, *p4, *p3, *p2, *p1, *p;
+!     int	    c;
+!     char_u  *new_rtp;
+!     int	    keep;
+!     int	    oldlen;
+!     int	    addlen;
+!     char_u  *ffname = fix_fname(fname);
+!     int	    load_file = cookie != NULL;
+  
+!     if (ffname == NULL)
+! 	return;
+!     p6 = p5 = p4 = p3 = p2 = p1 = get_past_head(ffname);
+      for (p = p1; *p; mb_ptr_adv(p))
+  	if (vim_ispathsep_nocolon(*p))
+  	{
+  	    p6 = p5; p5 = p4; p4 = p3; p3 = p2; p2 = p1; p1 = p;
+  	}
+  
+!     /* now we have, load_file == TRUE:
+       * rtp/pack/name/ever/name/plugin/name.vim
+       *    p6   p5   p4   p3   p2     p1
++      *
++      * with load_file == FALSE:
++      * rtp/pack/name/ever/name
++      *    p4   p3   p2   p1
+       */
++     if (load_file)
++ 	p4 = p6;
+  
+      /* find the part up to "pack" in 'runtimepath' */
+!     c = *p4;
+!     *p4 = NUL;
+!     p = (char_u *)strstr((char *)p_rtp, (char *)ffname);
+      if (p == NULL)
+  	/* not found, append at the end */
+  	p = p_rtp + STRLEN(p_rtp);
+      else
+  	/* append after the matching directory. */
+! 	p += STRLEN(ffname);
+!     *p4 = c;
+  
+!     if (load_file)
+!     {
+! 	c = *p2;
+! 	*p2 = NUL;
+!     }
+!     if (strstr((char *)p_rtp, (char *)ffname) == NULL)
+      {
+  	/* directory not in 'runtimepath', add it */
+  	oldlen = (int)STRLEN(p_rtp);
+! 	addlen = (int)STRLEN(ffname);
+  	new_rtp = alloc(oldlen + addlen + 2);
+  	if (new_rtp == NULL)
+  	{
+***************
+*** 3121,3136 ****
+  	keep = (int)(p - p_rtp);
+  	mch_memmove(new_rtp, p_rtp, keep);
+  	new_rtp[keep] = ',';
+! 	mch_memmove(new_rtp + keep + 1, fname, addlen + 1);
+  	if (p_rtp[keep] != NUL)
+  	    mch_memmove(new_rtp + keep + 1 + addlen, p_rtp + keep,
+  							   oldlen - keep + 1);
+  	set_option_value((char_u *)"rtp", 0L, new_rtp, 0);
+  	vim_free(new_rtp);
+      }
+!     *p2 = c;
+  
+!     (void)do_source(fname, FALSE, DOSO_NONE);
+  }
+  
+  /*
+--- 3139,3155 ----
+  	keep = (int)(p - p_rtp);
+  	mch_memmove(new_rtp, p_rtp, keep);
+  	new_rtp[keep] = ',';
+! 	mch_memmove(new_rtp + keep + 1, ffname, addlen + 1);
+  	if (p_rtp[keep] != NUL)
+  	    mch_memmove(new_rtp + keep + 1 + addlen, p_rtp + keep,
+  							   oldlen - keep + 1);
+  	set_option_value((char_u *)"rtp", 0L, new_rtp, 0);
+  	vim_free(new_rtp);
+      }
+!     vim_free(ffname);
+  
+!     if (load_file)
+! 	(void)do_source(fname, FALSE, DOSO_NONE);
+  }
+  
+  /*
+***************
+*** 3140,3146 ****
+  source_packages()
+  {
+      do_in_path(p_pp, (char_u *)"pack/*/ever/*/plugin/*.vim",
+! 					      TRUE, source_pack_plugin, NULL);
+      may_do_filetypes((char_u *)"pack/*/ever/*/ftdetect/*.vim");
+  }
+  
+--- 3159,3165 ----
+  source_packages()
+  {
+      do_in_path(p_pp, (char_u *)"pack/*/ever/*/plugin/*.vim",
+! 					      DIP_ALL, add_pack_plugin, p_pp);
+      may_do_filetypes((char_u *)"pack/*/ever/*/ftdetect/*.vim");
+  }
+  
+***************
+*** 3160,3166 ****
+      if (pat == NULL)
+  	return;
+      vim_snprintf(pat, len, plugpat, eap->arg);
+!     do_in_path(p_pp, (char_u *)pat, TRUE, source_pack_plugin, NULL);
+  
+      vim_snprintf(pat, len, ftpat, eap->arg);
+      may_do_filetypes((char_u *)pat);
+--- 3179,3185 ----
+      if (pat == NULL)
+  	return;
+      vim_snprintf(pat, len, plugpat, eap->arg);
+!     do_in_path(p_pp, (char_u *)pat, DIP_ALL, add_pack_plugin, p_pp);
+  
+      vim_snprintf(pat, len, ftpat, eap->arg);
+      may_do_filetypes((char_u *)pat);
+***************
+*** 3168,3173 ****
+--- 3187,3211 ----
+      vim_free(pat);
+  }
+  
++ /*
++  * ":packadd {name}"
++  */
++     void
++ ex_packadd(exarg_T *eap)
++ {
++     static char *plugpat = "pack/*/opt/%s";
++     int		len;
++     char	*pat;
++ 
++     len = (int)STRLEN(plugpat) + (int)STRLEN(eap->arg);
++     pat = (char *)alloc(len);
++     if (pat == NULL)
++ 	return;
++     vim_snprintf(pat, len, plugpat, eap->arg);
++     do_in_path(p_pp, (char_u *)pat, DIP_ALL + DIP_DIR, add_pack_plugin, NULL);
++     vim_free(pat);
++ }
++ 
+  #if defined(FEAT_EVAL) && defined(FEAT_AUTOCMD)
+  /*
+   * ":options"
+*** ../vim-7.4.1479/src/proto/ex_cmds2.pro	2016-02-21 23:01:47.449323306 +0100
+--- src/proto/ex_cmds2.pro	2016-03-03 16:47:24.277152581 +0100
+***************
+*** 64,69 ****
+--- 64,70 ----
+  int do_in_runtimepath(char_u *name, int all, void (*callback)(char_u *fname, void *ck), void *cookie);
+  void source_packages(void);
+  void ex_loadplugin(exarg_T *eap);
++ void ex_packadd(exarg_T *eap);
+  void ex_options(exarg_T *eap);
+  void ex_source(exarg_T *eap);
+  linenr_T *source_breakpoint(void *cookie);
+*** ../vim-7.4.1479/src/testdir/test_loadplugin.vim	2016-03-03 15:46:51.230974004 +0100
+--- src/testdir/test_loadplugin.vim	2016-03-03 16:58:12.594337480 +0100
+***************
+*** 1,25 ****
+  " Tests for :loadplugin
+  
+  func Test_loadplugin()
+!   let topdir = expand('%:h') . '/Xdir'
+!   exe 'set packpath=' . topdir
+!   let plugdir = topdir . '/pack/mine/opt/mytest'
+!   call mkdir(plugdir . '/plugin', 'p')
+!   call mkdir(plugdir . '/ftdetect', 'p')
+    filetype on
+!   try
+!     exe 'split ' . plugdir . '/plugin/test.vim'
+!     call setline(1, 'let g:plugin_works = 42')
+!     wq
+! 
+!     exe 'split ' . plugdir . '/ftdetect/test.vim'
+!     call setline(1, 'let g:ftdetect_works = 17')
+!     wq
+! 
+!     loadplugin mytest
+!     call assert_true(42, g:plugin_works)
+!     call assert_true(17, g:ftdetect_works)
+!   finally
+!     call delete(topdir, 'rf')
+!   endtry
+  endfunc
+--- 1,48 ----
+  " Tests for :loadplugin
+  
++ func SetUp()
++   let s:topdir = expand('%:h') . '/Xdir'
++   exe 'set packpath=' . s:topdir
++   let s:plugdir = s:topdir . '/pack/mine/opt/mytest'
++ endfunc
++ 
++ func TearDown()
++   call delete(s:topdir, 'rf')
++ endfunc
++ 
+  func Test_loadplugin()
+!   call mkdir(s:plugdir . '/plugin', 'p')
+!   call mkdir(s:plugdir . '/ftdetect', 'p')
+!   set rtp&
+!   let rtp = &rtp
+    filetype on
+! 
+!   exe 'split ' . s:plugdir . '/plugin/test.vim'
+!   call setline(1, 'let g:plugin_works = 42')
+!   wq
+! 
+!   exe 'split ' . s:plugdir . '/ftdetect/test.vim'
+!   call setline(1, 'let g:ftdetect_works = 17')
+!   wq
+! 
+!   loadplugin mytest
+! 
+!   call assert_equal(42, g:plugin_works)
+!   call assert_equal(17, g:ftdetect_works)
+!   call assert_true(len(&rtp) > len(rtp))
+!   call assert_true(&rtp =~ 'testdir/Xdir/pack/mine/opt/mytest\($\|,\)')
+! endfunc
+! 
+! func Test_packadd()
+!   call mkdir(s:plugdir . '/syntax', 'p')
+!   set rtp&
+!   let rtp = &rtp
+!   packadd mytest
+!   call assert_true(len(&rtp) > len(rtp))
+!   call assert_true(&rtp =~ 'testdir/Xdir/pack/mine/opt/mytest\($\|,\)')
+! 
+!   " check the path is not added twice
+!   let new_rtp = &rtp
+!   packadd mytest
+!   call assert_equal(new_rtp, &rtp)
+  endfunc
+*** ../vim-7.4.1479/runtime/doc/repeat.txt	2016-02-21 23:01:47.449323306 +0100
+--- runtime/doc/repeat.txt	2016-03-03 16:37:02.975698241 +0100
+***************
+*** 214,226 ****
+  			'runtimepath'.  And the directory found is added to
+  			'runtimepath'.
+  
+  			Note that {name} is the directory name, not the name
+  			of the .vim file.  If the "{name}/plugin" directory
+  			contains more than one file they are all sourced.
+  
+  			Also see |load-plugin|.
+  
+! 			{not available without the |+packages| feature}
+  
+  :scripte[ncoding] [encoding]		*:scripte* *:scriptencoding* *E167*
+  			Specify the character encoding used in the script.
+--- 221,256 ----
+  			'runtimepath'.  And the directory found is added to
+  			'runtimepath'.
+  
++ 			If you have a directory under 'packpath' that doesn't
++ 			actually have a plugin file, just create an empty one.
++ 			This will still add the directory to 'runtimepath'.
++ 			Or use `:packadd`.
++ 
+  			Note that {name} is the directory name, not the name
+  			of the .vim file.  If the "{name}/plugin" directory
+  			contains more than one file they are all sourced.
+  
++ 			If the filetype detection was not enabled yet (this
++ 			is usually done with a "syntax enable" or "filetype
++ 			on" command in your .vimrc file), this will also look
++ 			for "{name}/ftdetect/*.vim" files.  However, no matter
++ 			what is found, the directory is not added to
++ 			'runtimepath'.
++ 
+  			Also see |load-plugin|.
+  
+! 							*:pa* *:packadd*
+! :pa[ckadd] {name}	Search for an optional plugin directory in 'packpath'
+! 			and add it to 'runtimepath'.  This is like
+! 			`:loadplugin` but without loading a plugin or even
+! 			looking for it.
+! 
+! 			The directory must match:
+! 				pack/*/opt/{name} ~
+! 			If the directory has an entry in "ftdetect" note that
+! 			this will only be used when filetype detection was not
+! 			enabled yet.  Make sure ":packadd" is used before any
+! 			":syntax enable" or ":filetype on" command.
+  
+  :scripte[ncoding] [encoding]		*:scripte* *:scriptencoding* *E167*
+  			Specify the character encoding used in the script.
+***************
+*** 404,410 ****
+  advantages over normal plugins:
+  - A package can be downloaded as an archive and unpacked in its own directory.
+    That makes it easy to updated and/or remove.
+! - A package can be a git, mercurial, etc. respository.  That makes it really
+    easy to update.
+  - A package can contain multiple plugins that depend on each other.
+  - A package can contain plugins that are automatically loaded on startup and
+--- 434,440 ----
+  advantages over normal plugins:
+  - A package can be downloaded as an archive and unpacked in its own directory.
+    That makes it easy to updated and/or remove.
+! - A package can be a git, mercurial, etc. repository.  That makes it really
+    easy to update.
+  - A package can contain multiple plugins that depend on each other.
+  - A package can contain plugins that are automatically loaded on startup and
+***************
+*** 434,439 ****
+--- 464,471 ----
+  If the "always" plugin kicks in and sets the 'filetype' to "always", Vim will
+  find the syntax/always.vim file, because its directory is in 'runtimepath'.
+  
++ Vim will also load ftdetect files, like with |:loadplugin|.
++ 
+  							*load-plugin*
+  To load an optional plugin from a pack use the `:loadplugin` command: >
+  	:loadplugin mydebug
+*** ../vim-7.4.1479/src/version.c	2016-03-03 15:46:51.234973962 +0100
+--- src/version.c	2016-03-03 16:28:49.400909961 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1480,
+  /**/
+
+-- 
+Any resemblance between the above views and those of my employer, my terminal,
+or the view out my window are purely coincidental.  Any resemblance between
+the above and my own views is non-deterministic.  The question of the
+existence of views in the absence of anyone to hold them is left as an
+exercise for the reader.  The question of the existence of the reader is left
+as an exercise for the second god coefficient.  (A discussion of
+non-orthogonal, non-integral polytheism is beyond the scope of this article.)
+						(Ralph Jennings)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

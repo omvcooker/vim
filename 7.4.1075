@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1075
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1075
+Problem:    Crash when using an invalid command.
+Solution:   Fix generating the error message. (Dominique Pelle)
+Files:      src/ex_docmd.c
+
+
+*** ../vim-7.4.1074/src/ex_docmd.c	2016-01-02 22:25:40.670710107 +0100
+--- src/ex_docmd.c	2016-01-10 13:51:13.693287977 +0100
+***************
+*** 6916,6921 ****
+--- 6916,6922 ----
+      int		*addr_type_arg;
+  {
+      int	    i, a, b;
++ 
+      for (i = 0; addr_type_complete[i].expand != -1; ++i)
+      {
+  	a = (int)STRLEN(addr_type_complete[i].name) == vallen;
+***************
+*** 6930,6936 ****
+      if (addr_type_complete[i].expand == -1)
+      {
+  	char_u	*err = value;
+! 	for (i=0; err[i] == NUL || !vim_iswhite(err[i]); i++);
+  	err[i] = NUL;
+  	EMSG2(_("E180: Invalid address type value: %s"), err);
+  	return FAIL;
+--- 6931,6939 ----
+      if (addr_type_complete[i].expand == -1)
+      {
+  	char_u	*err = value;
+! 
+! 	for (i = 0; err[i] != NUL && !vim_iswhite(err[i]); i++)
+! 	    ;
+  	err[i] = NUL;
+  	EMSG2(_("E180: Invalid address type value: %s"), err);
+  	return FAIL;
+*** ../vim-7.4.1074/src/version.c	2016-01-10 13:25:52.009704354 +0100
+--- src/version.c	2016-01-10 13:48:27.987075888 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1075,
+  /**/
+
+-- 
+A year spent in artificial intelligence is enough to make one
+believe in God.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

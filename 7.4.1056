@@ -1,0 +1,469 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1056
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1056
+Problem:    Don't know why finding spell suggestions is slow.
+Solution:   Add some code to gather profiling information.
+Files:      src/spell.c
+
+
+*** ../vim-7.4.1055/src/spell.c	2016-01-02 17:54:04.423793267 +0100
+--- src/spell.c	2016-01-07 15:57:12.670760822 +0100
+***************
+*** 11279,11284 ****
+--- 11279,11334 ----
+  }
+  
+  /*
++  * Change the 0 to 1 to measure how much time is spent in each state.
++  * Output is dumped in "suggestprof".
++  */
++ #if 0
++ # define SUGGEST_PROFILE
++ proftime_T current;
++ proftime_T total;
++ proftime_T times[STATE_FINAL + 1];
++ long counts[STATE_FINAL + 1];
++ 
++     static void
++ prof_init(void)
++ {
++     for (int i = 0; i <= STATE_FINAL; ++i)
++     {
++ 	profile_zero(&times[i]);
++ 	counts[i] = 0;
++     }
++     profile_start(&current);
++     profile_start(&total);
++ }
++ 
++ /* call before changing state */
++     static void
++ prof_store(state_T state)
++ {
++     profile_end(&current);
++     profile_add(&times[state], &current);
++     ++counts[state];
++     profile_start(&current);
++ }
++ # define PROF_STORE(state) prof_store(state);
++ 
++     static void
++ prof_report(char *name)
++ {
++     FILE *fd = fopen("suggestprof", "a");
++ 
++     profile_end(&total);
++     fprintf(fd, "-----------------------\n");
++     fprintf(fd, "%s: %s\n", name, profile_msg(&total));
++     for (int i = 0; i <= STATE_FINAL; ++i)
++ 	fprintf(fd, "%d: %s (%ld)\n", i, profile_msg(&times[i]), counts[i]);
++     fclose(fd);
++ }
++ #else
++ # define PROF_STORE(state)
++ #endif
++ 
++ /*
+   * Try finding suggestions by adding/removing/swapping letters.
+   */
+      static void
+***************
+*** 11309,11315 ****
+--- 11359,11371 ----
+  	    continue;
+  
+  	/* Try it for this language.  Will add possible suggestions. */
++ #ifdef SUGGEST_PROFILE
++ 	prof_init();
++ #endif
+  	suggest_trie_walk(su, lp, fword, FALSE);
++ #ifdef SUGGEST_PROFILE
++ 	prof_report("try_change");
++ #endif
+      }
+  }
+  
+***************
+*** 11467,11472 ****
+--- 11523,11529 ----
+  
+  		/* Always past NUL bytes now. */
+  		n = (int)sp->ts_state;
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_ENDNUL;
+  		sp->ts_save_badflags = su->su_badflags;
+  
+***************
+*** 11510,11515 ****
+--- 11567,11573 ----
+  	    if (sp->ts_curi > len || byts[arridx] != 0)
+  	    {
+  		/* Past bytes in node and/or past NUL bytes. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_ENDNUL;
+  		sp->ts_save_badflags = su->su_badflags;
+  		break;
+***************
+*** 11909,11914 ****
+--- 11967,11973 ----
+  #endif
+  			/* Save things to be restored at STATE_SPLITUNDO. */
+  			sp->ts_save_badflags = su->su_badflags;
++ 			PROF_STORE(sp->ts_state)
+  			sp->ts_state = STATE_SPLITUNDO;
+  
+  			++depth;
+***************
+*** 11983,11988 ****
+--- 12042,12048 ----
+  			    byts = pbyts;
+  			    idxs = pidxs;
+  			    sp->ts_prefixdepth = PFD_PREFIXTREE;
++ 			    PROF_STORE(sp->ts_state)
+  			    sp->ts_state = STATE_NOPREFIX;
+  			}
+  		    }
+***************
+*** 11995,12000 ****
+--- 12055,12061 ----
+  	    su->su_badflags = sp->ts_save_badflags;
+  
+  	    /* Continue looking for NUL bytes. */
++ 	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_START;
+  
+  	    /* In case we went into the prefix tree. */
+***************
+*** 12012,12020 ****
+--- 12073,12083 ----
+  	       )
+  	    {
+  		/* The badword ends, can't use STATE_PLAIN. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_DEL;
+  		break;
+  	    }
++ 	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_PLAIN;
+  	    /*FALLTHROUGH*/
+  
+***************
+*** 12028,12033 ****
+--- 12091,12097 ----
+  	    {
+  		/* Done all bytes at this node, do next state.  When still at
+  		 * already changed bytes skip the other tricks. */
++ 		PROF_STORE(sp->ts_state)
+  		if (sp->ts_fidx >= sp->ts_fidxtry)
+  		    sp->ts_state = STATE_DEL;
+  		else
+***************
+*** 12184,12189 ****
+--- 12248,12254 ----
+  	     * delete/insert/swap a character. */
+  	    if (has_mbyte && sp->ts_tcharlen > 0)
+  	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_FINAL;
+  		break;
+  	    }
+***************
+*** 12191,12196 ****
+--- 12256,12262 ----
+  	    /*
+  	     * Try skipping one character in the bad word (delete it).
+  	     */
++ 	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_INS_PREP;
+  	    sp->ts_curi = 1;
+  	    if (soundfold && sp->ts_fidx == 0 && fword[sp->ts_fidx] == '*')
+***************
+*** 12245,12250 ****
+--- 12311,12317 ----
+  	    {
+  		/* If we just deleted a byte then inserting won't make sense,
+  		 * a substitute is always cheaper. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_SWAP;
+  		break;
+  	    }
+***************
+*** 12256,12267 ****
+--- 12323,12336 ----
+  		if (sp->ts_curi > byts[n])
+  		{
+  		    /* Only NUL bytes at this node, go to next state. */
++ 		    PROF_STORE(sp->ts_state)
+  		    sp->ts_state = STATE_SWAP;
+  		    break;
+  		}
+  		if (byts[n + sp->ts_curi] != NUL)
+  		{
+  		    /* Found a byte to insert. */
++ 		    PROF_STORE(sp->ts_state)
+  		    sp->ts_state = STATE_INS;
+  		    break;
+  		}
+***************
+*** 12278,12283 ****
+--- 12347,12353 ----
+  	    if (sp->ts_curi > byts[n])
+  	    {
+  		/* Done all bytes at this node, go to next state. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_SWAP;
+  		break;
+  	    }
+***************
+*** 12349,12354 ****
+--- 12419,12425 ----
+  	    if (c == NUL)
+  	    {
+  		/* End of word, can't swap or replace. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_FINAL;
+  		break;
+  	    }
+***************
+*** 12357,12362 ****
+--- 12428,12434 ----
+  	     * SWAP3 etc. also don't make sense then. */
+  	    if (!soundfold && !spell_iswordp(p, curwin))
+  	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
+  		break;
+  	    }
+***************
+*** 12387,12392 ****
+--- 12459,12465 ----
+  	    /* When the second character is NUL we can't swap. */
+  	    if (c2 == NUL)
+  	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
+  		break;
+  	    }
+***************
+*** 12395,12400 ****
+--- 12468,12474 ----
+  	     * Also get here if the second char is not a word character. */
+  	    if (c == c2)
+  	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_SWAP3;
+  		break;
+  	    }
+***************
+*** 12406,12411 ****
+--- 12480,12486 ----
+  			sp->ts_twordlen, tword, fword + sp->ts_fidx,
+  			c, c2);
+  #endif
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_UNSWAP;
+  		++depth;
+  #ifdef FEAT_MBYTE
+***************
+*** 12425,12432 ****
+--- 12500,12510 ----
+  		}
+  	    }
+  	    else
++ 	    {
+  		/* If this swap doesn't work then SWAP3 won't either. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
++ 	    }
+  	    break;
+  
+  	case STATE_UNSWAP:
+***************
+*** 12484,12489 ****
+--- 12562,12568 ----
+  	     * Second character may any char: "a.b" -> "b.a" */
+  	    if (c == c3 || c3 == NUL)
+  	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
+  		break;
+  	    }
+***************
+*** 12495,12500 ****
+--- 12574,12580 ----
+  			sp->ts_twordlen, tword, fword + sp->ts_fidx,
+  			c, c3);
+  #endif
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_UNSWAP3;
+  		++depth;
+  #ifdef FEAT_MBYTE
+***************
+*** 12515,12521 ****
+--- 12595,12604 ----
+  		}
+  	    }
+  	    else
++ 	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
++ 	    }
+  	    break;
+  
+  	case STATE_UNSWAP3:
+***************
+*** 12547,12552 ****
+--- 12630,12636 ----
+  	    {
+  		/* Middle char is not a word char, skip the rotate.  First and
+  		 * third char were already checked at swap and swap3. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
+  		break;
+  	    }
+***************
+*** 12562,12567 ****
+--- 12646,12652 ----
+  			sp->ts_twordlen, tword, fword + sp->ts_fidx,
+  			p[0], p[1], p[2]);
+  #endif
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_UNROT3L;
+  		++depth;
+  		p = fword + sp->ts_fidx;
+***************
+*** 12587,12593 ****
+--- 12672,12681 ----
+  		}
+  	    }
+  	    else
++ 	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
++ 	    }
+  	    break;
+  
+  	case STATE_UNROT3L:
+***************
+*** 12623,12628 ****
+--- 12711,12717 ----
+  			sp->ts_twordlen, tword, fword + sp->ts_fidx,
+  			p[0], p[1], p[2]);
+  #endif
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_UNROT3R;
+  		++depth;
+  		p = fword + sp->ts_fidx;
+***************
+*** 12648,12654 ****
+--- 12737,12746 ----
+  		}
+  	    }
+  	    else
++ 	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_REP_INI;
++ 	    }
+  	    break;
+  
+  	case STATE_UNROT3R:
+***************
+*** 12684,12689 ****
+--- 12776,12782 ----
+  		    || sp->ts_score + SCORE_REP >= su->su_maxscore
+  		    || sp->ts_fidx < sp->ts_fidxtry)
+  	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_FINAL;
+  		break;
+  	    }
+***************
+*** 12697,12706 ****
+--- 12790,12801 ----
+  
+  	    if (sp->ts_curi < 0)
+  	    {
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_FINAL;
+  		break;
+  	    }
+  
++ 	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_REP;
+  	    /*FALLTHROUGH*/
+  
+***************
+*** 12733,12738 ****
+--- 12828,12834 ----
+  			    ftp->ft_from, ftp->ft_to);
+  #endif
+  		    /* Need to undo this afterwards. */
++ 		    PROF_STORE(sp->ts_state)
+  		    sp->ts_state = STATE_REP_UNDO;
+  
+  		    /* Change the "from" to the "to" string. */
+***************
+*** 12754,12761 ****
+--- 12850,12860 ----
+  	    }
+  
+  	    if (sp->ts_curi >= gap->ga_len && sp->ts_state == STATE_REP)
++ 	    {
+  		/* No (more) matches. */
++ 		PROF_STORE(sp->ts_state)
+  		sp->ts_state = STATE_FINAL;
++ 	    }
+  
+  	    break;
+  
+***************
+*** 12775,12780 ****
+--- 12874,12880 ----
+  		repextra -= tl - fl;
+  	    }
+  	    mch_memmove(p, ftp->ft_from, fl);
++ 	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_REP;
+  	    break;
+  
+***************
+*** 13287,13293 ****
+--- 13387,13399 ----
+  	    /* try all kinds of inserts/deletes/swaps/etc. */
+  	    /* TODO: also soundfold the next words, so that we can try joining
+  	     * and splitting */
++ #ifdef SUGGEST_PROFILE
++ 	prof_init();
++ #endif
+  	    suggest_trie_walk(su, lp, salword, TRUE);
++ #ifdef SUGGEST_PROFILE
++ 	prof_report("soundalike");
++ #endif
+  	}
+      }
+  }
+*** ../vim-7.4.1055/src/version.c	2016-01-06 21:23:43.745255520 +0100
+--- src/version.c	2016-01-07 15:58:36.245863971 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1056,
+  /**/
+
+-- 
+There are only two hard things in programming: Cache invalidation,
+naming things and off-by-one errors.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

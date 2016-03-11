@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1393
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1393
+Problem:    Starting a job hangs in the GUI. (Takuya Fujiwara)
+Solution:   Don't check if ch_job is NULL when checking for an error.
+            (Yasuhiro Matsumoto)
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1392/src/channel.c	2016-02-21 19:14:36.679958696 +0100
+--- src/channel.c	2016-02-22 22:13:23.033816864 +0100
+***************
+*** 1706,1714 ****
+      }
+  #endif
+  
+!     /* Reading a socket disconnection (readlen == 0), or a socket error.
+       * TODO: call error callback. */
+!     if (readlen <= 0 && channel->ch_job == NULL)
+      {
+  	/* Queue a "DETACH" netbeans message in the command queue in order to
+  	 * terminate the netbeans session later. Do not end the session here
+--- 1706,1714 ----
+      }
+  #endif
+  
+!     /* Reading a disconnection (readlen == 0), or an error.
+       * TODO: call error callback. */
+!     if (readlen <= 0)
+      {
+  	/* Queue a "DETACH" netbeans message in the command queue in order to
+  	 * terminate the netbeans session later. Do not end the session here
+*** ../vim-7.4.1392/src/version.c	2016-02-22 22:05:27.278811101 +0100
+--- src/version.c	2016-02-22 22:14:37.817026723 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1393,
+  /**/
+
+
+-- 
+MARTHA'S WAY: Don't throw out all that leftover wine. Freeze into ice cubes
+              for future use in casseroles and sauces.
+MY WAY:       What leftover wine?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

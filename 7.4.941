@@ -1,0 +1,747 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.941
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.941
+Problem:    There is no way to ignore case only for tag searches.
+Solution:   Add the 'tagcase' option. (Gary Johnson)
+Files:      runtime/doc/options.txt, runtime/doc/quickref.txt,
+            runtime/doc/tagsrch.txt, runtime/doc/usr_29.txt,
+            runtime/optwin.vim, src/Makefile, src/buffer.c, src/option.c,
+            src/option.h, src/structs.h, src/tag.c,
+            src/testdir/Make_amiga.mak, src/testdir/Make_dos.mak,
+            src/testdir/Make_ming.mak, src/testdir/Make_os2.mak,
+            src/testdir/Make_vms.mms, src/testdir/Makefile,
+            src/testdir/test_tagcase.in, src/testdir/test_tagcase.ok
+
+
+*** ../vim-7.4.940/runtime/doc/options.txt	2015-11-19 17:56:09.434210164 +0100
+--- runtime/doc/options.txt	2015-11-24 18:25:20.462912251 +0100
+***************
+*** 4094,4100 ****
+  			global
+  	Ignore case in search patterns.  Also used when searching in the tags
+  	file.
+! 	Also see 'smartcase'.
+  	Can be overruled by using "\c" or "\C" in the pattern, see
+  	|/ignorecase|.
+  
+--- 4109,4115 ----
+  			global
+  	Ignore case in search patterns.  Also used when searching in the tags
+  	file.
+! 	Also see 'smartcase' and 'tagcase'.
+  	Can be overruled by using "\c" or "\C" in the pattern, see
+  	|/ignorecase|.
+  
+***************
+*** 7306,7324 ****
+  <	[The whitespace before and after the '0' must be a single <Tab>]
+  
+  	When a binary search was done and no match was found in any of the
+! 	files listed in 'tags', and 'ignorecase' is set or a pattern is used
+  	instead of a normal tag name, a retry is done with a linear search.
+  	Tags in unsorted tags files, and matches with different case will only
+  	be found in the retry.
+  
+  	If a tag file indicates that it is case-fold sorted, the second,
+! 	linear search can be avoided for the 'ignorecase' case.  Use a value
+! 	of '2' in the "!_TAG_FILE_SORTED" line for this.  A tag file can be
+! 	case-fold sorted with the -f switch to "sort" in most unices, as in
+! 	the command: "sort -f -o tags tags".  For "Exuberant ctags" version
+! 	5.x or higher (at least 5.5) the --sort=foldcase switch can be used
+! 	for this as well.  Note that case must be folded to uppercase for this
+! 	to work.
+  
+  	When 'tagbsearch' is off, tags searching is slower when a full match
+  	exists, but faster when no full match exists.  Tags in unsorted tags
+--- 7339,7360 ----
+  <	[The whitespace before and after the '0' must be a single <Tab>]
+  
+  	When a binary search was done and no match was found in any of the
+! 	files listed in 'tags', and case is ignored or a pattern is used
+  	instead of a normal tag name, a retry is done with a linear search.
+  	Tags in unsorted tags files, and matches with different case will only
+  	be found in the retry.
+  
+  	If a tag file indicates that it is case-fold sorted, the second,
+! 	linear search can be avoided when case is ignored.  Use a value of '2'
+! 	in the "!_TAG_FILE_SORTED" line for this.  A tag file can be case-fold
+! 	sorted with the -f switch to "sort" in most unices, as in the command:
+! 	"sort -f -o tags tags".  For "Exuberant ctags" version 5.x or higher
+! 	(at least 5.5) the --sort=foldcase switch can be used for this as
+! 	well.  Note that case must be folded to uppercase for this to work.
+! 
+! 	By default, tag searches are case-sensitive.  Case is ignored when
+! 	'ignorecase' is set and 'tagcase' is "followic", or when 'tagcase' is
+! 	"ignore".
+  
+  	When 'tagbsearch' is off, tags searching is slower when a full match
+  	exists, but faster when no full match exists.  Tags in unsorted tags
+***************
+*** 7330,7335 ****
+--- 7366,7381 ----
+  	command-line completion and ":help").
+  	{Vi: always uses binary search in some versions}
+  
++ 							*'tagcase'* *'tc'*
++ 'tagcase' 'tc'		string	(default "followic")
++ 			global or local to buffer |global-local|
++ 			{not in Vi}
++ 	This option specifies how case is handled when searching the tags
++ 	file:
++ 	   followic	Follow the 'ignorecase' option
++ 	   ignore	Ignore case
++ 	   match	Match case
++ 
+  						*'taglength'* *'tl'*
+  'taglength' 'tl'	number	(default 0)
+  			global
+*** ../vim-7.4.940/runtime/doc/quickref.txt	2013-08-10 13:25:00.000000000 +0200
+--- runtime/doc/quickref.txt	2015-11-24 18:25:20.462912251 +0100
+***************
+*** 889,898 ****
+  'switchbuf'	  'swb'     sets behavior when switching to another buffer
+  'synmaxcol'	  'smc'     maximum column to find syntax items
+  'syntax'	  'syn'     syntax to be loaded for current buffer
+- 'tabstop'	  'ts'	    number of spaces that <Tab> in file uses
+  'tabline'	  'tal'     custom format for the console tab pages line
+  'tabpagemax'	  'tpm'     maximum number of tab pages for |-p| and "tab all"
+  'tagbsearch'	  'tbs'     use binary searching in tags files
+  'taglength'	  'tl'	    number of significant characters for a tag
+  'tagrelative'	  'tr'	    file names in tag file are relative
+  'tags'		  'tag'     list of file names used by the tag command
+--- 900,910 ----
+  'switchbuf'	  'swb'     sets behavior when switching to another buffer
+  'synmaxcol'	  'smc'     maximum column to find syntax items
+  'syntax'	  'syn'     syntax to be loaded for current buffer
+  'tabline'	  'tal'     custom format for the console tab pages line
+  'tabpagemax'	  'tpm'     maximum number of tab pages for |-p| and "tab all"
++ 'tabstop'	  'ts'	    number of spaces that <Tab> in file uses
+  'tagbsearch'	  'tbs'     use binary searching in tags files
++ 'tagcase'	  'tc'      how to handle case when searching in tags files
+  'taglength'	  'tl'	    number of significant characters for a tag
+  'tagrelative'	  'tr'	    file names in tag file are relative
+  'tags'		  'tag'     list of file names used by the tag command
+*** ../vim-7.4.940/runtime/doc/tagsrch.txt	2013-08-10 13:25:02.000000000 +0200
+--- runtime/doc/tagsrch.txt	2015-11-24 18:25:20.466912208 +0100
+***************
+*** 85,95 ****
+  ":tag {ident}".
+  
+  The ignore-case matches are not found for a ":tag" command when the
+! 'ignorecase' option is off.  They are found when a pattern is used (starting
+! with a "/") and for ":tselect", also when 'ignorecase' is off.  Note that
+! using ignore-case tag searching disables binary searching in the tags file,
+! which causes a slowdown.  This can be avoided by fold-case sorting the tag
+! file.  See the 'tagbsearch' option for an explanation.
+  
+  ==============================================================================
+  2. Tag stack				*tag-stack* *tagstack* *E425*
+--- 85,97 ----
+  ":tag {ident}".
+  
+  The ignore-case matches are not found for a ":tag" command when the
+! 'ignorecase' option is off and 'tagcase' is "followic" or when 'tagcase' is
+! "match".  They are found when a pattern is used (starting with a "/") and for
+! ":tselect", also when 'ignorecase' is off and 'tagcase' is "followic" or when
+! 'tagcase' is "match".  Note that using ignore-case tag searching disables
+! binary searching in the tags file, which causes a slowdown.  This can be
+! avoided by fold-case sorting the tag file.  See the 'tagbsearch' option for an
+! explanation.
+  
+  ==============================================================================
+  2. Tag stack				*tag-stack* *tagstack* *E425*
+***************
+*** 440,451 ****
+  The next file in the list is not used when:
+  - A matching static tag for the current buffer has been found.
+  - A matching global tag has been found.
+! This also depends on the 'ignorecase' option.  If it is off, and the tags file
+! only has a match without matching case, the next tags file is searched for a
+! match with matching case.  If no tag with matching case is found, the first
+! match without matching case is used.  If 'ignorecase' is on, and a matching
+! global tag with or without matching case is found, this one is used, no
+! further tags files are searched.
+  
+  When a tag file name starts with "./", the '.' is replaced with the path of
+  the current file.  This makes it possible to use a tags file in the directory
+--- 442,454 ----
+  The next file in the list is not used when:
+  - A matching static tag for the current buffer has been found.
+  - A matching global tag has been found.
+! This also depends on whether case is ignored.  Case is ignored when
+! 'ignorecase' is set and 'tagcase' is "followic", or when 'tagcase' is
+! "ignore".  If case is not ignored, and the tags file only has a match without
+! matching case, the next tags file is searched for a match with matching case.
+! If no tag with matching case is found, the first match without matching case
+! is used.  If case is ignored, and a matching global tag with or without
+! matching case is found, this one is used, no further tags files are searched.
+  
+  When a tag file name starts with "./", the '.' is replaced with the path of
+  the current file.  This makes it possible to use a tags file in the directory
+***************
+*** 579,586 ****
+  binary searching for the tags file:
+  	!_TAG_FILE_SORTED<Tab>1<Tab>{anything} ~
+  
+! A tag file may be case-fold sorted to avoid a linear search when 'ignorecase'
+! is on.  See 'tagbsearch' for details.  The value '2' should be used then:
+  	!_TAG_FILE_SORTED<Tab>2<Tab>{anything} ~
+  
+  The other tag that Vim recognizes, but only when compiled with the
+--- 582,591 ----
+  binary searching for the tags file:
+  	!_TAG_FILE_SORTED<Tab>1<Tab>{anything} ~
+  
+! A tag file may be case-fold sorted to avoid a linear search when case is
+! ignored.  (Case is ignored when 'ignorecase' is set and 'tagcase' is
+! "followic", or when 'tagcase' is "ignore".)  See 'tagbsearch' for details.
+! The value '2' should be used then:
+  	!_TAG_FILE_SORTED<Tab>2<Tab>{anything} ~
+  
+  The other tag that Vim recognizes, but only when compiled with the
+***************
+*** 771,781 ****
+  
+  							*:dli* *:dlist*
+  :[range]dli[st][!] [/]string[/]
+! 			Like "[D"  and "]D", but search in [range] lines
+  			(default: whole file).
+  			See |:search-args| for [/] and [!].  {not in Vi}
+! 			Note that ":dl" works like ":delete" with the "l"
+! 			register.
+  
+  							*[_CTRL-D*
+  [ CTRL-D		Jump to the first macro definition that contains the
+--- 776,786 ----
+  
+  							*:dli* *:dlist*
+  :[range]dli[st][!] [/]string[/]
+! 			Like `[D`  and `]D`, but search in [range] lines
+  			(default: whole file).
+  			See |:search-args| for [/] and [!].  {not in Vi}
+! 			Note that `:dl` works like `:delete` with the "l"
+! 			flag, not `:dlist`.
+  
+  							*[_CTRL-D*
+  [ CTRL-D		Jump to the first macro definition that contains the
+*** ../vim-7.4.940/runtime/doc/usr_29.txt	2013-08-10 13:25:05.000000000 +0200
+--- runtime/doc/usr_29.txt	2015-11-24 18:25:20.466912208 +0100
+***************
+*** 255,261 ****
+  
+  RELATED ITEMS
+  
+! You can set 'ignorecase' to make case in tag names be ignored.
+  
+  The 'tagbsearch' option tells if the tags file is sorted or not.  The default
+  is to assume a sorted tags file, which makes a tags search a lot faster, but
+--- 255,262 ----
+  
+  RELATED ITEMS
+  
+! To make case in tag names be ignored, you can set 'ignorecase' while leaving
+! 'tagcase' as "followic", or set 'tagcase' to "ignore".
+  
+  The 'tagbsearch' option tells if the tags file is sorted or not.  The default
+  is to assume a sorted tags file, which makes a tags search a lot faster, but
+*** ../vim-7.4.940/runtime/optwin.vim	2015-11-10 20:45:05.437451313 +0100
+--- runtime/optwin.vim	2015-11-24 18:25:20.466912208 +0100
+***************
+*** 289,294 ****
+--- 289,298 ----
+  call append("$", "tags\tlist of file names to search for tags")
+  call append("$", "\t(global or local to buffer)")
+  call <SID>OptionG("tag", &tag)
++ call append("$", "tagcase\thow to handle case when searching in tags files:")
++ call append("$", "\t\"followic\" to follow 'ignorecase', \"ignore\" or \"match\"")
++ call append("$", "\t(global or local to buffer)")
++ call <SID>OptionG("tc", &tc)
+  call append("$", "tagrelative\tfile names in a tags file are relative to the tags file")
+  call <SID>BinOptionG("tr", &tr)
+  call append("$", "tagstack\ta :tag command will use the tagstack")
+*** ../vim-7.4.940/src/Makefile	2015-11-03 22:03:08.730101439 +0100
+--- src/Makefile	2015-11-24 18:25:20.474912122 +0100
+***************
+*** 1930,1935 ****
+--- 1930,1936 ----
+  	test_search_mbyte \
+  	test_set \
+  	test_signs \
++ 	test_tagcase \
+  	test_textobjects \
+  	test_utf8 \
+  	test_writefile \
+*** ../vim-7.4.940/src/buffer.c	2015-10-13 20:55:46.054715269 +0200
+--- src/buffer.c	2015-11-24 18:25:20.474912122 +0100
+***************
+*** 1991,1996 ****
+--- 1991,1997 ----
+      clear_string_option(&buf->b_p_ep);
+      clear_string_option(&buf->b_p_path);
+      clear_string_option(&buf->b_p_tags);
++     clear_string_option(&buf->b_p_tc);
+  #ifdef FEAT_INS_EXPAND
+      clear_string_option(&buf->b_p_dict);
+      clear_string_option(&buf->b_p_tsr);
+*** ../vim-7.4.940/src/option.c	2015-11-10 19:41:30.515462379 +0100
+--- src/option.c	2015-11-24 18:25:20.474912122 +0100
+***************
+*** 174,179 ****
+--- 174,180 ----
+  #define PV_SW		OPT_BUF(BV_SW)
+  #define PV_SWF		OPT_BUF(BV_SWF)
+  #define PV_TAGS		OPT_BOTH(OPT_BUF(BV_TAGS))
++ #define PV_TC		OPT_BOTH(OPT_BUF(BV_TC))
+  #define PV_TS		OPT_BUF(BV_TS)
+  #define PV_TW		OPT_BUF(BV_TW)
+  #define PV_TX		OPT_BUF(BV_TX)
+***************
+*** 2602,2607 ****
+--- 2603,2611 ----
+  			    {(char_u *)TRUE, (char_u *)0L}
+  #endif
+  			    SCRIPTID_INIT},
++     {"tagcase",	    "tc",   P_STRING|P_VIM,
++ 			    (char_u *)&p_tc, PV_TC,
++ 			    {(char_u *)"followic", (char_u *)"followic"} SCRIPTID_INIT},
+      {"taglength",   "tl",   P_NUM|P_VI_DEF,
+  			    (char_u *)&p_tl, PV_NONE,
+  			    {(char_u *)0L, (char_u *)0L} SCRIPTID_INIT},
+***************
+*** 5363,5368 ****
+--- 5367,5373 ----
+      (void)opt_strings_flags(p_fdo, p_fdo_values, &fdo_flags, TRUE);
+  #endif
+      (void)opt_strings_flags(p_dy, p_dy_values, &dy_flags, TRUE);
++     (void)opt_strings_flags(p_tc, p_tc_values, &tc_flags, FALSE);
+  #ifdef FEAT_VIRTUALEDIT
+      (void)opt_strings_flags(p_ve, p_ve_values, &ve_flags, TRUE);
+  #endif
+***************
+*** 5525,5530 ****
+--- 5530,5536 ----
+      check_string_option(&buf->b_p_ep);
+      check_string_option(&buf->b_p_path);
+      check_string_option(&buf->b_p_tags);
++     check_string_option(&buf->b_p_tc);
+  #ifdef FEAT_INS_EXPAND
+      check_string_option(&buf->b_p_dict);
+      check_string_option(&buf->b_p_tsr);
+***************
+*** 7044,7049 ****
+--- 7050,7079 ----
+  	    errmsg = e_invarg;
+      }
+  
++     /* 'tagcase' */
++     else if (gvarp == &p_tc)
++     {
++ 	unsigned int	*flags;
++ 
++ 	if (opt_flags & OPT_LOCAL)
++ 	{
++ 	    p = curbuf->b_p_tc;
++ 	    flags = &curbuf->b_tc_flags;
++ 	}
++ 	else
++ 	{
++ 	    p = p_tc;
++ 	    flags = &tc_flags;
++ 	}
++ 
++ 	if ((opt_flags & OPT_LOCAL) && *p == NUL)
++ 	    /* make the local value empty: use the global value */
++ 	    *flags = 0;
++ 	else if (*p == NUL
++ 		|| opt_strings_flags(p, p_tc_values, flags, FALSE) != OK)
++ 	    errmsg = e_invarg;
++     }
++ 
+  #ifdef FEAT_MBYTE
+      /* 'casemap' */
+      else if (varp == &p_cmp)
+***************
+*** 10083,10088 ****
+--- 10113,10122 ----
+  	case PV_TAGS:
+  	    clear_string_option(&buf->b_p_tags);
+  	    break;
++ 	case PV_TC:
++ 	    clear_string_option(&buf->b_p_tc);
++ 	    buf->b_tc_flags = 0;
++ 	    break;
+  #ifdef FEAT_FIND_ID
+  	case PV_DEF:
+  	    clear_string_option(&buf->b_p_def);
+***************
+*** 10164,10169 ****
+--- 10198,10204 ----
+  	    case PV_PATH: return (char_u *)&(curbuf->b_p_path);
+  	    case PV_AR:   return (char_u *)&(curbuf->b_p_ar);
+  	    case PV_TAGS: return (char_u *)&(curbuf->b_p_tags);
++ 	    case PV_TC:   return (char_u *)&(curbuf->b_p_tc);
+  #ifdef FEAT_FIND_ID
+  	    case PV_DEF:  return (char_u *)&(curbuf->b_p_def);
+  	    case PV_INC:  return (char_u *)&(curbuf->b_p_inc);
+***************
+*** 10218,10223 ****
+--- 10253,10260 ----
+  				    ? (char_u *)&(curbuf->b_p_ar) : p->var;
+  	case PV_TAGS:	return *curbuf->b_p_tags != NUL
+  				    ? (char_u *)&(curbuf->b_p_tags) : p->var;
++ 	case PV_TC:	return *curbuf->b_p_tc != NUL
++ 				    ? (char_u *)&(curbuf->b_p_tc) : p->var;
+  	case PV_BKC:	return *curbuf->b_p_bkc != NUL
+  				    ? (char_u *)&(curbuf->b_p_bkc) : p->var;
+  #ifdef FEAT_FIND_ID
+***************
+*** 10826,10831 ****
+--- 10863,10870 ----
+  	    buf->b_p_kp = empty_option;
+  	    buf->b_p_path = empty_option;
+  	    buf->b_p_tags = empty_option;
++ 	    buf->b_p_tc = empty_option;
++ 	    buf->b_tc_flags = 0;
+  #ifdef FEAT_FIND_ID
+  	    buf->b_p_def = empty_option;
+  	    buf->b_p_inc = empty_option;
+*** ../vim-7.4.940/src/option.h	2015-11-19 17:56:09.434210164 +0100
+--- src/option.h	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 820,825 ****
+--- 820,833 ----
+  #define SWB_NEWTAB		0x008
+  #define SWB_VSPLIT		0x010
+  EXTERN int	p_tbs;		/* 'tagbsearch' */
++ EXTERN char_u	*p_tc;		/* 'tagcase' */
++ EXTERN unsigned tc_flags;       /* flags from 'tagcase' */
++ #ifdef IN_OPTION_C
++ static char *(p_tc_values[]) = {"followic", "ignore", "match", NULL};
++ #endif
++ #define TC_FOLLOWIC		0x01
++ #define TC_IGNORE		0x02
++ #define TC_MATCH		0x04
+  EXTERN long	p_tl;		/* 'taglength' */
+  EXTERN int	p_tr;		/* 'tagrelative' */
+  EXTERN char_u	*p_tags;	/* 'tags' */
+***************
+*** 1081,1086 ****
+--- 1089,1095 ----
+      , BV_SW
+      , BV_SWF
+      , BV_TAGS
++     , BV_TC
+      , BV_TS
+      , BV_TW
+      , BV_TX
+*** ../vim-7.4.940/src/structs.h	2015-09-15 17:30:35.909682046 +0200
+--- src/structs.h	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 1674,1679 ****
+--- 1674,1681 ----
+      char_u	*b_p_path;	/* 'path' local value */
+      int		b_p_ar;		/* 'autoread' local value */
+      char_u	*b_p_tags;	/* 'tags' local value */
++     char_u	*b_p_tc;	/* 'tagcase' local value */
++     unsigned	b_tc_flags;     /* flags for 'tagcase' */
+  #ifdef FEAT_INS_EXPAND
+      char_u	*b_p_dict;	/* 'dictionary' local value */
+      char_u	*b_p_tsr;	/* 'thesaurus' local value */
+***************
+*** 2063,2069 ****
+  				       current virtual column */
+  
+      /*
+!      * the next six are used to update the visual part
+       */
+      char	w_old_visual_mode;  /* last known VIsual_mode */
+      linenr_T	w_old_cursor_lnum;  /* last known end of visual part */
+--- 2065,2071 ----
+  				       current virtual column */
+  
+      /*
+!      * the next seven are used to update the visual part
+       */
+      char	w_old_visual_mode;  /* last known VIsual_mode */
+      linenr_T	w_old_cursor_lnum;  /* last known end of visual part */
+*** ../vim-7.4.940/src/tag.c	2015-06-19 16:45:38.576205730 +0200
+--- src/tag.c	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 1385,1390 ****
+--- 1385,1402 ----
+      int		use_cscope = (flags & TAG_CSCOPE);
+  #endif
+      int		verbose = (flags & TAG_VERBOSE);
++     int		save_p_ic = p_ic;
++ 
++     /*
++      * Change the value of 'ignorecase' according to 'tagcase' for the
++      * duration of this function.
++      */
++     switch (curbuf->b_tc_flags ? curbuf->b_tc_flags : tc_flags)
++     {
++ 	case TC_FOLLOWIC:               break;
++ 	case TC_IGNORE:   p_ic = TRUE;  break;
++ 	case TC_MATCH:    p_ic = FALSE; break;
++     }
+  
+      help_save = curbuf->b_help;
+      orgpat.pat = pat;
+***************
+*** 2552,2557 ****
+--- 2564,2571 ----
+      vim_free(saved_pat);
+  #endif
+  
++     p_ic = save_p_ic;
++ 
+      return retval;
+  }
+  
+*** ../vim-7.4.940/src/testdir/Make_amiga.mak	2015-09-08 18:46:04.349233550 +0200
+--- src/testdir/Make_amiga.mak	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 66,71 ****
+--- 66,72 ----
+  		test_search_mbyte.out \
+  		test_set.out \
+  		test_signs.out \
++ 		test_tagcase.out \
+  		test_textobjects.out \
+  		test_utf8.out
+  
+***************
+*** 221,225 ****
+--- 222,227 ----
+  test_search_mbyte.out: test_search_mbyte.in
+  test_set.out: test_set.in
+  test_signs.out: test_signs.in
++ test_tagcase.out: test_tagcase.in
+  test_textobjects.out: test_textobjects.in
+  test_utf8.out: test_utf8.in
+*** ../vim-7.4.940/src/testdir/Make_dos.mak	2015-09-08 18:46:04.349233550 +0200
+--- src/testdir/Make_dos.mak	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 65,70 ****
+--- 65,71 ----
+  		test_search_mbyte.out \
+  		test_set.out \
+  		test_signs.out \
++ 		test_tagcase.out \
+  		test_textobjects.out \
+  		test_utf8.out
+  
+*** ../vim-7.4.940/src/testdir/Make_ming.mak	2015-09-08 18:46:04.349233550 +0200
+--- src/testdir/Make_ming.mak	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 87,92 ****
+--- 87,93 ----
+  		test_search_mbyte.out \
+  		test_set.out \
+  		test_signs.out \
++ 		test_tagcase.out \
+  		test_textobjects.out \
+  		test_utf8.out
+  
+*** ../vim-7.4.940/src/testdir/Make_os2.mak	2015-09-08 18:46:04.349233550 +0200
+--- src/testdir/Make_os2.mak	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 67,72 ****
+--- 67,73 ----
+  		test_search_mbyte.out \
+  		test_set.out \
+  		test_signs.out \
++ 		test_tagcase.out \
+  		test_textobjects.out \
+  		test_utf8.out
+  
+*** ../vim-7.4.940/src/testdir/Make_vms.mms	2015-09-08 18:46:04.349233550 +0200
+--- src/testdir/Make_vms.mms	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 126,131 ****
+--- 126,132 ----
+  	 test_search_mbyte.out \
+  	 test_set.out \
+  	 test_signs.out \
++ 	 test_tagcase.out \
+  	 test_textobjects.out \
+  	 test_utf8.out
+  
+*** ../vim-7.4.940/src/testdir/Makefile	2015-09-08 18:46:04.349233550 +0200
+--- src/testdir/Makefile	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 63,68 ****
+--- 63,69 ----
+  		test_search_mbyte.out \
+  		test_set.out \
+  		test_signs.out \
++ 		test_tagcase.out \
+  		test_textobjects.out \
+  		test_utf8.out
+  
+*** ../vim-7.4.940/src/testdir/test_tagcase.in	2015-11-24 18:45:04.666163536 +0100
+--- src/testdir/test_tagcase.in	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 0 ****
+--- 1,55 ----
++ Tests for 'tagcase' option
++ 
++ STARTTEST
++ :/^start text$/+1,/^end text$/w! Xtext
++ :/^start tags$/+1,/^end tags$/-1w! Xtags
++ :set tags=Xtags
++ :e Xtext
++ :"
++ :" Verify default values.
++ :set ic& | setg tc& | setl tc&
++ :call append('$', "ic=".&ic." g:tc=".&g:tc." l:tc=".&l:tc." tc=".&tc)
++ :"
++ :" Verify that the local setting accepts <empty> but that the global setting
++ :" does not.  The first of these (setting the local value to <empty>) should
++ :" succeed; the other two should fail.
++ :let v:errmsg = ""
++ :setl tc=
++ :call append('$', v:errmsg)
++ :let v:errmsg = ""
++ :setg tc=
++ :call append('$', v:errmsg)
++ :let v:errmsg = ""
++ :set tc=
++ :call append('$', v:errmsg)
++ :"
++ :" Verify that the correct number of matching tags is found for all values of
++ :" 'ignorecase' and global and local values 'tagcase', in all combinations.
++ :for &ic in [0, 1]
++ :  for &g:tc in ["followic", "ignore", "match"]
++ :    for &l:tc in ["", "followic", "ignore", "match"]
++ :      call append('$', "ic=".&ic." g:tc=".&g:tc." l:tc=".&l:tc." tc=".&tc)
++ :      call append('$', len(taglist("^foo$")))
++ :      call append('$', len(taglist("^Foo$")))
++ :    endfor
++ :  endfor
++ :endfor
++ :"
++ :1,/^end text$/d
++ :w! test.out
++ :qa!
++ ENDTEST
++ 
++ start text
++ 
++ Foo
++ Bar
++ foo
++ 
++ end text
++ 
++ start tags
++ Bar	Xtext	3
++ Foo	Xtext	2
++ foo	Xtext	4
++ end tags
+*** ../vim-7.4.940/src/testdir/test_tagcase.ok	2015-11-24 18:45:04.670163493 +0100
+--- src/testdir/test_tagcase.ok	2015-11-24 18:25:20.478912079 +0100
+***************
+*** 0 ****
+--- 1,76 ----
++ ic=0 g:tc=followic l:tc=followic tc=followic
++ 
++ E474: Invalid argument: tc=
++ E474: Invalid argument: tc=
++ ic=0 g:tc=followic l:tc= tc=followic
++ 1
++ 1
++ ic=0 g:tc=followic l:tc=followic tc=followic
++ 1
++ 1
++ ic=0 g:tc=followic l:tc=ignore tc=ignore
++ 2
++ 2
++ ic=0 g:tc=followic l:tc=match tc=match
++ 1
++ 1
++ ic=0 g:tc=ignore l:tc= tc=ignore
++ 2
++ 2
++ ic=0 g:tc=ignore l:tc=followic tc=followic
++ 1
++ 1
++ ic=0 g:tc=ignore l:tc=ignore tc=ignore
++ 2
++ 2
++ ic=0 g:tc=ignore l:tc=match tc=match
++ 1
++ 1
++ ic=0 g:tc=match l:tc= tc=match
++ 1
++ 1
++ ic=0 g:tc=match l:tc=followic tc=followic
++ 1
++ 1
++ ic=0 g:tc=match l:tc=ignore tc=ignore
++ 2
++ 2
++ ic=0 g:tc=match l:tc=match tc=match
++ 1
++ 1
++ ic=1 g:tc=followic l:tc= tc=followic
++ 2
++ 2
++ ic=1 g:tc=followic l:tc=followic tc=followic
++ 2
++ 2
++ ic=1 g:tc=followic l:tc=ignore tc=ignore
++ 2
++ 2
++ ic=1 g:tc=followic l:tc=match tc=match
++ 1
++ 1
++ ic=1 g:tc=ignore l:tc= tc=ignore
++ 2
++ 2
++ ic=1 g:tc=ignore l:tc=followic tc=followic
++ 2
++ 2
++ ic=1 g:tc=ignore l:tc=ignore tc=ignore
++ 2
++ 2
++ ic=1 g:tc=ignore l:tc=match tc=match
++ 1
++ 1
++ ic=1 g:tc=match l:tc= tc=match
++ 1
++ 1
++ ic=1 g:tc=match l:tc=followic tc=followic
++ 2
++ 2
++ ic=1 g:tc=match l:tc=ignore tc=ignore
++ 2
++ 2
++ ic=1 g:tc=match l:tc=match tc=match
++ 1
++ 1
+*** ../vim-7.4.940/src/version.c	2015-11-24 18:15:46.381122073 +0100
+--- src/version.c	2015-11-24 18:27:43.489373544 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     941,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+134. You consider bandwidth to be more important than carats.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

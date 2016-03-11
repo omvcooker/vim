@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1081
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1081
+Problem:    No test for what previously caused a crash.
+Solution:   Add test for unletting errmsg.
+Files:      src/testdir/test_unlet.vim
+
+
+*** ../vim-7.4.1080/src/testdir/test_unlet.vim	2016-01-04 22:05:08.854156424 +0100
+--- src/testdir/test_unlet.vim	2016-01-09 17:54:44.889845359 +0100
+***************
+*** 7,12 ****
+--- 7,18 ----
+    catch
+      call assert_true(v:exception =~ ':E795:')
+    endtry
++   try
++     " this caused a crash
++     unlet errmsg
++   catch
++     call assert_true(v:exception =~ ':E795:')
++   endtry
+  endfunc
+  
+  func Test_existing()
+*** ../vim-7.4.1080/src/version.c	2016-01-10 16:07:39.852871771 +0100
+--- src/version.c	2016-01-10 16:08:59.440016098 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1081,
+  /**/
+
+-- 
+I am always surprised in the Linux world how quickly solutions can be
+obtained.  (Imagine sending an email to Bill Gates, asking why Windows
+crashed, and how to fix it...  and then getting an answer that fixed the
+problem... <0>_<0> !)		              -- Mark Langdon
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

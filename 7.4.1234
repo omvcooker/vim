@@ -1,0 +1,188 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1234
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1234
+Problem:    Demo server only runs with Python 2.
+Solution:   Make it run with Python 3 as well. (Ken Takata)
+Files:      runtime/tools/demoserver.py
+
+
+*** ../vim-7.4.1233/runtime/tools/demoserver.py	2016-01-28 22:36:15.056065002 +0100
+--- runtime/tools/demoserver.py	2016-02-01 21:54:33.388772528 +0100
+***************
+*** 11,59 ****
+  #
+  # See ":help channel-demo" in Vim.
+  
+! import SocketServer
+  import json
+  import socket
+  import sys
+  import threading
+  
+  thesocket = None
+  
+! class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
+  
+      def handle(self):
+!         print "=== socket opened ==="
+          global thesocket
+          thesocket = self.request
+          while True:
+              try:
+!                 data = self.request.recv(4096)
+              except socket.error:
+!                 print "=== socket error ==="
+                  break
+              except IOError:
+!                 print "=== socket closed ==="
+                  break
+              if data == '':
+!                 print "=== socket closed ==="
+                  break
+!             print "received: {}".format(data)
+              try:
+                  decoded = json.loads(data)
+              except ValueError:
+!                 print "json decoding failed"
+!                 decoded = [0, '']
+  
+!             if decoded[1] == 'hello!':
+!                 response = "got it"
+!             else:
+!                 response = "what?"
+!             encoded = json.dumps([decoded[0], response])
+!             print "sending {}".format(encoded)
+!             self.request.sendall(encoded)
+          thesocket = None
+  
+! class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+      pass
+  
+  if __name__ == "__main__":
+--- 11,69 ----
+  #
+  # See ":help channel-demo" in Vim.
+  
+! from __future__ import print_function
+  import json
+  import socket
+  import sys
+  import threading
+  
++ try:
++     # Python 3
++     import socketserver
++ except ImportError:
++     # Python 2
++     import SocketServer as socketserver
++ 
+  thesocket = None
+  
+! class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+  
+      def handle(self):
+!         print("=== socket opened ===")
+          global thesocket
+          thesocket = self.request
+          while True:
+              try:
+!                 data = self.request.recv(4096).decode('utf-8')
+              except socket.error:
+!                 print("=== socket error ===")
+                  break
+              except IOError:
+!                 print("=== socket closed ===")
+                  break
+              if data == '':
+!                 print("=== socket closed ===")
+                  break
+!             print("received: {}".format(data))
+              try:
+                  decoded = json.loads(data)
+              except ValueError:
+!                 print("json decoding failed")
+!                 decoded = [-1, '']
+  
+!             # Send a response if the sequence number is positive.
+!             # Negative numbers are used for "eval" responses.
+!             if decoded[0] >= 0:
+!                 if decoded[1] == 'hello!':
+!                     response = "got it"
+!                 else:
+!                     response = "what?"
+!                 encoded = json.dumps([decoded[0], response])
+!                 print("sending {}".format(encoded))
+!                 self.request.sendall(encoded.encode('utf-8'))
+          thesocket = None
+  
+! class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+      pass
+  
+  if __name__ == "__main__":
+***************
+*** 69,87 ****
+      # Exit the server thread when the main thread terminates
+      server_thread.daemon = True
+      server_thread.start()
+!     print "Server loop running in thread: ", server_thread.name
+  
+!     print "Listening on port {}".format(PORT)
+      while True:
+          typed = sys.stdin.readline()
+          if "quit" in typed:
+!             print "Goodbye!"
+              break
+          if thesocket is None:
+!             print "No socket yet"
+          else:
+!             print "sending {}".format(typed)
+!             thesocket.sendall(typed)
+  
+      server.shutdown()
+      server.server_close()
+--- 79,97 ----
+      # Exit the server thread when the main thread terminates
+      server_thread.daemon = True
+      server_thread.start()
+!     print("Server loop running in thread: ", server_thread.name)
+  
+!     print("Listening on port {}".format(PORT))
+      while True:
+          typed = sys.stdin.readline()
+          if "quit" in typed:
+!             print("Goodbye!")
+              break
+          if thesocket is None:
+!             print("No socket yet")
+          else:
+!             print("sending {}".format(typed))
+!             thesocket.sendall(typed.encode('utf-8'))
+  
+      server.shutdown()
+      server.server_close()
+*** ../vim-7.4.1233/src/version.c	2016-02-01 21:47:06.749437720 +0100
+--- src/version.c	2016-02-01 21:55:46.456009503 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1234,
+  /**/
+
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+92. It takes you two hours to check all 14 of your mailboxes.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

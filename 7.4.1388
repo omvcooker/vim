@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1388
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1388
+Problem:    Compiler warning. (Cesar Romani)
+Solution:   Initialize variable.
+Files:      src/ex_cmds2.c
+
+
+*** ../vim-7.4.1387/src/ex_cmds2.c	2016-02-21 23:01:47.441323390 +0100
+--- src/ex_cmds2.c	2016-02-22 17:50:47.785044102 +0100
+***************
+*** 3058,3071 ****
+      int oldlen;
+      int addlen;
+  
+!     p4 = p3 = p2 = p1 = get_past_head(fname);
+      for (p = p1; *p; mb_ptr_adv(p))
+-     {
+  	if (vim_ispathsep_nocolon(*p))
+  	{
+  	    p6 = p5; p5 = p4; p4 = p3; p3 = p2; p2 = p1; p1 = p;
+  	}
+-     }
+  
+      /* now we have:
+       * rtp/pack/name/ever/name/plugin/name.vim
+--- 3058,3069 ----
+      int oldlen;
+      int addlen;
+  
+!     p6 = p5 = p4 = p3 = p2 = p1 = get_past_head(fname);
+      for (p = p1; *p; mb_ptr_adv(p))
+  	if (vim_ispathsep_nocolon(*p))
+  	{
+  	    p6 = p5; p5 = p4; p4 = p3; p3 = p2; p2 = p1; p1 = p;
+  	}
+  
+      /* now we have:
+       * rtp/pack/name/ever/name/plugin/name.vim
+*** ../vim-7.4.1387/src/version.c	2016-02-22 20:06:58.364796245 +0100
+--- src/version.c	2016-02-22 20:18:16.617815253 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1388,
+  /**/
+
+-- 
+"Hegel was right when he said that we learn from history that man can
+never learn anything from history."       (George Bernard Shaw)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

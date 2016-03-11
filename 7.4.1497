@@ -1,0 +1,143 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1497
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1497
+Problem:    Cursor drawing problem with GTK 3.
+Solution:   Handle blinking differently. (Kazunobu Kuriyama)
+Files:      src/gui_gtk_x11.c
+
+
+*** ../vim-7.4.1496/src/gui_gtk_x11.c	2016-03-04 23:08:21.908818684 +0100
+--- src/gui_gtk_x11.c	2016-03-05 22:37:38.443014673 +0100
+***************
+*** 617,625 ****
+   */
+  #if GTK_CHECK_VERSION(3,0,0)
+  static gboolean is_key_pressed = FALSE;
+  
+  static gboolean gui_gtk_is_blink_on(void);
+- static gboolean gui_gtk_is_no_blink(void);
+  static void gui_gtk_window_clear(GdkWindow *win);
+  
+      static void
+--- 617,625 ----
+   */
+  #if GTK_CHECK_VERSION(3,0,0)
+  static gboolean is_key_pressed = FALSE;
++ static gboolean blink_mode = TRUE;
+  
+  static gboolean gui_gtk_is_blink_on(void);
+  static void gui_gtk_window_clear(GdkWindow *win);
+  
+      static void
+***************
+*** 649,655 ****
+      cond |= gui_gtk_is_blink_on();
+      cond |= is_key_pressed;
+      cond |= gui.in_focus == FALSE;
+-     cond |= gui_gtk_is_no_blink();
+      return  cond;
+  }
+  
+--- 649,654 ----
+***************
+*** 681,687 ****
+  	    for (i = 0; i < list->num_rectangles; i++)
+  	    {
+  		const cairo_rectangle_t rect = list->rectangles[i];
+! 		gui_gtk3_redraw(rect.x, rect.y, rect.width, rect.height);
+  	    }
+  	}
+  	cairo_rectangle_list_destroy(list);
+--- 680,689 ----
+  	    for (i = 0; i < list->num_rectangles; i++)
+  	    {
+  		const cairo_rectangle_t rect = list->rectangles[i];
+! 		if (blink_mode)
+! 		    gui_gtk3_redraw(rect.x, rect.y, rect.width, rect.height);
+! 		else
+! 		    gui_redraw(rect.x, rect.y, rect.width, rect.height);
+  	    }
+  	}
+  	cairo_rectangle_list_destroy(list);
+***************
+*** 790,809 ****
+  {
+      return blink_state == BLINK_ON;
+  }
+- 
+-     static gboolean
+- gui_gtk_is_no_blink(void)
+- {
+-     return blink_waittime == 0 || blink_ontime == 0 || blink_offtime == 0;
+- }
+  #endif
+  
+      void
+  gui_mch_set_blinking(long waittime, long on, long off)
+  {
+      blink_waittime = waittime;
+      blink_ontime = on;
+      blink_offtime = off;
+  }
+  
+  /*
+--- 792,824 ----
+  {
+      return blink_state == BLINK_ON;
+  }
+  #endif
+  
+      void
+  gui_mch_set_blinking(long waittime, long on, long off)
+  {
++ #if GTK_CHECK_VERSION(3,0,0)
++     if (waittime == 0 || on == 0 || off == 0)
++     {
++ 	blink_mode = FALSE;
++ 
++ 	blink_waittime = 700;
++ 	blink_ontime = 400;
++ 	blink_offtime = 250;
++     }
++     else
++     {
++ 	blink_mode = TRUE;
++ 
++ 	blink_waittime = waittime;
++ 	blink_ontime = on;
++ 	blink_offtime = off;
++     }
++ #else
+      blink_waittime = waittime;
+      blink_ontime = on;
+      blink_offtime = off;
++ #endif
+  }
+  
+  /*
+*** ../vim-7.4.1496/src/version.c	2016-03-05 22:19:37.278622998 +0100
+--- src/version.c	2016-03-05 22:39:30.061809419 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1497,
+  /**/
+
+-- 
+Engineers will go without food and hygiene for days to solve a problem.
+(Other times just because they forgot.)
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

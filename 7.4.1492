@@ -1,0 +1,197 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1492
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1492
+Problem:    No command line completion for ":packadd".
+Solution:   Implement completion. (Hirohito Higashi)
+Files:      src/ex_docmd.c, src/ex_getln.c, src/testdir/test_packadd.vim,
+            src/vim.h
+
+
+*** ../vim-7.4.1491/src/ex_docmd.c	2016-03-03 12:22:48.566553964 +0100
+--- src/ex_docmd.c	2016-03-05 17:30:29.864188911 +0100
+***************
+*** 4198,4203 ****
+--- 4198,4208 ----
+  	    xp->xp_pattern = arg;
+  	    break;
+  
++ 	case CMD_packadd:
++ 	    xp->xp_context = EXPAND_PACKADD;
++ 	    xp->xp_pattern = arg;
++ 	    break;
++ 
+  #if (defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
+  	&& (defined(FEAT_GETTEXT) || defined(FEAT_MBYTE))
+  	case CMD_language:
+***************
+*** 5846,5851 ****
+--- 5851,5857 ----
+      {EXPAND_SYNTIME, "syntime"},
+  #endif
+      {EXPAND_SETTINGS, "option"},
++     {EXPAND_PACKADD, "packadd"},
+      {EXPAND_SHELLCMD, "shellcmd"},
+  #if defined(FEAT_SIGNS)
+      {EXPAND_SIGN, "sign"},
+*** ../vim-7.4.1491/src/ex_getln.c	2016-02-27 18:13:05.232593151 +0100
+--- src/ex_getln.c	2016-03-05 17:30:29.864188911 +0100
+***************
+*** 112,117 ****
+--- 112,118 ----
+  #ifdef FEAT_CMDL_COMPL
+  static int	expand_shellcmd(char_u *filepat, int *num_file, char_u ***file, int flagsarg);
+  static int	ExpandRTDir(char_u *pat, int *num_file, char_u ***file, char *dirname[]);
++ static int	ExpandPackAddDir(char_u *pat, int *num_file, char_u ***file);
+  # ifdef FEAT_CMDHIST
+  static char_u	*get_history_arg(expand_T *xp, int idx);
+  # endif
+***************
+*** 4231,4236 ****
+--- 4232,4238 ----
+  		|| context == EXPAND_COMPILER
+  		|| context == EXPAND_OWNSYNTAX
+  		|| context == EXPAND_FILETYPE
++ 		|| context == EXPAND_PACKADD
+  		|| (context == EXPAND_TAGS && fname[0] == '/'))
+  	    retval = vim_strnsave(fname, len);
+  	else
+***************
+*** 4647,4652 ****
+--- 4649,4656 ----
+      if (xp->xp_context == EXPAND_USER_LIST)
+  	return ExpandUserList(xp, num_file, file);
+  # endif
++     if (xp->xp_context == EXPAND_PACKADD)
++ 	return ExpandPackAddDir(pat, num_file, file);
+  
+      regmatch.regprog = vim_regcomp(pat, p_magic ? RE_MAGIC : 0);
+      if (regmatch.regprog == NULL)
+***************
+*** 5169,5174 ****
+--- 5173,5230 ----
+      }
+  
+      if (ga.ga_len == 0)
++ 	return FAIL;
++ 
++     /* Sort and remove duplicates which can happen when specifying multiple
++      * directories in dirnames. */
++     remove_duplicates(&ga);
++ 
++     *file = ga.ga_data;
++     *num_file = ga.ga_len;
++     return OK;
++ }
++ 
++ /*
++  * Expand loadplugin names:
++  * 'packpath'/pack/ * /opt/{pat}
++  */
++     static int
++ ExpandPackAddDir(
++     char_u	*pat,
++     int		*num_file,
++     char_u	***file)
++ {
++     char_u	*s;
++     char_u	*e;
++     char_u	*match;
++     garray_T	ga;
++     int		i;
++     int		pat_len;
++ 
++     *num_file = 0;
++     *file = NULL;
++     pat_len = (int)STRLEN(pat);
++     ga_init2(&ga, (int)sizeof(char *), 10);
++ 
++     s = alloc((unsigned)(pat_len + 26));
++     if (s == NULL)
++     {
++ 	ga_clear_strings(&ga);
++ 	return FAIL;
++     }
++     sprintf((char *)s, "pack/*/opt/%s*", pat);
++     globpath(p_pp, s, &ga, 0);
++     vim_free(s);
++ 
++     for (i = 0; i < ga.ga_len; ++i)
++     {
++ 	match = ((char_u **)ga.ga_data)[i];
++ 	s = gettail(match);
++ 	e = s + STRLEN(s);
++ 	mch_memmove(match, s, e - s + 1);
++     }
++ 
++     if (ga.ga_len == 0)
+  	return FAIL;
+  
+      /* Sort and remove duplicates which can happen when specifying multiple
+*** ../vim-7.4.1491/src/testdir/test_packadd.vim	2016-03-04 22:12:07.448524475 +0100
+--- src/testdir/test_packadd.vim	2016-03-05 17:30:29.864188911 +0100
+***************
+*** 55,57 ****
+--- 55,78 ----
+    packadd! mytest
+    call assert_equal(new_rtp, &rtp)
+  endfunc
++ 
++ " Check command-line completion for 'packadd'
++ func Test_packadd_completion()
++   let optdir1 = &packpath . '/pack/mine/opt'
++   let optdir2 = &packpath . '/pack/candidate/opt'
++ 
++   call mkdir(optdir1 . '/pluginA', 'p')
++   call mkdir(optdir1 . '/pluginC', 'p')
++   call mkdir(optdir2 . '/pluginB', 'p')
++   call mkdir(optdir2 . '/pluginC', 'p')
++ 
++   let li = []
++   call feedkeys(":packadd \<Tab>')\<C-B>call add(li, '\<CR>", 't')
++   call feedkeys(":packadd " . repeat("\<Tab>", 2) . "')\<C-B>call add(li, '\<CR>", 't')
++   call feedkeys(":packadd " . repeat("\<Tab>", 3) . "')\<C-B>call add(li, '\<CR>", 't')
++   call feedkeys(":packadd " . repeat("\<Tab>", 4) . "')\<C-B>call add(li, '\<CR>", 'tx')
++   call assert_equal("packadd pluginA", li[0])
++   call assert_equal("packadd pluginB", li[1])
++   call assert_equal("packadd pluginC", li[2])
++   call assert_equal("packadd ", li[3])
++ endfunc
+*** ../vim-7.4.1491/src/vim.h	2016-02-27 18:13:05.240593068 +0100
+--- src/vim.h	2016-03-05 17:30:29.864188911 +0100
+***************
+*** 757,762 ****
+--- 757,763 ----
+  #define EXPAND_USER		42
+  #define EXPAND_SYNTIME		43
+  #define EXPAND_USER_ADDR_TYPE	44
++ #define EXPAND_PACKADD		45
+  
+  /* Values for exmode_active (0 is no exmode) */
+  #define EXMODE_NORMAL		1
+*** ../vim-7.4.1491/src/version.c	2016-03-05 17:25:34.791256346 +0100
+--- src/version.c	2016-03-05 17:29:58.268517380 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1492,
+  /**/
+
+-- 
+If your company is not involved in something called "ISO 9000" you probably
+have no idea what it is.  If your company _is_ involved in ISO 9000 then you
+definitely have no idea what it is.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

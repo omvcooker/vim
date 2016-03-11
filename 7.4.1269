@@ -1,0 +1,171 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1269
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1269
+Problem:    Encoding {'key':} to JSON doesn't give an error (Tyru)
+Solution:   Give an error.
+Files:      src/json.c, src/testdir/test_json.vim
+
+
+*** ../vim-7.4.1268/src/json.c	2016-02-04 22:49:45.691504756 +0100
+--- src/json.c	2016-02-06 18:32:27.577923277 +0100
+***************
+*** 16,22 ****
+  #include "vim.h"
+  
+  #if defined(FEAT_EVAL) || defined(PROTO)
+! static int json_encode_item(garray_T *gap, typval_T *val, int copyID);
+  static int json_decode_item(js_read_T *reader, typval_T *res);
+  
+  /*
+--- 16,22 ----
+  #include "vim.h"
+  
+  #if defined(FEAT_EVAL) || defined(PROTO)
+! static int json_encode_item(garray_T *gap, typval_T *val, int copyID, int allow_none);
+  static int json_decode_item(js_read_T *reader, typval_T *res);
+  
+  /*
+***************
+*** 29,35 ****
+  
+      /* Store bytes in the growarray. */
+      ga_init2(&ga, 1, 4000);
+!     json_encode_item(&ga, val, get_copyID());
+      return ga.ga_data;
+  }
+  
+--- 29,35 ----
+  
+      /* Store bytes in the growarray. */
+      ga_init2(&ga, 1, 4000);
+!     json_encode_item(&ga, val, get_copyID(), TRUE);
+      return ga.ga_data;
+  }
+  
+***************
+*** 121,127 ****
+   * Return FAIL or OK.
+   */
+      static int
+! json_encode_item(garray_T *gap, typval_T *val, int copyID)
+  {
+      char_u	numbuf[NUMBUFLEN];
+      char_u	*res;
+--- 121,127 ----
+   * Return FAIL or OK.
+   */
+      static int
+! json_encode_item(garray_T *gap, typval_T *val, int copyID, int allow_none)
+  {
+      char_u	numbuf[NUMBUFLEN];
+      char_u	*res;
+***************
+*** 135,141 ****
+  	    {
+  		case VVAL_FALSE: ga_concat(gap, (char_u *)"false"); break;
+  		case VVAL_TRUE: ga_concat(gap, (char_u *)"true"); break;
+! 		case VVAL_NONE: break;
+  		case VVAL_NULL: ga_concat(gap, (char_u *)"null"); break;
+  	    }
+  	    break;
+--- 135,144 ----
+  	    {
+  		case VVAL_FALSE: ga_concat(gap, (char_u *)"false"); break;
+  		case VVAL_TRUE: ga_concat(gap, (char_u *)"true"); break;
+! 		case VVAL_NONE: if (!allow_none)
+! 				    /* TODO: better error */
+! 				    EMSG(_(e_invarg));
+! 				break;
+  		case VVAL_NULL: ga_concat(gap, (char_u *)"null"); break;
+  	    }
+  	    break;
+***************
+*** 152,158 ****
+  	    break;
+  
+  	case VAR_FUNC:
+! 	    /* no JSON equivalent */
+  	    EMSG(_(e_invarg));
+  	    return FAIL;
+  
+--- 155,161 ----
+  	    break;
+  
+  	case VAR_FUNC:
+! 	    /* no JSON equivalent TODO: better error */
+  	    EMSG(_(e_invarg));
+  	    return FAIL;
+  
+***************
+*** 172,178 ****
+  		    ga_append(gap, '[');
+  		    for (li = l->lv_first; li != NULL && !got_int; )
+  		    {
+! 			if (json_encode_item(gap, &li->li_tv, copyID) == FAIL)
+  			    return FAIL;
+  			li = li->li_next;
+  			if (li != NULL)
+--- 175,182 ----
+  		    ga_append(gap, '[');
+  		    for (li = l->lv_first; li != NULL && !got_int; )
+  		    {
+! 			if (json_encode_item(gap, &li->li_tv, copyID, TRUE)
+! 								      == FAIL)
+  			    return FAIL;
+  			li = li->li_next;
+  			if (li != NULL)
+***************
+*** 213,219 ****
+  			    write_string(gap, hi->hi_key);
+  			    ga_append(gap, ':');
+  			    if (json_encode_item(gap, &dict_lookup(hi)->di_tv,
+! 							      copyID) == FAIL)
+  				return FAIL;
+  			}
+  		    ga_append(gap, '}');
+--- 217,223 ----
+  			    write_string(gap, hi->hi_key);
+  			    ga_append(gap, ':');
+  			    if (json_encode_item(gap, &dict_lookup(hi)->di_tv,
+! 						       copyID, FALSE) == FAIL)
+  				return FAIL;
+  			}
+  		    ga_append(gap, '}');
+*** ../vim-7.4.1268/src/testdir/test_json.vim	2016-01-24 16:49:06.227712998 +0100
+--- src/testdir/test_json.vim	2016-02-06 18:35:20.584136615 +0100
+***************
+*** 74,79 ****
+--- 74,80 ----
+  
+    call assert_fails('echo jsonencode(function("tr"))', 'E474:')
+    call assert_fails('echo jsonencode([function("tr")])', 'E474:')
++   call assert_fails('echo jsonencode({"key":v:none})', 'E474:')
+  endfunc
+  
+  func Test_decode()
+*** ../vim-7.4.1268/src/version.c	2016-02-06 18:18:49.158400089 +0100
+--- src/version.c	2016-02-06 18:33:33.937238017 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1269,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+160. You get in the elevator and double-click the button for the floor
+     you want.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

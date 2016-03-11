@@ -1,0 +1,72 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1277
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1277
+Problem:    Compiler can complain about missing enum value in switch with some
+            combination of features.
+Solution:   Remove #ifdefs around case statements.
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1276/src/eval.c	2016-02-07 14:53:14.642122390 +0100
+--- src/eval.c	2016-02-07 15:50:38.946247068 +0100
+***************
+*** 19869,19877 ****
+  	case VAR_FUNC:   n = 2; break;
+  	case VAR_LIST:   n = 3; break;
+  	case VAR_DICT:   n = 4; break;
+- #ifdef FEAT_FLOAT
+  	case VAR_FLOAT:  n = 5; break;
+- #endif
+  	case VAR_SPECIAL:
+  	     if (argvars[0].vval.v_number == VVAL_FALSE
+  		     || argvars[0].vval.v_number == VVAL_TRUE)
+--- 19869,19875 ----
+***************
+*** 19879,19887 ****
+  	     else
+  		 n = 7;
+  	     break;
+- #ifdef FEAT_JOB
+  	case VAR_JOB:    n = 8; break;
+- #endif
+  	case VAR_UNKNOWN:
+  	     EMSG2(_(e_intern2), "f_type(UNKNOWN)");
+  	     n = -1;
+--- 19877,19883 ----
+***************
+*** 24904,24912 ****
+  		{
+  		    case VAR_STRING: s = "STR"; break;
+  		    case VAR_NUMBER: s = "NUM"; break;
+- #ifdef FEAT_FLOAT
+  		    case VAR_FLOAT:  s = "FLO"; break;
+- #endif
+  		    case VAR_DICT:   s = "DIC"; break;
+  		    case VAR_LIST:   s = "LIS"; break;
+  		    case VAR_SPECIAL: s = "XPL"; break;
+--- 24900,24906 ----
+*** ../vim-7.4.1276/src/version.c	2016-02-07 15:13:56.085193214 +0100
+--- src/version.c	2016-02-07 15:51:36.441649574 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1277,
+  /**/
+
+-- 
+"The question of whether computers can think is just like the question
+of whether submarines can swim."      -- Edsger W. Dijkstra
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

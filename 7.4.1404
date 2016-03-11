@@ -1,0 +1,394 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1404
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1404
+Problem:    ch_read() doesn't time out on MS-Windows.
+Solution:   Instead of WM_NETBEANS use select(). (Yukihiro Nakadaira)
+Files:      src/channel.c, src/gui_w32.c, src/os_win32.c, src/structs.h,
+            src/testdir/test_channel.vim, src/vim.h
+
+
+*** ../vim-7.4.1403/src/channel.c	2016-02-23 17:13:56.873032372 +0100
+--- src/channel.c	2016-02-23 19:25:12.687075841 +0100
+***************
+*** 52,61 ****
+  # define fd_close(sd) close(sd)
+  #endif
+  
+- #ifdef FEAT_GUI_W32
+- extern HWND s_hwnd;			/* Gvim's Window handle */
+- #endif
+- 
+  #ifdef WIN32
+      static int
+  fd_read(sock_T fd, char *buf, size_t len)
+--- 52,57 ----
+***************
+*** 296,304 ****
+  #ifdef FEAT_GUI_GTK
+  	channel->ch_part[part].ch_inputHandler = 0;
+  #endif
+- #ifdef FEAT_GUI_W32
+- 	channel->ch_part[part].ch_inputHandler = -1;
+- #endif
+  	channel->ch_part[part].ch_timeout = 2000;
+      }
+  
+--- 292,297 ----
+***************
+*** 421,435 ****
+  		messageFromNetbeans,
+  		(gpointer)(long)channel->ch_part[part].ch_fd);
+  #   endif
+- #  else
+- #   ifdef FEAT_GUI_W32
+-     /* Tell Windows we are interested in receiving message when there
+-      * is input on the editor connection socket.  */
+-     if (channel->ch_part[part].ch_inputHandler == -1)
+- 	channel->ch_part[part].ch_inputHandler = WSAAsyncSelect(
+- 		channel->ch_part[part].ch_fd,
+- 		s_hwnd, WM_NETBEANS, FD_READ);
+- #   endif
+  #  endif
+  # endif
+  }
+--- 414,419 ----
+***************
+*** 491,504 ****
+  #   endif
+  	    channel->ch_part[part].ch_inputHandler = 0;
+  	}
+- #  else
+- #   ifdef FEAT_GUI_W32
+- 	if (channel->ch_part[part].ch_inputHandler == 0)
+- 	{
+- 	    WSAAsyncSelect(channel->ch_part[part].ch_fd, s_hwnd, 0, 0);
+- 	    channel->ch_part[part].ch_inputHandler = -1;
+- 	}
+- #   endif
+  #  endif
+  # endif
+      }
+--- 475,480 ----
+***************
+*** 1630,1636 ****
+  /*
+   * Check for reading from "fd" with "timeout" msec.
+   * Return FAIL when there is nothing to read.
+-  * Always returns OK for FEAT_GUI_W32.
+   */
+      static int
+  channel_wait(channel_T *channel, sock_T fd, int timeout)
+--- 1606,1611 ----
+***************
+*** 1662,1673 ****
+      else
+  #endif
+      {
+! #if defined(FEAT_GUI_W32)
+! 	/* Can't check socket for Win32 GUI, always return OK. */
+! 	ch_log(channel, "Can't check, assuming there is something to read");
+! 	return OK;
+! #else
+! # if defined(HAVE_SELECT)
+  	struct timeval	tval;
+  	fd_set		rfds;
+  	int			ret;
+--- 1637,1643 ----
+      else
+  #endif
+      {
+! #if defined(HAVE_SELECT)
+  	struct timeval	tval;
+  	fd_set		rfds;
+  	int			ret;
+***************
+*** 1679,1701 ****
+  	for (;;)
+  	{
+  	    ret = select((int)fd + 1, &rfds, NULL, NULL, &tval);
+! #  ifdef EINTR
+  	    SOCK_ERRNO;
+  	    if (ret == -1 && errno == EINTR)
+  		continue;
+! #  endif
+  	    if (ret > 0)
+  		return OK;
+  	    break;
+  	}
+! # else
+  	struct pollfd	fds;
+  
+  	fds.fd = fd;
+  	fds.events = POLLIN;
+  	if (poll(&fds, 1, timeout) > 0)
+  	    return OK;
+- # endif
+  #endif
+      }
+      ch_log(channel, "Nothing to read");
+--- 1649,1670 ----
+  	for (;;)
+  	{
+  	    ret = select((int)fd + 1, &rfds, NULL, NULL, &tval);
+! # ifdef EINTR
+  	    SOCK_ERRNO;
+  	    if (ret == -1 && errno == EINTR)
+  		continue;
+! # endif
+  	    if (ret > 0)
+  		return OK;
+  	    break;
+  	}
+! #else
+  	struct pollfd	fds;
+  
+  	fds.fd = fd;
+  	fds.events = POLLIN;
+  	if (poll(&fds, 1, timeout) > 0)
+  	    return OK;
+  #endif
+      }
+      ch_log(channel, "Nothing to read");
+***************
+*** 1764,1779 ****
+  	if (len < MAXMSGSIZE)
+  	    break;	/* did read everything that's available */
+      }
+- #ifdef FEAT_GUI_W32
+-     if (use_socket && len == SOCKET_ERROR)
+-     {
+- 	/* For Win32 GUI channel_wait() always returns OK and we handle the
+- 	 * situation that there is nothing to read here.
+- 	 * TODO: how about a timeout? */
+- 	if (WSAGetLastError() == WSAEWOULDBLOCK)
+- 	    return;
+-     }
+- #endif
+  
+      /* Reading a disconnection (readlen == 0), or an error.
+       * TODO: call error callback. */
+--- 1733,1738 ----
+***************
+*** 1970,1986 ****
+  
+      for (channel = first_channel; channel != NULL; channel = channel->ch_next)
+      {
+! #  ifdef FEAT_GUI_W32
+! 	/* only check the pipes */
+! 	for (part = PART_OUT; part <= PART_ERR; ++part)
+! #  else
+! #   ifdef CHANNEL_PIPES
+  	/* check the socket and pipes */
+  	for (part = PART_SOCK; part <= PART_ERR; ++part)
+! #   else
+  	/* only check the socket */
+  	part = PART_SOCK;
+- #   endif
+  #  endif
+  	{
+  	    fd = channel->ch_part[part].ch_fd;
+--- 1929,1940 ----
+  
+      for (channel = first_channel; channel != NULL; channel = channel->ch_next)
+      {
+! #  ifdef CHANNEL_PIPES
+  	/* check the socket and pipes */
+  	for (part = PART_SOCK; part <= PART_ERR; ++part)
+! #  else
+  	/* only check the socket */
+  	part = PART_SOCK;
+  #  endif
+  	{
+  	    fd = channel->ch_part[part].ch_fd;
+*** ../vim-7.4.1403/src/gui_w32.c	2016-02-21 17:20:51.179001562 +0100
+--- src/gui_w32.c	2016-02-23 19:23:52.923917190 +0100
+***************
+*** 1927,1950 ****
+      }
+  #endif
+  
+- #ifdef FEAT_CHANNEL
+-     if (msg.message == WM_NETBEANS)
+-     {
+- 	int	    part;
+- 	channel_T   *channel = channel_fd2channel((sock_T)msg.wParam, &part);
+- 
+- 	if (channel != NULL)
+- 	{
+- 	    /* Disable error messages, they can mess up the display and throw
+- 	     * an exception. */
+- 	    ++emsg_off;
+- 	    channel_read(channel, part, "process_message");
+- 	    --emsg_off;
+- 	}
+- 	return;
+-     }
+- #endif
+- 
+  #ifdef FEAT_SNIFF
+      if (sniff_request_waiting && want_sniff_request)
+      {
+--- 1927,1932 ----
+***************
+*** 2245,2251 ****
+  	}
+  
+  #ifdef MESSAGE_QUEUE
+! 	parse_queued_messages();
+  #endif
+  
+  	/*
+--- 2227,2244 ----
+  	}
+  
+  #ifdef MESSAGE_QUEUE
+! 	/* Check channel while waiting message. */
+! 	for (;;)
+! 	{
+! 	    MSG msg;
+! 
+! 	    parse_queued_messages();
+! 
+! 	    if (pPeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE)
+! 		|| MsgWaitForMultipleObjects(0, NULL, FALSE, 100, QS_ALLEVENTS)
+! 								!= WAIT_TIMEOUT)
+! 		break;
+! 	}
+  #endif
+  
+  	/*
+*** ../vim-7.4.1403/src/os_win32.c	2016-02-21 19:31:58.121130722 +0100
+--- src/os_win32.c	2016-02-23 19:23:52.927917148 +0100
+***************
+*** 1492,1497 ****
+--- 1492,1502 ----
+  	{
+  	    DWORD dwWaitTime = dwEndTime - dwNow;
+  
++ #ifdef FEAT_CHANNEL
++ 	    /* Check channel while waiting input. */
++ 	    if (dwWaitTime > 100)
++ 		dwWaitTime = 100;
++ #endif
+  #ifdef FEAT_MZSCHEME
+  	    if (mzthreads_allowed() && p_mzq > 0
+  				    && (msec < 0 || (long)dwWaitTime > p_mzq))
+*** ../vim-7.4.1403/src/structs.h	2016-02-23 17:13:56.885032246 +0100
+--- src/structs.h	2016-02-23 19:23:52.927917148 +0100
+***************
+*** 1336,1344 ****
+  #ifdef FEAT_GUI_GTK
+      gint	ch_inputHandler; /* Cookie for input */
+  #endif
+- #ifdef WIN32
+-     int		ch_inputHandler; /* ret.value of WSAAsyncSelect() */
+- #endif
+  
+      ch_mode_T	ch_mode;
+      int		ch_timeout;	/* request timeout in msec */
+--- 1336,1341 ----
+*** ../vim-7.4.1403/src/testdir/test_channel.vim	2016-02-23 13:20:18.466462173 +0100
+--- src/testdir/test_channel.vim	2016-02-23 19:23:58.759855625 +0100
+***************
+*** 131,140 ****
+      call assert_false(1, 's:responseHandle was not set')
+    else
+      call assert_equal(handle, s:responseHandle)
+    endif
+    call assert_equal('got it', s:responseMsg)
+  
+-   unlet s:responseHandle
+    let s:responseMsg = ''
+    call ch_sendexpr(handle, 'hello!', {'callback': function('s:RequestHandler')})
+    sleep 10m
+--- 131,140 ----
+      call assert_false(1, 's:responseHandle was not set')
+    else
+      call assert_equal(handle, s:responseHandle)
++     unlet s:responseHandle
+    endif
+    call assert_equal('got it', s:responseMsg)
+  
+    let s:responseMsg = ''
+    call ch_sendexpr(handle, 'hello!', {'callback': function('s:RequestHandler')})
+    sleep 10m
+***************
+*** 142,147 ****
+--- 142,148 ----
+      call assert_false(1, 's:responseHandle was not set')
+    else
+      call assert_equal(handle, s:responseHandle)
++     unlet s:responseHandle
+    endif
+    call assert_equal('got it', s:responseMsg)
+  
+***************
+*** 186,200 ****
+    call assert_equal('ok', ch_sendexpr(handle, 'empty-request'))
+  
+    " Reading while there is nothing available.
+!   " TODO: make this work for MS-Windows
+!   if has('unix')
+!     call assert_equal(v:none, ch_read(handle, {'timeout': 0}))
+!     let start = reltime()
+!     call assert_equal(v:none, ch_read(handle, {'timeout': 333}))
+!     let elapsed = reltime(start)
+!     call assert_true(reltimefloat(elapsed) > 0.3)
+!     call assert_true(reltimefloat(elapsed) < 0.6)
+!   endif
+  
+    " Send without waiting for a response, then wait for a response.
+    call ch_sendexpr(handle, 'wait a bit',  {'callback': 0})
+--- 187,198 ----
+    call assert_equal('ok', ch_sendexpr(handle, 'empty-request'))
+  
+    " Reading while there is nothing available.
+!   call assert_equal(v:none, ch_read(handle, {'timeout': 0}))
+!   let start = reltime()
+!   call assert_equal(v:none, ch_read(handle, {'timeout': 333}))
+!   let elapsed = reltime(start)
+!   call assert_true(reltimefloat(elapsed) > 0.3)
+!   call assert_true(reltimefloat(elapsed) < 0.6)
+  
+    " Send without waiting for a response, then wait for a response.
+    call ch_sendexpr(handle, 'wait a bit',  {'callback': 0})
+*** ../vim-7.4.1403/src/vim.h	2016-02-23 14:52:31.901232005 +0100
+--- src/vim.h	2016-02-23 19:23:58.763855583 +0100
+***************
+*** 1897,1906 ****
+  #  ifdef FEAT_OLE
+  #   define WM_OLE (WM_APP+0)
+  #  endif
+- #  ifdef FEAT_CHANNEL
+-     /* message for channel socket event */
+- #   define WM_NETBEANS (WM_APP+1)
+- #  endif
+  # endif
+  
+  /* Info about selected text */
+--- 1897,1902 ----
+*** ../vim-7.4.1403/src/version.c	2016-02-23 18:55:38.033647023 +0100
+--- src/version.c	2016-02-23 19:23:17.352292457 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1404,
+  /**/
+
+-- 
+Did you ever stop to think...  and forget to start again?
+                                  -- Steven Wright
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

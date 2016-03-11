@@ -1,0 +1,113 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1265
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1265
+Problem:    Not all channel commands are tested.
+Solution:   Add a test for "normal", "expr" and "redraw".
+Files:      src/testdir/test_channel.py, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1264/src/testdir/test_channel.py	2016-02-05 22:49:50.681170583 +0100
+--- src/testdir/test_channel.py	2016-02-05 23:06:20.910832105 +0100
+***************
+*** 75,80 ****
+--- 75,86 ----
+                          print("sending: {}".format(cmd))
+                          self.request.sendall(cmd.encode('utf-8'))
+                          response = "ok"
++                     elif decoded[1] == 'do normal':
++                         # Send a normal command.
++                         cmd = '["normal","G$s more\u001b"]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = "ok"
+                      elif decoded[1] == 'eval-works':
+                          # Send an eval request.  We ignore the response.
+                          cmd = '["eval","\\"foo\\" . 123", -1]'
+***************
+*** 93,98 ****
+--- 99,120 ----
+                          print("sending: {}".format(cmd))
+                          self.request.sendall(cmd.encode('utf-8'))
+                          response = "ok"
++                     elif decoded[1] == 'an expr':
++                         # Send an expr request.
++                         cmd = '["expr","setline(\\"$\\", [\\"one\\",\\"two\\",\\"three\\"])"]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = "ok"
++                     elif decoded[1] == 'redraw':
++                         cmd = '["redraw",""]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = "ok"
++                     elif decoded[1] == 'redraw!':
++                         cmd = '["redraw","force"]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = "ok"
+                      elif decoded[1] == 'empty-request':
+                          cmd = '[]'
+                          print("sending: {}".format(cmd))
+*** ../vim-7.4.1264/src/testdir/test_channel.vim	2016-02-05 22:36:09.745738060 +0100
+--- src/testdir/test_channel.vim	2016-02-05 23:06:12.846916312 +0100
+***************
+*** 93,98 ****
+--- 93,102 ----
+    call assert_equal('added1', getline(line('$') - 1))
+    call assert_equal('added2', getline('$'))
+  
++   call assert_equal('ok', ch_sendexpr(handle, 'do normal'))
++   sleep 10m
++   call assert_equal('added more', getline('$'))
++ 
+    " Send a request with a specific handler.
+    call ch_sendexpr(handle, 'hello!', 's:RequestHandler')
+    sleep 10m
+***************
+*** 114,119 ****
+--- 118,136 ----
+    sleep 10m
+    call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
++   " Send an expr request
++   call assert_equal('ok', ch_sendexpr(handle, 'an expr'))
++   sleep 10m
++   call assert_equal('one', getline(line('$') - 2))
++   call assert_equal('two', getline(line('$') - 1))
++   call assert_equal('three', getline('$'))
++ 
++   " Request a redraw, we don't check for the effect.
++   call assert_equal('ok', ch_sendexpr(handle, 'redraw'))
++   call assert_equal('ok', ch_sendexpr(handle, 'redraw!'))
++ 
++   call assert_equal('ok', ch_sendexpr(handle, 'empty-request'))
++ 
+    " make the server quit, can't check if this works, should not hang.
+    call ch_sendexpr(handle, '!quit!', 0)
+  
+*** ../vim-7.4.1264/src/version.c	2016-02-05 22:49:50.681170583 +0100
+--- src/version.c	2016-02-05 23:07:46.409939323 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1265,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+148. You find it easier to dial-up the National Weather Service
+     Weather/your_town/now.html than to simply look out the window.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

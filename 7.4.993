@@ -1,0 +1,79 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.993
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.993
+Problem:    Test 87 is flaky on AppVeyor.
+Solution:   Reduce the minimum background thread count.
+Files:      src/testdir/test86.in, src/testdir/test87.in
+
+
+*** ../vim-7.4.992/src/testdir/test86.in	2015-12-11 20:53:54.090506042 +0100
+--- src/testdir/test86.in	2015-12-29 16:31:37.158690423 +0100
+***************
+*** 370,376 ****
+  :sleep 1
+  :py t.running = False
+  :py t.join()
+! :py l[0] = t.t > 7  # check if the background thread is working
+  :py del time
+  :py del threading
+  :py del t
+--- 370,378 ----
+  :sleep 1
+  :py t.running = False
+  :py t.join()
+! :" Check if the background thread is working.  Count should be 10, but on a
+! :" busy system (AppVeyor) it can be much lower.
+! :py l[0] = t.t > 4
+  :py del time
+  :py del threading
+  :py del t
+*** ../vim-7.4.992/src/testdir/test87.in	2015-12-11 20:53:54.090506042 +0100
+--- src/testdir/test87.in	2015-12-29 16:31:38.394677231 +0100
+***************
+*** 367,373 ****
+  :sleep 1
+  :py3 t.running = False
+  :py3 t.join()
+! :py3 l[0] = t.t > 7  # check if the background thread is working
+  :py3 del time
+  :py3 del threading
+  :py3 del t
+--- 367,375 ----
+  :sleep 1
+  :py3 t.running = False
+  :py3 t.join()
+! :" Check if the background thread is working.  Count should be 10, but on a
+! :" busy system (AppVeyor) it can be much lower.
+! :py3 l[0] = t.t > 4
+  :py3 del time
+  :py3 del threading
+  :py3 del t
+*** ../vim-7.4.992/src/version.c	2015-12-29 16:04:36.936145939 +0100
+--- src/version.c	2015-12-29 16:33:16.797626827 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     993,
+  /**/
+
+-- 
+ARTHUR:  Well, I AM king...
+DENNIS:  Oh king, eh, very nice.  An' how'd you get that, eh?  By exploitin'
+         the workers -- by 'angin' on to outdated imperialist dogma which
+         perpetuates the economic an' social differences in our society!  If
+         there's ever going to be any progress--
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

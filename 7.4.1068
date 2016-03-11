@@ -1,0 +1,94 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1068
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1068
+Problem:    Wrong way to check for unletting internal variables.
+Solution:   Use a better way. (Olaf Dabrunz)
+Files:      src/testdir/test_unlet.c, src/eval.c
+
+
+*** ../vim-7.4.1067/src/eval.c	2016-01-07 21:24:57.337499493 +0100
+--- src/eval.c	2016-01-09 18:01:06.553716389 +0100
+***************
+*** 3738,3762 ****
+      ht = find_var_ht(name, &varname);
+      if (ht != NULL && *varname != NUL)
+      {
+  	hi = hash_find(ht, varname);
+  	if (!HASHITEM_EMPTY(hi))
+  	{
+  	    di = HI2DI(hi);
+  	    if (var_check_fixed(di->di_flags, name, FALSE)
+! 		    || var_check_ro(di->di_flags, name, FALSE))
+! 		return FAIL;
+! 
+! 	    if (ht == &globvarht)
+! 		d = &globvardict;
+! 	    else if (current_funccal != NULL
+! 				 && ht == &current_funccal->l_vars.dv_hashtab)
+! 		d = &current_funccal->l_vars;
+! 	    else
+! 	    {
+! 		di = find_var_in_ht(ht, *name, (char_u *)"", FALSE);
+! 		d = di->di_tv.vval.v_dict;
+! 	    }
+! 	    if (d == NULL || tv_check_lock(d->dv_lock, name, FALSE))
+  		return FAIL;
+  
+  	    delete_var(ht, hi);
+--- 3738,3767 ----
+      ht = find_var_ht(name, &varname);
+      if (ht != NULL && *varname != NUL)
+      {
++ 	if (ht == &globvarht)
++ 	    d = &globvardict;
++ 	else if (current_funccal != NULL
++ 			     && ht == &current_funccal->l_vars.dv_hashtab)
++ 	    d = &current_funccal->l_vars;
++ 	else if (ht == &compat_hashtab)
++ 	    d = &vimvardict;
++ 	else
++ 	{
++ 	    di = find_var_in_ht(ht, *name, (char_u *)"", FALSE);
++ 	    d = di == NULL ? NULL : di->di_tv.vval.v_dict;
++ 	}
++ 	if (d == NULL)
++ 	{
++ 	    EMSG2(_(e_intern2), "do_unlet()");
++ 	    return FAIL;
++ 	}
+  	hi = hash_find(ht, varname);
+  	if (!HASHITEM_EMPTY(hi))
+  	{
+  	    di = HI2DI(hi);
+  	    if (var_check_fixed(di->di_flags, name, FALSE)
+! 		    || var_check_ro(di->di_flags, name, FALSE)
+! 		    || tv_check_lock(d->dv_lock, name, FALSE))
+  		return FAIL;
+  
+  	    delete_var(ht, hi);
+*** ../vim-7.4.1067/src/version.c	2016-01-09 17:49:11.485452004 +0100
+--- src/version.c	2016-01-09 17:56:08.364942320 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1068,
+  /**/
+
+-- 
+   Another bucket of what can only be described as human ordure hits ARTHUR.
+ARTHUR: ... Right!  (to the KNIGHTS) That settles it!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

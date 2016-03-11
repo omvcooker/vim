@@ -1,0 +1,106 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1459
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1459 (after 7.4.1457)
+Problem:    MS-Windows doesn't know socklen_t.
+Solution:   Use previous method for WIN32.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1458/src/channel.c	2016-02-28 22:21:34.296608846 +0100
+--- src/channel.c	2016-02-28 22:29:42.323448781 +0100
+***************
+*** 681,688 ****
+--- 681,690 ----
+  	    struct timeval	tv;
+  	    fd_set		rfds;
+  	    fd_set		wfds;
++ #ifndef WIN32
+  	    int			so_error = 0;
+  	    socklen_t		so_error_len = sizeof(so_error);
++ #endif
+  
+  	    FD_ZERO(&rfds);
+  	    FD_SET(sd, &rfds);
+***************
+*** 709,717 ****
+  		return NULL;
+  	    }
+  
+  	    /* On Win32: select() is expected to work and wait for up to the
+! 	     * waittime for the socket to be open.
+! 	     * On Linux-like systems: See socket(7) for the behavior
+  	     * After putting the socket in non-blocking mode, connect() will
+  	     * return EINPROGRESS, select() will not wait (as if writing is
+  	     * possible), need to use getsockopt() to check if the socket is
+--- 711,722 ----
+  		return NULL;
+  	    }
+  
++ #ifdef WIN32
+  	    /* On Win32: select() is expected to work and wait for up to the
+! 	     * waittime for the socket to be open. */
+! 	    if (!FD_ISSET(sd, &wfds) || ret == 0)
+! #else
+! 	    /* On Linux-like systems: See socket(7) for the behavior
+  	     * After putting the socket in non-blocking mode, connect() will
+  	     * return EINPROGRESS, select() will not wait (as if writing is
+  	     * possible), need to use getsockopt() to check if the socket is
+***************
+*** 725,733 ****
+  		if (ret < 0 || (so_error != 0
+  			&& so_error != EWOULDBLOCK
+  			&& so_error != ECONNREFUSED
+! #ifdef EINPROGRESS
+  			&& so_error != EINPROGRESS
+! #endif
+  			))
+  		{
+  		    ch_errorn(channel,
+--- 730,738 ----
+  		if (ret < 0 || (so_error != 0
+  			&& so_error != EWOULDBLOCK
+  			&& so_error != ECONNREFUSED
+! # ifdef EINPROGRESS
+  			&& so_error != EINPROGRESS
+! # endif
+  			))
+  		{
+  		    ch_errorn(channel,
+***************
+*** 741,746 ****
+--- 746,752 ----
+  	    }
+  
+  	    if (!FD_ISSET(sd, &wfds) || so_error != 0)
++ #endif
+  	    {
+  #ifndef WIN32
+  		struct  timeval end_tv;
+*** ../vim-7.4.1458/src/version.c	2016-02-28 22:21:34.300608804 +0100
+--- src/version.c	2016-02-28 22:33:09.541258798 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1459,
+  /**/
+
+-- 
+The Characters and incidents portrayed and the names used are fictitious and
+any similarity to the names, characters, or history of any person is entirely
+accidental and unintentional.
+                                  Signed RICHARD M. NIXON
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

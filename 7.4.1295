@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1295
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1295
+Problem:    string(job) doesn't work well on MS-Windows.
+Solution:   Use the process ID. (Yasuhiro Matsumoto)
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1294/src/eval.c	2016-02-08 22:57:19.618344973 +0100
+--- src/eval.c	2016-02-09 20:37:02.246384339 +0100
+***************
+*** 21606,21613 ****
+  # ifdef UNIX
+  		vim_snprintf((char *)buf, NUMBUFLEN,
+  			    "process %ld %s", (long)job->jv_pid, status);
+  # else
+! 		/* TODO */
+  		vim_snprintf((char *)buf, NUMBUFLEN, "process ? %s", status);
+  # endif
+  		return buf;
+--- 21606,21617 ----
+  # ifdef UNIX
+  		vim_snprintf((char *)buf, NUMBUFLEN,
+  			    "process %ld %s", (long)job->jv_pid, status);
++ # elif defined(WIN32)
++ 		vim_snprintf((char *)buf, NUMBUFLEN,
++ 			    "process %ld %s", (long)job->jf_pi.dwProcessId,
++ 			    status);
+  # else
+! 		/* fall-back */
+  		vim_snprintf((char *)buf, NUMBUFLEN, "process ? %s", status);
+  # endif
+  		return buf;
+*** ../vim-7.4.1294/src/version.c	2016-02-09 11:37:46.417354447 +0100
+--- src/version.c	2016-02-09 20:37:55.121834222 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1295,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+198. You read all the quotes at Netaholics Anonymous and keep thinking
+     "What's wrong with that?"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

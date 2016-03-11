@@ -1,0 +1,201 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1430
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1430
+Problem:    When encoding JSON, turning NaN and Infinity into null without
+            giving an error is not useful.
+Solution:   Pass NaN and Infinity on.  If the receiver can't handle them it
+            will generate the error.
+Files:      src/json.c, src/testdir/test_json.vim, runtime/doc/eval.txt
+
+
+*** ../vim-7.4.1429/src/json.c	2016-02-23 22:07:28.164881439 +0100
+--- src/json.c	2016-02-27 16:15:47.370347040 +0100
+***************
+*** 27,34 ****
+  #  define isnan(x) _isnan(x)
+  #  define isinf(x) (!_finite(x) && !_isnan(x))
+  # endif
+! # if defined(_MSC_VER) && !defined(INFINITY)
+  #  define INFINITY (DBL_MAX+DBL_MAX)
+  #  define NAN (INFINITY-INFINITY)
+  # endif
+  #endif
+--- 27,36 ----
+  #  define isnan(x) _isnan(x)
+  #  define isinf(x) (!_finite(x) && !_isnan(x))
+  # endif
+! # if !defined(INFINITY) && defined(DBL_MAX)
+  #  define INFINITY (DBL_MAX+DBL_MAX)
++ # endif
++ # if !defined(NAN) && defined(INFINITY)
+  #  define NAN (INFINITY-INFINITY)
+  # endif
+  #endif
+***************
+*** 285,296 ****
+  	case VAR_FLOAT:
+  #ifdef FEAT_FLOAT
+  # if defined(HAVE_MATH_H)
+! 	    if ((options & JSON_JS) && isnan(val->vval.v_float))
+  		ga_concat(gap, (char_u *)"NaN");
+! 	    else if ((options & JSON_JS) && isinf(val->vval.v_float))
+  		ga_concat(gap, (char_u *)"Infinity");
+- 	    else if (isnan(val->vval.v_float) || isinf(val->vval.v_float))
+- 		ga_concat(gap, (char_u *)"null");
+  	    else
+  # endif
+  	    {
+--- 287,296 ----
+  	case VAR_FLOAT:
+  #ifdef FEAT_FLOAT
+  # if defined(HAVE_MATH_H)
+! 	    if (isnan(val->vval.v_float))
+  		ga_concat(gap, (char_u *)"NaN");
+! 	    else if (isinf(val->vval.v_float))
+  		ga_concat(gap, (char_u *)"Infinity");
+  	    else
+  # endif
+  	    {
+*** ../vim-7.4.1429/src/testdir/test_json.vim	2016-02-23 21:26:38.770552198 +0100
+--- src/testdir/test_json.vim	2016-02-27 16:24:04.389164250 +0100
+***************
+*** 19,29 ****
+  if has('float')
+    let s:jsonfl = '12.34'
+    let s:varfl = 12.34
+!   let s:jsoninf = 'null'
+!   let s:jsinf = 'Infinity'
+    let s:varinf = 1.0 / 0.0
+!   let s:jsonnan = 'null'
+!   let s:jsnan = 'NaN'
+    let s:varnan = 0.0 / 0.0
+  endif
+  
+--- 19,27 ----
+  if has('float')
+    let s:jsonfl = '12.34'
+    let s:varfl = 12.34
+!   let s:jsoninf = 'Infinity'
+    let s:varinf = 1.0 / 0.0
+!   let s:jsonnan = 'NaN'
+    let s:varnan = 0.0 / 0.0
+  endif
+  
+***************
+*** 175,182 ****
+    call assert_equal(s:jsonnr, js_encode(s:varnr))
+    if has('float')
+      call assert_equal(s:jsonfl, js_encode(s:varfl))
+!     call assert_equal(s:jsinf, js_encode(s:varinf))
+!     call assert_equal(s:jsnan, js_encode(s:varnan))
+    endif
+  
+    call assert_equal(s:jsonl1, js_encode(s:varl1))
+--- 173,180 ----
+    call assert_equal(s:jsonnr, js_encode(s:varnr))
+    if has('float')
+      call assert_equal(s:jsonfl, js_encode(s:varfl))
+!     call assert_equal(s:jsoninf, js_encode(s:varinf))
+!     call assert_equal(s:jsonnan, js_encode(s:varnan))
+    endif
+  
+    call assert_equal(s:jsonl1, js_encode(s:varl1))
+***************
+*** 213,220 ****
+    call assert_equal(s:varnr, js_decode(s:jsonnr))
+    if has('float')
+      call assert_equal(s:varfl, js_decode(s:jsonfl))
+!     call assert_equal(s:varinf, js_decode(s:jsinf))
+!     call assert_true(isnan(js_decode(s:jsnan)))
+    endif
+  
+    call assert_equal(s:varl1, js_decode(s:jsonl1))
+--- 211,218 ----
+    call assert_equal(s:varnr, js_decode(s:jsonnr))
+    if has('float')
+      call assert_equal(s:varfl, js_decode(s:jsonfl))
+!     call assert_equal(s:varinf, js_decode(s:jsoninf))
+!     call assert_true(isnan(js_decode(s:jsonnan)))
+    endif
+  
+    call assert_equal(s:varl1, js_decode(s:jsonl1))
+*** ../vim-7.4.1429/runtime/doc/eval.txt	2016-02-25 20:55:55.702165483 +0100
+--- runtime/doc/eval.txt	2016-02-27 16:21:05.735026910 +0100
+***************
+*** 4325,4330 ****
+--- 4398,4410 ----
+  <		When {expr} is a variable that does not exist you get an error
+  		message.  Use |exists()| to check for existence.
+  
++ isnan({expr})						*isnan()*
++ 		Return non-zero if {expr} is a float with value NaN. >
++ 			echo isnan(0.0 / 0.0)
++ <			1 ~
++ 
++ 		{only available when compiled with the |+float| feature}
++ 
+  items({dict})						*items()*
+  		Return a |List| with all the key-value pairs of {dict}.  Each
+  		|List| item is a list with two items: the key of a {dict}
+***************
+*** 4481,4486 ****
+--- 4561,4568 ----
+  		Vim values are converted as follows:
+  		   Number		decimal number
+  		   Float		floating point number
++ 		   Float nan		"NaN"
++ 		   Float inf		"Infinity"
+  		   String		in double quotes (possibly null)
+  		   Funcref		not possible, error
+  		   List			as an array (possibly null); when
+***************
+*** 4491,4503 ****
+  		   v:true		"true"
+  		   v:none		"null"
+  		   v:null		"null"
+! 		Note that using v:none is permitted, although the JSON
+! 		standard does not allow empty items.  This can be useful for
+! 		omitting items in an array:
+! 			[0,,,,,5] ~
+! 		This is much more efficient than:
+! 			[0,null,null,null,null,5] ~
+! 		But a strict JSON parser will not accept it.
+  
+  keys({dict})						*keys()*
+  		Return a |List| with all the keys of {dict}.  The |List| is in
+--- 4573,4581 ----
+  		   v:true		"true"
+  		   v:none		"null"
+  		   v:null		"null"
+! 		Note that NaN and Infinity are passed on as values.  This is
+! 		missing in the JSON standard, but several implementations do
+! 		allow it.  If not then you will get an error.
+  
+  keys({dict})						*keys()*
+  		Return a |List| with all the keys of {dict}.  The |List| is in
+*** ../vim-7.4.1429/src/version.c	2016-02-27 16:04:54.505159279 +0100
+--- src/version.c	2016-02-27 16:22:53.361904745 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1430,
+  /**/
+
+-- 
+Snoring is prohibited unless all bedroom windows are closed and securely
+locked.
+		[real standing law in Massachusetts, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

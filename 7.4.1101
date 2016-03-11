@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1101
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1101
+Problem:    With 'rightleft' and concealing the cursor may move to the wrong
+            position.
+Solution:   Compute the column differently when 'rightleft' is set. (Hirohito
+            Higashi)
+Files:      src/screen.c
+
+
+*** ../vim-7.4.1100/src/screen.c	2015-12-17 21:14:52.444944723 +0100
+--- src/screen.c	2016-01-15 22:47:41.738802412 +0100
+***************
+*** 4976,4982 ****
+  		&& conceal_cursor_line(wp)
+  		&& (int)wp->w_virtcol <= vcol + n_skip)
+  	{
+! 	    wp->w_wcol = col - boguscols;
+  	    wp->w_wrow = row;
+  	    did_wcol = TRUE;
+  	}
+--- 4976,4987 ----
+  		&& conceal_cursor_line(wp)
+  		&& (int)wp->w_virtcol <= vcol + n_skip)
+  	{
+! #  ifdef FEAT_RIGHTLEFT
+! 	    if (wp->w_p_rl)
+! 		wp->w_wcol = W_WIDTH(wp) - col + boguscols - 1;
+! 	    else
+! #  endif
+! 		wp->w_wcol = col - boguscols;
+  	    wp->w_wrow = row;
+  	    did_wcol = TRUE;
+  	}
+*** ../vim-7.4.1100/src/version.c	2016-01-15 22:34:31.819606560 +0100
+--- src/version.c	2016-01-15 22:47:30.450927855 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1101,
+  /**/
+
+-- 
+FIRST VILLAGER: We have found a witch.  May we burn her?
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1220
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1220
+Problem:    Warnings for unused variables in tiny build. (Tony Mechelynck)
+Solution:   Move declarations inside #ifdef. (Hirohito Higashi)
+Files:      src/ex_cmds.c
+
+
+*** ../vim-7.4.1219/src/ex_cmds.c	2016-01-30 23:37:34.172374108 +0100
+--- src/ex_cmds.c	2016-01-31 13:50:43.999991261 +0100
+***************
+*** 6586,6604 ****
+      void
+  ex_helptags(exarg_T *eap)
+  {
+-     garray_T	ga;
+-     int		i, j;
+-     int		len;
+- #ifdef FEAT_MULTI_LANG
+-     char_u	lang[2];
+- #endif
+      expand_T	xpc;
+      char_u	*dirname;
+      char_u	ext[5];
+      char_u	fname[8];
+      int		filecount;
+      char_u	**files;
+!     int		add_help_tags = FALSE;
+  
+      /* Check for ":helptags ++t {dir}". */
+      if (STRNCMP(eap->arg, "++t", 3) == 0 && vim_iswhite(eap->arg[3]))
+--- 6586,6604 ----
+      void
+  ex_helptags(exarg_T *eap)
+  {
+      expand_T	xpc;
+      char_u	*dirname;
++     int		add_help_tags = FALSE;
++ #ifdef FEAT_MULTI_LANG
++     int		len;
++     int		i, j;
++     garray_T	ga;
++     char_u	lang[2];
+      char_u	ext[5];
+      char_u	fname[8];
+      int		filecount;
+      char_u	**files;
+! #endif
+  
+      /* Check for ":helptags ++t {dir}". */
+      if (STRNCMP(eap->arg, "++t", 3) == 0 && vim_iswhite(eap->arg[3]))
+*** ../vim-7.4.1219/src/version.c	2016-01-30 23:37:34.172374108 +0100
+--- src/version.c	2016-01-31 13:58:25.007223366 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1220,
+  /**/
+
+-- 
+You can't have everything.  Where would you put it?
+		-- Steven Wright
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

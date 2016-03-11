@@ -16,7 +16,7 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.899
+Version:	7.4.1533
 Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
@@ -70,8 +70,8 @@ Patch100:	vim-7.0-fortify_warnings-1.patch
 Patch101:	vim-7.4-fstabsyntax.patch
 
 # Official patches
-%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then j=499 end; for i=1,j do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end}
-%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>499) then for i=500,j do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end end}
+%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>99) then j=99 end; for i=1,j do print("Patch1"..string.format("%03g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%03g",i).."\n") end}
+%{lua:j=tonumber(rpm.expand("%{official_ptchlvl}")); if(j>99) then for i=100,j do print("Patch1"..string.format("%g",i)..":	"..rpm.expand("%{dlurl}/patches/%{rversion}/%{rversion}.")..string.format("%g",i).."\n") end end}
 
 BuildRequires:	pkgconfig(lua)
 BuildRequires:	pkgconfig(python)

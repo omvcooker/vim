@@ -1,0 +1,189 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1283
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1283
+Problem:    The job feature isn't available on MS-Windows.
+Solution:   Add the job feature.  Fix argument of job_stop(). (Yasuhiro
+            Matsumoto)
+Files:      src/eval.c, src/feature.h, src/os_win32.c, src/proto/os_win32.pro
+
+
+*** ../vim-7.4.1282/src/eval.c	2016-02-07 19:16:24.238303734 +0100
+--- src/eval.c	2016-02-07 19:50:49.156789933 +0100
+***************
+*** 8205,8211 ****
+  #ifdef FEAT_JOB
+      {"job_start",	1, 2, f_job_start},
+      {"job_status",	1, 1, f_job_status},
+!     {"job_stop",	1, 1, f_job_stop},
+  #endif
+      {"join",		1, 2, f_join},
+      {"jsdecode",	1, 1, f_jsdecode},
+--- 8205,8211 ----
+  #ifdef FEAT_JOB
+      {"job_start",	1, 2, f_job_start},
+      {"job_status",	1, 1, f_job_status},
+!     {"job_stop",	1, 2, f_job_stop},
+  #endif
+      {"join",		1, 2, f_join},
+      {"jsdecode",	1, 1, f_jsdecode},
+***************
+*** 14286,14292 ****
+  
+      rettv->vval.v_job->jv_status = JOB_FAILED;
+  #ifndef USE_ARGV
+!     ga_init2(&ga, 200);
+  #endif
+  
+      if (argvars[0].v_type == VAR_STRING)
+--- 14286,14292 ----
+  
+      rettv->vval.v_job->jv_status = JOB_FAILED;
+  #ifndef USE_ARGV
+!     ga_init2(&ga, (int)sizeof(char*), 20);
+  #endif
+  
+      if (argvars[0].v_type == VAR_STRING)
+*** ../vim-7.4.1282/src/feature.h	2016-02-07 14:26:12.179054006 +0100
+--- src/feature.h	2016-02-07 19:51:28.444379434 +0100
+***************
+*** 1262,1270 ****
+  #endif
+  
+  /*
+!  * The +job feature requires Unix and +eval.
+   */
+! #if defined(UNIX) && defined(FEAT_EVAL)
+  # define FEAT_JOB
+  #endif
+  
+--- 1262,1270 ----
+  #endif
+  
+  /*
+!  * The +job feature requires +eval and Unix or MS-Widndows.
+   */
+! #if (defined(UNIX) || defined(WIN32)) && defined(FEAT_EVAL)
+  # define FEAT_JOB
+  #endif
+  
+*** ../vim-7.4.1282/src/os_win32.c	2016-02-05 22:36:09.741738101 +0100
+--- src/os_win32.c	2016-02-07 19:49:33.309582474 +0100
+***************
+*** 4155,4161 ****
+      si.cbReserved2 = 0;
+      si.lpReserved2 = NULL;
+  
+!     /* There is a strange error on Windows 95 when using "c:\\command.com".
+       * When the "c:\\" is left out it works OK...? */
+      if (mch_windows95()
+  	    && (STRNICMP(cmd, "c:/command.com", 14) == 0
+--- 4155,4161 ----
+      si.cbReserved2 = 0;
+      si.lpReserved2 = NULL;
+  
+!     /* There is a strange error on Windows 95 when using "c:\command.com".
+       * When the "c:\\" is left out it works OK...? */
+      if (mch_windows95()
+  	    && (STRNICMP(cmd, "c:/command.com", 14) == 0
+***************
+*** 5032,5037 ****
+--- 5032,5090 ----
+      return x;
+  }
+  
++ #if defined(FEAT_JOB) || defined(PROTO)
++     void
++ mch_start_job(char *cmd, job_T *job)
++ {
++     STARTUPINFO		si;
++     PROCESS_INFORMATION	pi;
++ 
++     ZeroMemory(&si, sizeof(si));
++     si.cb = sizeof(si);
++ 
++     if (!vim_create_process(cmd, FALSE,
++ 	    CREATE_DEFAULT_ERROR_MODE |
++ 	    CREATE_NEW_PROCESS_GROUP |
++ 	    CREATE_NO_WINDOW,
++ 	    &si, &pi))
++ 	job->jv_status = JOB_FAILED;
++     else
++     {
++ 	job->jf_pi = pi;
++ 	job->jv_status = JOB_STARTED;
++     }
++ }
++ 
++     char *
++ mch_job_status(job_T *job)
++ {
++     DWORD dwExitCode = 0;
++ 
++     if (!GetExitCodeProcess(job->jf_pi.hProcess, &dwExitCode))
++ 	return "dead";
++     if (dwExitCode != STILL_ACTIVE)
++     {
++ 	CloseHandle(job->jf_pi.hProcess);
++ 	CloseHandle(job->jf_pi.hThread);
++ 	return "dead";
++     }
++     return "run";
++ }
++ 
++     int
++ mch_stop_job(job_T *job, char_u *how)
++ {
++     if (STRCMP(how, "kill") == 0)
++ 	TerminateProcess(job->jf_pi.hProcess, 0);
++     else
++ 	return GenerateConsoleCtrlEvent(
++ 	    STRCMP(how, "hup") == 0 ?
++ 		    CTRL_BREAK_EVENT : CTRL_C_EVENT,
++ 		job->jf_pi.dwProcessId) ? OK : FAIL;
++     return OK;
++ }
++ #endif
++ 
+  
+  #ifndef FEAT_GUI_W32
+  
+*** ../vim-7.4.1282/src/proto/os_win32.pro	2016-01-19 13:21:55.845334290 +0100
+--- src/proto/os_win32.pro	2016-02-07 19:52:00.556043927 +0100
+***************
+*** 40,45 ****
+--- 40,48 ----
+  void mch_new_shellsize(void);
+  void mch_set_winsize_now(void);
+  int mch_call_shell(char_u *cmd, int options);
++ void mch_start_job(char *cmd, job_T *job);
++ char *mch_job_status(job_T *job);
++ int mch_stop_job(job_T *job, char_u *how);
+  void mch_set_normal_colors(void);
+  void mch_write(char_u *s, int len);
+  void mch_delay(long msec, int ignoreinput);
+*** ../vim-7.4.1282/src/version.c	2016-02-07 19:46:08.919714495 +0100
+--- src/version.c	2016-02-07 19:49:28.597631714 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1283,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+173. You keep tracking down the email addresses of all your friends
+     (even childhood friends).
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

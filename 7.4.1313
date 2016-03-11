@@ -1,0 +1,93 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1313
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1313
+Problem:    MS-Windows: Using socket after it was closed causes an exception.
+Solution:   Don't give an error when handling WM_NETBEANS.  Re-enable tests
+            for MS-Windows.
+Files:      src/gui_w48.c, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1312/src/gui_w48.c	2016-02-13 17:04:08.426819018 +0100
+--- src/gui_w48.c	2016-02-13 18:13:04.943928280 +0100
+***************
+*** 1783,1789 ****
+--- 1783,1795 ----
+  	int channel_idx = channel_fd2idx((sock_T)msg.wParam);
+  
+  	if (channel_idx >= 0)
++ 	{
++ 	    /* Disable error messages, they can mess up the display and throw
++ 	     * an exception. */
++ 	    ++emsg_off;
+  	    channel_read(channel_idx, FALSE, "process_message");
++ 	    --emsg_off;
++ 	}
+  	return;
+      }
+  #endif
+*** ../vim-7.4.1312/src/testdir/test_channel.vim	2016-02-13 17:04:08.426819018 +0100
+--- src/testdir/test_channel.vim	2016-02-13 18:27:06.691171650 +0100
+***************
+*** 191,200 ****
+  endfunc
+  
+  func Test_two_channels()
+!   " TODO: make this work again with MS-Windows
+!   if has('unix')
+!     call s:run_server('s:two_channels')
+!   endif
+  endfunc
+  
+  " Test that a server crash is handled gracefully.
+--- 191,197 ----
+  endfunc
+  
+  func Test_two_channels()
+!   call s:run_server('s:two_channels')
+  endfunc
+  
+  " Test that a server crash is handled gracefully.
+***************
+*** 211,220 ****
+  endfunc
+  
+  func Test_server_crash()
+!   " TODO: make this work again with MS-Windows
+!   if has('unix')
+!     call s:run_server('s:server_crash')
+!   endif
+  endfunc
+  
+  let s:reply = ""
+--- 208,214 ----
+  endfunc
+  
+  func Test_server_crash()
+!   call s:run_server('s:server_crash')
+  endfunc
+  
+  let s:reply = ""
+*** ../vim-7.4.1312/src/version.c	2016-02-13 17:24:20.462210990 +0100
+--- src/version.c	2016-02-13 18:38:42.007938907 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1313,
+  /**/
+
+-- 
+Eagles may soar, but weasels don't get sucked into jet engines.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

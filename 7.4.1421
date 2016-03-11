@@ -1,0 +1,152 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1421
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1421
+Problem:    May free a channel when a callback may need to be invoked.
+Solution:   Keep the channel when refcount is zero.
+Files:      src/eval.c, src/channel.c, src/proto/channel.pro
+
+
+*** ../vim-7.4.1420/src/eval.c	2016-02-24 20:42:58.077568933 +0100
+--- src/eval.c	2016-02-25 22:45:18.961035121 +0100
+***************
+*** 7745,7752 ****
+  
+  #if defined(FEAT_CHANNEL) || defined(PROTO)
+  /*
+!  * Decrement the reference count on "channel" and free it when it goes down to
+!  * zero.
+   * Returns TRUE when the channel was freed.
+   */
+      int
+--- 7745,7752 ----
+  
+  #if defined(FEAT_CHANNEL) || defined(PROTO)
+  /*
+!  * Decrement the reference count on "channel" and maybe free it when it goes
+!  * down to zero.  Don't free it if there is a pending action.
+   * Returns TRUE when the channel was freed.
+   */
+      int
+***************
+*** 7754,7760 ****
+  {
+      if (channel != NULL && --channel->ch_refcount <= 0)
+      {
+! 	channel_free(channel);
+  	return TRUE;
+      }
+      return FALSE;
+--- 7754,7760 ----
+  {
+      if (channel != NULL && --channel->ch_refcount <= 0)
+      {
+! 	channel_may_free(channel);
+  	return TRUE;
+      }
+      return FALSE;
+*** ../vim-7.4.1420/src/channel.c	2016-02-24 20:42:58.077568933 +0100
+--- src/channel.c	2016-02-25 22:57:39.629196837 +0100
+***************
+*** 307,312 ****
+--- 307,337 ----
+  }
+  
+  /*
++  * Return TRUE if "channel" has a callback.
++  */
++     static int
++ channel_has_callback(channel_T *channel)
++ {
++     return channel->ch_callback != NULL
++ #ifdef CHANNEL_PIPES
++ 	    || channel->ch_part[PART_OUT].ch_callback != NULL
++ 	    || channel->ch_part[PART_ERR].ch_callback != NULL
++ #endif
++ 	    || channel->ch_close_cb != NULL;
++ }
++ 
++ /*
++  * Close a channel and free all its resources if there is no further action
++  * possible, there is no callback to be invoked.
++  */
++     void
++ channel_may_free(channel_T *channel)
++ {
++     if (!channel_has_callback(channel))
++ 	channel_free(channel);
++ }
++ 
++ /*
+   * Close a channel and free all its resources.
+   */
+      void
+***************
+*** 1463,1469 ****
+  
+  /*
+   * Close channel "channel".
+!  * This does not trigger the close callback.
+   */
+      void
+  channel_close(channel_T *channel, int invoke_close_cb)
+--- 1488,1494 ----
+  
+  /*
+   * Close channel "channel".
+!  * Trigger the close callback if "invoke_close_cb" is TRUE.
+   */
+      void
+  channel_close(channel_T *channel, int invoke_close_cb)
+***************
+*** 2149,2154 ****
+--- 2174,2187 ----
+  
+      while (channel != NULL)
+      {
++ 	if (channel->ch_refcount == 0 && !channel_has_callback(channel))
++ 	{
++ 	    /* channel is no longer useful, free it */
++ 	    channel_free(channel);
++ 	    channel = first_channel;
++ 	    part = PART_SOCK;
++ 	    continue;
++ 	}
+  	if (channel->ch_part[part].ch_fd != INVALID_FD)
+  	{
+  	    /* Increase the refcount, in case the handler causes the channel
+*** ../vim-7.4.1420/src/proto/channel.pro	2016-02-24 20:42:58.081568892 +0100
+--- src/proto/channel.pro	2016-02-25 22:57:43.161159357 +0100
+***************
+*** 4,9 ****
+--- 4,10 ----
+  void ch_log(channel_T *ch, char *msg);
+  void ch_logs(channel_T *ch, char *msg, char *name);
+  channel_T *add_channel(void);
++ void channel_may_free(channel_T *channel);
+  void channel_free(channel_T *channel);
+  void channel_gui_register(channel_T *channel);
+  void channel_gui_register_all(void);
+*** ../vim-7.4.1420/src/version.c	2016-02-25 22:37:34.969945642 +0100
+--- src/version.c	2016-02-25 22:42:28.018845550 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1421,
+  /**/
+
+-- 
+SIGFUN -- signature too funny (core dumped)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

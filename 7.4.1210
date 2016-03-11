@@ -1,0 +1,7999 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1210
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1210
+Problem:    Using old style function declarations.
+Solution:   Change to new style function declarations. (script by Hirohito
+            Higashi)
+Files:      src/main.c, src/mark.c, src/mbyte.c, src/memfile.c,
+            src/memfile_test.c, src/memline.c, src/menu.c, src/message.c
+
+
+*** ../vim-7.4.1209/src/main.c	2016-01-29 22:36:41.229047648 +0100
+--- src/main.c	2016-01-30 18:01:50.538939990 +0100
+***************
+*** 165,173 ****
+  # else
+  main
+  # endif
+! (argc, argv)
+!     int		argc;
+!     char	**argv;
+  {
+      char_u	*fname = NULL;		/* file name from command line */
+      mparm_T	params;			/* various parameters passed between
+--- 165,171 ----
+  # else
+  main
+  # endif
+! (int argc, char **argv)
+  {
+      char_u	*fname = NULL;		/* file name from command line */
+      mparm_T	params;			/* various parameters passed between
+***************
+*** 1534,1543 ****
+   * Get a (optional) count for a Vim argument.
+   */
+      static int
+! get_number_arg(p, idx, def)
+!     char_u	*p;	    /* pointer to argument */
+!     int		*idx;	    /* index in argument, is incremented */
+!     int		def;	    /* default value */
+  {
+      if (vim_isdigit(p[*idx]))
+      {
+--- 1532,1541 ----
+   * Get a (optional) count for a Vim argument.
+   */
+      static int
+! get_number_arg(
+!     char_u	*p,	    /* pointer to argument */
+!     int		*idx,	    /* index in argument, is incremented */
+!     int		def)	    /* default value */
+  {
+      if (vim_isdigit(p[*idx]))
+      {
+***************
+*** 1553,1559 ****
+   * Setup to use the current locale (for ctype() and many other things).
+   */
+      static void
+! init_locale()
+  {
+      setlocale(LC_ALL, "");
+  
+--- 1551,1557 ----
+   * Setup to use the current locale (for ctype() and many other things).
+   */
+      static void
+! init_locale(void)
+  {
+      setlocale(LC_ALL, "");
+  
+***************
+*** 1609,1616 ****
+   * by "im" use improved Ex mode.
+   */
+      static void
+! parse_command_name(parmp)
+!     mparm_T	*parmp;
+  {
+      char_u	*initstr;
+  
+--- 1607,1613 ----
+   * by "im" use improved Ex mode.
+   */
+      static void
+! parse_command_name(mparm_T *parmp)
+  {
+      char_u	*initstr;
+  
+***************
+*** 1700,1707 ****
+   * Also find the --server... arguments and --socketid and --windowid
+   */
+      static void
+! early_arg_scan(parmp)
+!     mparm_T	*parmp UNUSED;
+  {
+  #if defined(FEAT_XCLIPBOARD) || defined(FEAT_CLIENTSERVER) \
+  	|| !defined(FEAT_NETBEANS_INTG)
+--- 1697,1703 ----
+   * Also find the --server... arguments and --socketid and --windowid
+   */
+      static void
+! early_arg_scan(mparm_T *parmp UNUSED)
+  {
+  #if defined(FEAT_XCLIPBOARD) || defined(FEAT_CLIENTSERVER) \
+  	|| !defined(FEAT_NETBEANS_INTG)
+***************
+*** 1792,1799 ****
+   * Scan the command line arguments.
+   */
+      static void
+! command_line_scan(parmp)
+!     mparm_T	*parmp;
+  {
+      int		argc = parmp->argc;
+      char	**argv = parmp->argv;
+--- 1788,1794 ----
+   * Scan the command line arguments.
+   */
+      static void
+! command_line_scan(mparm_T *parmp)
+  {
+      int		argc = parmp->argc;
+      char	**argv = parmp->argv;
+***************
+*** 2512,2519 ****
+   * When starting in Ex mode and commands come from a file, set Silent mode.
+   */
+      static void
+! check_tty(parmp)
+!     mparm_T	*parmp;
+  {
+      int		input_isatty;		/* is active input a terminal? */
+  
+--- 2507,2513 ----
+   * When starting in Ex mode and commands come from a file, set Silent mode.
+   */
+      static void
+! check_tty(mparm_T *parmp)
+  {
+      int		input_isatty;		/* is active input a terminal? */
+  
+***************
+*** 2559,2565 ****
+   * Read text from stdin.
+   */
+      static void
+! read_stdin()
+  {
+      int	    i;
+  
+--- 2553,2559 ----
+   * Read text from stdin.
+   */
+      static void
+! read_stdin(void)
+  {
+      int	    i;
+  
+***************
+*** 2593,2600 ****
+   * Also does recovery if "recoverymode" set.
+   */
+      static void
+! create_windows(parmp)
+!     mparm_T	*parmp UNUSED;
+  {
+  #ifdef FEAT_WINDOWS
+      int		dorewind;
+--- 2587,2593 ----
+   * Also does recovery if "recoverymode" set.
+   */
+      static void
+! create_windows(mparm_T *parmp UNUSED)
+  {
+  #ifdef FEAT_WINDOWS
+      int		dorewind;
+***************
+*** 2747,2755 ****
+       * windows.  make_windows() has already opened the windows.
+       */
+      static void
+! edit_buffers(parmp, cwd)
+!     mparm_T	*parmp;
+!     char_u	*cwd;			/* current working dir */
+  {
+      int		arg_idx;		/* index in argument list */
+      int		i;
+--- 2740,2748 ----
+       * windows.  make_windows() has already opened the windows.
+       */
+      static void
+! edit_buffers(
+!     mparm_T	*parmp,
+!     char_u	*cwd)			/* current working dir */
+  {
+      int		arg_idx;		/* index in argument list */
+      int		i;
+***************
+*** 2876,2883 ****
+   * Execute the commands from --cmd arguments "cmds[cnt]".
+   */
+      static void
+! exe_pre_commands(parmp)
+!     mparm_T	*parmp;
+  {
+      char_u	**cmds = parmp->pre_commands;
+      int		cnt = parmp->n_pre_commands;
+--- 2869,2875 ----
+   * Execute the commands from --cmd arguments "cmds[cnt]".
+   */
+      static void
+! exe_pre_commands(mparm_T *parmp)
+  {
+      char_u	**cmds = parmp->pre_commands;
+      int		cnt = parmp->n_pre_commands;
+***************
+*** 2904,2911 ****
+   * Execute "+", "-c" and "-S" arguments.
+   */
+      static void
+! exe_commands(parmp)
+!     mparm_T	*parmp;
+  {
+      int		i;
+  
+--- 2896,2902 ----
+   * Execute "+", "-c" and "-S" arguments.
+   */
+      static void
+! exe_commands(mparm_T *parmp)
+  {
+      int		i;
+  
+***************
+*** 2949,2956 ****
+   * Source startup scripts.
+   */
+      static void
+! source_startup_scripts(parmp)
+!     mparm_T	*parmp;
+  {
+      int		i;
+  
+--- 2940,2946 ----
+   * Source startup scripts.
+   */
+      static void
+! source_startup_scripts(mparm_T *parmp)
+  {
+      int		i;
+  
+***************
+*** 3108,3114 ****
+   * Setup to start using the GUI.  Exit with an error when not available.
+   */
+      static void
+! main_start_gui()
+  {
+  #ifdef FEAT_GUI
+      gui.starting = TRUE;	/* start GUI a bit later */
+--- 3098,3104 ----
+   * Setup to start using the GUI.  Exit with an error when not available.
+   */
+      static void
+! main_start_gui(void)
+  {
+  #ifdef FEAT_GUI
+      gui.starting = TRUE;	/* start GUI a bit later */
+***************
+*** 3126,3134 ****
+   * Returns FAIL if the environment variable was not executed, OK otherwise.
+   */
+      int
+! process_env(env, is_viminit)
+!     char_u	*env;
+!     int		is_viminit; /* when TRUE, called for VIMINIT */
+  {
+      char_u	*initstr;
+      char_u	*save_sourcing_name;
+--- 3116,3124 ----
+   * Returns FAIL if the environment variable was not executed, OK otherwise.
+   */
+      int
+! process_env(
+!     char_u	*env,
+!     int		is_viminit) /* when TRUE, called for VIMINIT */
+  {
+      char_u	*initstr;
+      char_u	*save_sourcing_name;
+***************
+*** 3167,3174 ****
+   * Use both stat() and lstat() for extra security.
+   */
+      static int
+! file_owned(fname)
+!     char	*fname;
+  {
+      struct stat s;
+  # ifdef UNIX
+--- 3157,3163 ----
+   * Use both stat() and lstat() for extra security.
+   */
+      static int
+! file_owned(char *fname)
+  {
+      struct stat s;
+  # ifdef UNIX
+***************
+*** 3189,3197 ****
+   * Give an error message main_errors["n"] and exit.
+   */
+      static void
+! mainerr(n, str)
+!     int		n;	/* one of the ME_ defines */
+!     char_u	*str;	/* extra argument or NULL */
+  {
+  #if defined(UNIX) || defined(__EMX__) || defined(VMS)
+      reset_signals();		/* kill us with CTRL-C here, if you like */
+--- 3178,3186 ----
+   * Give an error message main_errors["n"] and exit.
+   */
+      static void
+! mainerr(
+!     int		n,	/* one of the ME_ defines */
+!     char_u	*str)	/* extra argument or NULL */
+  {
+  #if defined(UNIX) || defined(__EMX__) || defined(VMS)
+      reset_signals();		/* kill us with CTRL-C here, if you like */
+***************
+*** 3212,3219 ****
+  }
+  
+      void
+! mainerr_arg_missing(str)
+!     char_u	*str;
+  {
+      mainerr(ME_ARG_MISSING, str);
+  }
+--- 3201,3207 ----
+  }
+  
+      void
+! mainerr_arg_missing(char_u *str)
+  {
+      mainerr(ME_ARG_MISSING, str);
+  }
+***************
+*** 3223,3230 ****
+   * print a message with three spaces prepended and '\n' appended.
+   */
+      static void
+! main_msg(s)
+!     char *s;
+  {
+      mch_msg("   ");
+      mch_msg(s);
+--- 3211,3217 ----
+   * print a message with three spaces prepended and '\n' appended.
+   */
+      static void
+! main_msg(char *s)
+  {
+      mch_msg("   ");
+      mch_msg(s);
+***************
+*** 3235,3241 ****
+   * Print messages for "vim -h" or "vim --help" and exit.
+   */
+      static void
+! usage()
+  {
+      int		i;
+      static char	*(use[]) =
+--- 3222,3228 ----
+   * Print messages for "vim -h" or "vim --help" and exit.
+   */
+      static void
+! usage(void)
+  {
+      int		i;
+      static char	*(use[]) =
+***************
+*** 3431,3437 ****
+   * When "Recover" selected, recover the file.
+   */
+      static void
+! check_swap_exists_action()
+  {
+      if (swap_exists_action == SEA_QUIT)
+  	getout(1);
+--- 3418,3424 ----
+   * When "Recover" selected, recover the file.
+   */
+      static void
+! check_swap_exists_action(void)
+  {
+      if (swap_exists_action == SEA_QUIT)
+  	getout(1);
+***************
+*** 3465,3472 ****
+   * set "*tv_rel" to the time elapsed so far.
+   */
+      void
+! time_push(tv_rel, tv_start)
+!     void	*tv_rel, *tv_start;
+  {
+      *((struct timeval *)tv_rel) = prev_timeval;
+      gettimeofday(&prev_timeval, NULL);
+--- 3452,3458 ----
+   * set "*tv_rel" to the time elapsed so far.
+   */
+      void
+! time_push(void *tv_rel, void *tv_start)
+  {
+      *((struct timeval *)tv_rel) = prev_timeval;
+      gettimeofday(&prev_timeval, NULL);
+***************
+*** 3489,3496 ****
+   * have struct timeval.
+   */
+      void
+! time_pop(tp)
+!     void	*tp;	/* actually (struct timeval *) */
+  {
+      prev_timeval.tv_usec -= ((struct timeval *)tp)->tv_usec;
+      prev_timeval.tv_sec -= ((struct timeval *)tp)->tv_sec;
+--- 3475,3482 ----
+   * have struct timeval.
+   */
+      void
+! time_pop(
+!     void	*tp)	/* actually (struct timeval *) */
+  {
+      prev_timeval.tv_usec -= ((struct timeval *)tp)->tv_usec;
+      prev_timeval.tv_sec -= ((struct timeval *)tp)->tv_sec;
+***************
+*** 3502,3510 ****
+  }
+  
+      static void
+! time_diff(then, now)
+!     struct timeval	*then;
+!     struct timeval	*now;
+  {
+      long	usec;
+      long	msec;
+--- 3488,3494 ----
+  }
+  
+      static void
+! time_diff(struct timeval *then, struct timeval *now)
+  {
+      long	usec;
+      long	msec;
+***************
+*** 3516,3524 ****
+  }
+  
+      void
+! time_msg(mesg, tv_start)
+!     char	*mesg;
+!     void	*tv_start;  /* only for do_source: start time; actually
+  			       (struct timeval *) */
+  {
+      static struct timeval	start;
+--- 3500,3508 ----
+  }
+  
+      void
+! time_msg(
+!     char	*mesg,
+!     void	*tv_start)  /* only for do_source: start time; actually
+  			       (struct timeval *) */
+  {
+      static struct timeval	start;
+***************
+*** 3562,3569 ****
+   * Do the client-server stuff, unless "--servername ''" was used.
+   */
+      static void
+! exec_on_server(parmp)
+!     mparm_T	*parmp;
+  {
+      if (parmp->serverName_arg == NULL || *parmp->serverName_arg != NUL)
+      {
+--- 3546,3552 ----
+   * Do the client-server stuff, unless "--servername ''" was used.
+   */
+      static void
+! exec_on_server(mparm_T *parmp)
+  {
+      if (parmp->serverName_arg == NULL || *parmp->serverName_arg != NUL)
+      {
+***************
+*** 3605,3612 ****
+   * Prepare for running as a Vim server.
+   */
+      static void
+! prepare_server(parmp)
+!     mparm_T	*parmp;
+  {
+  # if defined(FEAT_X11)
+      /*
+--- 3588,3594 ----
+   * Prepare for running as a Vim server.
+   */
+      static void
+! prepare_server(mparm_T *parmp)
+  {
+  # if defined(FEAT_X11)
+      /*
+***************
+*** 3648,3658 ****
+  }
+  
+      static void
+! cmdsrv_main(argc, argv, serverName_arg, serverStr)
+!     int		*argc;
+!     char	**argv;
+!     char_u	*serverName_arg;
+!     char_u	**serverStr;
+  {
+      char_u	*res;
+      int		i;
+--- 3630,3640 ----
+  }
+  
+      static void
+! cmdsrv_main(
+!     int		*argc,
+!     char	**argv,
+!     char_u	*serverName_arg,
+!     char_u	**serverStr)
+  {
+      char_u	*res;
+      int		i;
+***************
+*** 3924,3934 ****
+   * Build a ":drop" command to send to a Vim server.
+   */
+      static char_u *
+! build_drop_cmd(filec, filev, tabs, sendReply)
+!     int		filec;
+!     char	**filev;
+!     int		tabs;		/* Use ":tab drop" instead of ":drop". */
+!     int		sendReply;
+  {
+      garray_T	ga;
+      int		i;
+--- 3906,3916 ----
+   * Build a ":drop" command to send to a Vim server.
+   */
+      static char_u *
+! build_drop_cmd(
+!     int		filec,
+!     char	**filev,
+!     int		tabs,		/* Use ":tab drop" instead of ":drop". */
+!     int		sendReply)
+  {
+      garray_T	ga;
+      int		i;
+***************
+*** 4044,4052 ****
+   * Return the name in allocated memory.  This doesn't include a serial number.
+   */
+      static char_u *
+! serverMakeName(arg, cmd)
+!     char_u	*arg;
+!     char	*cmd;
+  {
+      char_u *p;
+  
+--- 4026,4032 ----
+   * Return the name in allocated memory.  This doesn't include a serial number.
+   */
+      static char_u *
+! serverMakeName(char_u *arg, char *cmd)
+  {
+      char_u *p;
+  
+***************
+*** 4068,4075 ****
+   * Replace termcodes such as <CR> and insert as key presses if there is room.
+   */
+      void
+! server_to_input_buf(str)
+!     char_u	*str;
+  {
+      char_u      *ptr = NULL;
+      char_u      *cpo_save = p_cpo;
+--- 4048,4054 ----
+   * Replace termcodes such as <CR> and insert as key presses if there is room.
+   */
+      void
+! server_to_input_buf(char_u *str)
+  {
+      char_u      *ptr = NULL;
+      char_u      *cpo_save = p_cpo;
+***************
+*** 4110,4117 ****
+   * Evaluate an expression that the client sent to a string.
+   */
+      char_u *
+! eval_client_expr_to_string(expr)
+!     char_u *expr;
+  {
+      char_u	*res;
+      int		save_dbl = debug_break_level;
+--- 4089,4095 ----
+   * Evaluate an expression that the client sent to a string.
+   */
+      char_u *
+! eval_client_expr_to_string(char_u *expr)
+  {
+      char_u	*res;
+      int		save_dbl = debug_break_level;
+***************
+*** 4151,4160 ****
+   * "*tofree" is set to the result when it needs to be freed later.
+   */
+      char_u *
+! serverConvert(client_enc, data, tofree)
+!     char_u *client_enc UNUSED;
+!     char_u *data;
+!     char_u **tofree;
+  {
+      char_u	*res = data;
+  
+--- 4129,4138 ----
+   * "*tofree" is set to the result when it needs to be freed later.
+   */
+      char_u *
+! serverConvert(
+!     char_u *client_enc UNUSED,
+!     char_u *data,
+!     char_u **tofree)
+  {
+      char_u	*res = data;
+  
+*** ../vim-7.4.1209/src/mark.c	2016-01-29 22:36:41.229047648 +0100
+--- src/mark.c	2016-01-30 18:03:23.597973020 +0100
+***************
+*** 43,50 ****
+   * Returns OK on success, FAIL if bad name given.
+   */
+      int
+! setmark(c)
+!     int		c;
+  {
+      return setmark_pos(c, &curwin->w_cursor, curbuf->b_fnum);
+  }
+--- 43,49 ----
+   * Returns OK on success, FAIL if bad name given.
+   */
+      int
+! setmark(int c)
+  {
+      return setmark_pos(c, &curwin->w_cursor, curbuf->b_fnum);
+  }
+***************
+*** 55,64 ****
+   * Returns OK on success, FAIL if bad name given.
+   */
+      int
+! setmark_pos(c, pos, fnum)
+!     int		c;
+!     pos_T	*pos;
+!     int		fnum;
+  {
+      int		i;
+  
+--- 54,60 ----
+   * Returns OK on success, FAIL if bad name given.
+   */
+      int
+! setmark_pos(int c, pos_T *pos, int fnum)
+  {
+      int		i;
+  
+***************
+*** 138,144 ****
+   * jump list.
+   */
+      void
+! setpcmark()
+  {
+  #ifdef FEAT_JUMPLIST
+      int		i;
+--- 134,140 ----
+   * jump list.
+   */
+      void
+! setpcmark(void)
+  {
+  #ifdef FEAT_JUMPLIST
+      int		i;
+***************
+*** 198,204 ****
+   * If pcmark was deleted (with "dG") the previous mark is restored.
+   */
+      void
+! checkpcmark()
+  {
+      if (curwin->w_prev_pcmark.lnum != 0
+  	    && (equalpos(curwin->w_pcmark, curwin->w_cursor)
+--- 194,200 ----
+   * If pcmark was deleted (with "dG") the previous mark is restored.
+   */
+      void
+! checkpcmark(void)
+  {
+      if (curwin->w_prev_pcmark.lnum != 0
+  	    && (equalpos(curwin->w_pcmark, curwin->w_cursor)
+***************
+*** 214,221 ****
+   * move "count" positions in the jump list (count may be negative)
+   */
+      pos_T *
+! movemark(count)
+!     int count;
+  {
+      pos_T	*pos;
+      xfmark_T	*jmp;
+--- 210,216 ----
+   * move "count" positions in the jump list (count may be negative)
+   */
+      pos_T *
+! movemark(int count)
+  {
+      pos_T	*pos;
+      xfmark_T	*jmp;
+***************
+*** 274,281 ****
+   * Move "count" positions in the changelist (count may be negative).
+   */
+      pos_T *
+! movechangelist(count)
+!     int		count;
+  {
+      int		n;
+  
+--- 269,275 ----
+   * Move "count" positions in the changelist (count may be negative).
+   */
+      pos_T *
+! movechangelist(int count)
+  {
+      int		n;
+  
+***************
+*** 314,341 ****
+   * - -1 if mark is in other file and jumped there (only if changefile is TRUE)
+   */
+      pos_T *
+! getmark_buf(buf, c, changefile)
+!     buf_T	*buf;
+!     int		c;
+!     int		changefile;
+  {
+      return getmark_buf_fnum(buf, c, changefile, NULL);
+  }
+  
+      pos_T *
+! getmark(c, changefile)
+!     int		c;
+!     int		changefile;
+  {
+      return getmark_buf_fnum(curbuf, c, changefile, NULL);
+  }
+  
+      pos_T *
+! getmark_buf_fnum(buf, c, changefile, fnum)
+!     buf_T	*buf;
+!     int		c;
+!     int		changefile;
+!     int		*fnum;
+  {
+      pos_T		*posp;
+      pos_T		*startp, *endp;
+--- 308,330 ----
+   * - -1 if mark is in other file and jumped there (only if changefile is TRUE)
+   */
+      pos_T *
+! getmark_buf(buf_T *buf, int c, int changefile)
+  {
+      return getmark_buf_fnum(buf, c, changefile, NULL);
+  }
+  
+      pos_T *
+! getmark(int c, int changefile)
+  {
+      return getmark_buf_fnum(curbuf, c, changefile, NULL);
+  }
+  
+      pos_T *
+! getmark_buf_fnum(
+!     buf_T	*buf,
+!     int		c,
+!     int		changefile,
+!     int		*fnum)
+  {
+      pos_T		*posp;
+      pos_T		*startp, *endp;
+***************
+*** 472,481 ****
+   * Returns pointer to pos_T of the next mark or NULL if no mark is found.
+   */
+      pos_T *
+! getnextmark(startpos, dir, begin_line)
+!     pos_T	*startpos;	/* where to start */
+!     int		dir;	/* direction for search */
+!     int		begin_line;
+  {
+      int		i;
+      pos_T	*result = NULL;
+--- 461,470 ----
+   * Returns pointer to pos_T of the next mark or NULL if no mark is found.
+   */
+      pos_T *
+! getnextmark(
+!     pos_T	*startpos,	/* where to start */
+!     int		dir,	/* direction for search */
+!     int		begin_line)
+  {
+      int		i;
+      pos_T	*result = NULL;
+***************
+*** 520,527 ****
+   * until the mark is used to avoid a long startup delay.
+   */
+      static void
+! fname2fnum(fm)
+!     xfmark_T	*fm;
+  {
+      char_u	*p;
+  
+--- 509,515 ----
+   * until the mark is used to avoid a long startup delay.
+   */
+      static void
+! fname2fnum(xfmark_T *fm)
+  {
+      char_u	*p;
+  
+***************
+*** 561,568 ****
+   * Used for marks that come from the .viminfo file.
+   */
+      void
+! fmarks_check_names(buf)
+!     buf_T	*buf;
+  {
+      char_u	*name;
+      int		i;
+--- 549,555 ----
+   * Used for marks that come from the .viminfo file.
+   */
+      void
+! fmarks_check_names(buf_T *buf)
+  {
+      char_u	*name;
+      int		i;
+***************
+*** 592,601 ****
+  }
+  
+      static void
+! fmarks_check_one(fm, name, buf)
+!     xfmark_T	*fm;
+!     char_u	*name;
+!     buf_T	*buf;
+  {
+      if (fm->fmark.fnum == 0
+  	    && fm->fname != NULL
+--- 579,585 ----
+  }
+  
+      static void
+! fmarks_check_one(xfmark_T *fm, char_u *name, buf_T *buf)
+  {
+      if (fm->fmark.fnum == 0
+  	    && fm->fname != NULL
+***************
+*** 612,619 ****
+   * Give and error message and return FAIL if not.
+   */
+      int
+! check_mark(pos)
+!     pos_T    *pos;
+  {
+      if (pos == NULL)
+      {
+--- 596,602 ----
+   * Give and error message and return FAIL if not.
+   */
+      int
+! check_mark(pos_T *pos)
+  {
+      if (pos == NULL)
+      {
+***************
+*** 642,649 ****
+   * Used mainly when trashing the entire buffer during ":e" type commands
+   */
+      void
+! clrallmarks(buf)
+!     buf_T	*buf;
+  {
+      static int		i = -1;
+  
+--- 625,631 ----
+   * Used mainly when trashing the entire buffer during ":e" type commands
+   */
+      void
+! clrallmarks(buf_T *buf)
+  {
+      static int		i = -1;
+  
+***************
+*** 676,684 ****
+   * Returns an allocated string.
+   */
+      char_u *
+! fm_getname(fmark, lead_len)
+!     fmark_T	*fmark;
+!     int		lead_len;
+  {
+      if (fmark->fnum == curbuf->b_fnum)		    /* current buffer */
+  	return mark_line(&(fmark->mark), lead_len);
+--- 658,664 ----
+   * Returns an allocated string.
+   */
+      char_u *
+! fm_getname(fmark_T *fmark, int lead_len)
+  {
+      if (fmark->fnum == curbuf->b_fnum)		    /* current buffer */
+  	return mark_line(&(fmark->mark), lead_len);
+***************
+*** 690,698 ****
+   * The returned string has been allocated.
+   */
+      static char_u *
+! mark_line(mp, lead_len)
+!     pos_T	*mp;
+!     int		lead_len;
+  {
+      char_u	*s, *p;
+      int		len;
+--- 670,676 ----
+   * The returned string has been allocated.
+   */
+      static char_u *
+! mark_line(pos_T *mp, int lead_len)
+  {
+      char_u	*s, *p;
+      int		len;
+***************
+*** 718,725 ****
+   * print the marks
+   */
+      void
+! do_marks(eap)
+!     exarg_T	*eap;
+  {
+      char_u	*arg = eap->arg;
+      int		i;
+--- 696,702 ----
+   * print the marks
+   */
+      void
+! do_marks(exarg_T *eap)
+  {
+      char_u	*arg = eap->arg;
+      int		i;
+***************
+*** 757,768 ****
+  }
+  
+      static void
+! show_one_mark(c, arg, p, name, current)
+!     int		c;
+!     char_u	*arg;
+!     pos_T	*p;
+!     char_u	*name;
+!     int		current;	/* in current file */
+  {
+      static int	did_title = FALSE;
+      int		mustfree = FALSE;
+--- 734,745 ----
+  }
+  
+      static void
+! show_one_mark(
+!     int		c,
+!     char_u	*arg,
+!     pos_T	*p,
+!     char_u	*name,
+!     int		current)	/* in current file */
+  {
+      static int	did_title = FALSE;
+      int		mustfree = FALSE;
+***************
+*** 815,822 ****
+   * ":delmarks[!] [marks]"
+   */
+      void
+! ex_delmarks(eap)
+!     exarg_T *eap;
+  {
+      char_u	*p;
+      int		from, to;
+--- 792,798 ----
+   * ":delmarks[!] [marks]"
+   */
+      void
+! ex_delmarks(exarg_T *eap)
+  {
+      char_u	*p;
+      int		from, to;
+***************
+*** 899,906 ****
+   * print the jumplist
+   */
+      void
+! ex_jumps(eap)
+!     exarg_T	*eap UNUSED;
+  {
+      int		i;
+      char_u	*name;
+--- 875,881 ----
+   * print the jumplist
+   */
+      void
+! ex_jumps(exarg_T *eap UNUSED)
+  {
+      int		i;
+      char_u	*name;
+***************
+*** 947,954 ****
+   * print the changelist
+   */
+      void
+! ex_changes(eap)
+!     exarg_T	*eap UNUSED;
+  {
+      int		i;
+      char_u	*name;
+--- 922,928 ----
+   * print the changelist
+   */
+      void
+! ex_changes(exarg_T *eap UNUSED)
+  {
+      int		i;
+      char_u	*name;
+***************
+*** 1025,1035 ****
+   *				   or: mark_adjust(56, 55, MAXLNUM, 2);
+   */
+      void
+! mark_adjust(line1, line2, amount, amount_after)
+!     linenr_T	line1;
+!     linenr_T	line2;
+!     long	amount;
+!     long	amount_after;
+  {
+      int		i;
+      int		fnum = curbuf->b_fnum;
+--- 999,1009 ----
+   *				   or: mark_adjust(56, 55, MAXLNUM, 2);
+   */
+      void
+! mark_adjust(
+!     linenr_T	line1,
+!     linenr_T	line2,
+!     long	amount,
+!     long	amount_after)
+  {
+      int		i;
+      int		fnum = curbuf->b_fnum;
+***************
+*** 1207,1217 ****
+   * position.
+   */
+      void
+! mark_col_adjust(lnum, mincol, lnum_amount, col_amount)
+!     linenr_T	lnum;
+!     colnr_T	mincol;
+!     long	lnum_amount;
+!     long	col_amount;
+  {
+      int		i;
+      int		fnum = curbuf->b_fnum;
+--- 1181,1191 ----
+   * position.
+   */
+      void
+! mark_col_adjust(
+!     linenr_T	lnum,
+!     colnr_T	mincol,
+!     long	lnum_amount,
+!     long	col_amount)
+  {
+      int		i;
+      int		fnum = curbuf->b_fnum;
+***************
+*** 1291,1297 ****
+   * jumplist. They will be removed here for the current window.
+   */
+      static void
+! cleanup_jumplist()
+  {
+      int	    i;
+      int	    from, to;
+--- 1265,1271 ----
+   * jumplist. They will be removed here for the current window.
+   */
+      static void
+! cleanup_jumplist(void)
+  {
+      int	    i;
+      int	    from, to;
+***************
+*** 1323,1331 ****
+   * Copy the jumplist from window "from" to window "to".
+   */
+      void
+! copy_jumplist(from, to)
+!     win_T	*from;
+!     win_T	*to;
+  {
+      int		i;
+  
+--- 1297,1303 ----
+   * Copy the jumplist from window "from" to window "to".
+   */
+      void
+! copy_jumplist(win_T *from, win_T *to)
+  {
+      int		i;
+  
+***************
+*** 1343,1350 ****
+   * Free items in the jumplist of window "wp".
+   */
+      void
+! free_jumplist(wp)
+!     win_T	*wp;
+  {
+      int		i;
+  
+--- 1315,1321 ----
+   * Free items in the jumplist of window "wp".
+   */
+      void
+! free_jumplist(win_T *wp)
+  {
+      int		i;
+  
+***************
+*** 1355,1362 ****
+  #endif /* FEAT_JUMPLIST */
+  
+      void
+! set_last_cursor(win)
+!     win_T	*win;
+  {
+      if (win->w_buffer != NULL)
+  	win->w_buffer->b_last_cursor = win->w_cursor;
+--- 1326,1332 ----
+  #endif /* FEAT_JUMPLIST */
+  
+      void
+! set_last_cursor(win_T *win)
+  {
+      if (win->w_buffer != NULL)
+  	win->w_buffer->b_last_cursor = win->w_cursor;
+***************
+*** 1364,1370 ****
+  
+  #if defined(EXITFREE) || defined(PROTO)
+      void
+! free_all_marks()
+  {
+      int		i;
+  
+--- 1334,1340 ----
+  
+  #if defined(EXITFREE) || defined(PROTO)
+      void
+! free_all_marks(void)
+  {
+      int		i;
+  
+***************
+*** 1376,1384 ****
+  
+  #if defined(FEAT_VIMINFO) || defined(PROTO)
+      int
+! read_viminfo_filemark(virp, force)
+!     vir_T	*virp;
+!     int		force;
+  {
+      char_u	*str;
+      xfmark_T	*fm;
+--- 1346,1352 ----
+  
+  #if defined(FEAT_VIMINFO) || defined(PROTO)
+      int
+! read_viminfo_filemark(vir_T *virp, int force)
+  {
+      char_u	*str;
+      xfmark_T	*fm;
+***************
+*** 1438,1445 ****
+  }
+  
+      void
+! write_viminfo_filemarks(fp)
+!     FILE	*fp;
+  {
+      int		i;
+      char_u	*name;
+--- 1406,1412 ----
+  }
+  
+      void
+! write_viminfo_filemarks(FILE *fp)
+  {
+      int		i;
+      char_u	*name;
+***************
+*** 1499,1509 ****
+  }
+  
+      static void
+! write_one_filemark(fp, fm, c1, c2)
+!     FILE	*fp;
+!     xfmark_T	*fm;
+!     int		c1;
+!     int		c2;
+  {
+      char_u	*name;
+  
+--- 1466,1476 ----
+  }
+  
+      static void
+! write_one_filemark(
+!     FILE	*fp,
+!     xfmark_T	*fm,
+!     int		c1,
+!     int		c2)
+  {
+      char_u	*name;
+  
+***************
+*** 1529,1536 ****
+   * Return TRUE if "name" is on removable media (depending on 'viminfo').
+   */
+      int
+! removable(name)
+!     char_u  *name;
+  {
+      char_u  *p;
+      char_u  part[51];
+--- 1496,1502 ----
+   * Return TRUE if "name" is on removable media (depending on 'viminfo').
+   */
+      int
+! removable(char_u *name)
+  {
+      char_u  *p;
+      char_u  part[51];
+***************
+*** 1565,1572 ****
+   * Return the number of buffers for which marks have been written.
+   */
+      int
+! write_viminfo_marks(fp_out)
+!     FILE	*fp_out;
+  {
+      int		count;
+      buf_T	*buf;
+--- 1531,1537 ----
+   * Return the number of buffers for which marks have been written.
+   */
+      int
+! write_viminfo_marks(FILE *fp_out)
+  {
+      int		count;
+      buf_T	*buf;
+***************
+*** 1632,1641 ****
+  }
+  
+      static void
+! write_one_mark(fp_out, c, pos)
+!     FILE	*fp_out;
+!     int		c;
+!     pos_T	*pos;
+  {
+      if (pos->lnum != 0)
+  	fprintf(fp_out, "\t%c\t%ld\t%d\n", c, (long)pos->lnum, (int)pos->col);
+--- 1597,1603 ----
+  }
+  
+      static void
+! write_one_mark(FILE *fp_out, int c, pos_T *pos)
+  {
+      if (pos->lnum != 0)
+  	fprintf(fp_out, "\t%c\t%ld\t%d\n", c, (long)pos->lnum, (int)pos->col);
+***************
+*** 1648,1659 ****
+   * fp_out == NULL && (flags & VIF_GET_OLDFILES | VIF_FORCEIT): fill v:oldfiles
+   */
+      void
+! copy_viminfo_marks(virp, fp_out, count, eof, flags)
+!     vir_T	*virp;
+!     FILE	*fp_out;
+!     int		count;
+!     int		eof;
+!     int		flags;
+  {
+      char_u	*line = virp->vir_line;
+      buf_T	*buf;
+--- 1610,1621 ----
+   * fp_out == NULL && (flags & VIF_GET_OLDFILES | VIF_FORCEIT): fill v:oldfiles
+   */
+      void
+! copy_viminfo_marks(
+!     vir_T	*virp,
+!     FILE	*fp_out,
+!     int		count,
+!     int		eof,
+!     int		flags)
+  {
+      char_u	*line = virp->vir_line;
+      buf_T	*buf;
+*** ../vim-7.4.1209/src/mbyte.c	2016-01-29 22:36:41.229047648 +0100
+--- src/mbyte.c	2016-01-30 18:20:13.627478749 +0100
+***************
+*** 441,448 ****
+   * Returns -1 if not found.
+   */
+      static int
+! enc_canon_search(name)
+!     char_u	*name;
+  {
+      int		i;
+  
+--- 441,447 ----
+   * Returns -1 if not found.
+   */
+      static int
+! enc_canon_search(char_u *name)
+  {
+      int		i;
+  
+***************
+*** 461,468 ****
+   * Returns 0 if not found.
+   */
+      int
+! enc_canon_props(name)
+!     char_u	*name;
+  {
+      int		i;
+  
+--- 460,466 ----
+   * Returns 0 if not found.
+   */
+      int
+! enc_canon_props(char_u *name)
+  {
+      int		i;
+  
+***************
+*** 507,513 ****
+   * anything.
+   */
+      char_u *
+! mb_init()
+  {
+      int		i;
+      int		idx;
+--- 505,511 ----
+   * anything.
+   */
+      char_u *
+! mb_init(void)
+  {
+      int		i;
+      int		idx;
+***************
+*** 819,825 ****
+   * 3 - UTF-8 BOM
+   */
+      int
+! bomb_size()
+  {
+      int n = 0;
+  
+--- 817,823 ----
+   * 3 - UTF-8 BOM
+   */
+      int
+! bomb_size(void)
+  {
+      int n = 0;
+  
+***************
+*** 850,857 ****
+   * Remove all BOM from "s" by moving remaining text.
+   */
+      void
+! remove_bom(s)
+!     char_u *s;
+  {
+      if (enc_utf8)
+      {
+--- 848,854 ----
+   * Remove all BOM from "s" by moving remaining text.
+   */
+      void
+! remove_bom(char_u *s)
+  {
+      if (enc_utf8)
+      {
+***************
+*** 875,890 ****
+   * >2 for other word characters
+   */
+      int
+! mb_get_class(p)
+!     char_u	*p;
+  {
+      return mb_get_class_buf(p, curbuf);
+  }
+  
+      int
+! mb_get_class_buf(p, buf)
+!     char_u	*p;
+!     buf_T	*buf;
+  {
+      if (MB_BYTE2LEN(p[0]) == 1)
+      {
+--- 872,884 ----
+   * >2 for other word characters
+   */
+      int
+! mb_get_class(char_u *p)
+  {
+      return mb_get_class_buf(p, curbuf);
+  }
+  
+      int
+! mb_get_class_buf(char_u *p, buf_T *buf)
+  {
+      if (MB_BYTE2LEN(p[0]) == 1)
+      {
+***************
+*** 906,914 ****
+   * TODO: Should return 1 for punctuation.
+   */
+      int
+! dbcs_class(lead, trail)
+!     unsigned	lead;
+!     unsigned	trail;
+  {
+      switch (enc_dbcs)
+      {
+--- 900,906 ----
+   * TODO: Should return 1 for punctuation.
+   */
+      int
+! dbcs_class(unsigned lead, unsigned trail)
+  {
+      switch (enc_dbcs)
+      {
+***************
+*** 1082,1096 ****
+   * Returns 1 for a single-byte character.
+   */
+      int
+! latin_char2len(c)
+!     int		c UNUSED;
+  {
+      return 1;
+  }
+  
+      static int
+! dbcs_char2len(c)
+!     int		c;
+  {
+      if (c >= 0x100)
+  	return 2;
+--- 1074,1087 ----
+   * Returns 1 for a single-byte character.
+   */
+      int
+! latin_char2len(int c UNUSED)
+  {
+      return 1;
+  }
+  
+      static int
+! dbcs_char2len(
+!     int		c)
+  {
+      if (c >= 0x100)
+  	return 2;
+***************
+*** 1103,1120 ****
+   * Returns the length in bytes.
+   */
+      int
+! latin_char2bytes(c, buf)
+!     int		c;
+!     char_u	*buf;
+  {
+      buf[0] = c;
+      return 1;
+  }
+  
+      static int
+! dbcs_char2bytes(c, buf)
+!     int		c;
+!     char_u	*buf;
+  {
+      if (c >= 0x100)
+      {
+--- 1094,1107 ----
+   * Returns the length in bytes.
+   */
+      int
+! latin_char2bytes(int c, char_u *buf)
+  {
+      buf[0] = c;
+      return 1;
+  }
+  
+      static int
+! dbcs_char2bytes(int c, char_u *buf)
+  {
+      if (c >= 0x100)
+      {
+***************
+*** 1137,1151 ****
+   * Returns 0 when *p is NUL.
+   */
+      int
+! latin_ptr2len(p)
+!     char_u	*p;
+  {
+!     return MB_BYTE2LEN(*p);
+  }
+  
+      static int
+! dbcs_ptr2len(p)
+!     char_u	*p;
+  {
+      int		len;
+  
+--- 1124,1137 ----
+   * Returns 0 when *p is NUL.
+   */
+      int
+! latin_ptr2len(char_u *p)
+  {
+!  return MB_BYTE2LEN(*p);
+  }
+  
+      static int
+! dbcs_ptr2len(
+!     char_u	*p)
+  {
+      int		len;
+  
+***************
+*** 1163,1171 ****
+   * Returns 1 for an illegal char or an incomplete byte sequence.
+   */
+      int
+! latin_ptr2len_len(p, size)
+!     char_u	*p;
+!     int		size;
+  {
+      if (size < 1 || *p == NUL)
+  	return 0;
+--- 1149,1155 ----
+   * Returns 1 for an illegal char or an incomplete byte sequence.
+   */
+      int
+! latin_ptr2len_len(char_u *p, int size)
+  {
+      if (size < 1 || *p == NUL)
+  	return 0;
+***************
+*** 1173,1181 ****
+  }
+  
+      static int
+! dbcs_ptr2len_len(p, size)
+!     char_u	*p;
+!     int		size;
+  {
+      int		len;
+  
+--- 1157,1163 ----
+  }
+  
+      static int
+! dbcs_ptr2len_len(char_u *p, int size)
+  {
+      int		len;
+  
+***************
+*** 1201,1210 ****
+   * Return TRUE if "c" is in "table[size / sizeof(struct interval)]".
+   */
+      static int
+! intable(table, size, c)
+!     struct interval	*table;
+!     size_t		size;
+!     int			c;
+  {
+      int mid, bot, top;
+  
+--- 1183,1189 ----
+   * Return TRUE if "c" is in "table[size / sizeof(struct interval)]".
+   */
+      static int
+! intable(struct interval *table, size_t size, int c)
+  {
+      int mid, bot, top;
+  
+***************
+*** 1236,1243 ****
+   * class 'A'(mbiguous).
+   */
+      int
+! utf_char2cells(c)
+!     int		c;
+  {
+      /* Sorted list of non-overlapping intervals of East Asian double width
+       * characters, generated with ../runtime/tools/unicode.vim. */
+--- 1215,1221 ----
+   * class 'A'(mbiguous).
+   */
+      int
+! utf_char2cells(int c)
+  {
+      /* Sorted list of non-overlapping intervals of East Asian double width
+       * characters, generated with ../runtime/tools/unicode.vim. */
+***************
+*** 1496,1510 ****
+   * This doesn't take care of unprintable characters, use ptr2cells() for that.
+   */
+      int
+! latin_ptr2cells(p)
+!     char_u	*p UNUSED;
+  {
+      return 1;
+  }
+  
+      int
+! utf_ptr2cells(p)
+!     char_u	*p;
+  {
+      int		c;
+  
+--- 1474,1487 ----
+   * This doesn't take care of unprintable characters, use ptr2cells() for that.
+   */
+      int
+! latin_ptr2cells(char_u *p UNUSED)
+  {
+      return 1;
+  }
+  
+      int
+! utf_ptr2cells(
+!     char_u	*p)
+  {
+      int		c;
+  
+***************
+*** 1524,1531 ****
+  }
+  
+      int
+! dbcs_ptr2cells(p)
+!     char_u	*p;
+  {
+      /* Number of cells is equal to number of bytes, except for euc-jp when
+       * the first byte is 0x8e. */
+--- 1501,1507 ----
+  }
+  
+      int
+! dbcs_ptr2cells(char_u *p)
+  {
+      /* Number of cells is equal to number of bytes, except for euc-jp when
+       * the first byte is 0x8e. */
+***************
+*** 1540,1556 ****
+   * For an empty string or truncated character returns 1.
+   */
+      int
+! latin_ptr2cells_len(p, size)
+!     char_u	*p UNUSED;
+!     int		size UNUSED;
+  {
+      return 1;
+  }
+  
+      static int
+! utf_ptr2cells_len(p, size)
+!     char_u	*p;
+!     int		size;
+  {
+      int		c;
+  
+--- 1516,1528 ----
+   * For an empty string or truncated character returns 1.
+   */
+      int
+! latin_ptr2cells_len(char_u *p UNUSED, int size UNUSED)
+  {
+      return 1;
+  }
+  
+      static int
+! utf_ptr2cells_len(char_u *p, int size)
+  {
+      int		c;
+  
+***************
+*** 1572,1580 ****
+  }
+  
+      static int
+! dbcs_ptr2cells_len(p, size)
+!     char_u	*p;
+!     int		size;
+  {
+      /* Number of cells is equal to number of bytes, except for euc-jp when
+       * the first byte is 0x8e. */
+--- 1544,1550 ----
+  }
+  
+      static int
+! dbcs_ptr2cells_len(char_u *p, int size)
+  {
+      /* Number of cells is equal to number of bytes, except for euc-jp when
+       * the first byte is 0x8e. */
+***************
+*** 1589,1603 ****
+   * Only takes care of multi-byte chars, not "^C" and such.
+   */
+      int
+! latin_char2cells(c)
+!     int		c UNUSED;
+  {
+      return 1;
+  }
+  
+      static int
+! dbcs_char2cells(c)
+!     int		c;
+  {
+      /* Number of cells is equal to number of bytes, except for euc-jp when
+       * the first byte is 0x8e. */
+--- 1559,1571 ----
+   * Only takes care of multi-byte chars, not "^C" and such.
+   */
+      int
+! latin_char2cells(int c UNUSED)
+  {
+      return 1;
+  }
+  
+      static int
+! dbcs_char2cells(int c)
+  {
+      /* Number of cells is equal to number of bytes, except for euc-jp when
+       * the first byte is 0x8e. */
+***************
+*** 1612,1620 ****
+   * Stop at a NUL character.  When "len" >= 0 stop at character "p[len]".
+   */
+      int
+! mb_string2cells(p, len)
+!     char_u  *p;
+!     int	    len;
+  {
+      int i;
+      int clen = 0;
+--- 1580,1586 ----
+   * Stop at a NUL character.  When "len" >= 0 stop at character "p[len]".
+   */
+      int
+! mb_string2cells(char_u *p, int len)
+  {
+      int i;
+      int clen = 0;
+***************
+*** 1630,1646 ****
+   * We make sure that the offset used is less than "max_off".
+   */
+      int
+! latin_off2cells(off, max_off)
+!     unsigned	off UNUSED;
+!     unsigned	max_off UNUSED;
+  {
+      return 1;
+  }
+  
+      int
+! dbcs_off2cells(off, max_off)
+!     unsigned	off;
+!     unsigned	max_off;
+  {
+      /* never check beyond end of the line */
+      if (off >= max_off)
+--- 1596,1608 ----
+   * We make sure that the offset used is less than "max_off".
+   */
+      int
+! latin_off2cells(unsigned off UNUSED, unsigned max_off UNUSED)
+  {
+      return 1;
+  }
+  
+      int
+! dbcs_off2cells(unsigned off, unsigned max_off)
+  {
+      /* never check beyond end of the line */
+      if (off >= max_off)
+***************
+*** 1654,1662 ****
+  }
+  
+      int
+! utf_off2cells(off, max_off)
+!     unsigned	off;
+!     unsigned	max_off;
+  {
+      return (off + 1 < max_off && ScreenLines[off + 1] == 0) ? 2 : 1;
+  }
+--- 1616,1622 ----
+  }
+  
+      int
+! utf_off2cells(unsigned off, unsigned max_off)
+  {
+      return (off + 1 < max_off && ScreenLines[off + 1] == 0) ? 2 : 1;
+  }
+***************
+*** 1666,1680 ****
+   * Convert a byte sequence into a character.
+   */
+      int
+! latin_ptr2char(p)
+!     char_u	*p;
+  {
+      return *p;
+  }
+  
+      static int
+! dbcs_ptr2char(p)
+!     char_u	*p;
+  {
+      if (MB_BYTE2LEN(*p) > 1 && p[1] != NUL)
+  	return (p[0] << 8) + p[1];
+--- 1626,1638 ----
+   * Convert a byte sequence into a character.
+   */
+      int
+! latin_ptr2char(char_u *p)
+  {
+      return *p;
+  }
+  
+      static int
+! dbcs_ptr2char(char_u *p)
+  {
+      if (MB_BYTE2LEN(*p) > 1 && p[1] != NUL)
+  	return (p[0] << 8) + p[1];
+***************
+*** 1688,1695 ****
+   * Does not include composing characters, of course.
+   */
+      int
+! utf_ptr2char(p)
+!     char_u	*p;
+  {
+      int		len;
+  
+--- 1646,1652 ----
+   * Does not include composing characters, of course.
+   */
+      int
+! utf_ptr2char(char_u *p)
+  {
+      int		len;
+  
+***************
+*** 1746,1754 ****
+   * "s".
+   */
+      static int
+! utf_safe_read_char_adv(s, n)
+!     char_u      **s;
+!     size_t      *n;
+  {
+      int		c, k;
+  
+--- 1703,1709 ----
+   * "s".
+   */
+      static int
+! utf_safe_read_char_adv(char_u **s, size_t *n)
+  {
+      int		c, k;
+  
+***************
+*** 1794,1801 ****
+   * Note: composing characters are skipped!
+   */
+      int
+! mb_ptr2char_adv(pp)
+!     char_u	**pp;
+  {
+      int		c;
+  
+--- 1749,1755 ----
+   * Note: composing characters are skipped!
+   */
+      int
+! mb_ptr2char_adv(char_u **pp)
+  {
+      int		c;
+  
+***************
+*** 1809,1816 ****
+   * Note: composing characters are returned as separate characters.
+   */
+      int
+! mb_cptr2char_adv(pp)
+!     char_u	**pp;
+  {
+      int		c;
+  
+--- 1763,1769 ----
+   * Note: composing characters are returned as separate characters.
+   */
+      int
+! mb_cptr2char_adv(char_u **pp)
+  {
+      int		c;
+  
+***************
+*** 1828,1836 ****
+   * Note: these are NOT really composing characters!
+   */
+      int
+! arabic_combine(one, two)
+!     int		one;	    /* first character */
+!     int		two;	    /* character just after "one" */
+  {
+      if (one == a_LAM)
+  	return arabic_maycombine(two);
+--- 1781,1789 ----
+   * Note: these are NOT really composing characters!
+   */
+      int
+! arabic_combine(
+!     int		one,	    /* first character */
+!     int		two)	    /* character just after "one" */
+  {
+      if (one == a_LAM)
+  	return arabic_maycombine(two);
+***************
+*** 1842,1849 ****
+   * Arabic combining character, need to check the character before this.
+   */
+      int
+! arabic_maycombine(two)
+!     int		two;
+  {
+      if (p_arshape && !p_tbidi)
+  	return (two == a_ALEF_MADDA
+--- 1795,1801 ----
+   * Arabic combining character, need to check the character before this.
+   */
+      int
+! arabic_maycombine(int two)
+  {
+      if (p_arshape && !p_tbidi)
+  	return (two == a_ALEF_MADDA
+***************
+*** 1859,1867 ****
+   * behaves like a composing character.
+   */
+      int
+! utf_composinglike(p1, p2)
+!     char_u	*p1;
+!     char_u	*p2;
+  {
+      int		c2;
+  
+--- 1811,1817 ----
+   * behaves like a composing character.
+   */
+      int
+! utf_composinglike(char_u *p1, char_u *p2)
+  {
+      int		c2;
+  
+***************
+*** 1879,1887 ****
+   * composing characters.
+   */
+      int
+! utfc_ptr2char(p, pcc)
+!     char_u	*p;
+!     int		*pcc;	/* return: composing chars, last one is 0 */
+  {
+      int		len;
+      int		c;
+--- 1829,1837 ----
+   * composing characters.
+   */
+      int
+! utfc_ptr2char(
+!     char_u	*p,
+!     int		*pcc)	/* return: composing chars, last one is 0 */
+  {
+      int		len;
+      int		c;
+***************
+*** 1919,1928 ****
+   * composing characters.  Use no more than p[maxlen].
+   */
+      int
+! utfc_ptr2char_len(p, pcc, maxlen)
+!     char_u	*p;
+!     int		*pcc;	/* return: composing chars, last one is 0 */
+!     int		maxlen;
+  {
+      int		len;
+      int		c;
+--- 1869,1878 ----
+   * composing characters.  Use no more than p[maxlen].
+   */
+      int
+! utfc_ptr2char_len(
+!     char_u	*p,
+!     int		*pcc,	/* return: composing chars, last one is 0 */
+!     int		maxlen)
+  {
+      int		len;
+      int		c;
+***************
+*** 1965,1973 ****
+   * Returns the produced number of bytes.
+   */
+      int
+! utfc_char2bytes(off, buf)
+!     int		off;
+!     char_u	*buf;
+  {
+      int		len;
+      int		i;
+--- 1915,1921 ----
+   * Returns the produced number of bytes.
+   */
+      int
+! utfc_char2bytes(int off, char_u *buf)
+  {
+      int		len;
+      int		i;
+***************
+*** 1989,1996 ****
+   * Returns 1 for an illegal byte sequence.
+   */
+      int
+! utf_ptr2len(p)
+!     char_u	*p;
+  {
+      int		len;
+      int		i;
+--- 1937,1943 ----
+   * Returns 1 for an illegal byte sequence.
+   */
+      int
+! utf_ptr2len(char_u *p)
+  {
+      int		len;
+      int		i;
+***************
+*** 2010,2017 ****
+   * Returns 1 for an invalid first byte value.
+   */
+      int
+! utf_byte2len(b)
+!     int		b;
+  {
+      return utf8len_tab[b];
+  }
+--- 1957,1963 ----
+   * Returns 1 for an invalid first byte value.
+   */
+      int
+! utf_byte2len(int b)
+  {
+      return utf8len_tab[b];
+  }
+***************
+*** 2025,2033 ****
+   * Never returns zero.
+   */
+      int
+! utf_ptr2len_len(p, size)
+!     char_u	*p;
+!     int		size;
+  {
+      int		len;
+      int		i;
+--- 1971,1977 ----
+   * Never returns zero.
+   */
+      int
+! utf_ptr2len_len(char_u *p, int size)
+  {
+      int		len;
+      int		i;
+***************
+*** 2051,2058 ****
+   * This includes following composing characters.
+   */
+      int
+! utfc_ptr2len(p)
+!     char_u	*p;
+  {
+      int		len;
+      int		b0 = *p;
+--- 1995,2001 ----
+   * This includes following composing characters.
+   */
+      int
+! utfc_ptr2len(char_u *p)
+  {
+      int		len;
+      int		b0 = *p;
+***************
+*** 2099,2107 ****
+   * Returns 1 for an illegal char or an incomplete byte sequence.
+   */
+      int
+! utfc_ptr2len_len(p, size)
+!     char_u	*p;
+!     int		size;
+  {
+      int		len;
+  #ifdef FEAT_ARABIC
+--- 2042,2048 ----
+   * Returns 1 for an illegal char or an incomplete byte sequence.
+   */
+      int
+! utfc_ptr2len_len(char_u *p, int size)
+  {
+      int		len;
+  #ifdef FEAT_ARABIC
+***************
+*** 2159,2166 ****
+   * This does not include composing characters.
+   */
+      int
+! utf_char2len(c)
+!     int		c;
+  {
+      if (c < 0x80)
+  	return 1;
+--- 2100,2106 ----
+   * This does not include composing characters.
+   */
+      int
+! utf_char2len(int c)
+  {
+      if (c < 0x80)
+  	return 1;
+***************
+*** 2181,2189 ****
+   * This does not include composing characters.
+   */
+      int
+! utf_char2bytes(c, buf)
+!     int		c;
+!     char_u	*buf;
+  {
+      if (c < 0x80)		/* 7 bits */
+      {
+--- 2121,2127 ----
+   * This does not include composing characters.
+   */
+      int
+! utf_char2bytes(int c, char_u *buf)
+  {
+      if (c < 0x80)		/* 7 bits */
+      {
+***************
+*** 2236,2243 ****
+   * Based on code from Markus Kuhn.
+   */
+      int
+! utf_iscomposing(c)
+!     int		c;
+  {
+      /* Sorted list of non-overlapping intervals.
+       * Generated by ../runtime/tools/unicode.vim. */
+--- 2174,2180 ----
+   * Based on code from Markus Kuhn.
+   */
+      int
+! utf_iscomposing(int c)
+  {
+      /* Sorted list of non-overlapping intervals.
+       * Generated by ../runtime/tools/unicode.vim. */
+***************
+*** 2489,2496 ****
+   * Only for characters of 0x100 and above!
+   */
+      int
+! utf_printable(c)
+!     int		c;
+  {
+  #ifdef USE_WCHAR_FUNCTIONS
+      /*
+--- 2426,2432 ----
+   * Only for characters of 0x100 and above!
+   */
+      int
+! utf_printable(int c)
+  {
+  #ifdef USE_WCHAR_FUNCTIONS
+      /*
+***************
+*** 2518,2525 ****
+   * 2 or bigger: some class of word character.
+   */
+      int
+! utf_class(c)
+!     int		c;
+  {
+      /* sorted list of non-overlapping intervals */
+      static struct clinterval
+--- 2454,2460 ----
+   * 2 or bigger: some class of word character.
+   */
+      int
+! utf_class(int c)
+  {
+      /* sorted list of non-overlapping intervals */
+      static struct clinterval
+***************
+*** 2836,2845 ****
+   * the given conversion "table".  Uses binary search on "table".
+   */
+      static int
+! utf_convert(a, table, tableSize)
+!     int			a;
+!     convertStruct	table[];
+!     int			tableSize;
+  {
+      int start, mid, end; /* indices into table */
+      int entries = tableSize / sizeof(convertStruct);
+--- 2771,2780 ----
+   * the given conversion "table".  Uses binary search on "table".
+   */
+      static int
+! utf_convert(
+!     int			a,
+!     convertStruct	table[],
+!     int			tableSize)
+  {
+      int start, mid, end; /* indices into table */
+      int entries = tableSize / sizeof(convertStruct);
+***************
+*** 2869,2876 ****
+   * simple case folding.
+   */
+      int
+! utf_fold(a)
+!     int		a;
+  {
+      return utf_convert(a, foldCase, (int)sizeof(foldCase));
+  }
+--- 2804,2810 ----
+   * simple case folding.
+   */
+      int
+! utf_fold(int a)
+  {
+      return utf_convert(a, foldCase, (int)sizeof(foldCase));
+  }
+***************
+*** 3217,3224 ****
+   * simple case folding.
+   */
+      int
+! utf_toupper(a)
+!     int		a;
+  {
+      /* If 'casemap' contains "keepascii" use ASCII style toupper(). */
+      if (a < 128 && (cmp_flags & CMP_KEEPASCII))
+--- 3151,3157 ----
+   * simple case folding.
+   */
+      int
+! utf_toupper(int a)
+  {
+      /* If 'casemap' contains "keepascii" use ASCII style toupper(). */
+      if (a < 128 && (cmp_flags & CMP_KEEPASCII))
+***************
+*** 3239,3246 ****
+  }
+  
+      int
+! utf_islower(a)
+!     int		a;
+  {
+      /* German sharp s is lower case but has no upper case equivalent. */
+      return (utf_toupper(a) != a) || a == 0xdf;
+--- 3172,3178 ----
+  }
+  
+      int
+! utf_islower(int a)
+  {
+      /* German sharp s is lower case but has no upper case equivalent. */
+      return (utf_toupper(a) != a) || a == 0xdf;
+***************
+*** 3251,3258 ****
+   * simple case folding.
+   */
+      int
+! utf_tolower(a)
+!     int		a;
+  {
+      /* If 'casemap' contains "keepascii" use ASCII style tolower(). */
+      if (a < 128 && (cmp_flags & CMP_KEEPASCII))
+--- 3183,3189 ----
+   * simple case folding.
+   */
+      int
+! utf_tolower(int a)
+  {
+      /* If 'casemap' contains "keepascii" use ASCII style tolower(). */
+      if (a < 128 && (cmp_flags & CMP_KEEPASCII))
+***************
+*** 3273,3288 ****
+  }
+  
+      int
+! utf_isupper(a)
+!     int		a;
+  {
+      return (utf_tolower(a) != a);
+  }
+  
+      static int
+! utf_strnicmp(s1, s2, n1, n2)
+!     char_u      *s1, *s2;
+!     size_t      n1, n2;
+  {
+      int		c1, c2, cdiff;
+      char_u	buffer[6];
+--- 3204,3220 ----
+  }
+  
+      int
+! utf_isupper(int a)
+  {
+      return (utf_tolower(a) != a);
+  }
+  
+      static int
+! utf_strnicmp(
+!     char_u      *s1,
+!     char_u      *s2,
+!     size_t      n1,
+!     size_t      n2)
+  {
+      int		c1, c2, cdiff;
+      char_u	buffer[6];
+***************
+*** 3362,3370 ****
+   * two characters otherwise.
+   */
+      int
+! mb_strnicmp(s1, s2, nn)
+!     char_u	*s1, *s2;
+!     size_t	nn;
+  {
+      int		i, l;
+      int		cdiff;
+--- 3294,3300 ----
+   * two characters otherwise.
+   */
+      int
+! mb_strnicmp(char_u *s1, char_u *s2, size_t nn)
+  {
+      int		i, l;
+      int		cdiff;
+***************
+*** 3411,3417 ****
+   * 'encoding' has been set to.
+   */
+      void
+! show_utf8()
+  {
+      int		len;
+      int		rlen = 0;
+--- 3341,3347 ----
+   * 'encoding' has been set to.
+   */
+      void
+! show_utf8(void)
+  {
+      int		len;
+      int		rlen = 0;
+***************
+*** 3460,3476 ****
+   * Returns 0 when already at the first byte of a character.
+   */
+      int
+! latin_head_off(base, p)
+!     char_u	*base UNUSED;
+!     char_u	*p UNUSED;
+  {
+      return 0;
+  }
+  
+      int
+! dbcs_head_off(base, p)
+!     char_u	*base;
+!     char_u	*p;
+  {
+      char_u	*q;
+  
+--- 3390,3402 ----
+   * Returns 0 when already at the first byte of a character.
+   */
+      int
+! latin_head_off(char_u *base UNUSED, char_u *p UNUSED)
+  {
+      return 0;
+  }
+  
+      int
+! dbcs_head_off(char_u *base, char_u *p)
+  {
+      char_u	*q;
+  
+***************
+*** 3492,3500 ****
+   * single-width DBCS_JPNU characters are stored separately.
+   */
+      int
+! dbcs_screen_head_off(base, p)
+!     char_u	*base;
+!     char_u	*p;
+  {
+      char_u	*q;
+  
+--- 3418,3424 ----
+   * single-width DBCS_JPNU characters are stored separately.
+   */
+      int
+! dbcs_screen_head_off(char_u *base, char_u *p)
+  {
+      char_u	*q;
+  
+***************
+*** 3524,3532 ****
+  }
+  
+      int
+! utf_head_off(base, p)
+!     char_u	*base;
+!     char_u	*p;
+  {
+      char_u	*q;
+      char_u	*s;
+--- 3448,3454 ----
+  }
+  
+      int
+! utf_head_off(char_u *base, char_u *p)
+  {
+      char_u	*q;
+      char_u	*s;
+***************
+*** 3585,3593 ****
+   * Copy a character from "*fp" to "*tp" and advance the pointers.
+   */
+      void
+! mb_copy_char(fp, tp)
+!     char_u	**fp;
+!     char_u	**tp;
+  {
+      int	    l = (*mb_ptr2len)(*fp);
+  
+--- 3507,3513 ----
+   * Copy a character from "*fp" to "*tp" and advance the pointers.
+   */
+      void
+! mb_copy_char(char_u **fp, char_u **tp)
+  {
+      int	    l = (*mb_ptr2len)(*fp);
+  
+***************
+*** 3602,3610 ****
+   * character.  Can start anywhere in a stream of bytes.
+   */
+      int
+! mb_off_next(base, p)
+!     char_u	*base;
+!     char_u	*p;
+  {
+      int		i;
+      int		j;
+--- 3522,3528 ----
+   * character.  Can start anywhere in a stream of bytes.
+   */
+      int
+! mb_off_next(char_u *base, char_u *p)
+  {
+      int		i;
+      int		j;
+***************
+*** 3639,3647 ****
+   * into.  Can start anywhere in a stream of bytes.
+   */
+      int
+! mb_tail_off(base, p)
+!     char_u	*base;
+!     char_u	*p;
+  {
+      int		i;
+      int		j;
+--- 3557,3563 ----
+   * into.  Can start anywhere in a stream of bytes.
+   */
+      int
+! mb_tail_off(char_u *base, char_u *p)
+  {
+      int		i;
+      int		j;
+***************
+*** 3676,3682 ****
+   * Find the next illegal byte sequence.
+   */
+      void
+! utf_find_illegal()
+  {
+      pos_T	pos = curwin->w_cursor;
+      char_u	*p;
+--- 3592,3598 ----
+   * Find the next illegal byte sequence.
+   */
+      void
+! utf_find_illegal(void)
+  {
+      pos_T	pos = curwin->w_cursor;
+      char_u	*p;
+***************
+*** 3755,3763 ****
+   * When "end" is positive stop there.
+   */
+      int
+! utf_valid_string(s, end)
+!     char_u	*s;
+!     char_u	*end;
+  {
+      int		l;
+      char_u	*p = s;
+--- 3671,3677 ----
+   * When "end" is positive stop there.
+   */
+      int
+! utf_valid_string(char_u *s, char_u *end)
+  {
+      int		l;
+      char_u	*p = s;
+***************
+*** 3783,3791 ****
+   * Special version of mb_tail_off() for use in ScreenLines[].
+   */
+      int
+! dbcs_screen_tail_off(base, p)
+!     char_u	*base;
+!     char_u	*p;
+  {
+      /* It can't be the first byte if a double-byte when not using DBCS, at the
+       * end of the string or the byte can't start a double-byte.
+--- 3697,3703 ----
+   * Special version of mb_tail_off() for use in ScreenLines[].
+   */
+      int
+! dbcs_screen_tail_off(char_u *base, char_u *p)
+  {
+      /* It can't be the first byte if a double-byte when not using DBCS, at the
+       * end of the string or the byte can't start a double-byte.
+***************
+*** 3807,3813 ****
+   * Return TRUE when the cursor was adjusted.
+   */
+      void
+! mb_adjust_cursor()
+  {
+      mb_adjustpos(curbuf, &curwin->w_cursor);
+  }
+--- 3719,3725 ----
+   * Return TRUE when the cursor was adjusted.
+   */
+      void
+! mb_adjust_cursor(void)
+  {
+      mb_adjustpos(curbuf, &curwin->w_cursor);
+  }
+***************
+*** 3817,3825 ****
+   * If it points to a tail byte it's moved backwards to the head byte.
+   */
+      void
+! mb_adjustpos(buf, lp)
+!     buf_T	*buf;
+!     pos_T	*lp;
+  {
+      char_u	*p;
+  
+--- 3729,3735 ----
+   * If it points to a tail byte it's moved backwards to the head byte.
+   */
+      void
+! mb_adjustpos(buf_T *buf, pos_T *lp)
+  {
+      char_u	*p;
+  
+***************
+*** 3847,3855 ****
+   * Return a pointer to the character before "*p", if there is one.
+   */
+      char_u *
+! mb_prevptr(line, p)
+!     char_u *line;	/* start of the string */
+!     char_u *p;
+  {
+      if (p > line)
+  	mb_ptr_back(line, p);
+--- 3757,3765 ----
+   * Return a pointer to the character before "*p", if there is one.
+   */
+      char_u *
+! mb_prevptr(
+!     char_u *line,	/* start of the string */
+!     char_u *p)
+  {
+      if (p > line)
+  	mb_ptr_back(line, p);
+***************
+*** 3861,3868 ****
+   * following composing characters) counts as one.
+   */
+      int
+! mb_charlen(str)
+!     char_u	*str;
+  {
+      char_u	*p = str;
+      int		count;
+--- 3771,3777 ----
+   * following composing characters) counts as one.
+   */
+      int
+! mb_charlen(char_u *str)
+  {
+      char_u	*p = str;
+      int		count;
+***************
+*** 3881,3889 ****
+   * Like mb_charlen() but for a string with specified length.
+   */
+      int
+! mb_charlen_len(str, len)
+!     char_u	*str;
+!     int		len;
+  {
+      char_u	*p = str;
+      int		count;
+--- 3790,3796 ----
+   * Like mb_charlen() but for a string with specified length.
+   */
+      int
+! mb_charlen_len(char_u *str, int len)
+  {
+      char_u	*p = str;
+      int		count;
+***************
+*** 3903,3910 ****
+   * Return NULL if no multi-byte char was found.
+   */
+      char_u *
+! mb_unescape(pp)
+!     char_u **pp;
+  {
+      static char_u	buf[6];
+      int			n;
+--- 3810,3816 ----
+   * Return NULL if no multi-byte char was found.
+   */
+      char_u *
+! mb_unescape(char_u **pp)
+  {
+      static char_u	buf[6];
+      int			n;
+***************
+*** 3965,3973 ****
+   * Caller must make sure "row" and "col" are not invalid!
+   */
+      int
+! mb_lefthalve(row, col)
+!     int	    row;
+!     int	    col;
+  {
+  #ifdef FEAT_HANGULIN
+      if (composing_hangul)
+--- 3871,3877 ----
+   * Caller must make sure "row" and "col" are not invalid!
+   */
+      int
+! mb_lefthalve(int row, int col)
+  {
+  #ifdef FEAT_HANGULIN
+      if (composing_hangul)
+***************
+*** 3982,3990 ****
+   * char move it to the left half.  Returns the corrected column.
+   */
+      int
+! mb_fix_col(col, row)
+!     int		col;
+!     int		row;
+  {
+      col = check_col(col);
+      row = check_row(row);
+--- 3886,3892 ----
+   * char move it to the left half.  Returns the corrected column.
+   */
+      int
+! mb_fix_col(int col, int row)
+  {
+      col = check_col(col);
+      row = check_row(row);
+***************
+*** 4006,4013 ****
+   * Skip the Vim specific head of a 'encoding' name.
+   */
+      char_u *
+! enc_skip(p)
+!     char_u	*p;
+  {
+      if (STRNCMP(p, "2byte-", 6) == 0)
+  	return p + 6;
+--- 3908,3914 ----
+   * Skip the Vim specific head of a 'encoding' name.
+   */
+      char_u *
+! enc_skip(char_u *p)
+  {
+      if (STRNCMP(p, "2byte-", 6) == 0)
+  	return p + 6;
+***************
+*** 4023,4030 ****
+   * Returns an allocated string.  NULL for out-of-memory.
+   */
+      char_u *
+! enc_canonize(enc)
+!     char_u	*enc;
+  {
+      char_u	*r;
+      char_u	*p, *s;
+--- 3924,3930 ----
+   * Returns an allocated string.  NULL for out-of-memory.
+   */
+      char_u *
+! enc_canonize(char_u *enc)
+  {
+      char_u	*r;
+      char_u	*p, *s;
+***************
+*** 4102,4109 ****
+   * Returns -1 when not found.
+   */
+      static int
+! enc_alias_search(name)
+!     char_u	*name;
+  {
+      int		i;
+  
+--- 4002,4008 ----
+   * Returns -1 when not found.
+   */
+      static int
+! enc_alias_search(char_u *name)
+  {
+      int		i;
+  
+***************
+*** 4125,4131 ****
+   * Returns an allocated string when successful, NULL when not.
+   */
+      char_u *
+! enc_locale()
+  {
+  #ifndef WIN3264
+      char	*s;
+--- 4024,4030 ----
+   * Returns an allocated string when successful, NULL when not.
+   */
+      char_u *
+! enc_locale(void)
+  {
+  #ifndef WIN3264
+      char	*s;
+***************
+*** 4200,4207 ****
+   * Returns zero if no codepage can be figured out.
+   */
+      int
+! encname2codepage(name)
+!     char_u	*name;
+  {
+      int		cp;
+      char_u	*p = name;
+--- 4099,4105 ----
+   * Returns zero if no codepage can be figured out.
+   */
+      int
+! encname2codepage(char_u *name)
+  {
+      int		cp;
+      char_u	*p = name;
+***************
+*** 4235,4243 ****
+   * (should return iconv_t, but that causes problems with prototypes).
+   */
+      void *
+! my_iconv_open(to, from)
+!     char_u	*to;
+!     char_u	*from;
+  {
+      iconv_t	fd;
+  #define ICONV_TESTLEN 400
+--- 4133,4139 ----
+   * (should return iconv_t, but that causes problems with prototypes).
+   */
+      void *
+! my_iconv_open(char_u *to, char_u *from)
+  {
+      iconv_t	fd;
+  #define ICONV_TESTLEN 400
+***************
+*** 4290,4301 ****
+   * If resultlenp is not NULL, sets it to the result length in bytes.
+   */
+      static char_u *
+! iconv_string(vcp, str, slen, unconvlenp, resultlenp)
+!     vimconv_T	*vcp;
+!     char_u	*str;
+!     int		slen;
+!     int		*unconvlenp;
+!     int		*resultlenp;
+  {
+      const char	*from;
+      size_t	fromlen;
+--- 4186,4197 ----
+   * If resultlenp is not NULL, sets it to the result length in bytes.
+   */
+      static char_u *
+! iconv_string(
+!     vimconv_T	*vcp,
+!     char_u	*str,
+!     int		slen,
+!     int		*unconvlenp,
+!     int		*resultlenp)
+  {
+      const char	*from;
+      size_t	fromlen;
+***************
+*** 4453,4460 ****
+   * Try opening the iconv.dll and return TRUE if iconv() can be used.
+   */
+      int
+! iconv_enabled(verbose)
+!     int		verbose;
+  {
+      if (hIconvDLL != 0 && hMsvcrtDLL != 0)
+  	return TRUE;
+--- 4349,4355 ----
+   * Try opening the iconv.dll and return TRUE if iconv() can be used.
+   */
+      int
+! iconv_enabled(int verbose)
+  {
+      if (hIconvDLL != 0 && hMsvcrtDLL != 0)
+  	return TRUE;
+***************
+*** 4516,4522 ****
+  }
+  
+      void
+! iconv_end()
+  {
+      /* Don't use iconv() when inputting or outputting characters. */
+      if (input_conv.vc_type == CONV_ICONV)
+--- 4411,4417 ----
+  }
+  
+      void
+! iconv_end(void)
+  {
+      /* Don't use iconv() when inputting or outputting characters. */
+      if (input_conv.vc_type == CONV_ICONV)
+***************
+*** 5404,5410 ****
+  }
+  
+      int
+! im_is_preediting()
+  {
+      return xim_has_preediting;
+  }
+--- 5299,5305 ----
+  }
+  
+      int
+! im_is_preediting(void)
+  {
+      return xim_has_preediting;
+  }
+***************
+*** 5423,5430 ****
+   * Switch using XIM on/off.  This is used by the code that changes "State".
+   */
+      void
+! im_set_active(active)
+!     int		active;
+  {
+      if (xic == NULL)
+  	return;
+--- 5318,5324 ----
+   * Switch using XIM on/off.  This is used by the code that changes "State".
+   */
+      void
+! im_set_active(int active)
+  {
+      if (xic == NULL)
+  	return;
+***************
+*** 5450,5457 ****
+   * "xim_is_active" changes.
+   */
+      void
+! xim_set_focus(focus)
+!     int		focus;
+  {
+      if (xic == NULL)
+  	return;
+--- 5344,5350 ----
+   * "xim_is_active" changes.
+   */
+      void
+! xim_set_focus(int focus)
+  {
+      if (xic == NULL)
+  	return;
+***************
+*** 5479,5487 ****
+  }
+  
+      void
+! im_set_position(row, col)
+!     int		row UNUSED;
+!     int		col UNUSED;
+  {
+      xim_set_preedit();
+  }
+--- 5372,5378 ----
+  }
+  
+      void
+! im_set_position(int row UNUSED, int col UNUSED)
+  {
+      xim_set_preedit();
+  }
+***************
+*** 5490,5496 ****
+   * Set the XIM to the current cursor position.
+   */
+      void
+! xim_set_preedit()
+  {
+      XVaNestedList attr_list;
+      XRectangle spot_area;
+--- 5381,5387 ----
+   * Set the XIM to the current cursor position.
+   */
+      void
+! xim_set_preedit(void)
+  {
+      XVaNestedList attr_list;
+      XRectangle spot_area;
+***************
+*** 5560,5569 ****
+  static void xim_destroy_cb(XIM im, XPointer client_data, XPointer call_data);
+  
+      static void
+! xim_instantiate_cb(display, client_data, call_data)
+!     Display	*display;
+!     XPointer	client_data UNUSED;
+!     XPointer	call_data UNUSED;
+  {
+      Window	x11_window;
+      Display	*x11_display;
+--- 5451,5460 ----
+  static void xim_destroy_cb(XIM im, XPointer client_data, XPointer call_data);
+  
+      static void
+! xim_instantiate_cb(
+!     Display	*display,
+!     XPointer	client_data UNUSED,
+!     XPointer	call_data UNUSED)
+  {
+      Window	x11_window;
+      Display	*x11_display;
+***************
+*** 5584,5593 ****
+  }
+  
+      static void
+! xim_destroy_cb(im, client_data, call_data)
+!     XIM		im UNUSED;
+!     XPointer	client_data UNUSED;
+!     XPointer	call_data UNUSED;
+  {
+      Window	x11_window;
+      Display	*x11_display;
+--- 5475,5484 ----
+  }
+  
+      static void
+! xim_destroy_cb(
+!     XIM		im UNUSED,
+!     XPointer	client_data UNUSED,
+!     XPointer	call_data UNUSED)
+  {
+      Window	x11_window;
+      Display	*x11_display;
+***************
+*** 5608,5614 ****
+  #endif
+  
+      void
+! xim_init()
+  {
+      Window	x11_window;
+      Display	*x11_display;
+--- 5499,5505 ----
+  #endif
+  
+      void
+! xim_init(void)
+  {
+      Window	x11_window;
+      Display	*x11_display;
+***************
+*** 5633,5641 ****
+  }
+  
+      static int
+! xim_real_init(x11_window, x11_display)
+!     Window	x11_window;
+!     Display	*x11_display;
+  {
+      int		i;
+      char	*p,
+--- 5524,5530 ----
+  }
+  
+      static int
+! xim_real_init(Window x11_window, Display *x11_display)
+  {
+      int		i;
+      char	*p,
+***************
+*** 5860,5866 ****
+   * tear-off menu item).
+   */
+      int
+! im_get_status()
+  {
+      return xim_has_focus;
+  }
+--- 5749,5755 ----
+   * tear-off menu item).
+   */
+      int
+! im_get_status(void)
+  {
+      return xim_has_focus;
+  }
+***************
+*** 5877,5883 ****
+   * window...
+   */
+      void
+! xim_set_status_area()
+  {
+      XVaNestedList preedit_list = 0, status_list = 0, list = 0;
+      XRectangle pre_area, status_area;
+--- 5766,5772 ----
+   * window...
+   */
+      void
+! xim_set_status_area(void)
+  {
+      XVaNestedList preedit_list = 0, status_list = 0, list = 0;
+      XRectangle pre_area, status_area;
+***************
+*** 5974,5980 ****
+  }
+  
+      int
+! xim_get_status_area_height()
+  {
+      if (status_area_enabled)
+  	return gui.char_height;
+--- 5863,5869 ----
+  }
+  
+      int
+! xim_get_status_area_height(void)
+  {
+      if (status_area_enabled)
+  	return gui.char_height;
+***************
+*** 5996,6005 ****
+   * Return FAIL when conversion is not supported, OK otherwise.
+   */
+      int
+! convert_setup(vcp, from, to)
+!     vimconv_T	*vcp;
+!     char_u	*from;
+!     char_u	*to;
+  {
+      return convert_setup_ext(vcp, from, TRUE, to, TRUE);
+  }
+--- 5885,5891 ----
+   * Return FAIL when conversion is not supported, OK otherwise.
+   */
+      int
+! convert_setup(vimconv_T *vcp, char_u *from, char_u *to)
+  {
+      return convert_setup_ext(vcp, from, TRUE, to, TRUE);
+  }
+***************
+*** 6009,6020 ****
+   * "from" unicode charsets be considered utf-8.  Same for "to".
+   */
+      int
+! convert_setup_ext(vcp, from, from_unicode_is_utf8, to, to_unicode_is_utf8)
+!     vimconv_T	*vcp;
+!     char_u	*from;
+!     int		from_unicode_is_utf8;
+!     char_u	*to;
+!     int		to_unicode_is_utf8;
+  {
+      int		from_prop;
+      int		to_prop;
+--- 5895,5906 ----
+   * "from" unicode charsets be considered utf-8.  Same for "to".
+   */
+      int
+! convert_setup_ext(
+!     vimconv_T	*vcp,
+!     char_u	*from,
+!     int		from_unicode_is_utf8,
+!     char_u	*to,
+!     int		to_unicode_is_utf8)
+  {
+      int		from_prop;
+      int		to_prop;
+***************
+*** 6126,6135 ****
+   * Returns the length after conversion.
+   */
+      int
+! convert_input(ptr, len, maxlen)
+!     char_u	*ptr;
+!     int		len;
+!     int		maxlen;
+  {
+      return convert_input_safe(ptr, len, maxlen, NULL, NULL);
+  }
+--- 6012,6018 ----
+   * Returns the length after conversion.
+   */
+      int
+! convert_input(char_u *ptr, int len, int maxlen)
+  {
+      return convert_input_safe(ptr, len, maxlen, NULL, NULL);
+  }
+***************
+*** 6141,6152 ****
+   * the length.  If "restp" is NULL it is not used.
+   */
+      int
+! convert_input_safe(ptr, len, maxlen, restp, restlenp)
+!     char_u	*ptr;
+!     int		len;
+!     int		maxlen;
+!     char_u	**restp;
+!     int		*restlenp;
+  {
+      char_u	*d;
+      int		dlen = len;
+--- 6024,6035 ----
+   * the length.  If "restp" is NULL it is not used.
+   */
+      int
+! convert_input_safe(
+!     char_u	*ptr,
+!     int		len,
+!     int		maxlen,
+!     char_u	**restp,
+!     int		*restlenp)
+  {
+      char_u	*d;
+      int		dlen = len;
+***************
+*** 6185,6194 ****
+   * When something goes wrong, NULL is returned and "*lenp" is unchanged.
+   */
+      char_u *
+! string_convert(vcp, ptr, lenp)
+!     vimconv_T	*vcp;
+!     char_u	*ptr;
+!     int		*lenp;
+  {
+      return string_convert_ext(vcp, ptr, lenp, NULL);
+  }
+--- 6068,6077 ----
+   * When something goes wrong, NULL is returned and "*lenp" is unchanged.
+   */
+      char_u *
+! string_convert(
+!     vimconv_T	*vcp,
+!     char_u	*ptr,
+!     int		*lenp)
+  {
+      return string_convert_ext(vcp, ptr, lenp, NULL);
+  }
+***************
+*** 6199,6209 ****
+   * set to the number of remaining bytes.
+   */
+      char_u *
+! string_convert_ext(vcp, ptr, lenp, unconvlenp)
+!     vimconv_T	*vcp;
+!     char_u	*ptr;
+!     int		*lenp;
+!     int		*unconvlenp;
+  {
+      char_u	*retval = NULL;
+      char_u	*d;
+--- 6082,6092 ----
+   * set to the number of remaining bytes.
+   */
+      char_u *
+! string_convert_ext(
+!     vimconv_T	*vcp,
+!     char_u	*ptr,
+!     int		*lenp,
+!     int		*unconvlenp)
+  {
+      char_u	*retval = NULL;
+      char_u	*d;
+*** ../vim-7.4.1209/src/memfile.c	2016-01-29 22:36:41.229047648 +0100
+--- src/memfile.c	2016-01-30 18:22:16.978197115 +0100
+***************
+*** 121,129 ****
+   * return value: identifier for this memory block file.
+   */
+      memfile_T *
+! mf_open(fname, flags)
+!     char_u	*fname;
+!     int		flags;
+  {
+      memfile_T		*mfp;
+      off_t		size;
+--- 121,127 ----
+   * return value: identifier for this memory block file.
+   */
+      memfile_T *
+! mf_open(char_u *fname, int flags)
+  {
+      memfile_T		*mfp;
+      off_t		size;
+***************
+*** 223,231 ****
+   * return value: FAIL if file could not be opened, OK otherwise
+   */
+      int
+! mf_open_file(mfp, fname)
+!     memfile_T	*mfp;
+!     char_u	*fname;
+  {
+      mf_do_open(mfp, fname, O_RDWR|O_CREAT|O_EXCL); /* try to open the file */
+  
+--- 221,227 ----
+   * return value: FAIL if file could not be opened, OK otherwise
+   */
+      int
+! mf_open_file(memfile_T *mfp, char_u *fname)
+  {
+      mf_do_open(mfp, fname, O_RDWR|O_CREAT|O_EXCL); /* try to open the file */
+  
+***************
+*** 240,248 ****
+   * Close a memory file and delete the associated file if 'del_file' is TRUE.
+   */
+      void
+! mf_close(mfp, del_file)
+!     memfile_T	*mfp;
+!     int		del_file;
+  {
+      bhdr_T	*hp, *nextp;
+  
+--- 236,242 ----
+   * Close a memory file and delete the associated file if 'del_file' is TRUE.
+   */
+      void
+! mf_close(memfile_T *mfp, int del_file)
+  {
+      bhdr_T	*hp, *nextp;
+  
+***************
+*** 275,283 ****
+   * Close the swap file for a memfile.  Used when 'swapfile' is reset.
+   */
+      void
+! mf_close_file(buf, getlines)
+!     buf_T	*buf;
+!     int		getlines;	/* get all lines into memory? */
+  {
+      memfile_T	*mfp;
+      linenr_T	lnum;
+--- 269,277 ----
+   * Close the swap file for a memfile.  Used when 'swapfile' is reset.
+   */
+      void
+! mf_close_file(
+!     buf_T	*buf,
+!     int		getlines)	/* get all lines into memory? */
+  {
+      memfile_T	*mfp;
+      linenr_T	lnum;
+***************
+*** 315,323 ****
+   * and the size it indicates differs from what was guessed.
+   */
+      void
+! mf_new_page_size(mfp, new_size)
+!     memfile_T	*mfp;
+!     unsigned	new_size;
+  {
+      /* Correct the memory used for block 0 to the new size, because it will be
+       * freed with that size later on. */
+--- 309,315 ----
+   * and the size it indicates differs from what was guessed.
+   */
+      void
+! mf_new_page_size(memfile_T *mfp, unsigned new_size)
+  {
+      /* Correct the memory used for block 0 to the new size, because it will be
+       * freed with that size later on. */
+***************
+*** 331,340 ****
+   *   negative: TRUE if negative block number desired (data block)
+   */
+      bhdr_T *
+! mf_new(mfp, negative, page_count)
+!     memfile_T	*mfp;
+!     int		negative;
+!     int		page_count;
+  {
+      bhdr_T	*hp;	/* new bhdr_T */
+      bhdr_T	*freep;	/* first block in free list */
+--- 323,329 ----
+   *   negative: TRUE if negative block number desired (data block)
+   */
+      bhdr_T *
+! mf_new(memfile_T *mfp, int negative, int page_count)
+  {
+      bhdr_T	*hp;	/* new bhdr_T */
+      bhdr_T	*freep;	/* first block in free list */
+***************
+*** 424,433 ****
+   * Note: The caller should first check a negative nr with mf_trans_del()
+   */
+      bhdr_T *
+! mf_get(mfp, nr, page_count)
+!     memfile_T	*mfp;
+!     blocknr_T	nr;
+!     int		page_count;
+  {
+      bhdr_T    *hp;
+  						/* doesn't exist */
+--- 413,419 ----
+   * Note: The caller should first check a negative nr with mf_trans_del()
+   */
+      bhdr_T *
+! mf_get(memfile_T *mfp, blocknr_T nr, int page_count)
+  {
+      bhdr_T    *hp;
+  						/* doesn't exist */
+***************
+*** 485,495 ****
+   *  no return value, function cannot fail
+   */
+      void
+! mf_put(mfp, hp, dirty, infile)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+!     int		dirty;
+!     int		infile;
+  {
+      int		flags;
+  
+--- 471,481 ----
+   *  no return value, function cannot fail
+   */
+      void
+! mf_put(
+!     memfile_T	*mfp,
+!     bhdr_T	*hp,
+!     int		dirty,
+!     int		infile)
+  {
+      int		flags;
+  
+***************
+*** 512,520 ****
+   * block *hp is no longer in used, may put it in the free list of memfile *mfp
+   */
+      void
+! mf_free(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      vim_free(hp->bh_data);	/* free the memory */
+      mf_rem_hash(mfp, hp);	/* get *hp out of the hash list */
+--- 498,504 ----
+   * block *hp is no longer in used, may put it in the free list of memfile *mfp
+   */
+      void
+! mf_free(memfile_T *mfp, bhdr_T *hp)
+  {
+      vim_free(hp->bh_data);	/* free the memory */
+      mf_rem_hash(mfp, hp);	/* get *hp out of the hash list */
+***************
+*** 553,561 ****
+   * Return FAIL for failure, OK otherwise
+   */
+      int
+! mf_sync(mfp, flags)
+!     memfile_T	*mfp;
+!     int		flags;
+  {
+      int		status;
+      bhdr_T	*hp;
+--- 537,543 ----
+   * Return FAIL for failure, OK otherwise
+   */
+      int
+! mf_sync(memfile_T *mfp, int flags)
+  {
+      int		status;
+      bhdr_T	*hp;
+***************
+*** 722,729 ****
+   * created swapfile.
+   */
+      void
+! mf_set_dirty(mfp)
+!     memfile_T	*mfp;
+  {
+      bhdr_T	*hp;
+  
+--- 704,710 ----
+   * created swapfile.
+   */
+      void
+! mf_set_dirty(memfile_T *mfp)
+  {
+      bhdr_T	*hp;
+  
+***************
+*** 737,745 ****
+   * insert block *hp in front of hashlist of memfile *mfp
+   */
+      static void
+! mf_ins_hash(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      mf_hash_add_item(&mfp->mf_hash, (mf_hashitem_T *)hp);
+  }
+--- 718,724 ----
+   * insert block *hp in front of hashlist of memfile *mfp
+   */
+      static void
+! mf_ins_hash(memfile_T *mfp, bhdr_T *hp)
+  {
+      mf_hash_add_item(&mfp->mf_hash, (mf_hashitem_T *)hp);
+  }
+***************
+*** 748,756 ****
+   * remove block *hp from hashlist of memfile list *mfp
+   */
+      static void
+! mf_rem_hash(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      mf_hash_rem_item(&mfp->mf_hash, (mf_hashitem_T *)hp);
+  }
+--- 727,733 ----
+   * remove block *hp from hashlist of memfile list *mfp
+   */
+      static void
+! mf_rem_hash(memfile_T *mfp, bhdr_T *hp)
+  {
+      mf_hash_rem_item(&mfp->mf_hash, (mf_hashitem_T *)hp);
+  }
+***************
+*** 759,767 ****
+   * look in hash lists of memfile *mfp for block header with number 'nr'
+   */
+      static bhdr_T *
+! mf_find_hash(mfp, nr)
+!     memfile_T	*mfp;
+!     blocknr_T	nr;
+  {
+      return (bhdr_T *)mf_hash_find(&mfp->mf_hash, nr);
+  }
+--- 736,742 ----
+   * look in hash lists of memfile *mfp for block header with number 'nr'
+   */
+      static bhdr_T *
+! mf_find_hash(memfile_T *mfp, blocknr_T nr)
+  {
+      return (bhdr_T *)mf_hash_find(&mfp->mf_hash, nr);
+  }
+***************
+*** 770,778 ****
+   * insert block *hp in front of used list of memfile *mfp
+   */
+      static void
+! mf_ins_used(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      hp->bh_next = mfp->mf_used_first;
+      mfp->mf_used_first = hp;
+--- 745,751 ----
+   * insert block *hp in front of used list of memfile *mfp
+   */
+      static void
+! mf_ins_used(memfile_T *mfp, bhdr_T *hp)
+  {
+      hp->bh_next = mfp->mf_used_first;
+      mfp->mf_used_first = hp;
+***************
+*** 789,797 ****
+   * remove block *hp from used list of memfile *mfp
+   */
+      static void
+! mf_rem_used(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      if (hp->bh_next == NULL)	    /* last block in used list */
+  	mfp->mf_used_last = hp->bh_prev;
+--- 762,768 ----
+   * remove block *hp from used list of memfile *mfp
+   */
+      static void
+! mf_rem_used(memfile_T *mfp, bhdr_T *hp)
+  {
+      if (hp->bh_next == NULL)	    /* last block in used list */
+  	mfp->mf_used_last = hp->bh_prev;
+***************
+*** 815,823 ****
+   * Returns NULL if no block is released.
+   */
+      static bhdr_T *
+! mf_release(mfp, page_count)
+!     memfile_T	*mfp;
+!     int		page_count;
+  {
+      bhdr_T	*hp;
+      int		need_release;
+--- 786,792 ----
+   * Returns NULL if no block is released.
+   */
+      static bhdr_T *
+! mf_release(memfile_T *mfp, int page_count)
+  {
+      bhdr_T	*hp;
+      int		need_release;
+***************
+*** 899,905 ****
+   * return TRUE if any memory was released
+   */
+      int
+! mf_release_all()
+  {
+      buf_T	*buf;
+      memfile_T	*mfp;
+--- 868,874 ----
+   * return TRUE if any memory was released
+   */
+      int
+! mf_release_all(void)
+  {
+      buf_T	*buf;
+      memfile_T	*mfp;
+***************
+*** 943,951 ****
+   * Allocate a block header and a block of memory for it
+   */
+      static bhdr_T *
+! mf_alloc_bhdr(mfp, page_count)
+!     memfile_T	*mfp;
+!     int		page_count;
+  {
+      bhdr_T	*hp;
+  
+--- 912,918 ----
+   * Allocate a block header and a block of memory for it
+   */
+      static bhdr_T *
+! mf_alloc_bhdr(memfile_T *mfp, int page_count)
+  {
+      bhdr_T	*hp;
+  
+***************
+*** 966,973 ****
+   * Free a block header and the block of memory for it
+   */
+      static void
+! mf_free_bhdr(hp)
+!     bhdr_T	*hp;
+  {
+      vim_free(hp->bh_data);
+      vim_free(hp);
+--- 933,939 ----
+   * Free a block header and the block of memory for it
+   */
+      static void
+! mf_free_bhdr(bhdr_T *hp)
+  {
+      vim_free(hp->bh_data);
+      vim_free(hp);
+***************
+*** 977,985 ****
+   * insert entry *hp in the free list
+   */
+      static void
+! mf_ins_free(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      hp->bh_next = mfp->mf_free_first;
+      mfp->mf_free_first = hp;
+--- 943,949 ----
+   * insert entry *hp in the free list
+   */
+      static void
+! mf_ins_free(memfile_T *mfp, bhdr_T *hp)
+  {
+      hp->bh_next = mfp->mf_free_first;
+      mfp->mf_free_first = hp;
+***************
+*** 990,997 ****
+   * Note: caller must check that mfp->mf_free_first is not NULL!
+   */
+      static bhdr_T *
+! mf_rem_free(mfp)
+!     memfile_T	*mfp;
+  {
+      bhdr_T	*hp;
+  
+--- 954,960 ----
+   * Note: caller must check that mfp->mf_free_first is not NULL!
+   */
+      static bhdr_T *
+! mf_rem_free(memfile_T *mfp)
+  {
+      bhdr_T	*hp;
+  
+***************
+*** 1006,1014 ****
+   * Return FAIL for failure, OK otherwise
+   */
+      static int
+! mf_read(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      off_t	offset;
+      unsigned	page_size;
+--- 969,975 ----
+   * Return FAIL for failure, OK otherwise
+   */
+      static int
+! mf_read(memfile_T *mfp, bhdr_T *hp)
+  {
+      off_t	offset;
+      unsigned	page_size;
+***************
+*** 1047,1055 ****
+   * Return FAIL for failure, OK otherwise
+   */
+      static int
+! mf_write(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      off_t	offset;	    /* offset in the file */
+      blocknr_T	nr;	    /* block nr which is being written */
+--- 1008,1014 ----
+   * Return FAIL for failure, OK otherwise
+   */
+      static int
+! mf_write(memfile_T *mfp, bhdr_T *hp)
+  {
+      off_t	offset;	    /* offset in the file */
+      blocknr_T	nr;	    /* block nr which is being written */
+***************
+*** 1126,1136 ****
+   * Return FAIL or OK.
+   */
+      static int
+! mf_write_block(mfp, hp, offset, size)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+!     off_t	offset UNUSED;
+!     unsigned	size;
+  {
+      char_u	*data = hp->bh_data;
+      int		result = OK;
+--- 1085,1095 ----
+   * Return FAIL or OK.
+   */
+      static int
+! mf_write_block(
+!     memfile_T	*mfp,
+!     bhdr_T	*hp,
+!     off_t	offset UNUSED,
+!     unsigned	size)
+  {
+      char_u	*data = hp->bh_data;
+      int		result = OK;
+***************
+*** 1162,1170 ****
+   * Return FAIL for failure, OK otherwise
+   */
+      static int
+! mf_trans_add(mfp, hp)
+!     memfile_T	*mfp;
+!     bhdr_T	*hp;
+  {
+      bhdr_T	*freep;
+      blocknr_T	new_bnum;
+--- 1121,1127 ----
+   * Return FAIL for failure, OK otherwise
+   */
+      static int
+! mf_trans_add(memfile_T *mfp, bhdr_T *hp)
+  {
+      bhdr_T	*freep;
+      blocknr_T	new_bnum;
+***************
+*** 1227,1235 ****
+   * Return the positive new number when found, the old number when not found
+   */
+      blocknr_T
+! mf_trans_del(mfp, old_nr)
+!     memfile_T	*mfp;
+!     blocknr_T	old_nr;
+  {
+      NR_TRANS	*np;
+      blocknr_T	new_bnum;
+--- 1184,1190 ----
+   * Return the positive new number when found, the old number when not found
+   */
+      blocknr_T
+! mf_trans_del(memfile_T *mfp, blocknr_T old_nr)
+  {
+      NR_TRANS	*np;
+      blocknr_T	new_bnum;
+***************
+*** 1256,1263 ****
+   * name so we must work out the full path name.
+   */
+      void
+! mf_set_ffname(mfp)
+!     memfile_T	*mfp;
+  {
+      mfp->mf_ffname = FullName_save(mfp->mf_fname, FALSE);
+  }
+--- 1211,1217 ----
+   * name so we must work out the full path name.
+   */
+      void
+! mf_set_ffname(memfile_T *mfp)
+  {
+      mfp->mf_ffname = FullName_save(mfp->mf_fname, FALSE);
+  }
+***************
+*** 1267,1274 ****
+   * Used before doing a :cd
+   */
+      void
+! mf_fullname(mfp)
+!     memfile_T	*mfp;
+  {
+      if (mfp != NULL && mfp->mf_fname != NULL && mfp->mf_ffname != NULL)
+      {
+--- 1221,1227 ----
+   * Used before doing a :cd
+   */
+      void
+! mf_fullname(memfile_T *mfp)
+  {
+      if (mfp != NULL && mfp->mf_fname != NULL && mfp->mf_ffname != NULL)
+      {
+***************
+*** 1282,1289 ****
+   * return TRUE if there are any translations pending for 'mfp'
+   */
+      int
+! mf_need_trans(mfp)
+!     memfile_T	*mfp;
+  {
+      return (mfp->mf_fname != NULL && mfp->mf_neg_count > 0);
+  }
+--- 1235,1241 ----
+   * return TRUE if there are any translations pending for 'mfp'
+   */
+      int
+! mf_need_trans(memfile_T *mfp)
+  {
+      return (mfp->mf_fname != NULL && mfp->mf_neg_count > 0);
+  }
+***************
+*** 1294,1303 ****
+   * error occurs).
+   */
+      static void
+! mf_do_open(mfp, fname, flags)
+!     memfile_T	*mfp;
+!     char_u	*fname;
+!     int		flags;		/* flags for open() */
+  {
+  #ifdef HAVE_LSTAT
+      struct stat sb;
+--- 1246,1255 ----
+   * error occurs).
+   */
+      static void
+! mf_do_open(
+!     memfile_T	*mfp,
+!     char_u	*fname,
+!     int		flags)		/* flags for open() */
+  {
+  #ifdef HAVE_LSTAT
+      struct stat sb;
+***************
+*** 1385,1392 ****
+   * Initialize an empty hash table.
+   */
+      static void
+! mf_hash_init(mht)
+!     mf_hashtab_T *mht;
+  {
+      vim_memset(mht, 0, sizeof(mf_hashtab_T));
+      mht->mht_buckets = mht->mht_small_buckets;
+--- 1337,1343 ----
+   * Initialize an empty hash table.
+   */
+      static void
+! mf_hash_init(mf_hashtab_T *mht)
+  {
+      vim_memset(mht, 0, sizeof(mf_hashtab_T));
+      mht->mht_buckets = mht->mht_small_buckets;
+***************
+*** 1398,1405 ****
+   * The hash table must not be used again without another mf_hash_init() call.
+   */
+      static void
+! mf_hash_free(mht)
+!     mf_hashtab_T *mht;
+  {
+      if (mht->mht_buckets != mht->mht_small_buckets)
+  	vim_free(mht->mht_buckets);
+--- 1349,1355 ----
+   * The hash table must not be used again without another mf_hash_init() call.
+   */
+      static void
+! mf_hash_free(mf_hashtab_T *mht)
+  {
+      if (mht->mht_buckets != mht->mht_small_buckets)
+  	vim_free(mht->mht_buckets);
+***************
+*** 1409,1416 ****
+   * Free the array of a hash table and all the items it contains.
+   */
+      static void
+! mf_hash_free_all(mht)
+!     mf_hashtab_T    *mht;
+  {
+      long_u	    idx;
+      mf_hashitem_T   *mhi;
+--- 1359,1365 ----
+   * Free the array of a hash table and all the items it contains.
+   */
+      static void
+! mf_hash_free_all(mf_hashtab_T *mht)
+  {
+      long_u	    idx;
+      mf_hashitem_T   *mhi;
+***************
+*** 1431,1439 ****
+   * Returns a pointer to a mf_hashitem_T or NULL if the item was not found.
+   */
+      static mf_hashitem_T *
+! mf_hash_find(mht, key)
+!     mf_hashtab_T    *mht;
+!     blocknr_T	    key;
+  {
+      mf_hashitem_T   *mhi;
+  
+--- 1380,1386 ----
+   * Returns a pointer to a mf_hashitem_T or NULL if the item was not found.
+   */
+      static mf_hashitem_T *
+! mf_hash_find(mf_hashtab_T *mht, blocknr_T key)
+  {
+      mf_hashitem_T   *mhi;
+  
+***************
+*** 1449,1457 ****
+   * "mhi" must not be NULL.
+   */
+      static void
+! mf_hash_add_item(mht, mhi)
+!     mf_hashtab_T    *mht;
+!     mf_hashitem_T   *mhi;
+  {
+      long_u	    idx;
+  
+--- 1396,1402 ----
+   * "mhi" must not be NULL.
+   */
+      static void
+! mf_hash_add_item(mf_hashtab_T *mht, mf_hashitem_T *mhi)
+  {
+      long_u	    idx;
+  
+***************
+*** 1484,1492 ****
+   * "mhi" must not be NULL and must have been inserted into "mht".
+   */
+      static void
+! mf_hash_rem_item(mht, mhi)
+!     mf_hashtab_T    *mht;
+!     mf_hashitem_T   *mhi;
+  {
+      if (mhi->mhi_prev == NULL)
+  	mht->mht_buckets[mhi->mhi_key & mht->mht_mask] = mhi->mhi_next;
+--- 1429,1435 ----
+   * "mhi" must not be NULL and must have been inserted into "mht".
+   */
+      static void
+! mf_hash_rem_item(mf_hashtab_T *mht, mf_hashitem_T *mhi)
+  {
+      if (mhi->mhi_prev == NULL)
+  	mht->mht_buckets[mhi->mhi_key & mht->mht_mask] = mhi->mhi_next;
+***************
+*** 1508,1515 ****
+   * Returns FAIL when out of memory.
+   */
+      static int
+! mf_hash_grow(mht)
+!     mf_hashtab_T    *mht;
+  {
+      long_u	    i, j;
+      int		    shift;
+--- 1451,1457 ----
+   * Returns FAIL when out of memory.
+   */
+      static int
+! mf_hash_grow(mf_hashtab_T *mht)
+  {
+      long_u	    i, j;
+      int		    shift;
+*** ../vim-7.4.1209/src/memfile_test.c	2016-01-29 22:36:41.229047648 +0100
+--- src/memfile_test.c	2016-01-30 18:22:39.801959892 +0100
+***************
+*** 31,37 ****
+   * Test mf_hash_*() functions.
+   */
+      static void
+! test_mf_hash()
+  {
+      mf_hashtab_T   ht;
+      mf_hashitem_T  *item;
+--- 31,37 ----
+   * Test mf_hash_*() functions.
+   */
+      static void
+! test_mf_hash(void)
+  {
+      mf_hashtab_T   ht;
+      mf_hashitem_T  *item;
+***************
+*** 138,144 ****
+  }
+  
+      int
+! main()
+  {
+      test_mf_hash();
+      return 0;
+--- 138,144 ----
+  }
+  
+      int
+! main(void)
+  {
+      test_mf_hash();
+      return 0;
+*** ../vim-7.4.1209/src/memline.c	2016-01-29 22:36:41.229047648 +0100
+--- src/memline.c	2016-01-30 18:25:12.224375700 +0100
+***************
+*** 278,285 ****
+   * Return FAIL for failure, OK otherwise.
+   */
+      int
+! ml_open(buf)
+!     buf_T	*buf;
+  {
+      memfile_T	*mfp;
+      bhdr_T	*hp = NULL;
+--- 278,284 ----
+   * Return FAIL for failure, OK otherwise.
+   */
+      int
+! ml_open(buf_T *buf)
+  {
+      memfile_T	*mfp;
+      bhdr_T	*hp = NULL;
+***************
+*** 437,444 ****
+   * Prepare encryption for "buf" for the current key and method.
+   */
+      static void
+! ml_set_mfp_crypt(buf)
+!     buf_T	*buf;
+  {
+      if (*buf->b_p_key != NUL)
+      {
+--- 436,442 ----
+   * Prepare encryption for "buf" for the current key and method.
+   */
+      static void
+! ml_set_mfp_crypt(buf_T *buf)
+  {
+      if (*buf->b_p_key != NUL)
+      {
+***************
+*** 456,464 ****
+   * Prepare encryption for "buf" with block 0 "b0p".
+   */
+      static void
+! ml_set_b0_crypt(buf, b0p)
+!     buf_T	*buf;
+!     ZERO_BL	*b0p;
+  {
+      if (*buf->b_p_key == NUL)
+  	b0p->b0_id[1] = BLOCK0_ID1;
+--- 454,460 ----
+   * Prepare encryption for "buf" with block 0 "b0p".
+   */
+      static void
+! ml_set_b0_crypt(buf_T *buf, ZERO_BL *b0p)
+  {
+      if (*buf->b_p_key == NUL)
+  	b0p->b0_id[1] = BLOCK0_ID1;
+***************
+*** 485,494 ****
+   * 'cryptmethod' when 'key' is changed.
+   */
+      void
+! ml_set_crypt_key(buf, old_key, old_cm)
+!     buf_T	*buf;
+!     char_u	*old_key;
+!     char_u	*old_cm;
+  {
+      memfile_T	*mfp = buf->b_ml.ml_mfp;
+      bhdr_T	*hp;
+--- 481,490 ----
+   * 'cryptmethod' when 'key' is changed.
+   */
+      void
+! ml_set_crypt_key(
+!     buf_T	*buf,
+!     char_u	*old_key,
+!     char_u	*old_cm)
+  {
+      memfile_T	*mfp = buf->b_ml.ml_mfp;
+      bhdr_T	*hp;
+***************
+*** 639,646 ****
+   * It may rename the swap file.
+   */
+      void
+! ml_setname(buf)
+!     buf_T	*buf;
+  {
+      int		success = FALSE;
+      memfile_T	*mfp;
+--- 635,641 ----
+   * It may rename the swap file.
+   */
+      void
+! ml_setname(buf_T *buf)
+  {
+      int		success = FALSE;
+      memfile_T	*mfp;
+***************
+*** 747,753 ****
+   * Used when 'updatecount' changes from zero to non-zero.
+   */
+      void
+! ml_open_files()
+  {
+      buf_T	*buf;
+  
+--- 742,748 ----
+   * Used when 'updatecount' changes from zero to non-zero.
+   */
+      void
+! ml_open_files(void)
+  {
+      buf_T	*buf;
+  
+***************
+*** 762,769 ****
+   * and the memfile will be in memory only (no recovery possible).
+   */
+      void
+! ml_open_file(buf)
+!     buf_T	*buf;
+  {
+      memfile_T	*mfp;
+      char_u	*fname;
+--- 757,763 ----
+   * and the memfile will be in memory only (no recovery possible).
+   */
+      void
+! ml_open_file(buf_T *buf)
+  {
+      memfile_T	*mfp;
+      char_u	*fname;
+***************
+*** 844,851 ****
+   * file, or reading into an existing buffer, create a swap file now.
+   */
+      void
+! check_need_swap(newfile)
+!     int	    newfile;		/* reading file into new buffer */
+  {
+      if (curbuf->b_may_swap && (!curbuf->b_p_ro || !newfile))
+  	ml_open_file(curbuf);
+--- 838,845 ----
+   * file, or reading into an existing buffer, create a swap file now.
+   */
+      void
+! check_need_swap(
+!     int	    newfile)		/* reading file into new buffer */
+  {
+      if (curbuf->b_may_swap && (!curbuf->b_p_ro || !newfile))
+  	ml_open_file(curbuf);
+***************
+*** 856,864 ****
+   * If 'del_file' is TRUE, delete the swap file
+   */
+      void
+! ml_close(buf, del_file)
+!     buf_T	*buf;
+!     int		del_file;
+  {
+      if (buf->b_ml.ml_mfp == NULL)		/* not open */
+  	return;
+--- 850,856 ----
+   * If 'del_file' is TRUE, delete the swap file
+   */
+      void
+! ml_close(buf_T *buf, int del_file)
+  {
+      if (buf->b_ml.ml_mfp == NULL)		/* not open */
+  	return;
+***************
+*** 884,891 ****
+   * But don't delete files that were ":preserve"d when we are POSIX compatible.
+   */
+      void
+! ml_close_all(del_file)
+!     int		del_file;
+  {
+      buf_T	*buf;
+  
+--- 876,882 ----
+   * But don't delete files that were ":preserve"d when we are POSIX compatible.
+   */
+      void
+! ml_close_all(int del_file)
+  {
+      buf_T	*buf;
+  
+***************
+*** 905,911 ****
+   * Only use just before exiting!
+   */
+      void
+! ml_close_notmod()
+  {
+      buf_T	*buf;
+  
+--- 896,902 ----
+   * Only use just before exiting!
+   */
+      void
+! ml_close_notmod(void)
+  {
+      buf_T	*buf;
+  
+***************
+*** 919,926 ****
+   * Used when the file has been written.
+   */
+      void
+! ml_timestamp(buf)
+!     buf_T	*buf;
+  {
+      ml_upd_block0(buf, UB_FNAME);
+  }
+--- 910,916 ----
+   * Used when the file has been written.
+   */
+      void
+! ml_timestamp(buf_T *buf)
+  {
+      ml_upd_block0(buf, UB_FNAME);
+  }
+***************
+*** 929,936 ****
+   * Return FAIL when the ID of "b0p" is wrong.
+   */
+      static int
+! ml_check_b0_id(b0p)
+!     ZERO_BL	*b0p;
+  {
+      if (b0p->b0_id[0] != BLOCK0_ID0
+  	    || (b0p->b0_id[1] != BLOCK0_ID1
+--- 919,925 ----
+   * Return FAIL when the ID of "b0p" is wrong.
+   */
+      static int
+! ml_check_b0_id(ZERO_BL *b0p)
+  {
+      if (b0p->b0_id[0] != BLOCK0_ID0
+  	    || (b0p->b0_id[1] != BLOCK0_ID1
+***************
+*** 946,954 ****
+   * Update the timestamp or the B0_SAME_DIR flag of the .swp file.
+   */
+      static void
+! ml_upd_block0(buf, what)
+!     buf_T	*buf;
+!     upd_block0_T what;
+  {
+      memfile_T	*mfp;
+      bhdr_T	*hp;
+--- 935,941 ----
+   * Update the timestamp or the B0_SAME_DIR flag of the .swp file.
+   */
+      static void
+! ml_upd_block0(buf_T *buf, upd_block0_T what)
+  {
+      memfile_T	*mfp;
+      bhdr_T	*hp;
+***************
+*** 991,999 ****
+   * Don't use NameBuff[]!!!
+   */
+      static void
+! set_b0_fname(b0p, buf)
+!     ZERO_BL	*b0p;
+!     buf_T	*buf;
+  {
+      struct stat	st;
+  
+--- 978,984 ----
+   * Don't use NameBuff[]!!!
+   */
+      static void
+! set_b0_fname(ZERO_BL *b0p, buf_T *buf)
+  {
+      struct stat	st;
+  
+***************
+*** 1072,1080 ****
+   * not set.
+   */
+      static void
+! set_b0_dir_flag(b0p, buf)
+!     ZERO_BL	*b0p;
+!     buf_T	*buf;
+  {
+      if (same_directory(buf->b_ml.ml_mfp->mf_fname, buf->b_ffname))
+  	b0p->b0_flags |= B0_SAME_DIR;
+--- 1057,1063 ----
+   * not set.
+   */
+      static void
+! set_b0_dir_flag(ZERO_BL *b0p, buf_T *buf)
+  {
+      if (same_directory(buf->b_ml.ml_mfp->mf_fname, buf->b_ffname))
+  	b0p->b0_flags |= B0_SAME_DIR;
+***************
+*** 1087,1095 ****
+   * When there is room, add the 'fileencoding' to block zero.
+   */
+      static void
+! add_b0_fenc(b0p, buf)
+!     ZERO_BL	*b0p;
+!     buf_T	*buf;
+  {
+      int		n;
+      int		size = B0_FNAME_SIZE_NOCRYPT;
+--- 1070,1078 ----
+   * When there is room, add the 'fileencoding' to block zero.
+   */
+      static void
+! add_b0_fenc(
+!     ZERO_BL	*b0p,
+!     buf_T	*buf)
+  {
+      int		n;
+      int		size = B0_FNAME_SIZE_NOCRYPT;
+***************
+*** 1120,1126 ****
+   * Try to recover curbuf from the .swp file.
+   */
+      void
+! ml_recover()
+  {
+      buf_T	*buf = NULL;
+      memfile_T	*mfp = NULL;
+--- 1103,1109 ----
+   * Try to recover curbuf from the .swp file.
+   */
+      void
+! ml_recover(void)
+  {
+      buf_T	*buf = NULL;
+      memfile_T	*mfp = NULL;
+***************
+*** 1778,1788 ****
+   * - find the name of the n'th swap file when recovering
+   */
+      int
+! recover_names(fname, list, nr, fname_out)
+!     char_u	*fname;		/* base for swap file name */
+!     int		list;		/* when TRUE, list the swap file names */
+!     int		nr;		/* when non-zero, return nr'th swap file name */
+!     char_u	**fname_out;	/* result when "nr" > 0 */
+  {
+      int		num_names;
+      char_u	*(names[6]);
+--- 1761,1771 ----
+   * - find the name of the n'th swap file when recovering
+   */
+      int
+! recover_names(
+!     char_u	*fname,		/* base for swap file name */
+!     int		list,		/* when TRUE, list the swap file names */
+!     int		nr,		/* when non-zero, return nr'th swap file name */
+!     char_u	**fname_out)	/* result when "nr" > 0 */
+  {
+      int		num_names;
+      char_u	*(names[6]);
+***************
+*** 2038,2046 ****
+   * signs, to dir. An unnamed buffer is handled as "" (<currentdir>/"")
+   */
+      static char_u *
+! make_percent_swname(dir, name)
+!     char_u	*dir;
+!     char_u	*name;
+  {
+      char_u *d, *s, *f;
+  
+--- 2021,2027 ----
+   * signs, to dir. An unnamed buffer is handled as "" (<currentdir>/"")
+   */
+      static char_u *
+! make_percent_swname(char_u *dir, char_u *name)
+  {
+      char_u *d, *s, *f;
+  
+***************
+*** 2073,2080 ****
+   * Returns timestamp (0 when unknown).
+   */
+      static time_t
+! swapfile_info(fname)
+!     char_u	*fname;
+  {
+      struct stat	    st;
+      int		    fd;
+--- 2054,2060 ----
+   * Returns timestamp (0 when unknown).
+   */
+      static time_t
+! swapfile_info(char_u *fname)
+  {
+      struct stat	    st;
+      int		    fd;
+***************
+*** 2188,2197 ****
+  }
+  
+      static int
+! recov_file_names(names, path, prepend_dot)
+!     char_u	**names;
+!     char_u	*path;
+!     int		prepend_dot;
+  {
+      int		num_names;
+  
+--- 2168,2174 ----
+  }
+  
+      static int
+! recov_file_names(char_u **names, char_u *path, int prepend_dot)
+  {
+      int		num_names;
+  
+***************
+*** 2298,2306 ****
+   * always sync at least one block.
+   */
+      void
+! ml_sync_all(check_file, check_char)
+!     int	    check_file;
+!     int	    check_char;
+  {
+      buf_T		*buf;
+      struct stat		st;
+--- 2275,2281 ----
+   * always sync at least one block.
+   */
+      void
+! ml_sync_all(int check_file, int check_char)
+  {
+      buf_T		*buf;
+      struct stat		st;
+***************
+*** 2350,2358 ****
+   * when message is TRUE the success of preserving is reported
+   */
+      void
+! ml_preserve(buf, message)
+!     buf_T	*buf;
+!     int		message;
+  {
+      bhdr_T	*hp;
+      linenr_T	lnum;
+--- 2325,2331 ----
+   * when message is TRUE the success of preserving is reported
+   */
+      void
+! ml_preserve(buf_T *buf, int message)
+  {
+      bhdr_T	*hp;
+      linenr_T	lnum;
+***************
+*** 2436,2443 ****
+   * having to check for error everywhere).
+   */
+      char_u  *
+! ml_get(lnum)
+!     linenr_T	lnum;
+  {
+      return ml_get_buf(curbuf, lnum, FALSE);
+  }
+--- 2409,2415 ----
+   * having to check for error everywhere).
+   */
+      char_u  *
+! ml_get(linenr_T lnum)
+  {
+      return ml_get_buf(curbuf, lnum, FALSE);
+  }
+***************
+*** 2446,2453 ****
+   * Return pointer to position "pos".
+   */
+      char_u *
+! ml_get_pos(pos)
+!     pos_T	*pos;
+  {
+      return (ml_get_buf(curbuf, pos->lnum, FALSE) + pos->col);
+  }
+--- 2418,2424 ----
+   * Return pointer to position "pos".
+   */
+      char_u *
+! ml_get_pos(pos_T *pos)
+  {
+      return (ml_get_buf(curbuf, pos->lnum, FALSE) + pos->col);
+  }
+***************
+*** 2456,2462 ****
+   * Return pointer to cursor line.
+   */
+      char_u *
+! ml_get_curline()
+  {
+      return ml_get_buf(curbuf, curwin->w_cursor.lnum, FALSE);
+  }
+--- 2427,2433 ----
+   * Return pointer to cursor line.
+   */
+      char_u *
+! ml_get_curline(void)
+  {
+      return ml_get_buf(curbuf, curwin->w_cursor.lnum, FALSE);
+  }
+***************
+*** 2465,2471 ****
+   * Return pointer to cursor position.
+   */
+      char_u *
+! ml_get_cursor()
+  {
+      return (ml_get_buf(curbuf, curwin->w_cursor.lnum, FALSE) +
+  							curwin->w_cursor.col);
+--- 2436,2442 ----
+   * Return pointer to cursor position.
+   */
+      char_u *
+! ml_get_cursor(void)
+  {
+      return (ml_get_buf(curbuf, curwin->w_cursor.lnum, FALSE) +
+  							curwin->w_cursor.col);
+***************
+*** 2478,2487 ****
+   * changed)
+   */
+      char_u  *
+! ml_get_buf(buf, lnum, will_change)
+!     buf_T	*buf;
+!     linenr_T	lnum;
+!     int		will_change;		/* line will be changed */
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+--- 2449,2458 ----
+   * changed)
+   */
+      char_u  *
+! ml_get_buf(
+!     buf_T	*buf,
+!     linenr_T	lnum,
+!     int		will_change)		/* line will be changed */
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+***************
+*** 2554,2560 ****
+   * is in allocated memory.
+   */
+      int
+! ml_line_alloced()
+  {
+      return (curbuf->b_ml.ml_flags & ML_LINE_DIRTY);
+  }
+--- 2525,2531 ----
+   * is in allocated memory.
+   */
+      int
+! ml_line_alloced(void)
+  {
+      return (curbuf->b_ml.ml_flags & ML_LINE_DIRTY);
+  }
+***************
+*** 2572,2582 ****
+   * return FAIL for failure, OK otherwise
+   */
+      int
+! ml_append(lnum, line, len, newfile)
+!     linenr_T	lnum;		/* append after this line (can be 0) */
+!     char_u	*line;		/* text of the new line */
+!     colnr_T	len;		/* length of new line, including NUL, or 0 */
+!     int		newfile;	/* flag, see above */
+  {
+      /* When starting up, we might still need to create the memfile */
+      if (curbuf->b_ml.ml_mfp == NULL && open_buffer(FALSE, NULL, 0) == FAIL)
+--- 2543,2553 ----
+   * return FAIL for failure, OK otherwise
+   */
+      int
+! ml_append(
+!     linenr_T	lnum,		/* append after this line (can be 0) */
+!     char_u	*line,		/* text of the new line */
+!     colnr_T	len,		/* length of new line, including NUL, or 0 */
+!     int		newfile)	/* flag, see above */
+  {
+      /* When starting up, we might still need to create the memfile */
+      if (curbuf->b_ml.ml_mfp == NULL && open_buffer(FALSE, NULL, 0) == FAIL)
+***************
+*** 2593,2604 ****
+   * a memline.
+   */
+      int
+! ml_append_buf(buf, lnum, line, len, newfile)
+!     buf_T	*buf;
+!     linenr_T	lnum;		/* append after this line (can be 0) */
+!     char_u	*line;		/* text of the new line */
+!     colnr_T	len;		/* length of new line, including NUL, or 0 */
+!     int		newfile;	/* flag, see above */
+  {
+      if (buf->b_ml.ml_mfp == NULL)
+  	return FAIL;
+--- 2564,2575 ----
+   * a memline.
+   */
+      int
+! ml_append_buf(
+!     buf_T	*buf,
+!     linenr_T	lnum,		/* append after this line (can be 0) */
+!     char_u	*line,		/* text of the new line */
+!     colnr_T	len,		/* length of new line, including NUL, or 0 */
+!     int		newfile)	/* flag, see above */
+  {
+      if (buf->b_ml.ml_mfp == NULL)
+  	return FAIL;
+***************
+*** 2610,2622 ****
+  #endif
+  
+      static int
+! ml_append_int(buf, lnum, line, len, newfile, mark)
+!     buf_T	*buf;
+!     linenr_T	lnum;		/* append after this line (can be 0) */
+!     char_u	*line;		/* text of the new line */
+!     colnr_T	len;		/* length of line, including NUL, or 0 */
+!     int		newfile;	/* flag, see above */
+!     int		mark;		/* mark the new line */
+  {
+      int		i;
+      int		line_count;	/* number of indexes in current block */
+--- 2581,2593 ----
+  #endif
+  
+      static int
+! ml_append_int(
+!     buf_T	*buf,
+!     linenr_T	lnum,		/* append after this line (can be 0) */
+!     char_u	*line,		/* text of the new line */
+!     colnr_T	len,		/* length of line, including NUL, or 0 */
+!     int		newfile,	/* flag, see above */
+!     int		mark)		/* mark the new line */
+  {
+      int		i;
+      int		line_count;	/* number of indexes in current block */
+***************
+*** 3119,3128 ****
+   * return FAIL for failure, OK otherwise
+   */
+      int
+! ml_replace(lnum, line, copy)
+!     linenr_T	lnum;
+!     char_u	*line;
+!     int		copy;
+  {
+      if (line == NULL)		/* just checking... */
+  	return FAIL;
+--- 3090,3096 ----
+   * return FAIL for failure, OK otherwise
+   */
+      int
+! ml_replace(linenr_T lnum, char_u *line, int copy)
+  {
+      if (line == NULL)		/* just checking... */
+  	return FAIL;
+***************
+*** 3160,3178 ****
+   * return FAIL for failure, OK otherwise
+   */
+      int
+! ml_delete(lnum, message)
+!     linenr_T	lnum;
+!     int		message;
+  {
+      ml_flush_line(curbuf);
+      return ml_delete_int(curbuf, lnum, message);
+  }
+  
+      static int
+! ml_delete_int(buf, lnum, message)
+!     buf_T	*buf;
+!     linenr_T	lnum;
+!     int		message;
+  {
+      bhdr_T	*hp;
+      memfile_T	*mfp;
+--- 3128,3141 ----
+   * return FAIL for failure, OK otherwise
+   */
+      int
+! ml_delete(linenr_T lnum, int message)
+  {
+      ml_flush_line(curbuf);
+      return ml_delete_int(curbuf, lnum, message);
+  }
+  
+      static int
+! ml_delete_int(buf_T *buf, linenr_T lnum, int message)
+  {
+      bhdr_T	*hp;
+      memfile_T	*mfp;
+***************
+*** 3332,3339 ****
+   * set the B_MARKED flag for line 'lnum'
+   */
+      void
+! ml_setmarked(lnum)
+!     linenr_T lnum;
+  {
+      bhdr_T    *hp;
+      DATA_BL *dp;
+--- 3295,3301 ----
+   * set the B_MARKED flag for line 'lnum'
+   */
+      void
+! ml_setmarked(linenr_T lnum)
+  {
+      bhdr_T    *hp;
+      DATA_BL *dp;
+***************
+*** 3362,3368 ****
+   * find the first line with its B_MARKED flag set
+   */
+      linenr_T
+! ml_firstmarked()
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+--- 3324,3330 ----
+   * find the first line with its B_MARKED flag set
+   */
+      linenr_T
+! ml_firstmarked(void)
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+***************
+*** 3406,3412 ****
+   * clear all DB_MARKED flags
+   */
+      void
+! ml_clearmarked()
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+--- 3368,3374 ----
+   * clear all DB_MARKED flags
+   */
+      void
+! ml_clearmarked(void)
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+***************
+*** 3448,3455 ****
+   * flush ml_line if necessary
+   */
+      static void
+! ml_flush_line(buf)
+!     buf_T	*buf;
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+--- 3410,3416 ----
+   * flush ml_line if necessary
+   */
+      static void
+! ml_flush_line(buf_T *buf)
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+***************
+*** 3554,3563 ****
+   * create a new, empty, data block
+   */
+      static bhdr_T *
+! ml_new_data(mfp, negative, page_count)
+!     memfile_T	*mfp;
+!     int		negative;
+!     int		page_count;
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+--- 3515,3521 ----
+   * create a new, empty, data block
+   */
+      static bhdr_T *
+! ml_new_data(memfile_T *mfp, int negative, int page_count)
+  {
+      bhdr_T	*hp;
+      DATA_BL	*dp;
+***************
+*** 3578,3585 ****
+   * create a new, empty, pointer block
+   */
+      static bhdr_T *
+! ml_new_ptr(mfp)
+!     memfile_T	*mfp;
+  {
+      bhdr_T	*hp;
+      PTR_BL	*pp;
+--- 3536,3542 ----
+   * create a new, empty, pointer block
+   */
+      static bhdr_T *
+! ml_new_ptr(memfile_T *mfp)
+  {
+      bhdr_T	*hp;
+      PTR_BL	*pp;
+***************
+*** 3612,3621 ****
+   * return: NULL for failure, pointer to block header otherwise
+   */
+      static bhdr_T *
+! ml_find_line(buf, lnum, action)
+!     buf_T	*buf;
+!     linenr_T	lnum;
+!     int		action;
+  {
+      DATA_BL	*dp;
+      PTR_BL	*pp;
+--- 3569,3575 ----
+   * return: NULL for failure, pointer to block header otherwise
+   */
+      static bhdr_T *
+! ml_find_line(buf_T *buf, linenr_T lnum, int action)
+  {
+      DATA_BL	*dp;
+      PTR_BL	*pp;
+***************
+*** 3817,3824 ****
+   * return -1 for failure, number of the new entry otherwise
+   */
+      static int
+! ml_add_stack(buf)
+!     buf_T	*buf;
+  {
+      int		top;
+      infoptr_T	*newstack;
+--- 3771,3777 ----
+   * return -1 for failure, number of the new entry otherwise
+   */
+      static int
+! ml_add_stack(buf_T *buf)
+  {
+      int		top;
+      infoptr_T	*newstack;
+***************
+*** 3857,3865 ****
+   * Count is the number of lines added, negative if lines have been deleted.
+   */
+      static void
+! ml_lineadd(buf, count)
+!     buf_T	*buf;
+!     int		count;
+  {
+      int		idx;
+      infoptr_T	*ip;
+--- 3810,3816 ----
+   * Count is the number of lines added, negative if lines have been deleted.
+   */
+      static void
+! ml_lineadd(buf_T *buf, int count)
+  {
+      int		idx;
+      infoptr_T	*ip;
+***************
+*** 3894,3902 ****
+   * Otherwise returns FAIL.
+   */
+      int
+! resolve_symlink(fname, buf)
+!     char_u	*fname;
+!     char_u	*buf;
+  {
+      char_u	tmp[MAXPATHL];
+      int		ret;
+--- 3845,3851 ----
+   * Otherwise returns FAIL.
+   */
+      int
+! resolve_symlink(char_u *fname, char_u *buf)
+  {
+      char_u	tmp[MAXPATHL];
+      int		ret;
+***************
+*** 3970,3980 ****
+   * Returns pointer to allocated memory or NULL.
+   */
+      char_u *
+! makeswapname(fname, ffname, buf, dir_name)
+!     char_u	*fname;
+!     char_u	*ffname UNUSED;
+!     buf_T	*buf;
+!     char_u	*dir_name;
+  {
+      char_u	*r, *s;
+      char_u	*fname_res = fname;
+--- 3919,3929 ----
+   * Returns pointer to allocated memory or NULL.
+   */
+      char_u *
+! makeswapname(
+!     char_u	*fname,
+!     char_u	*ffname UNUSED,
+!     buf_T	*buf,
+!     char_u	*dir_name)
+  {
+      char_u	*r, *s;
+      char_u	*fname_res = fname;
+***************
+*** 4044,4052 ****
+   * The return value is an allocated string and can be NULL.
+   */
+      char_u *
+! get_file_in_dir(fname, dname)
+!     char_u  *fname;
+!     char_u  *dname;	/* don't use "dirname", it is a global for Alpha */
+  {
+      char_u	*t;
+      char_u	*tail;
+--- 3993,4001 ----
+   * The return value is an allocated string and can be NULL.
+   */
+      char_u *
+! get_file_in_dir(
+!     char_u  *fname,
+!     char_u  *dname)	/* don't use "dirname", it is a global for Alpha */
+  {
+      char_u	*t;
+      char_u	*tail;
+***************
+*** 4095,4103 ****
+   * Print the ATTENTION message: info about an existing swap file.
+   */
+      static void
+! attention_message(buf, fname)
+!     buf_T   *buf;	/* buffer being edited */
+!     char_u  *fname;	/* swap file name */
+  {
+      struct stat st;
+      time_t	x, sx;
+--- 4044,4052 ----
+   * Print the ATTENTION message: info about an existing swap file.
+   */
+      static void
+! attention_message(
+!     buf_T   *buf,	/* buffer being edited */
+!     char_u  *fname)	/* swap file name */
+  {
+      struct stat st;
+      time_t	x, sx;
+***************
+*** 4154,4162 ****
+   * 6: abort
+   */
+      static int
+! do_swapexists(buf, fname)
+!     buf_T	*buf;
+!     char_u	*fname;
+  {
+      set_vim_var_string(VV_SWAPNAME, fname, -1);
+      set_vim_var_string(VV_SWAPCHOICE, NULL, -1);
+--- 4103,4109 ----
+   * 6: abort
+   */
+      static int
+! do_swapexists(buf_T *buf, char_u *fname)
+  {
+      set_vim_var_string(VV_SWAPNAME, fname, -1);
+      set_vim_var_string(VV_SWAPCHOICE, NULL, -1);
+***************
+*** 4195,4204 ****
+   * Note: May trigger SwapExists autocmd, pointers may change!
+   */
+      static char_u *
+! findswapname(buf, dirp, old_fname)
+!     buf_T	*buf;
+!     char_u	**dirp;		/* pointer to list of directories */
+!     char_u	*old_fname;	/* don't give warning for this file name */
+  {
+      char_u	*fname;
+      int		n;
+--- 4142,4151 ----
+   * Note: May trigger SwapExists autocmd, pointers may change!
+   */
+      static char_u *
+! findswapname(
+!     buf_T	*buf,
+!     char_u	**dirp,		/* pointer to list of directories */
+!     char_u	*old_fname)	/* don't give warning for this file name */
+  {
+      char_u	*fname;
+      int		n;
+***************
+*** 4676,4683 ****
+  }
+  
+      static int
+! b0_magic_wrong(b0p)
+!     ZERO_BL *b0p;
+  {
+      return (b0p->b0_magic_long != (long)B0_MAGIC_LONG
+  	    || b0p->b0_magic_int != (int)B0_MAGIC_INT
+--- 4623,4629 ----
+  }
+  
+      static int
+! b0_magic_wrong(ZERO_BL *b0p)
+  {
+      return (b0p->b0_magic_long != (long)B0_MAGIC_LONG
+  	    || b0p->b0_magic_int != (int)B0_MAGIC_INT
+***************
+*** 4736,4745 ****
+   */
+  
+      static int
+! fnamecmp_ino(fname_c, fname_s, ino_block0)
+!     char_u	*fname_c;	    /* current file name */
+!     char_u	*fname_s;	    /* file name from swap file */
+!     long	ino_block0;
+  {
+      struct stat	st;
+      ino_t	ino_c = 0;	    /* ino of current file */
+--- 4682,4691 ----
+   */
+  
+      static int
+! fnamecmp_ino(
+!     char_u	*fname_c,	    /* current file name */
+!     char_u	*fname_s,	    /* file name from swap file */
+!     long	ino_block0)
+  {
+      struct stat	st;
+      ino_t	ino_c = 0;	    /* ino of current file */
+***************
+*** 4789,4797 ****
+   * Used for machine independency in block zero.
+   */
+      static void
+! long_to_char(n, s)
+!     long    n;
+!     char_u  *s;
+  {
+      s[0] = (char_u)(n & 0xff);
+      n = (unsigned)n >> 8;
+--- 4735,4741 ----
+   * Used for machine independency in block zero.
+   */
+      static void
+! long_to_char(long n, char_u *s)
+  {
+      s[0] = (char_u)(n & 0xff);
+      n = (unsigned)n >> 8;
+***************
+*** 4803,4810 ****
+  }
+  
+      static long
+! char_to_long(s)
+!     char_u  *s;
+  {
+      long    retval;
+  
+--- 4747,4753 ----
+  }
+  
+      static long
+! char_to_long(char_u *s)
+  {
+      long    retval;
+  
+***************
+*** 4826,4833 ****
+   * - 'fileencoding'
+   */
+      void
+! ml_setflags(buf)
+!     buf_T	*buf;
+  {
+      bhdr_T	*hp;
+      ZERO_BL	*b0p;
+--- 4769,4775 ----
+   * - 'fileencoding'
+   */
+      void
+! ml_setflags(buf_T *buf)
+  {
+      bhdr_T	*hp;
+      ZERO_BL	*b0p;
+***************
+*** 4859,4869 ****
+   * Otherwise return "data".
+   */
+      char_u *
+! ml_encrypt_data(mfp, data, offset, size)
+!     memfile_T	*mfp;
+!     char_u	*data;
+!     off_t	offset;
+!     unsigned	size;
+  {
+      DATA_BL	*dp = (DATA_BL *)data;
+      char_u	*head_end;
+--- 4801,4811 ----
+   * Otherwise return "data".
+   */
+      char_u *
+! ml_encrypt_data(
+!     memfile_T	*mfp,
+!     char_u	*data,
+!     off_t	offset,
+!     unsigned	size)
+  {
+      DATA_BL	*dp = (DATA_BL *)data;
+      char_u	*head_end;
+***************
+*** 4904,4914 ****
+   * Decrypt the text in "data" if it points to an encrypted data block.
+   */
+      void
+! ml_decrypt_data(mfp, data, offset, size)
+!     memfile_T	*mfp;
+!     char_u	*data;
+!     off_t	offset;
+!     unsigned	size;
+  {
+      DATA_BL	*dp = (DATA_BL *)data;
+      char_u	*head_end;
+--- 4846,4856 ----
+   * Decrypt the text in "data" if it points to an encrypted data block.
+   */
+      void
+! ml_decrypt_data(
+!     memfile_T	*mfp,
+!     char_u	*data,
+!     off_t	offset,
+!     unsigned	size)
+  {
+      DATA_BL	*dp = (DATA_BL *)data;
+      char_u	*head_end;
+***************
+*** 4941,4950 ****
+   * Return an allocated cryptstate_T *.
+   */
+      static cryptstate_T *
+! ml_crypt_prepare(mfp, offset, reading)
+!     memfile_T	*mfp;
+!     off_t	offset;
+!     int		reading;
+  {
+      buf_T	*buf = mfp->mf_buffer;
+      char_u	salt[50];
+--- 4883,4889 ----
+   * Return an allocated cryptstate_T *.
+   */
+      static cryptstate_T *
+! ml_crypt_prepare(memfile_T *mfp, off_t offset, int reading)
+  {
+      buf_T	*buf = mfp->mf_buffer;
+      char_u	salt[50];
+***************
+*** 4999,5009 ****
+   * ML_CHNK_UPDLINE: Add len to parent chunk, as a signed entity.
+   */
+      static void
+! ml_updatechunk(buf, line, len, updtype)
+!     buf_T	*buf;
+!     linenr_T	line;
+!     long	len;
+!     int		updtype;
+  {
+      static buf_T	*ml_upd_lastbuf = NULL;
+      static linenr_T	ml_upd_lastline;
+--- 4938,4948 ----
+   * ML_CHNK_UPDLINE: Add len to parent chunk, as a signed entity.
+   */
+      static void
+! ml_updatechunk(
+!     buf_T	*buf,
+!     linenr_T	line,
+!     long	len,
+!     int		updtype)
+  {
+      static buf_T	*ml_upd_lastbuf = NULL;
+      static linenr_T	ml_upd_lastline;
+***************
+*** 5241,5250 ****
+   * return -1 if information is not available
+   */
+      long
+! ml_find_line_or_offset(buf, lnum, offp)
+!     buf_T	*buf;
+!     linenr_T	lnum;
+!     long	*offp;
+  {
+      linenr_T	curline;
+      int		curix;
+--- 5180,5186 ----
+   * return -1 if information is not available
+   */
+      long
+! ml_find_line_or_offset(buf_T *buf, linenr_T lnum, long *offp)
+  {
+      linenr_T	curline;
+      int		curix;
+***************
+*** 5371,5378 ****
+   * Goto byte in buffer with offset 'cnt'.
+   */
+      void
+! goto_byte(cnt)
+!     long	cnt;
+  {
+      long	boff = cnt;
+      linenr_T	lnum;
+--- 5307,5313 ----
+   * Goto byte in buffer with offset 'cnt'.
+   */
+      void
+! goto_byte(long cnt)
+  {
+      long	boff = cnt;
+      linenr_T	lnum;
+*** ../vim-7.4.1209/src/menu.c	2016-01-29 22:36:41.229047648 +0100
+--- src/menu.c	2016-01-30 18:28:12.810498833 +0100
+***************
+*** 86,93 ****
+   * Do the :menu command and relatives.
+   */
+      void
+! ex_menu(eap)
+!     exarg_T	*eap;		    /* Ex command arguments */
+  {
+      char_u	*menu_path;
+      int		modes;
+--- 86,93 ----
+   * Do the :menu command and relatives.
+   */
+      void
+! ex_menu(
+!     exarg_T	*eap)		    /* Ex command arguments */
+  {
+      char_u	*menu_path;
+      int		modes;
+***************
+*** 410,428 ****
+   * Add the menu with the given name to the menu hierarchy
+   */
+      static int
+! add_menu_path(menu_path, menuarg, pri_tab, call_data
+! #ifdef FEAT_GUI_W32
+! 	, addtearoff
+! #endif
+! 	)
+!     char_u	*menu_path;
+!     vimmenu_T	*menuarg;	/* passes modes, iconfile, iconidx,
+  				   icon_builtin, silent[0], noremap[0] */
+!     int		*pri_tab;
+!     char_u	*call_data;
+  #ifdef FEAT_GUI_W32
+!     int		addtearoff;	/* may add tearoff item */
+  #endif
+  {
+      char_u	*path_name;
+      int		modes = menuarg->modes;
+--- 410,425 ----
+   * Add the menu with the given name to the menu hierarchy
+   */
+      static int
+! add_menu_path(
+!     char_u	*menu_path,
+!     vimmenu_T	*menuarg,	/* passes modes, iconfile, iconidx,
+  				   icon_builtin, silent[0], noremap[0] */
+!     int		*pri_tab,
+!     char_u	*call_data
+  #ifdef FEAT_GUI_W32
+!     , int	addtearoff	/* may add tearoff item */
+  #endif
++     )
+  {
+      char_u	*path_name;
+      int		modes = menuarg->modes;
+***************
+*** 807,817 ****
+   * Called recursively.
+   */
+      static int
+! menu_nable_recurse(menu, name, modes, enable)
+!     vimmenu_T	*menu;
+!     char_u	*name;
+!     int		modes;
+!     int		enable;
+  {
+      char_u	*p;
+  
+--- 804,814 ----
+   * Called recursively.
+   */
+      static int
+! menu_nable_recurse(
+!     vimmenu_T	*menu,
+!     char_u	*name,
+!     int		modes,
+!     int		enable)
+  {
+      char_u	*p;
+  
+***************
+*** 872,882 ****
+   * Called recursively.
+   */
+      static int
+! remove_menu(menup, name, modes, silent)
+!     vimmenu_T	**menup;
+!     char_u	*name;
+!     int		modes;
+!     int		silent;		/* don't give error messages */
+  {
+      vimmenu_T	*menu;
+      vimmenu_T	*child;
+--- 869,879 ----
+   * Called recursively.
+   */
+      static int
+! remove_menu(
+!     vimmenu_T	**menup,
+!     char_u	*name,
+!     int		modes,
+!     int		silent)		/* don't give error messages */
+  {
+      vimmenu_T	*menu;
+      vimmenu_T	*child;
+***************
+*** 992,999 ****
+   * Free the given menu structure and remove it from the linked list.
+   */
+      static void
+! free_menu(menup)
+!     vimmenu_T	**menup;
+  {
+      int		i;
+      vimmenu_T	*menu;
+--- 989,995 ----
+   * Free the given menu structure and remove it from the linked list.
+   */
+      static void
+! free_menu(vimmenu_T **menup)
+  {
+      int		i;
+      vimmenu_T	*menu;
+***************
+*** 1037,1045 ****
+   * Free the menu->string with the given index.
+   */
+      static void
+! free_menu_string(menu, idx)
+!     vimmenu_T	*menu;
+!     int		idx;
+  {
+      int		count = 0;
+      int		i;
+--- 1033,1039 ----
+   * Free the menu->string with the given index.
+   */
+      static void
+! free_menu_string(vimmenu_T *menu, int idx)
+  {
+      int		count = 0;
+      int		i;
+***************
+*** 1056,1064 ****
+   * Show the mapping associated with a menu item or hierarchy in a sub-menu.
+   */
+      static int
+! show_menus(path_name, modes)
+!     char_u  *path_name;
+!     int	    modes;
+  {
+      char_u	*p;
+      char_u	*name;
+--- 1050,1056 ----
+   * Show the mapping associated with a menu item or hierarchy in a sub-menu.
+   */
+      static int
+! show_menus(char_u *path_name, int modes)
+  {
+      char_u	*p;
+      char_u	*name;
+***************
+*** 1119,1128 ****
+   * Recursively show the mappings associated with the menus under the given one
+   */
+      static void
+! show_menus_recursive(menu, modes, depth)
+!     vimmenu_T	*menu;
+!     int		modes;
+!     int		depth;
+  {
+      int		i;
+      int		bit;
+--- 1111,1117 ----
+   * Recursively show the mappings associated with the menus under the given one
+   */
+      static void
+! show_menus_recursive(vimmenu_T *menu, int modes, int depth)
+  {
+      int		i;
+      int		bit;
+***************
+*** 1208,1218 ****
+   * Work out what to complete when doing command line completion of menu names.
+   */
+      char_u *
+! set_context_in_menu_cmd(xp, cmd, arg, forceit)
+!     expand_T	*xp;
+!     char_u	*cmd;
+!     char_u	*arg;
+!     int		forceit;
+  {
+      char_u	*after_dot;
+      char_u	*p;
+--- 1197,1207 ----
+   * Work out what to complete when doing command line completion of menu names.
+   */
+      char_u *
+! set_context_in_menu_cmd(
+!     expand_T	*xp,
+!     char_u	*cmd,
+!     char_u	*arg,
+!     int		forceit)
+  {
+      char_u	*after_dot;
+      char_u	*p;
+***************
+*** 1327,1335 ****
+   * entries).
+   */
+      char_u *
+! get_menu_name(xp, idx)
+!     expand_T	*xp UNUSED;
+!     int		idx;
+  {
+      static vimmenu_T	*menu = NULL;
+      char_u		*str;
+--- 1316,1322 ----
+   * entries).
+   */
+      char_u *
+! get_menu_name(expand_T *xp UNUSED, int idx)
+  {
+      static vimmenu_T	*menu = NULL;
+      char_u		*str;
+***************
+*** 1389,1397 ****
+   * entries.
+   */
+      char_u *
+! get_menu_names(xp, idx)
+!     expand_T	*xp UNUSED;
+!     int		idx;
+  {
+      static vimmenu_T	*menu = NULL;
+  #define TBUFFER_LEN 256
+--- 1376,1382 ----
+   * entries.
+   */
+      char_u *
+! get_menu_names(expand_T *xp UNUSED, int idx)
+  {
+      static vimmenu_T	*menu = NULL;
+  #define TBUFFER_LEN 256
+***************
+*** 1483,1490 ****
+   * "name" may be modified.
+   */
+      char_u *
+! menu_name_skip(name)
+!     char_u  *name;
+  {
+      char_u  *p;
+  
+--- 1468,1474 ----
+   * "name" may be modified.
+   */
+      char_u *
+! menu_name_skip(char_u *name)
+  {
+      char_u  *p;
+  
+***************
+*** 1507,1515 ****
+   * two ways: raw menu name and menu name without '&'.  ignore part after a TAB.
+   */
+      static int
+! menu_name_equal(name, menu)
+!     char_u	*name;
+!     vimmenu_T	*menu;
+  {
+  #ifdef FEAT_MULTI_LANG
+      if (menu->en_name != NULL
+--- 1491,1497 ----
+   * two ways: raw menu name and menu name without '&'.  ignore part after a TAB.
+   */
+      static int
+! menu_name_equal(char_u *name, vimmenu_T *menu)
+  {
+  #ifdef FEAT_MULTI_LANG
+      if (menu->en_name != NULL
+***************
+*** 1521,1529 ****
+  }
+  
+      static int
+! menu_namecmp(name, mname)
+!     char_u	*name;
+!     char_u	*mname;
+  {
+      int		i;
+  
+--- 1503,1509 ----
+  }
+  
+      static int
+! menu_namecmp(char_u *name, char_u *mname)
+  {
+      int		i;
+  
+***************
+*** 1543,1553 ****
+   * whether the command is an "unmenu" command.
+   */
+      static int
+! get_menu_cmd_modes(cmd, forceit, noremap, unmenu)
+!     char_u  *cmd;
+!     int	    forceit;	    /* Was there a "!" after the command? */
+!     int	    *noremap;
+!     int	    *unmenu;
+  {
+      int	    modes;
+  
+--- 1523,1533 ----
+   * whether the command is an "unmenu" command.
+   */
+      static int
+! get_menu_cmd_modes(
+!     char_u  *cmd,
+!     int	    forceit,	    /* Was there a "!" after the command? */
+!     int	    *noremap,
+!     int	    *unmenu)
+  {
+      int	    modes;
+  
+***************
+*** 1607,1615 ****
+   * Returns the name in allocated memory (NULL for failure).
+   */
+      static char_u *
+! popup_mode_name(name, idx)
+!     char_u	*name;
+!     int		idx;
+  {
+      char_u	*p;
+      int		len = (int)STRLEN(name);
+--- 1587,1593 ----
+   * Returns the name in allocated memory (NULL for failure).
+   */
+      static char_u *
+! popup_mode_name(char_u *name, int idx)
+  {
+      char_u	*p;
+      int		len = (int)STRLEN(name);
+***************
+*** 1630,1638 ****
+   * given menu in the current mode.
+   */
+      int
+! get_menu_index(menu, state)
+!     vimmenu_T	*menu;
+!     int		state;
+  {
+      int		idx;
+  
+--- 1608,1614 ----
+   * given menu in the current mode.
+   */
+      int
+! get_menu_index(vimmenu_T *menu, int state)
+  {
+      int		idx;
+  
+***************
+*** 1670,1679 ****
+   * If actext != NULL, *actext is set to the text after the first TAB.
+   */
+      static char_u *
+! menu_text(str, mnemonic, actext)
+!     char_u	*str;
+!     int		*mnemonic;
+!     char_u	**actext;
+  {
+      char_u	*p;
+      char_u	*text;
+--- 1646,1652 ----
+   * If actext != NULL, *actext is set to the text after the first TAB.
+   */
+      static char_u *
+! menu_text(char_u *str, int *mnemonic, char_u **actext)
+  {
+      char_u	*p;
+      char_u	*text;
+***************
+*** 1724,1731 ****
+   * Return TRUE if "name" can be a menu in the MenuBar.
+   */
+      int
+! menu_is_menubar(name)
+!     char_u	*name;
+  {
+      return (!menu_is_popup(name)
+  	    && !menu_is_toolbar(name)
+--- 1697,1703 ----
+   * Return TRUE if "name" can be a menu in the MenuBar.
+   */
+      int
+! menu_is_menubar(char_u *name)
+  {
+      return (!menu_is_popup(name)
+  	    && !menu_is_toolbar(name)
+***************
+*** 1736,1743 ****
+   * Return TRUE if "name" is a popup menu name.
+   */
+      int
+! menu_is_popup(name)
+!     char_u	*name;
+  {
+      return (STRNCMP(name, "PopUp", 5) == 0);
+  }
+--- 1708,1714 ----
+   * Return TRUE if "name" is a popup menu name.
+   */
+      int
+! menu_is_popup(char_u *name)
+  {
+      return (STRNCMP(name, "PopUp", 5) == 0);
+  }
+***************
+*** 1747,1754 ****
+   * Return TRUE if "name" is part of a popup menu.
+   */
+      int
+! menu_is_child_of_popup(menu)
+!     vimmenu_T *menu;
+  {
+      while (menu->parent != NULL)
+  	menu = menu->parent;
+--- 1718,1724 ----
+   * Return TRUE if "name" is part of a popup menu.
+   */
+      int
+! menu_is_child_of_popup(vimmenu_T *menu)
+  {
+      while (menu->parent != NULL)
+  	menu = menu->parent;
+***************
+*** 1760,1767 ****
+   * Return TRUE if "name" is a toolbar menu name.
+   */
+      int
+! menu_is_toolbar(name)
+!     char_u	*name;
+  {
+      return (STRNCMP(name, "ToolBar", 7) == 0);
+  }
+--- 1730,1736 ----
+   * Return TRUE if "name" is a toolbar menu name.
+   */
+      int
+! menu_is_toolbar(char_u *name)
+  {
+      return (STRNCMP(name, "ToolBar", 7) == 0);
+  }
+***************
+*** 1771,1778 ****
+   * with '-'
+   */
+      int
+! menu_is_separator(name)
+!     char_u *name;
+  {
+      return (name[0] == '-' && name[STRLEN(name) - 1] == '-');
+  }
+--- 1740,1746 ----
+   * with '-'
+   */
+      int
+! menu_is_separator(char_u *name)
+  {
+      return (name[0] == '-' && name[STRLEN(name) - 1] == '-');
+  }
+***************
+*** 1781,1788 ****
+   * Return TRUE if the menu is hidden:  Starts with ']'
+   */
+      static int
+! menu_is_hidden(name)
+!     char_u *name;
+  {
+      return (name[0] == ']') || (menu_is_popup(name) && name[5] != NUL);
+  }
+--- 1749,1755 ----
+   * Return TRUE if the menu is hidden:  Starts with ']'
+   */
+      static int
+! menu_is_hidden(char_u *name)
+  {
+      return (name[0] == ']') || (menu_is_popup(name) && name[5] != NUL);
+  }
+***************
+*** 1793,1800 ****
+   * Return TRUE if the menu is the tearoff menu.
+   */
+      static int
+! menu_is_tearoff(name)
+!     char_u *name UNUSED;
+  {
+  #ifdef FEAT_GUI
+      return (STRCMP(name, TEAR_STRING) == 0);
+--- 1760,1766 ----
+   * Return TRUE if the menu is the tearoff menu.
+   */
+      static int
+! menu_is_tearoff(char_u *name UNUSED)
+  {
+  #ifdef FEAT_GUI
+      return (STRCMP(name, TEAR_STRING) == 0);
+***************
+*** 1807,1813 ****
+  #ifdef FEAT_GUI
+  
+      static int
+! get_menu_mode()
+  {
+      if (VIsual_active)
+      {
+--- 1773,1779 ----
+  #ifdef FEAT_GUI
+  
+      static int
+! get_menu_mode(void)
+  {
+      if (VIsual_active)
+      {
+***************
+*** 1835,1843 ****
+   * Return OK or FAIL.  Used recursively.
+   */
+      int
+! check_menu_pointer(root, menu_to_check)
+!     vimmenu_T *root;
+!     vimmenu_T *menu_to_check;
+  {
+      vimmenu_T	*p;
+  
+--- 1801,1807 ----
+   * Return OK or FAIL.  Used recursively.
+   */
+      int
+! check_menu_pointer(vimmenu_T *root, vimmenu_T *menu_to_check)
+  {
+      vimmenu_T	*p;
+  
+***************
+*** 1857,1864 ****
+   * gui_create_initial_menus(root_menu, NULL);
+   */
+      void
+! gui_create_initial_menus(menu)
+!     vimmenu_T	*menu;
+  {
+      int		idx = 0;
+  
+--- 1821,1827 ----
+   * gui_create_initial_menus(root_menu, NULL);
+   */
+      void
+! gui_create_initial_menus(vimmenu_T *menu)
+  {
+      int		idx = 0;
+  
+***************
+*** 1884,1892 ****
+   * Used recursively by gui_update_menus (see below)
+   */
+      static void
+! gui_update_menus_recurse(menu, mode)
+!     vimmenu_T	*menu;
+!     int		mode;
+  {
+      int		grey;
+  
+--- 1847,1853 ----
+   * Used recursively by gui_update_menus (see below)
+   */
+      static void
+! gui_update_menus_recurse(vimmenu_T *menu, int mode)
+  {
+      int		grey;
+  
+***************
+*** 1926,1933 ****
+   * since last time.  If "modes" is not 0, then we use these modes instead.
+   */
+      void
+! gui_update_menus(modes)
+!     int	    modes;
+  {
+      static int	    prev_mode = -1;
+      int		    mode = 0;
+--- 1887,1893 ----
+   * since last time.  If "modes" is not 0, then we use these modes instead.
+   */
+      void
+! gui_update_menus(int modes)
+  {
+      static int	    prev_mode = -1;
+      int		    mode = 0;
+***************
+*** 1964,1971 ****
+   * Case of the key is ignored.
+   */
+      int
+! gui_is_menu_shortcut(key)
+!     int		key;
+  {
+      vimmenu_T	*menu;
+  
+--- 1924,1930 ----
+   * Case of the key is ignored.
+   */
+      int
+! gui_is_menu_shortcut(int key)
+  {
+      vimmenu_T	*menu;
+  
+***************
+*** 1985,1991 ****
+   * etc.
+   */
+      void
+! gui_show_popupmenu()
+  {
+      vimmenu_T	*menu;
+      int		mode;
+--- 1944,1950 ----
+   * etc.
+   */
+      void
+! gui_show_popupmenu(void)
+  {
+      vimmenu_T	*menu;
+      int		mode;
+***************
+*** 2044,2054 ****
+   * Recursively add tearoff items
+   */
+      static void
+! gui_create_tearoffs_recurse(menu, pname, pri_tab, pri_idx)
+!     vimmenu_T		*menu;
+!     const char_u	*pname;
+!     int			*pri_tab;
+!     int			pri_idx;
+  {
+      char_u	*newpname = NULL;
+      int		len;
+--- 2003,2013 ----
+   * Recursively add tearoff items
+   */
+      static void
+! gui_create_tearoffs_recurse(
+!     vimmenu_T		*menu,
+!     const char_u	*pname,
+!     int			*pri_tab,
+!     int			pri_idx)
+  {
+      char_u	*newpname = NULL;
+      int		len;
+***************
+*** 2102,2111 ****
+   * "tearpath" is the menu path, and must have room to add TEAR_STRING.
+   */
+      static void
+! gui_add_tearoff(tearpath, pri_tab, pri_idx)
+!     char_u	*tearpath;
+!     int		*pri_tab;
+!     int		pri_idx;
+  {
+      char_u	*tbuf;
+      int		t;
+--- 2061,2067 ----
+   * "tearpath" is the menu path, and must have room to add TEAR_STRING.
+   */
+      static void
+! gui_add_tearoff(char_u *tearpath, int *pri_tab, int pri_idx)
+  {
+      char_u	*tbuf;
+      int		t;
+***************
+*** 2151,2158 ****
+   * Recursively destroy tearoff items
+   */
+      static void
+! gui_destroy_tearoffs_recurse(menu)
+!     vimmenu_T	*menu;
+  {
+      while (menu)
+      {
+--- 2107,2113 ----
+   * Recursively destroy tearoff items
+   */
+      static void
+! gui_destroy_tearoffs_recurse(vimmenu_T *menu)
+  {
+      while (menu)
+      {
+***************
+*** 2178,2185 ****
+   * execute it.
+   */
+      void
+! ex_emenu(eap)
+!     exarg_T	*eap;
+  {
+      vimmenu_T	*menu;
+      char_u	*name;
+--- 2133,2139 ----
+   * execute it.
+   */
+      void
+! ex_emenu(exarg_T *eap)
+  {
+      vimmenu_T	*menu;
+      char_u	*name;
+***************
+*** 2317,2324 ****
+   * Given a menu descriptor, e.g. "File.New", find it in the menu hierarchy.
+   */
+      vimmenu_T *
+! gui_find_menu(path_name)
+!     char_u *path_name;
+  {
+      vimmenu_T	*menu = NULL;
+      char_u	*name;
+--- 2271,2277 ----
+   * Given a menu descriptor, e.g. "File.New", find it in the menu hierarchy.
+   */
+      vimmenu_T *
+! gui_find_menu(char_u *path_name)
+  {
+      vimmenu_T	*menu = NULL;
+      char_u	*name;
+***************
+*** 2394,2401 ****
+   * case the commands are ignored.
+   */
+      void
+! ex_menutranslate(eap)
+!     exarg_T	*eap UNUSED;
+  {
+  #ifdef FEAT_MULTI_LANG
+      char_u		*arg = eap->arg;
+--- 2347,2353 ----
+   * case the commands are ignored.
+   */
+      void
+! ex_menutranslate(exarg_T *eap UNUSED)
+  {
+  #ifdef FEAT_MULTI_LANG
+      char_u		*arg = eap->arg;
+***************
+*** 2473,2480 ****
+   * Find the character just after one part of a menu name.
+   */
+      static char_u *
+! menu_skip_part(p)
+!     char_u	*p;
+  {
+      while (*p != NUL && *p != '.' && !vim_iswhite(*p))
+      {
+--- 2425,2431 ----
+   * Find the character just after one part of a menu name.
+   */
+      static char_u *
+! menu_skip_part(char_u *p)
+  {
+      while (*p != NUL && *p != '.' && !vim_iswhite(*p))
+      {
+***************
+*** 2492,2500 ****
+   * Return a pointer to the translation or NULL if not found.
+   */
+      static char_u *
+! menutrans_lookup(name, len)
+!     char_u	*name;
+!     int		len;
+  {
+      menutrans_T		*tp = (menutrans_T *)menutrans_ga.ga_data;
+      int			i;
+--- 2443,2449 ----
+   * Return a pointer to the translation or NULL if not found.
+   */
+      static char_u *
+! menutrans_lookup(char_u *name, int len)
+  {
+      menutrans_T		*tp = (menutrans_T *)menutrans_ga.ga_data;
+      int			i;
+***************
+*** 2527,2534 ****
+   * Unescape the name in the translate dictionary table.
+   */
+      static void
+! menu_unescape_name(name)
+!     char_u	*name;
+  {
+      char_u  *p;
+  
+--- 2476,2482 ----
+   * Unescape the name in the translate dictionary table.
+   */
+      static void
+! menu_unescape_name(char_u *name)
+  {
+      char_u  *p;
+  
+***************
+*** 2543,2550 ****
+   * Skip the menu name, and translate <Tab> into a real TAB.
+   */
+      static char_u *
+! menu_translate_tab_and_shift(arg_start)
+!     char_u	*arg_start;
+  {
+      char_u	*arg = arg_start;
+  
+--- 2491,2497 ----
+   * Skip the menu name, and translate <Tab> into a real TAB.
+   */
+      static char_u *
+! menu_translate_tab_and_shift(char_u *arg_start)
+  {
+      char_u	*arg = arg_start;
+  
+*** ../vim-7.4.1209/src/message.c	2016-01-29 22:36:41.233047606 +0100
+--- src/message.c	2016-01-30 18:42:26.653624110 +0100
+***************
+*** 102,109 ****
+   * return TRUE if wait_return not called
+   */
+      int
+! msg(s)
+!     char_u	*s;
+  {
+      return msg_attr_keep(s, 0, FALSE);
+  }
+--- 102,108 ----
+   * return TRUE if wait_return not called
+   */
+      int
+! msg(char_u *s)
+  {
+      return msg_attr_keep(s, 0, FALSE);
+  }
+***************
+*** 114,121 ****
+   * Like msg() but keep it silent when 'verbosefile' is set.
+   */
+      int
+! verb_msg(s)
+!     char_u	*s;
+  {
+      int		n;
+  
+--- 113,119 ----
+   * Like msg() but keep it silent when 'verbosefile' is set.
+   */
+      int
+! verb_msg(char_u *s)
+  {
+      int		n;
+  
+***************
+*** 128,145 ****
+  #endif
+  
+      int
+! msg_attr(s, attr)
+!     char_u	*s;
+!     int		attr;
+  {
+      return msg_attr_keep(s, attr, FALSE);
+  }
+  
+      int
+! msg_attr_keep(s, attr, keep)
+!     char_u	*s;
+!     int		attr;
+!     int		keep;	    /* TRUE: set keep_msg if it doesn't scroll */
+  {
+      static int	entered = 0;
+      int		retval;
+--- 126,141 ----
+  #endif
+  
+      int
+! msg_attr(char_u *s, int attr)
+  {
+      return msg_attr_keep(s, attr, FALSE);
+  }
+  
+      int
+! msg_attr_keep(
+!     char_u	*s,
+!     int		attr,
+!     int		keep)	    /* TRUE: set keep_msg if it doesn't scroll */
+  {
+      static int	entered = 0;
+      int		retval;
+***************
+*** 197,205 ****
+   * Returns an allocated string or NULL when no truncating is done.
+   */
+      char_u *
+! msg_strtrunc(s, force)
+!     char_u	*s;
+!     int		force;	    /* always truncate */
+  {
+      char_u	*buf = NULL;
+      int		len;
+--- 193,201 ----
+   * Returns an allocated string or NULL when no truncating is done.
+   */
+      char_u *
+! msg_strtrunc(
+!     char_u	*s,
+!     int		force)	    /* always truncate */
+  {
+      char_u	*buf = NULL;
+      int		len;
+***************
+*** 242,252 ****
+   * "s" and "buf" may be equal.
+   */
+      void
+! trunc_string(s, buf, room, buflen)
+!     char_u	*s;
+!     char_u	*buf;
+!     int		room;
+!     int		buflen;
+  {
+      int		half;
+      int		len;
+--- 238,248 ----
+   * "s" and "buf" may be equal.
+   */
+      void
+! trunc_string(
+!     char_u	*s,
+!     char_u	*buf,
+!     int		room,
+!     int		buflen)
+  {
+      int		half;
+      int		len;
+***************
+*** 388,394 ****
+   * for the next error message;
+   */
+      void
+! reset_last_sourcing()
+  {
+      vim_free(last_sourcing_name);
+      last_sourcing_name = NULL;
+--- 384,390 ----
+   * for the next error message;
+   */
+      void
+! reset_last_sourcing(void)
+  {
+      vim_free(last_sourcing_name);
+      last_sourcing_name = NULL;
+***************
+*** 399,405 ****
+   * Return TRUE if "sourcing_name" differs from "last_sourcing_name".
+   */
+      static int
+! other_sourcing_name()
+  {
+      if (sourcing_name != NULL)
+      {
+--- 395,401 ----
+   * Return TRUE if "sourcing_name" differs from "last_sourcing_name".
+   */
+      static int
+! other_sourcing_name(void)
+  {
+      if (sourcing_name != NULL)
+      {
+***************
+*** 416,422 ****
+   * Returns NULL when no message is to be given.
+   */
+      static char_u *
+! get_emsg_source()
+  {
+      char_u	*Buf, *p;
+  
+--- 412,418 ----
+   * Returns NULL when no message is to be given.
+   */
+      static char_u *
+! get_emsg_source(void)
+  {
+      char_u	*Buf, *p;
+  
+***************
+*** 437,443 ****
+   * Returns NULL when no message is to be given.
+   */
+      static char_u *
+! get_emsg_lnum()
+  {
+      char_u	*Buf, *p;
+  
+--- 433,439 ----
+   * Returns NULL when no message is to be given.
+   */
+      static char_u *
+! get_emsg_lnum(void)
+  {
+      char_u	*Buf, *p;
+  
+***************
+*** 462,469 ****
+   * is only displayed if it changed.
+   */
+      void
+! msg_source(attr)
+!     int		attr;
+  {
+      char_u	*p;
+  
+--- 458,464 ----
+   * is only displayed if it changed.
+   */
+      void
+! msg_source(int attr)
+  {
+      char_u	*p;
+  
+***************
+*** 501,507 ****
+   * If "emsg_skip" is set: never do error messages.
+   */
+      int
+! emsg_not_now()
+  {
+      if ((emsg_off > 0 && vim_strchr(p_debug, 'm') == NULL
+  					  && vim_strchr(p_debug, 't') == NULL)
+--- 496,502 ----
+   * If "emsg_skip" is set: never do error messages.
+   */
+      int
+! emsg_not_now(void)
+  {
+      if ((emsg_off > 0 && vim_strchr(p_debug, 'm') == NULL
+  					  && vim_strchr(p_debug, 't') == NULL)
+***************
+*** 522,529 ****
+   * return TRUE if wait_return not called
+   */
+      int
+! emsg(s)
+!     char_u	*s;
+  {
+      int		attr;
+      char_u	*p;
+--- 517,523 ----
+   * return TRUE if wait_return not called
+   */
+      int
+! emsg(char_u *s)
+  {
+      int		attr;
+      char_u	*p;
+***************
+*** 633,640 ****
+   * Print an error message with one "%s" and one string argument.
+   */
+      int
+! emsg2(s, a1)
+!     char_u *s, *a1;
+  {
+      return emsg3(s, a1, NULL);
+  }
+--- 627,633 ----
+   * Print an error message with one "%s" and one string argument.
+   */
+      int
+! emsg2(char_u *s, char_u *a1)
+  {
+      return emsg3(s, a1, NULL);
+  }
+***************
+*** 642,649 ****
+  /* emsg3() and emsgn() are in misc2.c to avoid warnings for the prototypes. */
+  
+      void
+! emsg_invreg(name)
+!     int	    name;
+  {
+      EMSG2(_("E354: Invalid register name: '%s'"), transchar(name));
+  }
+--- 635,641 ----
+  /* emsg3() and emsgn() are in misc2.c to avoid warnings for the prototypes. */
+  
+      void
+! emsg_invreg(int name)
+  {
+      EMSG2(_("E354: Invalid register name: '%s'"), transchar(name));
+  }
+***************
+*** 655,664 ****
+   * Returns a pointer to the printed message, if wait_return() not called.
+   */
+      char_u *
+! msg_trunc_attr(s, force, attr)
+!     char_u	*s;
+!     int		force;
+!     int		attr;
+  {
+      int		n;
+  
+--- 647,653 ----
+   * Returns a pointer to the printed message, if wait_return() not called.
+   */
+      char_u *
+! msg_trunc_attr(char_u *s, int force, int attr)
+  {
+      int		n;
+  
+***************
+*** 682,690 ****
+   * Note: May change the message by replacing a character with '<'.
+   */
+      char_u *
+! msg_may_trunc(force, s)
+!     int		force;
+!     char_u	*s;
+  {
+      int		n;
+      int		room;
+--- 671,677 ----
+   * Note: May change the message by replacing a character with '<'.
+   */
+      char_u *
+! msg_may_trunc(int force, char_u *s)
+  {
+      int		n;
+      int		room;
+***************
+*** 717,726 ****
+  }
+  
+      static void
+! add_msg_hist(s, len, attr)
+!     char_u	*s;
+!     int		len;		/* -1 for undetermined length */
+!     int		attr;
+  {
+      struct msg_hist *p;
+  
+--- 704,713 ----
+  }
+  
+      static void
+! add_msg_hist(
+!     char_u	*s,
+!     int		len,		/* -1 for undetermined length */
+!     int		attr)
+  {
+      struct msg_hist *p;
+  
+***************
+*** 762,768 ****
+   * Returns FAIL if there are no messages.
+   */
+      int
+! delete_first_msg()
+  {
+      struct msg_hist *p;
+  
+--- 749,755 ----
+   * Returns FAIL if there are no messages.
+   */
+      int
+! delete_first_msg(void)
+  {
+      struct msg_hist *p;
+  
+***************
+*** 782,789 ****
+   * ":messages" command.
+   */
+      void
+! ex_messages(eap)
+!     exarg_T	*eap UNUSED;
+  {
+      struct msg_hist *p;
+      char_u	    *s;
+--- 769,775 ----
+   * ":messages" command.
+   */
+      void
+! ex_messages(exarg_T *eap UNUSED)
+  {
+      struct msg_hist *p;
+      char_u	    *s;
+***************
+*** 809,815 ****
+   * and a delay.
+   */
+      void
+! msg_end_prompt()
+  {
+      need_wait_return = FALSE;
+      emsg_on_display = FALSE;
+--- 795,801 ----
+   * and a delay.
+   */
+      void
+! msg_end_prompt(void)
+  {
+      need_wait_return = FALSE;
+      emsg_on_display = FALSE;
+***************
+*** 827,834 ****
+   * if 'redraw' is -1, don't redraw at all
+   */
+      void
+! wait_return(redraw)
+!     int		redraw;
+  {
+      int		c;
+      int		oldState;
+--- 813,819 ----
+   * if 'redraw' is -1, don't redraw at all
+   */
+      void
+! wait_return(int redraw)
+  {
+      int		c;
+      int		oldState;
+***************
+*** 1076,1082 ****
+   * Write the hit-return prompt.
+   */
+      static void
+! hit_return_msg()
+  {
+      int		save_p_more = p_more;
+  
+--- 1061,1067 ----
+   * Write the hit-return prompt.
+   */
+      static void
+! hit_return_msg(void)
+  {
+      int		save_p_more = p_more;
+  
+***************
+*** 1096,1104 ****
+   * Set "keep_msg" to "s".  Free the old value and check for NULL pointer.
+   */
+      void
+! set_keep_msg(s, attr)
+!     char_u	*s;
+!     int		attr;
+  {
+      vim_free(keep_msg);
+      if (s != NULL && msg_silent == 0)
+--- 1081,1087 ----
+   * Set "keep_msg" to "s".  Free the old value and check for NULL pointer.
+   */
+      void
+! set_keep_msg(char_u *s, int attr)
+  {
+      vim_free(keep_msg);
+      if (s != NULL && msg_silent == 0)
+***************
+*** 1115,1121 ****
+   * that it will be displayed again after redraw.
+   */
+      void
+! set_keep_msg_from_hist()
+  {
+      if (keep_msg == NULL && last_msg_hist != NULL && msg_scrolled == 0
+  							  && (State & NORMAL))
+--- 1098,1104 ----
+   * that it will be displayed again after redraw.
+   */
+      void
+! set_keep_msg_from_hist(void)
+  {
+      if (keep_msg == NULL && last_msg_hist != NULL && msg_scrolled == 0
+  							  && (State & NORMAL))
+***************
+*** 1127,1133 ****
+   * Prepare for outputting characters in the command line.
+   */
+      void
+! msg_start()
+  {
+      int		did_return = FALSE;
+  
+--- 1110,1116 ----
+   * Prepare for outputting characters in the command line.
+   */
+      void
+! msg_start(void)
+  {
+      int		did_return = FALSE;
+  
+***************
+*** 1180,1202 ****
+   * Note that the current msg position is where messages start.
+   */
+      void
+! msg_starthere()
+  {
+      lines_left = cmdline_row;
+      msg_didany = FALSE;
+  }
+  
+      void
+! msg_putchar(c)
+!     int		c;
+  {
+      msg_putchar_attr(c, 0);
+  }
+  
+      void
+! msg_putchar_attr(c, attr)
+!     int		c;
+!     int		attr;
+  {
+  #ifdef FEAT_MBYTE
+      char_u	buf[MB_MAXBYTES + 1];
+--- 1163,1182 ----
+   * Note that the current msg position is where messages start.
+   */
+      void
+! msg_starthere(void)
+  {
+      lines_left = cmdline_row;
+      msg_didany = FALSE;
+  }
+  
+      void
+! msg_putchar(int c)
+  {
+      msg_putchar_attr(c, 0);
+  }
+  
+      void
+! msg_putchar_attr(int c, int attr)
+  {
+  #ifdef FEAT_MBYTE
+      char_u	buf[MB_MAXBYTES + 1];
+***************
+*** 1224,1231 ****
+  }
+  
+      void
+! msg_outnum(n)
+!     long	n;
+  {
+      char_u	buf[20];
+  
+--- 1204,1210 ----
+  }
+  
+      void
+! msg_outnum(long n)
+  {
+      char_u	buf[20];
+  
+***************
+*** 1234,1258 ****
+  }
+  
+      void
+! msg_home_replace(fname)
+!     char_u	*fname;
+  {
+      msg_home_replace_attr(fname, 0);
+  }
+  
+  #if defined(FEAT_FIND_ID) || defined(PROTO)
+      void
+! msg_home_replace_hl(fname)
+!     char_u	*fname;
+  {
+      msg_home_replace_attr(fname, hl_attr(HLF_D));
+  }
+  #endif
+  
+      static void
+! msg_home_replace_attr(fname, attr)
+!     char_u  *fname;
+!     int	    attr;
+  {
+      char_u	*name;
+  
+--- 1213,1233 ----
+  }
+  
+      void
+! msg_home_replace(char_u *fname)
+  {
+      msg_home_replace_attr(fname, 0);
+  }
+  
+  #if defined(FEAT_FIND_ID) || defined(PROTO)
+      void
+! msg_home_replace_hl(char_u *fname)
+  {
+      msg_home_replace_attr(fname, hl_attr(HLF_D));
+  }
+  #endif
+  
+      static void
+! msg_home_replace_attr(char_u *fname, int attr)
+  {
+      char_u	*name;
+  
+***************
+*** 1269,1292 ****
+   * Return the number of characters it takes on the screen.
+   */
+      int
+! msg_outtrans(str)
+!     char_u	    *str;
+  {
+      return msg_outtrans_attr(str, 0);
+  }
+  
+      int
+! msg_outtrans_attr(str, attr)
+!     char_u	*str;
+!     int		attr;
+  {
+      return msg_outtrans_len_attr(str, (int)STRLEN(str), attr);
+  }
+  
+      int
+! msg_outtrans_len(str, len)
+!     char_u	*str;
+!     int		len;
+  {
+      return msg_outtrans_len_attr(str, len, 0);
+  }
+--- 1244,1262 ----
+   * Return the number of characters it takes on the screen.
+   */
+      int
+! msg_outtrans(char_u *str)
+  {
+      return msg_outtrans_attr(str, 0);
+  }
+  
+      int
+! msg_outtrans_attr(char_u *str, int attr)
+  {
+      return msg_outtrans_len_attr(str, (int)STRLEN(str), attr);
+  }
+  
+      int
+! msg_outtrans_len(char_u *str, int len)
+  {
+      return msg_outtrans_len_attr(str, len, 0);
+  }
+***************
+*** 1296,1304 ****
+   * Handles multi-byte characters.
+   */
+      char_u *
+! msg_outtrans_one(p, attr)
+!     char_u	*p;
+!     int		attr;
+  {
+  #ifdef FEAT_MBYTE
+      int		l;
+--- 1266,1272 ----
+   * Handles multi-byte characters.
+   */
+      char_u *
+! msg_outtrans_one(char_u *p, int attr)
+  {
+  #ifdef FEAT_MBYTE
+      int		l;
+***************
+*** 1314,1323 ****
+  }
+  
+      int
+! msg_outtrans_len_attr(msgstr, len, attr)
+!     char_u	*msgstr;
+!     int		len;
+!     int		attr;
+  {
+      int		retval = 0;
+      char_u	*str = msgstr;
+--- 1282,1288 ----
+  }
+  
+      int
+! msg_outtrans_len_attr(char_u *msgstr, int len, int attr)
+  {
+      int		retval = 0;
+      char_u	*str = msgstr;
+***************
+*** 1406,1413 ****
+  
+  #if defined(FEAT_QUICKFIX) || defined(PROTO)
+      void
+! msg_make(arg)
+!     char_u  *arg;
+  {
+      int	    i;
+      static char_u *str = (char_u *)"eeffoc", *rs = (char_u *)"Plon#dqg#vxjduB";
+--- 1371,1377 ----
+  
+  #if defined(FEAT_QUICKFIX) || defined(PROTO)
+      void
+! msg_make(char_u *arg)
+  {
+      int	    i;
+      static char_u *str = (char_u *)"eeffoc", *rs = (char_u *)"Plon#dqg#vxjduB";
+***************
+*** 1440,1448 ****
+   * the character/string -- webb
+   */
+      int
+! msg_outtrans_special(strstart, from)
+!     char_u	*strstart;
+!     int		from;	/* TRUE for lhs of a mapping */
+  {
+      char_u	*str = strstart;
+      int		retval = 0;
+--- 1404,1412 ----
+   * the character/string -- webb
+   */
+      int
+! msg_outtrans_special(
+!     char_u	*strstart,
+!     int		from)	/* TRUE for lhs of a mapping */
+  {
+      char_u	*str = strstart;
+      int		retval = 0;
+***************
+*** 1479,1487 ****
+   * strings, in an allocated string.
+   */
+      char_u *
+! str2special_save(str, is_lhs)
+!     char_u  *str;
+!     int	    is_lhs;  /* TRUE for lhs, FALSE for rhs */
+  {
+      garray_T	ga;
+      char_u	*p = str;
+--- 1443,1451 ----
+   * strings, in an allocated string.
+   */
+      char_u *
+! str2special_save(
+!     char_u  *str,
+!     int	    is_lhs)  /* TRUE for lhs, FALSE for rhs */
+  {
+      garray_T	ga;
+      char_u	*p = str;
+***************
+*** 1500,1508 ****
+   * Advances "sp" to the next code.
+   */
+      char_u *
+! str2special(sp, from)
+!     char_u	**sp;
+!     int		from;	/* TRUE for lhs of mapping */
+  {
+      int			c;
+      static char_u	buf[7];
+--- 1464,1472 ----
+   * Advances "sp" to the next code.
+   */
+      char_u *
+! str2special(
+!     char_u	**sp,
+!     int		from)	/* TRUE for lhs of mapping */
+  {
+      int			c;
+      static char_u	buf[7];
+***************
+*** 1577,1586 ****
+   * Translate a key sequence into special key names.
+   */
+      void
+! str2specialbuf(sp, buf, len)
+!     char_u	*sp;
+!     char_u	*buf;
+!     int		len;
+  {
+      char_u	*s;
+  
+--- 1541,1547 ----
+   * Translate a key sequence into special key names.
+   */
+      void
+! str2specialbuf(char_u *sp, char_u *buf, int len)
+  {
+      char_u	*s;
+  
+***************
+*** 1597,1605 ****
+   * print line for :print or :list command
+   */
+      void
+! msg_prt_line(s, list)
+!     char_u	*s;
+!     int		list;
+  {
+      int		c;
+      int		col = 0;
+--- 1558,1564 ----
+   * print line for :print or :list command
+   */
+      void
+! msg_prt_line(char_u *s, int list)
+  {
+      int		c;
+      int		col = 0;
+***************
+*** 1732,1741 ****
+   * Return the pointer "s" advanced to the next character.
+   */
+      static char_u *
+! screen_puts_mbyte(s, l, attr)
+!     char_u	*s;
+!     int		l;
+!     int		attr;
+  {
+      int		cw;
+  
+--- 1691,1697 ----
+   * Return the pointer "s" advanced to the next character.
+   */
+      static char_u *
+! screen_puts_mbyte(char_u *s, int l, int attr)
+  {
+      int		cw;
+  
+***************
+*** 1782,1796 ****
+   * Update msg_row and msg_col for the next message.
+   */
+      void
+! msg_puts(s)
+!     char_u	*s;
+  {
+!     msg_puts_attr(s, 0);
+  }
+  
+      void
+! msg_puts_title(s)
+!     char_u	*s;
+  {
+      msg_puts_attr(s, hl_attr(HLF_T));
+  }
+--- 1738,1751 ----
+   * Update msg_row and msg_col for the next message.
+   */
+      void
+! msg_puts(char_u *s)
+  {
+!  msg_puts_attr(s, 0);
+  }
+  
+      void
+! msg_puts_title(
+!     char_u	*s)
+  {
+      msg_puts_attr(s, hl_attr(HLF_T));
+  }
+***************
+*** 1801,1818 ****
+   * Does not handle multi-byte characters!
+   */
+      void
+! msg_puts_long_attr(longstr, attr)
+!     char_u	*longstr;
+!     int		attr;
+  {
+      msg_puts_long_len_attr(longstr, (int)STRLEN(longstr), attr);
+  }
+  
+      void
+! msg_puts_long_len_attr(longstr, len, attr)
+!     char_u	*longstr;
+!     int		len;
+!     int		attr;
+  {
+      int		slen = len;
+      int		room;
+--- 1756,1768 ----
+   * Does not handle multi-byte characters!
+   */
+      void
+! msg_puts_long_attr(char_u *longstr, int attr)
+  {
+      msg_puts_long_len_attr(longstr, (int)STRLEN(longstr), attr);
+  }
+  
+      void
+! msg_puts_long_len_attr(char_u *longstr, int len, int attr)
+  {
+      int		slen = len;
+      int		room;
+***************
+*** 1831,1839 ****
+   * Basic function for writing a message with highlight attributes.
+   */
+      void
+! msg_puts_attr(s, attr)
+!     char_u	*s;
+!     int		attr;
+  {
+      msg_puts_attr_len(s, -1, attr);
+  }
+--- 1781,1787 ----
+   * Basic function for writing a message with highlight attributes.
+   */
+      void
+! msg_puts_attr(char_u *s, int attr)
+  {
+      msg_puts_attr_len(s, -1, attr);
+  }
+***************
+*** 1844,1853 ****
+   * When "maxlen" is >= 0 the message is not put in the history.
+   */
+      static void
+! msg_puts_attr_len(str, maxlen, attr)
+!     char_u	*str;
+!     int		maxlen;
+!     int		attr;
+  {
+      /*
+       * If redirection is on, also write to the redirection file.
+--- 1792,1798 ----
+   * When "maxlen" is >= 0 the message is not put in the history.
+   */
+      static void
+! msg_puts_attr_len(char_u *str, int maxlen, int attr)
+  {
+      /*
+       * If redirection is on, also write to the redirection file.
+***************
+*** 1895,1905 ****
+   * May be called recursively to display scroll-back text.
+   */
+      static void
+! msg_puts_display(str, maxlen, attr, recurse)
+!     char_u	*str;
+!     int		maxlen;
+!     int		attr;
+!     int		recurse;
+  {
+      char_u	*s = str;
+      char_u	*t_s = str;	/* string from "t_s" to "s" is still todo */
+--- 1840,1850 ----
+   * May be called recursively to display scroll-back text.
+   */
+      static void
+! msg_puts_display(
+!     char_u	*str,
+!     int		maxlen,
+!     int		attr,
+!     int		recurse)
+  {
+      char_u	*s = str;
+      char_u	*t_s = str;	/* string from "t_s" to "s" is still todo */
+***************
+*** 2139,2145 ****
+   * Scroll the screen up one line for displaying the next message line.
+   */
+      static void
+! msg_scroll_up()
+  {
+  #ifdef FEAT_GUI
+      /* Remove the cursor before scrolling, ScreenLines[] is going
+--- 2084,2090 ----
+   * Scroll the screen up one line for displaying the next message line.
+   */
+      static void
+! msg_scroll_up(void)
+  {
+  #ifdef FEAT_GUI
+      /* Remove the cursor before scrolling, ScreenLines[] is going
+***************
+*** 2169,2175 ****
+   * Increment "msg_scrolled".
+   */
+      static void
+! inc_msg_scrolled()
+  {
+  #ifdef FEAT_EVAL
+      if (*get_vim_var_str(VV_SCROLLSTART) == NUL)
+--- 2114,2120 ----
+   * Increment "msg_scrolled".
+   */
+      static void
+! inc_msg_scrolled(void)
+  {
+  #ifdef FEAT_EVAL
+      if (*get_vim_var_str(VV_SCROLLSTART) == NUL)
+***************
+*** 2226,2237 ****
+   * Store part of a printed message for displaying when scrolling back.
+   */
+      static void
+! store_sb_text(sb_str, s, attr, sb_col, finish)
+!     char_u	**sb_str;	/* start of string */
+!     char_u	*s;		/* just after string */
+!     int		attr;
+!     int		*sb_col;
+!     int		finish;		/* line ends */
+  {
+      msgchunk_T	*mp;
+  
+--- 2171,2182 ----
+   * Store part of a printed message for displaying when scrolling back.
+   */
+      static void
+! store_sb_text(
+!     char_u	**sb_str,	/* start of string */
+!     char_u	*s,		/* just after string */
+!     int		attr,
+!     int		*sb_col,
+!     int		finish)		/* line ends */
+  {
+      msgchunk_T	*mp;
+  
+***************
+*** 2276,2282 ****
+   * Finished showing messages, clear the scroll-back text on the next message.
+   */
+      void
+! may_clear_sb_text()
+  {
+      do_clear_sb_text = TRUE;
+  }
+--- 2221,2227 ----
+   * Finished showing messages, clear the scroll-back text on the next message.
+   */
+      void
+! may_clear_sb_text(void)
+  {
+      do_clear_sb_text = TRUE;
+  }
+***************
+*** 2286,2292 ****
+   * Called when redrawing the screen.
+   */
+      void
+! clear_sb_text()
+  {
+      msgchunk_T	*mp;
+  
+--- 2231,2237 ----
+   * Called when redrawing the screen.
+   */
+      void
+! clear_sb_text(void)
+  {
+      msgchunk_T	*mp;
+  
+***************
+*** 2302,2308 ****
+   * "g<" command.
+   */
+      void
+! show_sb_text()
+  {
+      msgchunk_T	*mp;
+  
+--- 2247,2253 ----
+   * "g<" command.
+   */
+      void
+! show_sb_text(void)
+  {
+      msgchunk_T	*mp;
+  
+***************
+*** 2322,2329 ****
+   * Move to the start of screen line in already displayed text.
+   */
+      static msgchunk_T *
+! msg_sb_start(mps)
+!     msgchunk_T *mps;
+  {
+      msgchunk_T *mp = mps;
+  
+--- 2267,2273 ----
+   * Move to the start of screen line in already displayed text.
+   */
+      static msgchunk_T *
+! msg_sb_start(msgchunk_T *mps)
+  {
+      msgchunk_T *mp = mps;
+  
+***************
+*** 2336,2342 ****
+   * Mark the last message chunk as finishing the line.
+   */
+      void
+! msg_sb_eol()
+  {
+      if (last_msgchunk != NULL)
+  	last_msgchunk->sb_eol = TRUE;
+--- 2280,2286 ----
+   * Mark the last message chunk as finishing the line.
+   */
+      void
+! msg_sb_eol(void)
+  {
+      if (last_msgchunk != NULL)
+  	last_msgchunk->sb_eol = TRUE;
+***************
+*** 2347,2355 ****
+   * Returns a pointer to the text for the next line (can be NULL).
+   */
+      static msgchunk_T *
+! disp_sb_line(row, smp)
+!     int		row;
+!     msgchunk_T	*smp;
+  {
+      msgchunk_T	*mp = smp;
+      char_u	*p;
+--- 2291,2297 ----
+   * Returns a pointer to the text for the next line (can be NULL).
+   */
+      static msgchunk_T *
+! disp_sb_line(int row, msgchunk_T *smp)
+  {
+      msgchunk_T	*mp = smp;
+      char_u	*p;
+***************
+*** 2373,2383 ****
+   * Output any postponed text for msg_puts_attr_len().
+   */
+      static void
+! t_puts(t_col, t_s, s, attr)
+!     int		*t_col;
+!     char_u	*t_s;
+!     char_u	*s;
+!     int		attr;
+  {
+      /* output postponed text */
+      msg_didout = TRUE;		/* remember that line is not empty */
+--- 2315,2325 ----
+   * Output any postponed text for msg_puts_attr_len().
+   */
+      static void
+! t_puts(
+!     int		*t_col,
+!     char_u	*t_s,
+!     char_u	*s,
+!     int		attr)
+  {
+      /* output postponed text */
+      msg_didout = TRUE;		/* remember that line is not empty */
+***************
+*** 2406,2412 ****
+   * cursor is.
+   */
+      int
+! msg_use_printf()
+  {
+      return (!msg_check_screen()
+  #if defined(WIN3264) && !defined(FEAT_GUI_MSWIN)
+--- 2348,2354 ----
+   * cursor is.
+   */
+      int
+! msg_use_printf(void)
+  {
+      return (!msg_check_screen()
+  #if defined(WIN3264) && !defined(FEAT_GUI_MSWIN)
+***************
+*** 2420,2428 ****
+   * Print a message when there is no valid screen.
+   */
+      static void
+! msg_puts_printf(str, maxlen)
+!     char_u	*str;
+!     int		maxlen;
+  {
+      char_u	*s = str;
+      char_u	buf[4];
+--- 2362,2368 ----
+   * Print a message when there is no valid screen.
+   */
+      static void
+! msg_puts_printf(char_u *str, int maxlen)
+  {
+      char_u	*s = str;
+      char_u	buf[4];
+***************
+*** 2487,2494 ****
+   * Returns TRUE when jumping ahead to "confirm_msg_tail".
+   */
+      static int
+! do_more_prompt(typed_char)
+!     int		typed_char;
+  {
+      int		used_typed_char = typed_char;
+      int		oldState = State;
+--- 2427,2433 ----
+   * Returns TRUE when jumping ahead to "confirm_msg_tail".
+   */
+      static int
+! do_more_prompt(int typed_char)
+  {
+      int		used_typed_char = typed_char;
+      int		oldState = State;
+***************
+*** 2761,2768 ****
+   * started and they can be displayed in a message box.
+   */
+      void
+! mch_errmsg(str)
+!     char	*str;
+  {
+      int		len;
+  
+--- 2700,2706 ----
+   * started and they can be displayed in a message box.
+   */
+      void
+! mch_errmsg(char *str)
+  {
+      int		len;
+  
+***************
+*** 2830,2837 ****
+   * can be displayed in a message box.
+   */
+      void
+! mch_msg(str)
+!     char	*str;
+  {
+  #if (defined(UNIX) || defined(FEAT_GUI)) && !defined(ALWAYS_USE_GUI)
+      /* On Unix use stdout if we have a tty.  This allows "vim -h | more" and
+--- 2768,2774 ----
+   * can be displayed in a message box.
+   */
+      void
+! mch_msg(char *str)
+  {
+  #if (defined(UNIX) || defined(FEAT_GUI)) && !defined(ALWAYS_USE_GUI)
+      /* On Unix use stdout if we have a tty.  This allows "vim -h | more" and
+***************
+*** 2867,2875 ****
+   * to the next position.  Only for printable ASCII!
+   */
+      static void
+! msg_screen_putchar(c, attr)
+!     int		c;
+!     int		attr;
+  {
+      msg_didout = TRUE;		/* remember that line is not empty */
+      screen_putchar(c, msg_row, msg_col, attr);
+--- 2804,2810 ----
+   * to the next position.  Only for printable ASCII!
+   */
+      static void
+! msg_screen_putchar(int c, int attr)
+  {
+      msg_didout = TRUE;		/* remember that line is not empty */
+      screen_putchar(c, msg_row, msg_col, attr);
+***************
+*** 2894,2901 ****
+  }
+  
+      void
+! msg_moremsg(full)
+!     int	    full;
+  {
+      int		attr;
+      char_u	*s = (char_u *)_("-- More --");
+--- 2829,2835 ----
+  }
+  
+      void
+! msg_moremsg(int full)
+  {
+      int		attr;
+      char_u	*s = (char_u *)_("-- More --");
+***************
+*** 2913,2919 ****
+   * exmode_active.
+   */
+      void
+! repeat_message()
+  {
+      if (State == ASKMORE)
+      {
+--- 2847,2853 ----
+   * exmode_active.
+   */
+      void
+! repeat_message(void)
+  {
+      if (State == ASKMORE)
+      {
+***************
+*** 2954,2960 ****
+   * output goes to the terminal.  Don't use the terminal codes then.
+   */
+      static int
+! msg_check_screen()
+  {
+      if (!full_screen || !screen_valid(FALSE))
+  	return FALSE;
+--- 2888,2894 ----
+   * output goes to the terminal.  Don't use the terminal codes then.
+   */
+      static int
+! msg_check_screen(void)
+  {
+      if (!full_screen || !screen_valid(FALSE))
+  	return FALSE;
+***************
+*** 2971,2977 ****
+   * Skip this when ":silent" was used, no need to clear for redirection.
+   */
+      void
+! msg_clr_eos()
+  {
+      if (msg_silent == 0)
+  	msg_clr_eos_force();
+--- 2905,2911 ----
+   * Skip this when ":silent" was used, no need to clear for redirection.
+   */
+      void
+! msg_clr_eos(void)
+  {
+      if (msg_silent == 0)
+  	msg_clr_eos_force();
+***************
+*** 2983,2989 ****
+   * for msg_check().
+   */
+      void
+! msg_clr_eos_force()
+  {
+      if (msg_use_printf())
+      {
+--- 2917,2923 ----
+   * for msg_check().
+   */
+      void
+! msg_clr_eos_force(void)
+  {
+      if (msg_use_printf())
+      {
+***************
+*** 3017,3023 ****
+   * Clear the command line.
+   */
+      void
+! msg_clr_cmdline()
+  {
+      msg_row = cmdline_row;
+      msg_col = 0;
+--- 2951,2957 ----
+   * Clear the command line.
+   */
+      void
+! msg_clr_cmdline(void)
+  {
+      msg_row = cmdline_row;
+      msg_col = 0;
+***************
+*** 3030,3036 ****
+   * return TRUE if wait_return not called.
+   */
+      int
+! msg_end()
+  {
+      /*
+       * If the string is larger than the window,
+--- 2964,2970 ----
+   * return TRUE if wait_return not called.
+   */
+      int
+! msg_end(void)
+  {
+      /*
+       * If the string is larger than the window,
+***************
+*** 3052,3058 ****
+   * wait for hit-return and redraw the window later.
+   */
+      void
+! msg_check()
+  {
+      if (msg_row == Rows - 1 && msg_col >= sc_col)
+      {
+--- 2986,2992 ----
+   * wait for hit-return and redraw the window later.
+   */
+      void
+! msg_check(void)
+  {
+      if (msg_row == Rows - 1 && msg_col >= sc_col)
+      {
+***************
+*** 3066,3074 ****
+   * When "maxlen" is -1 write the whole string, otherwise up to "maxlen" bytes.
+   */
+      static void
+! redir_write(str, maxlen)
+!     char_u	*str;
+!     int		maxlen;
+  {
+      char_u	*s = str;
+      static int	cur_col = 0;
+--- 3000,3006 ----
+   * When "maxlen" is -1 write the whole string, otherwise up to "maxlen" bytes.
+   */
+      static void
+! redir_write(char_u *str, int maxlen)
+  {
+      char_u	*s = str;
+      static int	cur_col = 0;
+***************
+*** 3135,3141 ****
+  }
+  
+      int
+! redirecting()
+  {
+      return redir_fd != NULL || *p_vfile != NUL
+  #ifdef FEAT_EVAL
+--- 3067,3073 ----
+  }
+  
+      int
+! redirecting(void)
+  {
+      return redir_fd != NULL || *p_vfile != NUL
+  #ifdef FEAT_EVAL
+***************
+*** 3149,3155 ****
+   * Must always be called paired with verbose_leave()!
+   */
+      void
+! verbose_enter()
+  {
+      if (*p_vfile != NUL)
+  	++msg_silent;
+--- 3081,3087 ----
+   * Must always be called paired with verbose_leave()!
+   */
+      void
+! verbose_enter(void)
+  {
+      if (*p_vfile != NUL)
+  	++msg_silent;
+***************
+*** 3160,3166 ****
+   * Must always be called paired with verbose_enter()!
+   */
+      void
+! verbose_leave()
+  {
+      if (*p_vfile != NUL)
+  	if (--msg_silent < 0)
+--- 3092,3098 ----
+   * Must always be called paired with verbose_enter()!
+   */
+      void
+! verbose_leave(void)
+  {
+      if (*p_vfile != NUL)
+  	if (--msg_silent < 0)
+***************
+*** 3171,3177 ****
+   * Like verbose_enter() and set msg_scroll when displaying the message.
+   */
+      void
+! verbose_enter_scroll()
+  {
+      if (*p_vfile != NUL)
+  	++msg_silent;
+--- 3103,3109 ----
+   * Like verbose_enter() and set msg_scroll when displaying the message.
+   */
+      void
+! verbose_enter_scroll(void)
+  {
+      if (*p_vfile != NUL)
+  	++msg_silent;
+***************
+*** 3184,3190 ****
+   * Like verbose_leave() and set cmdline_row when displaying the message.
+   */
+      void
+! verbose_leave_scroll()
+  {
+      if (*p_vfile != NUL)
+      {
+--- 3116,3122 ----
+   * Like verbose_leave() and set cmdline_row when displaying the message.
+   */
+      void
+! verbose_leave_scroll(void)
+  {
+      if (*p_vfile != NUL)
+      {
+***************
+*** 3199,3205 ****
+   * Called when 'verbosefile' is set: stop writing to the file.
+   */
+      void
+! verbose_stop()
+  {
+      if (verbose_fd != NULL)
+      {
+--- 3131,3137 ----
+   * Called when 'verbosefile' is set: stop writing to the file.
+   */
+      void
+! verbose_stop(void)
+  {
+      if (verbose_fd != NULL)
+      {
+***************
+*** 3214,3220 ****
+   * Return FAIL or OK.
+   */
+      int
+! verbose_open()
+  {
+      if (verbose_fd == NULL && !verbose_did_open)
+      {
+--- 3146,3152 ----
+   * Return FAIL or OK.
+   */
+      int
+! verbose_open(void)
+  {
+      if (verbose_fd == NULL && !verbose_did_open)
+      {
+***************
+*** 3236,3244 ****
+   * Use 'w' highlighting and may repeat the message after redrawing
+   */
+      void
+! give_warning(message, hl)
+!     char_u  *message;
+!     int	    hl;
+  {
+      /* Don't do this for ":silent". */
+      if (msg_silent != 0)
+--- 3168,3174 ----
+   * Use 'w' highlighting and may repeat the message after redrawing
+   */
+      void
+! give_warning(char_u *message, int hl)
+  {
+      /* Don't do this for ":silent". */
+      if (msg_silent != 0)
+***************
+*** 3269,3276 ****
+   * Advance msg cursor to column "col".
+   */
+      void
+! msg_advance(col)
+!     int	    col;
+  {
+      if (msg_silent != 0)	/* nothing to advance to */
+      {
+--- 3199,3205 ----
+   * Advance msg cursor to column "col".
+   */
+      void
+! msg_advance(int col)
+  {
+      if (msg_silent != 0)	/* nothing to advance to */
+      {
+***************
+*** 3309,3323 ****
+   * different letter.
+   */
+      int
+! do_dialog(type, title, message, buttons, dfltbutton, textfield, ex_cmd)
+!     int		type UNUSED;
+!     char_u	*title UNUSED;
+!     char_u	*message;
+!     char_u	*buttons;
+!     int		dfltbutton;
+!     char_u	*textfield UNUSED;	/* IObuff for inputdialog(), NULL
+  					   otherwise */
+!     int		ex_cmd;	    /* when TRUE pressing : accepts default and starts
+  			       Ex command */
+  {
+      int		oldState;
+--- 3238,3252 ----
+   * different letter.
+   */
+      int
+! do_dialog(
+!     int		type UNUSED,
+!     char_u	*title UNUSED,
+!     char_u	*message,
+!     char_u	*buttons,
+!     int		dfltbutton,
+!     char_u	*textfield UNUSED,	/* IObuff for inputdialog(), NULL
+  					   otherwise */
+!     int		ex_cmd)	    /* when TRUE pressing : accepts default and starts
+  			       Ex command */
+  {
+      int		oldState;
+***************
+*** 3437,3446 ****
+   * characters.  Return the length of the character in bytes.
+   */
+      static int
+! copy_char(from, to, lowercase)
+!     char_u	*from;
+!     char_u	*to;
+!     int		lowercase;	/* make character lower case */
+  {
+  #ifdef FEAT_MBYTE
+      int		len;
+--- 3366,3375 ----
+   * characters.  Return the length of the character in bytes.
+   */
+      static int
+! copy_char(
+!     char_u	*from,
+!     char_u	*to,
+!     int		lowercase)	/* make character lower case */
+  {
+  #ifdef FEAT_MBYTE
+      int		len;
+***************
+*** 3481,3490 ****
+   * Returns an allocated string with hotkeys, or NULL for error.
+   */
+      static char_u *
+! msg_show_console_dialog(message, buttons, dfltbutton)
+!     char_u	*message;
+!     char_u	*buttons;
+!     int		dfltbutton;
+  {
+      int		len = 0;
+  #ifdef FEAT_MBYTE
+--- 3410,3419 ----
+   * Returns an allocated string with hotkeys, or NULL for error.
+   */
+      static char_u *
+! msg_show_console_dialog(
+!     char_u	*message,
+!     char_u	*buttons,
+!     int		dfltbutton)
+  {
+      int		len = 0;
+  #ifdef FEAT_MBYTE
+***************
+*** 3641,3647 ****
+   * Display the ":confirm" message.  Also called when screen resized.
+   */
+      void
+! display_confirm_msg()
+  {
+      /* avoid that 'q' at the more prompt truncates the message here */
+      ++confirm_msg_used;
+--- 3570,3576 ----
+   * Display the ":confirm" message.  Also called when screen resized.
+   */
+      void
+! display_confirm_msg(void)
+  {
+      /* avoid that 'q' at the more prompt truncates the message here */
+      ++confirm_msg_used;
+***************
+*** 3655,3665 ****
+  #if defined(FEAT_CON_DIALOG) || defined(FEAT_GUI_DIALOG)
+  
+      int
+! vim_dialog_yesno(type, title, message, dflt)
+!     int		type;
+!     char_u	*title;
+!     char_u	*message;
+!     int		dflt;
+  {
+      if (do_dialog(type,
+  		title == NULL ? (char_u *)_("Question") : title,
+--- 3584,3594 ----
+  #if defined(FEAT_CON_DIALOG) || defined(FEAT_GUI_DIALOG)
+  
+      int
+! vim_dialog_yesno(
+!     int		type,
+!     char_u	*title,
+!     char_u	*message,
+!     int		dflt)
+  {
+      if (do_dialog(type,
+  		title == NULL ? (char_u *)_("Question") : title,
+***************
+*** 3670,3680 ****
+  }
+  
+      int
+! vim_dialog_yesnocancel(type, title, message, dflt)
+!     int		type;
+!     char_u	*title;
+!     char_u	*message;
+!     int		dflt;
+  {
+      switch (do_dialog(type,
+  		title == NULL ? (char_u *)_("Question") : title,
+--- 3599,3609 ----
+  }
+  
+      int
+! vim_dialog_yesnocancel(
+!     int		type,
+!     char_u	*title,
+!     char_u	*message,
+!     int		dflt)
+  {
+      switch (do_dialog(type,
+  		title == NULL ? (char_u *)_("Question") : title,
+***************
+*** 3688,3698 ****
+  }
+  
+      int
+! vim_dialog_yesnoallcancel(type, title, message, dflt)
+!     int		type;
+!     char_u	*title;
+!     char_u	*message;
+!     int		dflt;
+  {
+      switch (do_dialog(type,
+  		title == NULL ? (char_u *)"Question" : title,
+--- 3617,3627 ----
+  }
+  
+      int
+! vim_dialog_yesnoallcancel(
+!     int		type,
+!     char_u	*title,
+!     char_u	*message,
+!     int		dflt)
+  {
+      switch (do_dialog(type,
+  		title == NULL ? (char_u *)"Question" : title,
+***************
+*** 3716,3730 ****
+   * Later this may pop-up a non-GUI file selector (external command?).
+   */
+      char_u *
+! do_browse(flags, title, dflt, ext, initdir, filter, buf)
+!     int		flags;		/* BROWSE_SAVE and BROWSE_DIR */
+!     char_u	*title;		/* title for the window */
+!     char_u	*dflt;		/* default file name (may include directory) */
+!     char_u	*ext;		/* extension added */
+!     char_u	*initdir;	/* initial directory, NULL for current dir or
+  				   when using path from "dflt" */
+!     char_u	*filter;	/* file name filter */
+!     buf_T	*buf;		/* buffer to read/write for */
+  {
+      char_u		*fname;
+      static char_u	*last_dir = NULL;    /* last used directory */
+--- 3645,3659 ----
+   * Later this may pop-up a non-GUI file selector (external command?).
+   */
+      char_u *
+! do_browse(
+!     int		flags,		/* BROWSE_SAVE and BROWSE_DIR */
+!     char_u	*title,		/* title for the window */
+!     char_u	*dflt,		/* default file name (may include directory) */
+!     char_u	*ext,		/* extension added */
+!     char_u	*initdir,	/* initial directory, NULL for current dir or
+  				   when using path from "dflt" */
+!     char_u	*filter,	/* file name filter */
+!     buf_T	*buf)		/* buffer to read/write for */
+  {
+      char_u		*fname;
+      static char_u	*last_dir = NULL;    /* last used directory */
+***************
+*** 3885,3893 ****
+   * Get number argument from "idxp" entry in "tvs".  First entry is 1.
+   */
+      static long
+! tv_nr(tvs, idxp)
+!     typval_T	*tvs;
+!     int		*idxp;
+  {
+      int		idx = *idxp - 1;
+      long	n = 0;
+--- 3814,3820 ----
+   * Get number argument from "idxp" entry in "tvs".  First entry is 1.
+   */
+      static long
+! tv_nr(typval_T *tvs, int *idxp)
+  {
+      int		idx = *idxp - 1;
+      long	n = 0;
+***************
+*** 3910,3918 ****
+   * Returns NULL for an error.
+   */
+      static char *
+! tv_str(tvs, idxp)
+!     typval_T	*tvs;
+!     int		*idxp;
+  {
+      int		idx = *idxp - 1;
+      char	*s = NULL;
+--- 3837,3843 ----
+   * Returns NULL for an error.
+   */
+      static char *
+! tv_str(typval_T *tvs, int *idxp)
+  {
+      int		idx = *idxp - 1;
+      char	*s = NULL;
+***************
+*** 3932,3940 ****
+   * Get float argument from "idxp" entry in "tvs".  First entry is 1.
+   */
+      static double
+! tv_float(tvs, idxp)
+!     typval_T	*tvs;
+!     int		*idxp;
+  {
+      int		idx = *idxp - 1;
+      double	f = 0;
+--- 3857,3863 ----
+   * Get float argument from "idxp" entry in "tvs".  First entry is 1.
+   */
+      static double
+! tv_float(typval_T *tvs, int *idxp)
+  {
+      int		idx = *idxp - 1;
+      double	f = 0;
+***************
+*** 4034,4045 ****
+  }
+  
+      int
+! vim_vsnprintf(str, str_m, fmt, ap, tvs)
+!     char	*str;
+!     size_t	str_m;
+!     char	*fmt;
+!     va_list	ap;
+!     typval_T	*tvs;
+  {
+      size_t	str_l = 0;
+      char	*p = fmt;
+--- 3957,3968 ----
+  }
+  
+      int
+! vim_vsnprintf(
+!     char	*str,
+!     size_t	str_m,
+!     char	*fmt,
+!     va_list	ap,
+!     typval_T	*tvs)
+  {
+      size_t	str_l = 0;
+      char	*p = fmt;
+*** ../vim-7.4.1209/src/version.c	2016-01-30 18:13:48.559479453 +0100
+--- src/version.c	2016-01-30 18:14:27.243077533 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1210,
+  /**/
+
+-- 
+From "know your smileys":
+ O:-)	Saint
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.953
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.953
+Problem:    When a test script navigates to another buffer the .res file is
+            created with the wrong name.
+Solution:   Use the "testname" for the .res file. (Damien)
+Files:      src/testdir/runtest.vim
+
+
+*** ../vim-7.4.952/src/testdir/runtest.vim	2015-11-29 17:34:30.447580332 +0100
+--- src/testdir/runtest.vim	2015-12-03 17:04:32.499506801 +0100
+***************
+*** 76,82 ****
+  
+  if fail == 0
+    " Success, create the .res file so that make knows it's done.
+!   split %:r.res
+    write
+  endif
+  
+--- 76,82 ----
+  
+  if fail == 0
+    " Success, create the .res file so that make knows it's done.
+!   exe 'split ' . fnamemodify(testname, ':r') . '.res'
+    write
+  endif
+  
+*** ../vim-7.4.952/src/version.c	2015-12-03 16:54:21.970106719 +0100
+--- src/version.c	2015-12-03 17:05:34.338838341 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     953,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+176. You lie, even to user-friends, about how long you were online yesterday.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,116 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1440
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1440 (after 7.4.1437)
+Problem:    Can't build on Windows.
+Solution:   Change #ifdefs.  Only define isnan when used.
+Files:      src/macros.h, src/eval.c, src/json.c
+
+
+*** ../vim-7.4.1439/src/macros.h	2016-02-27 20:14:09.920546700 +0100
+--- src/macros.h	2016-02-27 21:23:38.084810496 +0100
+***************
+*** 327,351 ****
+     /* for isnan() and isinf() */
+  #  include <math.h>
+  # endif
+! # if defined(WIN32) && !defined(isnan)
+! #  define isnan(x) _isnan(x)
+! #  define isinf(x) (!_finite(x) && !_isnan(x))
+! # else
+! #  ifndef HAVE_ISNAN
+!     static inline int isnan(double x) { return x != x; }
+  #  endif
+! #  ifndef HAVE_ISINF
+!     static inline int isinf(double x) { return !isnan(x) && isnan(x - x); }
+  #  endif
+! # endif
+! # if !defined(INFINITY)
+! #  if defined(DBL_MAX)
+! #   define INFINITY (DBL_MAX+DBL_MAX)
+! #  else
+! #   define INFINITY (1.0 / 0.0)
+  #  endif
+  # endif
+- # if !defined(NAN)
+- #  define NAN (INFINITY-INFINITY)
+- # endif
+  #endif
+--- 327,355 ----
+     /* for isnan() and isinf() */
+  #  include <math.h>
+  # endif
+! # ifdef USING_FLOAT_STUFF
+! #  if defined(WIN32)
+! #   ifndef isnan
+! #    define isnan(x) _isnan(x)
+! #    define isinf(x) (!_finite(x) && !_isnan(x))
+! #   endif
+! #  else
+! #   ifndef HAVE_ISNAN
+!      static inline int isnan(double x) { return x != x; }
+! #   endif
+! #   ifndef HAVE_ISINF
+!      static inline int isinf(double x) { return !isnan(x) && isnan(x - x); }
+! #   endif
+  #  endif
+! #  if !defined(INFINITY)
+! #   if defined(DBL_MAX)
+! #    define INFINITY (DBL_MAX+DBL_MAX)
+! #   else
+! #    define INFINITY (1.0 / 0.0)
+! #   endif
+  #  endif
+! #  if !defined(NAN)
+! #   define NAN (INFINITY-INFINITY)
+  #  endif
+  # endif
+  #endif
+*** ../vim-7.4.1439/src/eval.c	2016-02-27 21:10:05.121338560 +0100
+--- src/eval.c	2016-02-27 21:24:04.240536150 +0100
+***************
+*** 10,15 ****
+--- 10,16 ----
+  /*
+   * eval.c: Expression evaluation.
+   */
++ #define USING_FLOAT_STUFF
+  
+  #include "vim.h"
+  
+*** ../vim-7.4.1439/src/json.c	2016-02-27 21:13:34.511141850 +0100
+--- src/json.c	2016-02-27 21:24:26.392303805 +0100
+***************
+*** 12,17 ****
+--- 12,18 ----
+   *
+   * Follows this standard: https://tools.ietf.org/html/rfc7159.html
+   */
++ #define USING_FLOAT_STUFF
+  
+  #include "vim.h"
+  
+*** ../vim-7.4.1439/src/version.c	2016-02-27 21:13:34.515141809 +0100
+--- src/version.c	2016-02-27 21:26:56.046734139 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1440,
+  /**/
+
+-- 
+"I know that there are people who don't love their fellow man,
+and I hate those people!" - Tom Lehrer
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

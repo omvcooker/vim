@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1063
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1063
+Problem:    TCL_VER_LONG and DYNAMIC_TCL_VER are not set when building with
+            Cygwin and MingW.
+Solution:   Add TCL_VER_LONG and DYNAMIC_TCL_VER to the makefile.
+Files:      src/Make_cyg_ming.mak
+
+
+*** ../vim-7.4.1062/src/Make_cyg_ming.mak	2016-01-07 22:45:04.609148102 +0100
+--- src/Make_cyg_ming.mak	2016-01-07 22:47:40.219439455 +0100
+***************
+*** 263,268 ****
+--- 263,270 ----
+  #	  TCL=[Path to TCL directory] (Set inside Make_cyg.mak or Make_ming.mak)
+  #	  DYNAMIC_TCL=yes (to load the TCL DLL dynamically)
+  #	  TCL_VER=[TCL version, eg 83, 84] (default is 83)
++ #	  TCL_VER_LONG=[Tcl version, eg 8.3] (default is 8.3)
++ #	    You must set TCL_VER_LONG when you set TCL_VER.
+  ifdef TCL
+  ifndef DYNAMIC_TCL
+  DYNAMIC_TCL=yes
+***************
+*** 270,275 ****
+--- 272,280 ----
+  ifndef TCL_VER
+  TCL_VER = 83
+  endif
++ ifndef TCL_VER_LONG
++ TCL_VER_LONG = 8.3
++ endif
+  TCLINC += -I$(TCL)/include
+  endif
+  
+***************
+*** 462,468 ****
+  ifdef TCL
+  CFLAGS += -DFEAT_TCL $(TCLINC)
+  ifeq (yes, $(DYNAMIC_TCL))
+! CFLAGS += -DDYNAMIC_TCL -DDYNAMIC_TCL_DLL=\"tcl$(TCL_VER).dll\"
+  endif
+  endif
+  
+--- 467,473 ----
+  ifdef TCL
+  CFLAGS += -DFEAT_TCL $(TCLINC)
+  ifeq (yes, $(DYNAMIC_TCL))
+! CFLAGS += -DDYNAMIC_TCL -DDYNAMIC_TCL_DLL=\"tcl$(TCL_VER).dll\" -DDYNAMIC_TCL_VER=\"$(TCL_VER_LONG)\"
+  endif
+  endif
+  
+*** ../vim-7.4.1062/src/version.c	2016-01-07 22:45:04.613148057 +0100
+--- src/version.c	2016-01-07 22:48:01.127209913 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1063,
+  /**/
+
+-- 
+It is illegal to take more than three sips of beer at a time while standing.
+		[real standing law in Texas, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

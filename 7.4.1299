@@ -1,0 +1,134 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1299
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1299
+Problem:    When the server sends a message with ID zero the channel handler
+            is not invoked. (Christian J.  Robinson)
+Solution:   Recognize zero value for the request ID.  Add a test for invoking
+            the channel handler.
+Files:      src/channel.c, src/testdir/test_channel.vim,
+	    src/testdir/test_channel.py
+
+
+*** ../vim-7.4.1298/src/channel.c	2016-02-08 23:23:38.137795419 +0100
+--- src/channel.c	2016-02-10 21:04:58.058260144 +0100
+***************
+*** 786,791 ****
+--- 786,792 ----
+  
+  	if ((id > 0 && tv->v_type == VAR_NUMBER && tv->vval.v_number == id)
+  	      || (id <= 0 && (tv->v_type != VAR_NUMBER
++ 			       || tv->vval.v_number == 0
+  			       || tv->vval.v_number != channel->ch_block_id)))
+  	{
+  	    *rettv = item->value;
+*** ../vim-7.4.1298/src/testdir/test_channel.vim	2016-02-10 20:32:15.711126222 +0100
+--- src/testdir/test_channel.vim	2016-02-10 21:02:59.535519389 +0100
+***************
+*** 204,209 ****
+--- 204,238 ----
+    call s:run_server('s:server_crash')
+  endfunc
+  
++ let s:reply = ""
++ func s:Handler(chan, msg)
++   let s:reply = a:msg
++ endfunc
++ 
++ func s:channel_handler(port)
++   let chopt = copy(s:chopt)
++   let chopt['callback'] = 's:Handler'
++   let handle = ch_open('localhost:' . a:port, chopt)
++   if handle < 0
++     call assert_false(1, "Can't open channel")
++     return
++   endif
++ 
++   " Test that it works while waiting on a numbered message.
++   call assert_equal('ok', ch_sendexpr(handle, 'call me'))
++   sleep 10m
++   call assert_equal('we called you', s:reply)
++ 
++   " Test that it works while not waiting on a numbered message.
++   call ch_sendexpr(handle, 'call me again', 0)
++   sleep 10m
++   call assert_equal('we did call you', s:reply)
++ endfunc
++ 
++ func Test_channel_handler()
++   call s:run_server('s:channel_handler')
++ endfunc
++ 
+  " Test that trying to connect to a non-existing port fails quickly.
+  func Test_connect_waittime()
+    let start = reltime()
+*** ../vim-7.4.1298/src/testdir/test_channel.py	2016-02-08 22:37:19.514943216 +0100
+--- src/testdir/test_channel.py	2016-02-10 21:01:24.480529592 +0100
+***************
+*** 130,135 ****
+--- 130,145 ----
+                      elif decoded[1] == 'eval-result':
+                          # Send back the last received eval result.
+                          response = last_eval
++                     elif decoded[1] == 'call me':
++                         cmd = '[0,"we called you"]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = "ok"
++                     elif decoded[1] == 'call me again':
++                         cmd = '[0,"we did call you"]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = ""
+                      elif decoded[1] == '!quit!':
+                          # we're done
+                          self.server.shutdown()
+***************
+*** 140,148 ****
+                      else:
+                          response = "what?"
+  
+!                     encoded = json.dumps([decoded[0], response])
+!                     print("sending: {}".format(encoded))
+!                     self.request.sendall(encoded.encode('utf-8'))
+  
+                  # Negative numbers are used for "eval" responses.
+                  elif decoded[0] < 0:
+--- 150,161 ----
+                      else:
+                          response = "what?"
+  
+!                     if response == "":
+!                         print("no response")
+!                     else:
+!                         encoded = json.dumps([decoded[0], response])
+!                         print("sending: {}".format(encoded))
+!                         self.request.sendall(encoded.encode('utf-8'))
+  
+                  # Negative numbers are used for "eval" responses.
+                  elif decoded[0] < 0:
+*** ../vim-7.4.1298/src/version.c	2016-02-10 20:32:15.711126222 +0100
+--- src/version.c	2016-02-10 20:45:56.590396693 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1299,
+  /**/
+
+-- 
+I noticed my daughter's Disney-net password on a sticky note:
+"MickeyMinnieGoofyPluto".  I asked her why it was so long.
+"Because they say it has to have at least four characters."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

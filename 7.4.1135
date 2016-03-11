@@ -1,0 +1,55 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1135
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1135
+Problem:    One more arglist test fails on MS-Windows.
+Solution:   Don't edit "Y" after editing "y".
+Files:      src/testdir/test_arglist.vim
+
+
+*** ../vim-7.4.1134/src/testdir/test_arglist.vim	2016-01-19 13:50:50.694649901 +0100
+--- src/testdir/test_arglist.vim	2016-01-19 14:05:01.965486461 +0100
+***************
+*** 120,127 ****
+    $arga x
+    call assert_equal(['a', 'b', 'c', 'x'], argv())
+  
+!   0arga Y
+!   call assert_equal(['Y', 'a', 'b', 'c', 'x'], argv())
+  
+    %argd
+    call assert_equal([], argv())
+--- 120,127 ----
+    $arga x
+    call assert_equal(['a', 'b', 'c', 'x'], argv())
+  
+!   0arga y
+!   call assert_equal(['y', 'a', 'b', 'c', 'x'], argv())
+  
+    %argd
+    call assert_equal([], argv())
+*** ../vim-7.4.1134/src/version.c	2016-01-19 13:50:50.694649901 +0100
+--- src/version.c	2016-01-19 14:13:54.467754835 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1135,
+  /**/
+
+-- 
+An operatingsystem is just a name you give to the rest of bloating
+idiosyncratic machine-based-features you left out of your editor.
+			(author unknown)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,71 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1500
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1500
+Problem:    Should_free flag set to FALSE.
+Solution:   Set it to TRUE. (Neovim 4415)
+Files:      src/ex_eval.c
+
+
+*** ../vim-7.4.1499/src/ex_eval.c	2016-02-07 19:46:08.919714495 +0100
+--- src/ex_eval.c	2016-03-06 14:54:41.688010021 +0100
+***************
+*** 432,438 ****
+  
+      if (type == ET_ERROR)
+      {
+! 	*should_free = FALSE;
+  	mesg = ((struct msglist *)value)->throw_msg;
+  	if (cmdname != NULL && *cmdname != NUL)
+  	{
+--- 432,438 ----
+  
+      if (type == ET_ERROR)
+      {
+! 	*should_free = TRUE;
+  	mesg = ((struct msglist *)value)->throw_msg;
+  	if (cmdname != NULL && *cmdname != NUL)
+  	{
+***************
+*** 489,495 ****
+      else
+      {
+  	*should_free = FALSE;
+! 	ret = (char_u *) value;
+      }
+  
+      return ret;
+--- 489,495 ----
+      else
+      {
+  	*should_free = FALSE;
+! 	ret = (char_u *)value;
+      }
+  
+      return ret;
+*** ../vim-7.4.1499/src/version.c	2016-03-06 14:44:03.810733631 +0100
+--- src/version.c	2016-03-06 14:57:36.790165599 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1500,
+  /**/
+
+-- 
+For society, it's probably a good thing that engineers value function over
+appearance.  For example, you wouldn't want engineers to build nuclear power
+plants that only _look_ like they would keep all the radiation inside.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

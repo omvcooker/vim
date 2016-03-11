@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1453
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1453
+Problem:    Missing --not-a-term.
+Solution:   Add the argument.
+Files:      src/testdir/Make_amiga.mak
+
+
+*** ../vim-7.4.1452/src/testdir/Make_amiga.mak	2016-01-16 22:47:12.820927766 +0100
+--- src/testdir/Make_amiga.mak	2016-02-25 21:05:17.052265772 +0100
+***************
+*** 34,40 ****
+  
+  .in.out:
+  	copy $*.ok test.ok
+! 	$(VIMPROG) -u amiga.vim -U NONE --noplugin -s dotest.in $*.in
+  	diff test.out $*.ok
+  	rename test.out $*.out
+  	-delete X#? ALL QUIET
+--- 34,40 ----
+  
+  .in.out:
+  	copy $*.ok test.ok
+! 	$(VIMPROG) -u amiga.vim -U NONE --noplugin --not-a-term -s dotest.in $*.in
+  	diff test.out $*.ok
+  	rename test.out $*.out
+  	-delete X#? ALL QUIET
+*** ../vim-7.4.1452/src/version.c	2016-02-28 19:30:20.360625771 +0100
+--- src/version.c	2016-02-28 19:38:48.235328661 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1453,
+  /**/
+
+-- 
+(letter from Mark to Mike, about the film's probable certificate)
+      For an 'A' we would have to: Lose as many shits as possible; Take Jesus
+      Christ out, if possible; Loose "I fart in your general direction"; Lose
+      "the oral sex"; Lose "oh, fuck off"; Lose "We make castanets out of your
+      testicles"
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

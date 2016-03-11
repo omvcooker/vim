@@ -1,0 +1,232 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.991
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.991
+Problem:    When running new style tests the output is not visible.
+Solution:   Add the testdir/messages file and show it.  Update the list of
+            test names.
+Files:      src/Makefile, src/testdir/Makefile, src/testdir/runtest.vim
+
+
+*** ../vim-7.4.990/src/Makefile	2015-12-05 20:56:52.801365512 +0100
+--- src/Makefile	2015-12-29 14:22:58.886380471 +0100
+***************
+*** 616,621 ****
+--- 616,642 ----
+  #PROFILE_LIBS = -pg
+  #PROFILE_LIBS = -pg -lc
+  
++ 
++ # TEST COVERAGE - Uncomment the two lines below the explanation to get code
++ # coverage information. (provided by Yegappan Lakshmanan)
++ # 1. make clean, run configure and build Vim as usual.
++ # 2. Generate the baseline code coverage information:
++ #        $ lcov -c -i -b . -d objects -o objects/coverage_base.info
++ # 3. Run "make test" to run the unit tests.  The code coverage information will
++ #    be generated in the src/objects directory.
++ # 4. Generate the code coverage information from the tests:
++ #        $ lcov -c -b . -d objects/ -o objects/coverage_test.info
++ # 5. Combine the baseline and test code coverage data:
++ #        $ lcov -a objects/coverage_base.info -a objects/coverage_test.info -o objects/coverage_total.info
++ # 6. Process the test coverage data and generate a report in html:
++ #        $ genhtml objects/coverage_total.info -o objects
++ # 7. Open the objects/index.html file in a web browser to view the coverage
++ #    information.
++ #
++ # PROFILE_CFLAGS=-g -O0 -fprofile-arcs -ftest-coverage
++ # LDFLAGS=--coverage
++ 
++ 
+  # Uncomment one of the next two lines to compile Vim with the
+  # address sanitizer or with the undefined sanitizer.  Works with gcc and
+  # clang.  May make Vim twice as slow.  Errors reported on stderr.
+***************
+*** 1905,1911 ****
+  	test_autocmd_option \
+  	test_autoformat_join \
+  	test_breakindent \
+- 	test_cdo \
+  	test_changelist \
+  	test_charsearch \
+  	test_close_count \
+--- 1926,1931 ----
+***************
+*** 1948,1960 ****
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+  test_assert \
+  	test_sort \
+  	test_undolevels \
+  	test_alot:
+! 	cd testdir; rm -f $@.res; $(MAKE) -f Makefile $@.res VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+  newtests:
+! 	cd testdir; rm -f $@.res; $(MAKE) -f Makefile newtests VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+  testclean:
+  	cd testdir; $(MAKE) -f Makefile clean
+--- 1968,1984 ----
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+  test_assert \
++ 	test_cdo \
++ 	test_searchpos \
+  	test_sort \
+  	test_undolevels \
+  	test_alot:
+! 	cd testdir; rm -f $@.res test.log messages; $(MAKE) -f Makefile $@.res VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+! 	cat testdir/messages
+  
+  newtests:
+! 	cd testdir; rm -f $@.res test.log messages; $(MAKE) -f Makefile newtests VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+! 	cat testdir/messages
+  
+  testclean:
+  	cd testdir; $(MAKE) -f Makefile clean
+***************
+*** 2674,2680 ****
+  
+  objects/if_mzsch.o: if_mzsch.c $(MZSCHEME_EXTRA)
+  	$(CCC) -o $@ $(MZSCHEME_CFLAGS_EXTRA) if_mzsch.c
+!  
+  mzscheme_base.c:
+  	$(MZSCHEME_MZC) --c-mods mzscheme_base.c ++lib scheme/base
+  
+--- 2698,2704 ----
+  
+  objects/if_mzsch.o: if_mzsch.c $(MZSCHEME_EXTRA)
+  	$(CCC) -o $@ $(MZSCHEME_CFLAGS_EXTRA) if_mzsch.c
+! 
+  mzscheme_base.c:
+  	$(MZSCHEME_MZC) --c-mods mzscheme_base.c ++lib scheme/base
+  
+*** ../vim-7.4.990/src/testdir/Makefile	2015-12-28 22:24:37.388781777 +0100
+--- src/testdir/Makefile	2015-12-29 14:13:20.628650022 +0100
+***************
+*** 55,61 ****
+  RUN_VIM = VIMRUNTIME=$(SCRIPTSOURCE); export VIMRUNTIME; $(VALGRIND) $(VIMPROG) -f -u unix.vim -U NONE --noplugin -s dotest.in
+  
+  clean:
+! 	-rm -rf *.out *.failed *.res *.rej *.orig test.log $(RM_ON_RUN) $(RM_ON_START) valgrind.*
+  
+  test1.out: test1.in
+  	-rm -rf $*.failed $(RM_ON_RUN) $(RM_ON_START) wrongtermsize
+--- 55,61 ----
+  RUN_VIM = VIMRUNTIME=$(SCRIPTSOURCE); export VIMRUNTIME; $(VALGRIND) $(VIMPROG) -f -u unix.vim -U NONE --noplugin -s dotest.in
+  
+  clean:
+! 	-rm -rf *.out *.failed *.res *.rej *.orig test.log messages $(RM_ON_RUN) $(RM_ON_START) valgrind.*
+  
+  test1.out: test1.in
+  	-rm -rf $*.failed $(RM_ON_RUN) $(RM_ON_START) wrongtermsize
+***************
+*** 112,118 ****
+  	@/bin/sh -c "if test -f benchmark.out; then cat benchmark.out; fi"
+  
+  nolog:
+! 	-rm -f test.log
+  
+  
+  # New style of tests uses Vim script with assert calls.  These are easier
+--- 112,118 ----
+  	@/bin/sh -c "if test -f benchmark.out; then cat benchmark.out; fi"
+  
+  nolog:
+! 	-rm -f test.log messages
+  
+  
+  # New style of tests uses Vim script with assert calls.  These are easier
+***************
+*** 123,126 ****
+  newtests: $(NEW_TESTS)
+  
+  .vim.res:
+! 	$(RUN_VIMTEST) -S runtest.vim $*.vim
+--- 123,126 ----
+  newtests: $(NEW_TESTS)
+  
+  .vim.res:
+! 	$(RUN_VIMTEST) -u NONE -S runtest.vim $*.vim
+*** ../vim-7.4.990/src/testdir/runtest.vim	2015-12-28 14:44:05.782812182 +0100
+--- src/testdir/runtest.vim	2015-12-29 14:10:56.858203778 +0100
+***************
+*** 39,44 ****
+--- 39,45 ----
+  let done = 0
+  let fail = 0
+  let errors = []
++ let messages = []
+  try
+    source %
+  catch
+***************
+*** 57,62 ****
+--- 58,64 ----
+      call SetUp()
+    endif
+  
++   call add(messages, 'Executing ' . test)
+    let done += 1
+    try
+      exe 'call ' . test
+***************
+*** 92,100 ****
+    write
+  endif
+  
+! echo 'Executed ' . done . (done > 1 ? ' tests': ' test')
+  if fail > 0
+!   echo fail . ' FAILED'
+  endif
+  
+  qall!
+--- 94,113 ----
+    write
+  endif
+  
+! let message = 'Executed ' . done . (done > 1 ? ' tests': ' test')
+! echo message
+! call add(messages, message)
+  if fail > 0
+!   let message = fail . ' FAILED'
+!   echo message
+!   call add(messages, message)
+  endif
+  
++ " Append messages to "messages"
++ split messages
++ call append(line('$'), '')
++ call append(line('$'), 'From ' . testname . ':')
++ call append(line('$'), messages)
++ write
++ 
+  qall!
+*** ../vim-7.4.990/src/version.c	2015-12-29 13:59:25.493672385 +0100
+--- src/version.c	2015-12-29 14:05:51.649501516 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     991,
+  /**/
+
+-- 
+    [clop clop]
+MORTICIAN:  Who's that then?
+CUSTOMER:   I don't know.
+MORTICIAN:  Must be a king.
+CUSTOMER:   Why?
+MORTICIAN:  He hasn't got shit all over him.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

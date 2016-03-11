@@ -1,0 +1,382 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1262
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1262
+Problem:    The channel callback is not invoked.
+Solution:   Make a list of pending callbacks.
+Files:      src/eval.c, src/channel.c, src/proto/channel.pro,
+            src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1261/src/eval.c	2016-02-04 22:49:45.691504756 +0100
+--- src/eval.c	2016-02-04 23:02:24.519676094 +0100
+***************
+*** 9800,9806 ****
+   * Otherwise returns -1.
+   */
+      static int
+! send_common(typval_T *argvars, char_u *text, char *fun)
+  {
+      int		ch_idx;
+      char_u	*callback = NULL;
+--- 9800,9806 ----
+   * Otherwise returns -1.
+   */
+      static int
+! send_common(typval_T *argvars, char_u *text, int id, char *fun)
+  {
+      int		ch_idx;
+      char_u	*callback = NULL;
+***************
+*** 9815,9824 ****
+  	if (callback == NULL)
+  	    return -1;
+      }
+!     /* Set the callback or clear it. An empty callback means no callback and
+!      * not reading the response. */
+!     channel_set_req_callback(ch_idx,
+! 	    callback != NULL && *callback == NUL ? NULL : callback);
+  
+      if (channel_send(ch_idx, text, fun) == OK && callback == NULL)
+  	return ch_idx;
+--- 9815,9824 ----
+  	if (callback == NULL)
+  	    return -1;
+      }
+!     /* Set the callback. An empty callback means no callback and not reading
+!      * the response. */
+!     if (callback != NULL && *callback != NUL)
+! 	channel_set_req_callback(ch_idx, callback, id);
+  
+      if (channel_send(ch_idx, text, fun) == OK && callback == NULL)
+  	return ch_idx;
+***************
+*** 9845,9851 ****
+      if (text == NULL)
+  	return;
+  
+!     ch_idx = send_common(argvars, text, "sendexpr");
+      vim_free(text);
+      if (ch_idx >= 0)
+      {
+--- 9845,9851 ----
+      if (text == NULL)
+  	return;
+  
+!     ch_idx = send_common(argvars, text, id, "sendexpr");
+      vim_free(text);
+      if (ch_idx >= 0)
+      {
+***************
+*** 9883,9889 ****
+      rettv->vval.v_string = NULL;
+  
+      text = get_tv_string_buf(&argvars[1], buf);
+!     ch_idx = send_common(argvars, text, "sendraw");
+      if (ch_idx >= 0)
+  	rettv->vval.v_string = channel_read_block(ch_idx);
+  }
+--- 9883,9889 ----
+      rettv->vval.v_string = NULL;
+  
+      text = get_tv_string_buf(&argvars[1], buf);
+!     ch_idx = send_common(argvars, text, 0, "sendraw");
+      if (ch_idx >= 0)
+  	rettv->vval.v_string = channel_read_block(ch_idx);
+  }
+*** ../vim-7.4.1261/src/channel.c	2016-02-04 22:49:45.691504756 +0100
+--- src/channel.c	2016-02-05 20:40:09.851242051 +0100
+***************
+*** 84,89 ****
+--- 84,98 ----
+  };
+  typedef struct jsonqueue jsonq_T;
+  
++ struct cbqueue
++ {
++     char_u		*callback;
++     int			seq_nr;
++     struct cbqueue	*next;
++     struct cbqueue	*prev;
++ };
++ typedef struct cbqueue cbq_T;
++ 
+  typedef struct {
+      sock_T    ch_fd;	/* the socket, -1 for a closed channel */
+      int	      ch_idx;	/* used by channel_poll_setup() */
+***************
+*** 106,112 ****
+      void      (*ch_close_cb)(void); /* callback for when channel is closed */
+  
+      char_u    *ch_callback;	/* function to call when a msg is not handled */
+!     char_u    *ch_req_callback;	/* function to call for current request */
+  
+      int	      ch_json_mode;	/* TRUE for a json channel */
+      jsonq_T   ch_json_head;	/* dummy node, header for circular queue */
+--- 115,121 ----
+      void      (*ch_close_cb)(void); /* callback for when channel is closed */
+  
+      char_u    *ch_callback;	/* function to call when a msg is not handled */
+!     cbq_T     ch_cb_head;	/* dummy node for pre-request callbacks */
+  
+      int	      ch_json_mode;	/* TRUE for a json channel */
+      jsonq_T   ch_json_head;	/* dummy node, header for circular queue */
+***************
+*** 168,173 ****
+--- 177,184 ----
+      /* initialize circular queues */
+      ch->ch_head.next = &ch->ch_head;
+      ch->ch_head.prev = &ch->ch_head;
++     ch->ch_cb_head.next = &ch->ch_cb_head;
++     ch->ch_cb_head.prev = &ch->ch_cb_head;
+      ch->ch_json_head.next = &ch->ch_json_head;
+      ch->ch_json_head.prev = &ch->ch_json_head;
+  
+***************
+*** 426,440 ****
+  }
+  
+  /*
+!  * Set the callback for channel "idx" for the next response.
+   */
+      void
+! channel_set_req_callback(int idx, char_u *callback)
+  {
+!     /* TODO: make a list of callbacks */
+!     vim_free(channels[idx].ch_req_callback);
+!     channels[idx].ch_req_callback = callback == NULL
+! 					       ? NULL : vim_strsave(callback);
+  }
+  
+  /*
+--- 437,459 ----
+  }
+  
+  /*
+!  * Set the callback for channel "idx" for the response with "id".
+   */
+      void
+! channel_set_req_callback(int idx, char_u *callback, int id)
+  {
+!     cbq_T *cbhead = &channels[idx].ch_cb_head;
+!     cbq_T *item = (cbq_T *)alloc((int)sizeof(cbq_T));
+! 
+!     if (item != NULL)
+!     {
+! 	item->callback = vim_strsave(callback);
+! 	item->seq_nr = id;
+! 	item->prev = cbhead->prev;
+! 	cbhead->prev = item;
+! 	item->next = cbhead;
+! 	item->prev->next = item;
+!     }
+  }
+  
+  /*
+***************
+*** 599,604 ****
+--- 618,636 ----
+  
+  /*
+   * Remove "node" from the queue that it is in and free it.
++  * Also frees the contained callback name.
++  */
++     static void
++ remove_cb_node(cbq_T *node)
++ {
++     node->prev->next = node->next;
++     node->next->prev = node->prev;
++     vim_free(node->callback);
++     vim_free(node);
++ }
++ 
++ /*
++  * Remove "node" from the queue that it is in and free it.
+   * Caller should have freed or used node->value.
+   */
+      static void
+***************
+*** 628,635 ****
+  	typval_T    *tv = &l->lv_first->li_tv;
+  
+  	if ((id > 0 && tv->v_type == VAR_NUMBER && tv->vval.v_number == id)
+! 	      || (id <= 0
+! 		      && (tv->v_type != VAR_NUMBER || tv->vval.v_number < 0)))
+  	{
+  	    *rettv = item->value;
+  	    remove_json_node(item);
+--- 660,666 ----
+  	typval_T    *tv = &l->lv_first->li_tv;
+  
+  	if ((id > 0 && tv->v_type == VAR_NUMBER && tv->vval.v_number == id)
+! 	      || id <= 0)
+  	{
+  	    *rettv = item->value;
+  	    remove_json_node(item);
+***************
+*** 742,750 ****
+      typval_T	*typetv;
+      typval_T	argv[3];
+      int		seq_nr = -1;
+!     int		json_mode = channels[idx].ch_json_mode;
+  
+!     if (channels[idx].ch_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+--- 773,782 ----
+      typval_T	*typetv;
+      typval_T	argv[3];
+      int		seq_nr = -1;
+!     channel_T	*channel = &channels[idx];
+!     int		json_mode = channel->ch_json_mode;
+  
+!     if (channel->ch_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+***************
+*** 804,820 ****
+  	argv[1].vval.v_string = msg;
+      }
+  
+!     if (channels[idx].ch_req_callback != NULL && seq_nr != 0)
+      {
+! 	/* TODO: check the sequence number */
+! 	/* invoke the one-time callback */
+! 	invoke_callback(idx, channels[idx].ch_req_callback, argv);
+! 	channels[idx].ch_req_callback = NULL;
+      }
+!     else if (channels[idx].ch_callback != NULL)
+      {
+  	/* invoke the channel callback */
+! 	invoke_callback(idx, channels[idx].ch_callback, argv);
+      }
+      /* else: drop the message TODO: give error */
+  
+--- 836,862 ----
+  	argv[1].vval.v_string = msg;
+      }
+  
+!     if (seq_nr > 0)
+      {
+! 	cbq_T *cbhead = &channel->ch_cb_head;
+! 	cbq_T *cbitem = cbhead->next;
+! 
+! 	/* invoke the one-time callback with the matching nr */
+! 	while (cbitem != cbhead)
+! 	{
+! 	    if (cbitem->seq_nr == seq_nr)
+! 	    {
+! 		invoke_callback(idx, cbitem->callback, argv);
+! 		remove_cb_node(cbitem);
+! 		break;
+! 	    }
+! 	    cbitem = cbitem->next;
+! 	}
+      }
+!     else if (channel->ch_callback != NULL)
+      {
+  	/* invoke the channel callback */
+! 	invoke_callback(idx, channel->ch_callback, argv);
+      }
+      /* else: drop the message TODO: give error */
+  
+***************
+*** 844,849 ****
+--- 886,892 ----
+  {
+      channel_T	*channel = &channels[idx];
+      jsonq_T	*jhead;
++     cbq_T	*cbhead;
+  
+      if (channel->ch_fd >= 0)
+      {
+***************
+*** 859,864 ****
+--- 902,911 ----
+  	while (channel_peek(idx) != NULL)
+  	    vim_free(channel_get(idx));
+  
++ 	cbhead = &channel->ch_cb_head;
++ 	while (cbhead->next != cbhead)
++ 	    remove_cb_node(cbhead->next);
++ 
+  	jhead = &channel->ch_json_head;
+  	while (jhead->next != jhead)
+  	{
+*** ../vim-7.4.1261/src/proto/channel.pro	2016-02-04 22:49:45.691504756 +0100
+--- src/proto/channel.pro	2016-02-04 23:06:50.669504187 +0100
+***************
+*** 3,9 ****
+  int channel_open(char *hostname, int port_in, void (*close_cb)(void));
+  void channel_set_json_mode(int idx, int json_mode);
+  void channel_set_callback(int idx, char_u *callback);
+! void channel_set_req_callback(int idx, char_u *callback);
+  char_u *channel_get(int idx);
+  int channel_collapse(int idx);
+  int channel_is_open(int idx);
+--- 3,9 ----
+  int channel_open(char *hostname, int port_in, void (*close_cb)(void));
+  void channel_set_json_mode(int idx, int json_mode);
+  void channel_set_callback(int idx, char_u *callback);
+! void channel_set_req_callback(int idx, char_u *callback, int id);
+  char_u *channel_get(int idx);
+  int channel_collapse(int idx);
+  int channel_is_open(int idx);
+*** ../vim-7.4.1261/src/testdir/test_channel.vim	2016-02-04 22:09:44.692012667 +0100
+--- src/testdir/test_channel.vim	2016-02-05 20:45:24.675916217 +0100
+***************
+*** 69,74 ****
+--- 69,81 ----
+    endif
+  endfunc
+  
++ let s:responseHandle = -1
++ let s:responseMsg = ''
++ func s:RequestHandler(handle, msg)
++   let s:responseHandle = a:handle
++   let s:responseMsg = a:msg
++ endfunc
++ 
+  func Test_communicate()
+    let handle = s:start_server()
+    if handle < 0
+***************
+*** 86,91 ****
+--- 93,104 ----
+    call assert_equal('added1', getline(line('$') - 1))
+    call assert_equal('added2', getline('$'))
+  
++   " Send a request with a specific handler.
++   call ch_sendexpr(handle, 'hello!', 's:RequestHandler')
++   sleep 10m
++   call assert_equal(handle, s:responseHandle)
++   call assert_equal('got it', s:responseMsg)
++ 
+    " Send an eval request that works.
+    call assert_equal('ok', ch_sendexpr(handle, 'eval-works'))
+    sleep 10m
+*** ../vim-7.4.1261/src/version.c	2016-02-04 22:49:45.695504713 +0100
+--- src/version.c	2016-02-05 20:38:23.200369375 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1262,
+  /**/
+
+-- 
+Drink wet cement and get really stoned.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

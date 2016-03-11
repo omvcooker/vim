@@ -1,0 +1,88 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1043
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1043
+Problem:    Another small thing.
+Solution:   Now really update the Mac install text.
+Files:      src/INSTALLmac.txt
+
+
+*** ../vim-7.4.1042/src/INSTALLmac.txt	2010-05-15 13:04:10.000000000 +0200
+--- src/INSTALLmac.txt	2015-11-10 17:25:28.280358998 +0100
+***************
+*** 3,11 ****
+  This file contains instructions for compiling Vim. If you already have an
+  executable version of Vim, you don't need this.
+  
+! An alternate way of building that Benji Fisher uses can be found here:
+  
+- 	http://macvim.swdev.org/OSX/#Developers
+  
+  ----------------------------------------------------------------------------
+  Summary
+--- 3,15 ----
+  This file contains instructions for compiling Vim. If you already have an
+  executable version of Vim, you don't need this.
+  
+! First, make sure you've installed Xcode or CommandLineToots.  If not, open a
+! terminal and do
+! 
+! 	$ make --version
+! 
+! A window pops up instructing you to install the developer tools.
+  
+  
+  ----------------------------------------------------------------------------
+  Summary
+***************
+*** 30,40 ****
+   You can compile vim with the standard Unix routine:
+     cd .../src
+     make
+  
+!  This will create a working Vim.app application bundle in the src
+   directory.  You can move this bundle (the Vim.app directory) anywhere
+!  you want.  Or use this command to move it to /Applications:
+!    make install
+  
+   You need at least Xcode 1.5 to compile Vim 7.0.
+  
+--- 34,45 ----
+   You can compile vim with the standard Unix routine:
+     cd .../src
+     make
++    make test
++    sudo make install
+  
+!  "make" will create a working Vim.app application bundle in the src
+   directory.  You can move this bundle (the Vim.app directory) anywhere
+!  you want.  Or use "make install" to move it to /Applications.
+  
+   You need at least Xcode 1.5 to compile Vim 7.0.
+  
+*** ../vim-7.4.1042/src/version.c	2016-01-03 22:47:52.987427330 +0100
+--- src/version.c	2016-01-03 22:50:22.845787732 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1043,
+  /**/
+
+-- 
+BEDEVERE:  Oooooh!
+LAUNCELOT: No "Aaaaarrrrrrggghhh ... " at the back of the throat.
+BEDEVERE:  No!  "Oooooh!" in surprise and alarm!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

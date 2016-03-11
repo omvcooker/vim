@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1204
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1204
+Problem:    Latin1 characters cause encoding conversion.
+Solution:   Remove the characters.
+Files:      src/gui_motif.c
+
+
+*** ../vim-7.4.1203/src/gui_motif.c	2016-01-29 22:13:26.051781481 +0100
+--- src/gui_motif.c	2016-01-30 13:51:29.850650765 +0100
+***************
+*** 4074,4080 ****
+   * Synchronize all gui elements, which are dependant upon the
+   * main text font used. Those are in esp. the find/replace dialogs.
+   * If you don't understand why this should be needed, please try to
+!  * search for "piê¶æ" in iso8859-2.
+   */
+      void
+  gui_motif_synch_fonts(void)
+--- 4074,4080 ----
+   * Synchronize all gui elements, which are dependant upon the
+   * main text font used. Those are in esp. the find/replace dialogs.
+   * If you don't understand why this should be needed, please try to
+!  * search for "pi\xea\xb6\xe6" in iso8859-2.
+   */
+      void
+  gui_motif_synch_fonts(void)
+*** ../vim-7.4.1203/src/version.c	2016-01-30 13:28:23.929007123 +0100
+--- src/version.c	2016-01-30 13:52:43.537889599 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1204,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+89. In addition to your e-mail address being on your business
+    cards you even have your own domain.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

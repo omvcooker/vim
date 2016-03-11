@@ -1,0 +1,65 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1183
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1183 (after 7.4.1182)
+Problem:    MS-Windows build is broken.
+Solution:   Remove init in wrong place.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1182/src/channel.c	2016-01-26 23:27:37.380316517 +0100
+--- src/channel.c	2016-01-26 23:38:28.201494883 +0100
+***************
+*** 92,98 ****
+      gint ch_inputHandler;	/* Cookie for input */
+  #endif
+  #ifdef FEAT_GUI_W32
+!     int  ch_inputHandler = -1;	/* simply ret.value of WSAAsyncSelect() */
+  #endif
+  
+      void (*ch_close_cb)(void);	/* callback invoked when channel is closed */
+--- 92,98 ----
+      gint ch_inputHandler;	/* Cookie for input */
+  #endif
+  #ifdef FEAT_GUI_W32
+!     int  ch_inputHandler;	/* simply ret.value of WSAAsyncSelect() */
+  #endif
+  
+      void (*ch_close_cb)(void);	/* callback invoked when channel is closed */
+*** ../vim-7.4.1182/src/version.c	2016-01-26 23:27:37.388316432 +0100
+--- src/version.c	2016-01-26 23:39:24.808901627 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1183,
+  /**/
+
+-- 
+The real
+trick is
+this: to
+keep the
+lines as
+short as
+possible
+and keep
+the size
+the same
+yet free
+from the
+need for
+hyphena-
+Dammit!!  (Matthew Winn)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

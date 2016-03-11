@@ -1,0 +1,85 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1032
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1032
+Problem:    message from assert_false() does not look nice.
+Solution:   Handle missing sourcing_name. Use right number of spaces. (Watiko)
+            Don't use line number if it's zero.
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1031/src/eval.c	2016-01-02 17:54:04.415793352 +0100
+--- src/eval.c	2016-01-02 20:55:47.177733043 +0100
+***************
+*** 9151,9160 ****
+      char buf[NUMBUFLEN];
+  
+      ga_init2(gap, 1, 100);
+!     ga_concat(gap, sourcing_name);
+!     sprintf(buf, " line %ld", (long)sourcing_lnum);
+!     ga_concat(gap, (char_u *)buf);
+!     ga_concat(gap, (char_u *)": ");
+  }
+  
+  /*
+--- 9151,9169 ----
+      char buf[NUMBUFLEN];
+  
+      ga_init2(gap, 1, 100);
+!     if (sourcing_name != NULL)
+!     {
+! 	ga_concat(gap, sourcing_name);
+! 	if (sourcing_lnum > 0)
+! 	    ga_concat(gap, (char_u *)" ");
+!     }
+!     if (sourcing_lnum > 0)
+!     {
+! 	sprintf(buf, "line %ld", (long)sourcing_lnum);
+! 	ga_concat(gap, (char_u *)buf);
+!     }
+!     if (sourcing_name != NULL || sourcing_lnum > 0)
+! 	ga_concat(gap, (char_u *)": ");
+  }
+  
+  /*
+***************
+*** 9243,9249 ****
+      {
+  	prepare_assert_error(&ga);
+  	fill_assert_error(&ga, &argvars[1],
+! 		(char_u *)(isTrue ? "True " : "False "),
+  		NULL, &argvars[0]);
+  	assert_error(&ga);
+  	ga_clear(&ga);
+--- 9252,9258 ----
+      {
+  	prepare_assert_error(&ga);
+  	fill_assert_error(&ga, &argvars[1],
+! 		(char_u *)(isTrue ? "True" : "False"),
+  		NULL, &argvars[0]);
+  	assert_error(&ga);
+  	ga_clear(&ga);
+*** ../vim-7.4.1031/src/version.c	2016-01-02 20:26:31.920844816 +0100
+--- src/version.c	2016-01-02 20:50:49.796981455 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1032,
+  /**/
+
+-- 
+If cars evolved at the same rate as computers have, they'd cost five euro, 
+run for a year on a couple of liters of petrol, and explode once a day.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

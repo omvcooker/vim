@@ -1,0 +1,216 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1371
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1371
+Problem:    X11 GUI callbacks don't specify the part of the channel.
+Solution:   Pass the fd instead of the channel ID.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1370/src/channel.c	2016-02-20 18:18:51.753033202 +0100
+--- src/channel.c	2016-02-20 18:41:40.770605004 +0100
+***************
+*** 329,367 ****
+      vim_free(channel);
+  }
+  
+- #if defined(FEAT_GUI_X11) || defined(FEAT_GUI_GTK)
+-     static channel_T *
+- channel_from_id(int id)
+- {
+-     channel_T *channel;
+- 
+-     for (channel = first_channel; channel != NULL; channel = channel->ch_next)
+- 	if (channel->ch_id == id)
+- 	    return channel;
+-     return NULL;
+- }
+- #endif
+- 
+  #if defined(FEAT_GUI) || defined(PROTO)
+  
+  #if defined(FEAT_GUI_X11) || defined(FEAT_GUI_GTK)
+      static void
+! channel_read_netbeans(int id)
+  {
+!     channel_T	*channel = channel_from_id(id);
+      int		part;
+  
+      if (channel == NULL)
+! 	ch_errorn(NULL, "Channel %d not found", id);
+      else
+-     {
+- 	/* TODO: check stderr */
+- 	if (channel->CH_SOCK_FD != INVALID_FD)
+- 	    part = PART_SOCK;
+- 	else
+- 	    part = PART_OUT;
+  	channel_read(channel, part, "messageFromNetbeans");
+-     }
+  }
+  #endif
+  
+--- 329,348 ----
+      vim_free(channel);
+  }
+  
+  #if defined(FEAT_GUI) || defined(PROTO)
+  
+  #if defined(FEAT_GUI_X11) || defined(FEAT_GUI_GTK)
+      static void
+! channel_read_fd(int fd)
+  {
+!     channel_T	*channel;
+      int		part;
+  
++     channel = channel_fd2channel(fd, &part);
+      if (channel == NULL)
+! 	ch_errorn(NULL, "Channel for fd %d not found", fd);
+      else
+  	channel_read(channel, part, "messageFromNetbeans");
+  }
+  #endif
+  
+***************
+*** 375,381 ****
+  		    int *unused1 UNUSED,
+  		    XtInputId *unused2 UNUSED)
+  {
+!     channel_read_netbeans((int)(long)clientData);
+  }
+  #endif
+  
+--- 356,362 ----
+  		    int *unused1 UNUSED,
+  		    XtInputId *unused2 UNUSED)
+  {
+!     channel_read_fd((int)(long)clientData);
+  }
+  #endif
+  
+***************
+*** 385,391 ****
+  		    gint unused1 UNUSED,
+  		    GdkInputCondition unused2 UNUSED)
+  {
+!     channel_read_netbeans((int)(long)clientData);
+  }
+  #endif
+  
+--- 366,372 ----
+  		    gint unused1 UNUSED,
+  		    GdkInputCondition unused2 UNUSED)
+  {
+!     channel_read_fd((int)(long)clientData);
+  }
+  #endif
+  
+***************
+*** 401,407 ****
+  		channel->ch_part[part].ch_fd,
+  		(XtPointer)(XtInputReadMask + XtInputExceptMask),
+  		messageFromNetbeans,
+! 		(XtPointer)(long)channel->ch_id);
+  # else
+  #  ifdef FEAT_GUI_GTK
+      /* Tell gdk we are interested in being called when there
+--- 382,388 ----
+  		channel->ch_part[part].ch_fd,
+  		(XtPointer)(XtInputReadMask + XtInputExceptMask),
+  		messageFromNetbeans,
+! 		(XtPointer)(long)channel->ch_part[part].ch_fd);
+  # else
+  #  ifdef FEAT_GUI_GTK
+      /* Tell gdk we are interested in being called when there
+***************
+*** 412,418 ****
+  		(GdkInputCondition)
+  			     ((int)GDK_INPUT_READ + (int)GDK_INPUT_EXCEPTION),
+  		messageFromNetbeans,
+! 		(gpointer)(long)channel->ch_id);
+  #  else
+  #   ifdef FEAT_GUI_W32
+      /* Tell Windows we are interested in receiving message when there
+--- 393,399 ----
+  		(GdkInputCondition)
+  			     ((int)GDK_INPUT_READ + (int)GDK_INPUT_EXCEPTION),
+  		messageFromNetbeans,
+! 		(gpointer)(long)channel->ch_part[part].ch_fd);
+  #  else
+  #   ifdef FEAT_GUI_W32
+      /* Tell Windows we are interested in receiving message when there
+***************
+*** 1812,1824 ****
+      return FAIL;
+  }
+  
+! # if defined(WIN32) || defined(PROTO)
+  /*
+!  * Lookup the channel from the socket.  Set "part" to the fd index.
+   * Returns NULL when the socket isn't found.
+   */
+      channel_T *
+! channel_fd2channel(sock_T fd, int *part)
+  {
+      channel_T	*channel;
+      int		part;
+--- 1793,1806 ----
+      return FAIL;
+  }
+  
+! # if defined(WIN32) || defined(FEAT_GUI_X11) || defined(FEAT_GUI_GTK) \
+! 	|| defined(PROTO)
+  /*
+!  * Lookup the channel from the socket.  Set "partp" to the fd index.
+   * Returns NULL when the socket isn't found.
+   */
+      channel_T *
+! channel_fd2channel(sock_T fd, int *partp)
+  {
+      channel_T	*channel;
+      int		part;
+***************
+*** 1834,1840 ****
+  #  endif
+  		if (channel->ch_part[part].ch_fd == fd)
+  		{
+! 		    *part = part;
+  		    return channel;
+  		}
+  	}
+--- 1816,1822 ----
+  #  endif
+  		if (channel->ch_part[part].ch_fd == fd)
+  		{
+! 		    *partp = part;
+  		    return channel;
+  		}
+  	}
+*** ../vim-7.4.1370/src/version.c	2016-02-20 18:26:43.664053539 +0100
+--- src/version.c	2016-02-20 18:37:14.177410597 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1371,
+  /**/
+
+-- 
+ARTHUR:    Well, it doesn't matter.  Will you go and tell your master that
+           Arthur from the Court of Camelot is here.
+GUARD #1:  Listen, in order to maintain air-speed velocity, a swallow
+           needs to beat its wings 43 times every second, right?
+ARTHUR:    Please!
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

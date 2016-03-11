@@ -1,0 +1,276 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1434
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1434
+Problem:    JSON encoding doesn't handle surrogate pair.
+Solution:   Improve multi-byte handling of JSON. (Yasuhiro Matsumoto)
+Files:      src/json.c, src/testdir/test_json.vim
+
+
+*** ../vim-7.4.1433/src/json.c	2016-02-27 16:33:02.343528029 +0100
+--- src/json.c	2016-02-27 18:35:46.634330606 +0100
+***************
+*** 97,106 ****
+  	ga_concat(gap, (char_u *)"null");
+      else
+      {
+  	ga_append(gap, '"');
+  	while (*res != NUL)
+  	{
+! 	    int c = PTR2CHAR(res);
+  
+  	    switch (c)
+  	    {
+--- 97,122 ----
+  	ga_concat(gap, (char_u *)"null");
+      else
+      {
++ #if defined(FEAT_MBYTE) && defined(USE_ICONV)
++ 	vimconv_T   conv;
++ 	char_u	    *converted = NULL;
++ 
++ 	convert_setup(&conv, p_enc, (char_u*)"utf-8");
++ 	if (conv.vc_type != CONV_NONE)
++ 	    converted = res = string_convert(&conv, res, NULL);
++ 	convert_setup(&conv, NULL, NULL);
++ #endif
++ 
+  	ga_append(gap, '"');
+  	while (*res != NUL)
+  	{
+! 	    int c;
+! #ifdef FEAT_MBYTE
+! 	    /* always use utf-8 encoding, ignore 'encoding' */
+! 	    c = utf_ptr2char(res);
+! #else
+! 	    c = (int)*(p);
+! #endif
+  
+  	    switch (c)
+  	    {
+***************
+*** 123,129 ****
+  		    if (c >= 0x20)
+  		    {
+  #ifdef FEAT_MBYTE
+! 			numbuf[mb_char2bytes(c, numbuf)] = NUL;
+  #else
+  			numbuf[0] = c;
+  			numbuf[1] = NUL;
+--- 139,145 ----
+  		    if (c >= 0x20)
+  		    {
+  #ifdef FEAT_MBYTE
+! 			numbuf[utf_char2bytes(c, numbuf)] = NUL;
+  #else
+  			numbuf[0] = c;
+  			numbuf[1] = NUL;
+***************
+*** 137,145 ****
+  			ga_concat(gap, numbuf);
+  		    }
+  	    }
+! 	    mb_cptr_adv(res);
+  	}
+  	ga_append(gap, '"');
+      }
+  }
+  
+--- 153,168 ----
+  			ga_concat(gap, numbuf);
+  		    }
+  	    }
+! #ifdef FEAT_MBYTE
+! 	    res += utf_ptr2len(res);
+! #else
+! 	    ++p;
+! #endif
+  	}
+  	ga_append(gap, '"');
++ #if defined(FEAT_MBYTE) && defined(USE_ICONV)
++ 	vim_free(converted);
++ #endif
+      }
+  }
+  
+***************
+*** 525,535 ****
+--- 548,568 ----
+      int		c;
+      long	nr;
+      char_u	buf[NUMBUFLEN];
++ #if defined(FEAT_MBYTE) && defined(USE_ICONV)
++     vimconv_T   conv;
++     char_u	*converted = NULL;
++ #endif
+  
+      if (res != NULL)
+  	ga_init2(&ga, 1, 200);
+  
+      p = reader->js_buf + reader->js_used + 1; /* skip over " */
++ #if defined(FEAT_MBYTE) && defined(USE_ICONV)
++     convert_setup(&conv, (char_u*)"utf-8", p_enc);
++     if (conv.vc_type != CONV_NONE)
++ 	converted = p = string_convert(&conv, p, NULL);
++     convert_setup(&conv, NULL, NULL);
++ #endif
+      while (*p != '"')
+      {
+  	if (*p == NUL || p[1] == NUL
+***************
+*** 573,585 ****
+  						     + STRLEN(reader->js_buf);
+  			}
+  		    }
+  		    vim_str2nr(p + 2, NULL, &len,
+  				     STR2NR_HEX + STR2NR_FORCE, &nr, NULL, 4);
+  		    p += len + 2;
+  		    if (res != NULL)
+  		    {
+  #ifdef FEAT_MBYTE
+! 			buf[(*mb_char2bytes)((int)nr, buf)] = NUL;
+  			ga_concat(&ga, buf);
+  #else
+  			ga_append(&ga, nr);
+--- 606,637 ----
+  						     + STRLEN(reader->js_buf);
+  			}
+  		    }
++ 		    nr = 0;
++ 		    len = 0;
+  		    vim_str2nr(p + 2, NULL, &len,
+  				     STR2NR_HEX + STR2NR_FORCE, &nr, NULL, 4);
+  		    p += len + 2;
++ 		    if (0xd800 <= nr && nr <= 0xdfff
++ 			    && (int)(reader->js_end - p) >= 6
++ 			    && *p == '\\' && *(p+1) == 'u')
++ 		    {
++ 			long	nr2 = 0;
++ 
++ 			/* decode surrogate pair: \ud812\u3456 */
++ 			len = 0;
++ 			vim_str2nr(p + 2, NULL, &len,
++ 				     STR2NR_HEX + STR2NR_FORCE, &nr2, NULL, 4);
++ 			if (0xdc00 <= nr2 && nr2 <= 0xdfff)
++ 			{
++ 			    p += len + 2;
++ 			    nr = (((nr - 0xd800) << 10) |
++ 				((nr2 - 0xdc00) & 0x3ff)) + 0x10000;
++ 			}
++ 		    }
+  		    if (res != NULL)
+  		    {
+  #ifdef FEAT_MBYTE
+! 			buf[utf_char2bytes((int)nr, buf)] = NUL;
+  			ga_concat(&ga, buf);
+  #else
+  			ga_append(&ga, nr);
+***************
+*** 600,611 ****
+  	}
+  	else
+  	{
+! 	    len = MB_PTR2LEN(p);
+  	    if (res != NULL)
+  	    {
+  		if (ga_grow(&ga, len) == FAIL)
+  		{
+  		    ga_clear(&ga);
+  		    return FAIL;
+  		}
+  		mch_memmove((char *)ga.ga_data + ga.ga_len, p, (size_t)len);
+--- 652,670 ----
+  	}
+  	else
+  	{
+! #ifdef FEAT_MBYTE
+! 	    len = utf_ptr2len(p);
+! #else
+! 	    len = 1;
+! #endif
+  	    if (res != NULL)
+  	    {
+  		if (ga_grow(&ga, len) == FAIL)
+  		{
+  		    ga_clear(&ga);
++ #if defined(FEAT_MBYTE) && defined(USE_ICONV)
++ 		    vim_free(converted);
++ #endif
+  		    return FAIL;
+  		}
+  		mch_memmove((char *)ga.ga_data + ga.ga_len, p, (size_t)len);
+***************
+*** 614,619 ****
+--- 673,681 ----
+  	    p += len;
+  	}
+      }
++ #if defined(FEAT_MBYTE) && defined(USE_ICONV)
++     vim_free(converted);
++ #endif
+  
+      reader->js_used = (int)(p - reader->js_buf);
+      if (*p == '"')
+*** ../vim-7.4.1433/src/testdir/test_json.vim	2016-02-27 16:33:02.343528029 +0100
+--- src/testdir/test_json.vim	2016-02-27 18:22:47.898483959 +0100
+***************
+*** 12,17 ****
+--- 12,23 ----
+  let s:json5 = '"\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f"'
+  let s:var5 = "\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
+  
++ " surrogate pair
++ let s:jsonsp1 = '"\ud83c\udf63"'
++ let s:varsp1 = "\xf0\x9f\x8d\xa3"
++ let s:jsonsp2 = '"\ud83c\u00a0"'
++ let s:varsp2 = "\ud83c\u00a0"
++ 
+  let s:jsonmb = '"s¢cĴgё"'
+  let s:varmb = "s¢cĴgё"
+  let s:jsonnr = '1234'
+***************
+*** 69,74 ****
+--- 75,82 ----
+  
+    if has('multi_byte')
+      call assert_equal(s:jsonmb, json_encode(s:varmb))
++     call assert_equal(s:varsp1, json_decode(s:jsonsp1))
++     call assert_equal(s:varsp2, json_decode(s:jsonsp2))
+    endif
+  
+    call assert_equal(s:jsonnr, json_encode(s:varnr))
+***************
+*** 105,110 ****
+--- 113,120 ----
+  
+    if has('multi_byte')
+      call assert_equal(s:varmb, json_decode(s:jsonmb))
++     call assert_equal(s:varsp1, js_decode(s:jsonsp1))
++     call assert_equal(s:varsp2, js_decode(s:jsonsp2))
+    endif
+  
+    call assert_equal(s:varnr, json_decode(s:jsonnr))
+*** ../vim-7.4.1433/src/version.c	2016-02-27 18:13:05.248592984 +0100
+--- src/version.c	2016-02-27 18:23:23.946106526 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1434,
+  /**/
+
+-- 
+Beer & pretzels can't be served at the same time in any bar or restaurant.
+		[real standing law in North Dakota, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,223 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1218
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1218
+Problem:    Missing change in configure.  More changes for function style.
+Solution:   Avoid the typos.
+Files:      src/configure.in, src/config.h.in, runtime/tools/ccfilter.c,
+            src/os_msdos.c
+
+
+*** ../vim-7.4.1217/src/configure.in	2016-01-28 15:34:21.931646199 +0100
+--- src/configure.in	2016-01-30 21:36:32.680736317 +0100
+***************
+*** 2994,3000 ****
+  		AC_MSG_RESULT(no))
+  fi
+  
+! AC_CHECK_HEADERS(stdarg.h stdint.h stdlib.h string.h \
+  	sys/select.h sys/utsname.h termcap.h fcntl.h \
+  	sgtty.h sys/ioctl.h sys/time.h sys/types.h \
+  	termio.h iconv.h inttypes.h langinfo.h math.h \
+--- 2994,3000 ----
+  		AC_MSG_RESULT(no))
+  fi
+  
+! AC_CHECK_HEADERS(stdint.h stdlib.h string.h \
+  	sys/select.h sys/utsname.h termcap.h fcntl.h \
+  	sgtty.h sys/ioctl.h sys/time.h sys/types.h \
+  	termio.h iconv.h inttypes.h langinfo.h math.h \
+*** ../vim-7.4.1217/src/config.h.in	2016-01-24 20:36:18.870082307 +0100
+--- src/config.h.in	2016-01-30 21:35:53.885144966 +0100
+***************
+*** 296,302 ****
+  /* #undef STDC_HEADERS */
+  
+  /* instead, we check a few STDC things ourselves */
+- #undef HAVE_STDARG_H
+  #undef HAVE_STDLIB_H
+  #undef HAVE_STRING_H
+  
+--- 296,301 ----
+*** ../vim-7.4.1217/runtime/tools/ccfilter.c	2010-05-15 13:04:00.000000000 +0200
+--- runtime/tools/ccfilter.c	2016-01-30 21:22:48.309359711 +0100
+***************
+*** 85,91 ****
+  
+  
+  int ShowUsage( char *szError )
+! { int i;
+  
+    fprintf( stderr, USAGE );
+  
+--- 85,92 ----
+  
+  
+  int ShowUsage( char *szError )
+! {
+!   int i;
+  
+    fprintf( stderr, USAGE );
+  
+***************
+*** 101,107 ****
+    return 0;
+  }
+  
+! char *echogets(char *s, int echo) {
+   char * const retval=fgets(s, LINELENGTH, stdin);
+   if (echo!=0 && retval!=NULL) {
+    fputs(retval, stderr);
+--- 102,109 ----
+    return 0;
+  }
+  
+! char *echogets(char *s, int echo)
+! {
+   char * const retval=fgets(s, LINELENGTH, stdin);
+   if (echo!=0 && retval!=NULL) {
+    fputs(retval, stderr);
+*** ../vim-7.4.1217/src/os_msdos.c	2015-03-21 17:32:14.062779961 +0100
+--- src/os_msdos.c	2016-01-30 19:53:07.917457272 +0100
+***************
+*** 370,377 ****
+   */
+  
+      static long
+! mygetdigits(pp)
+!     char_u **pp;
+  {
+      char_u	*p;
+      long	retval = 0;
+--- 370,376 ----
+   */
+  
+      static long
+! mygetdigits(char_u **pp)
+  {
+      char_u	*p;
+      long	retval = 0;
+***************
+*** 473,479 ****
+   * Set normal fg/bg color, based on T_ME.  Called when t_me has been set.
+   */
+      void
+! mch_set_normal_colors()
+  {
+      char_u	*p;
+      int		n;
+--- 472,478 ----
+   * Set normal fg/bg color, based on T_ME.  Called when t_me has been set.
+   */
+      void
+! mch_set_normal_colors(void)
+  {
+      char_u	*p;
+      int		n;
+***************
+*** 1232,1239 ****
+   * For DOS 3 and later return 3 (Fail)
+   */
+      static void interrupt
+! catch_cint(bp, di, si, ds, es, dx, cx, bx, ax)
+!     unsigned bp, di, si, ds, es, dx, cx, bx, ax;
+  {
+      ax = (ax & 0xff00);	    /* set AL to 0 */
+      if (_osmajor >= 3)
+--- 1231,1246 ----
+   * For DOS 3 and later return 3 (Fail)
+   */
+      static void interrupt
+! catch_cint(
+!     unsigned bp,
+!     unsigned di,
+!     unsigned si,
+!     unsigned ds,
+!     unsigned es,
+!     unsigned dx,
+!     unsigned cx,
+!     unsigned bx,
+!     unsigned ax)
+  {
+      ax = (ax & 0xff00);	    /* set AL to 0 */
+      if (_osmajor >= 3)
+***************
+*** 1876,1882 ****
+   * Rows and/or Columns has changed.
+   */
+      void
+! mch_new_shellsize()
+  {
+  #ifdef FEAT_MOUSE
+      /* best guess for mouse coordinate computations */
+--- 1883,1889 ----
+   * Rows and/or Columns has changed.
+   */
+      void
+! mch_new_shellsize(void)
+  {
+  #ifdef FEAT_MOUSE
+      /* best guess for mouse coordinate computations */
+***************
+*** 1897,1903 ****
+   * DOS console when 'columns' is set to a too large value.
+   */
+      void
+! mch_check_columns()
+  {
+      static union REGS	regs;
+  
+--- 1904,1910 ----
+   * DOS console when 'columns' is set to a too large value.
+   */
+      void
+! mch_check_columns(void)
+  {
+      static union REGS	regs;
+  
+***************
+*** 2946,2955 ****
+   * Return -1 if unknown.
+   */
+      int
+! mch_can_exe(name, path, use_path)
+!     char_u	*name;
+!     char_u	**path;
+!     int		use_path;
+  {
+      char	*p;
+      int		mode;
+--- 2953,2962 ----
+   * Return -1 if unknown.
+   */
+      int
+! mch_can_exe(
+!     char_u	*name,
+!     char_u	**path,
+!     int		use_path)
+  {
+      char	*p;
+      int		mode;
+*** ../vim-7.4.1217/src/version.c	2016-01-30 23:20:28.531140989 +0100
+--- src/version.c	2016-01-30 23:23:27.073266112 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1218,
+  /**/
+
+-- 
+The sooner you fall behind, the more time you'll have to catch up.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

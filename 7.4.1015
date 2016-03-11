@@ -1,0 +1,147 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1015
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1015
+Problem:    The column is not restored properly when the matchparen plugin is
+            used in Insert mode and the cursor is after the end of the line.
+Solution:   Set the curswant flag. (Christian Brabandt).  Also fix
+            highlighting the match of the character before the cursor.
+Files:      src/eval.c, runtime/plugin/matchparen.vim
+
+
+*** ../vim-7.4.1014/src/eval.c	2015-12-31 19:06:56.044081952 +0100
+--- src/eval.c	2015-12-31 22:05:05.072290155 +0100
+***************
+*** 10183,10188 ****
+--- 10183,10189 ----
+  #ifdef FEAT_VIRTUALEDIT
+      long	coladd = 0;
+  #endif
++     int		set_curswant = TRUE;
+  
+      rettv->vval.v_number = -1;
+      if (argvars[1].v_type == VAR_UNKNOWN)
+***************
+*** 10198,10204 ****
+--- 10199,10208 ----
+  	coladd = pos.coladd;
+  #endif
+  	if (curswant >= 0)
++ 	{
+  	    curwin->w_curswant = curswant - 1;
++ 	    set_curswant = FALSE;
++ 	}
+      }
+      else
+      {
+***************
+*** 10231,10237 ****
+  	mb_adjust_cursor();
+  #endif
+  
+!     curwin->w_set_curswant = TRUE;
+      rettv->vval.v_number = 0;
+  }
+  
+--- 10235,10241 ----
+  	mb_adjust_cursor();
+  #endif
+  
+!     curwin->w_set_curswant = set_curswant;
+      rettv->vval.v_number = 0;
+  }
+  
+***************
+*** 17524,17530 ****
+--- 17528,17537 ----
+  		{
+  		    curwin->w_cursor = pos;
+  		    if (curswant >= 0)
++ 		    {
+  			curwin->w_curswant = curswant - 1;
++ 			curwin->w_set_curswant = FALSE;
++ 		    }
+  		    check_cursor();
+  		    rettv->vval.v_number = 0;
+  		}
+*** ../vim-7.4.1014/runtime/plugin/matchparen.vim	2014-08-06 19:08:33.559125571 +0200
+--- runtime/plugin/matchparen.vim	2015-12-31 21:58:16.476739865 +0100
+***************
+*** 1,6 ****
+  " Vim plugin for showing matching parens
+  " Maintainer:  Bram Moolenaar <Bram@vim.org>
+! " Last Change: 2014 Jul 19
+  
+  " Exit quickly when:
+  " - this plugin was already loaded (or disabled)
+--- 1,6 ----
+  " Vim plugin for showing matching parens
+  " Maintainer:  Bram Moolenaar <Bram@vim.org>
+! " Last Change: 2015 Dec 31
+  
+  " Exit quickly when:
+  " - this plugin was already loaded (or disabled)
+***************
+*** 55,68 ****
+    let before = 0
+  
+    let text = getline(c_lnum)
+!   let c = text[c_col - 1]
+    let plist = split(&matchpairs, '.\zs[:,]')
+    let i = index(plist, c)
+    if i < 0
+      " not found, in Insert mode try character before the cursor
+      if c_col > 1 && (mode() == 'i' || mode() == 'R')
+!       let before = 1
+!       let c = text[c_col - 2]
+        let i = index(plist, c)
+      endif
+      if i < 0
+--- 55,73 ----
+    let before = 0
+  
+    let text = getline(c_lnum)
+!   let matches = matchlist(text, '\(.\)\=\%'.c_col.'c\(.\=\)')
+!   if empty(matches)
+!     let [c_before, c] = ['', '']
+!   else
+!     let [c_before, c] = matches[1:2]
+!   endif
+    let plist = split(&matchpairs, '.\zs[:,]')
+    let i = index(plist, c)
+    if i < 0
+      " not found, in Insert mode try character before the cursor
+      if c_col > 1 && (mode() == 'i' || mode() == 'R')
+!       let before = strlen(c_before)
+!       let c = c_before
+        let i = index(plist, c)
+      endif
+      if i < 0
+*** ../vim-7.4.1014/src/version.c	2015-12-31 21:26:50.649266887 +0100
+--- src/version.c	2015-12-31 22:01:04.622908557 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1015,
+  /**/
+
+-- 
+   [SIR LAUNCELOT runs back up the stairs, grabs a rope
+   of the wall and swings out over the heads of the CROWD in a
+   swashbuckling manner towards a large window.  He stops just short
+   of the window and is left swing pathetically back and forth.]
+LAUNCELOT: Excuse me ... could somebody give me a push ...
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

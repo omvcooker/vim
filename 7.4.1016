@@ -1,0 +1,149 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1016
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1016
+Problem:    Still a few OS/2 pieces remain.
+Solution:   Delete more.
+Files:      Filelist, README_os2.txt, testdir/todos.vim, src/xxd/Make_os2.mak
+
+
+*** ../vim-7.4.1015/Filelist	2015-12-31 20:54:16.254494780 +0100
+--- Filelist	2015-12-31 22:33:51.245456507 +0100
+***************
+*** 445,459 ****
+  		src/xxd/Make_vms.mms \
+  		vimtutor.com \
+  
+- # source files for OS/2 (in the extra archive)
+- SRC_OS2 =	\
+- 		src/Make_os2.mak \
+- 		src/os_os2_cfg.h \
+- 		src/testdir/Make_os2.mak \
+- 		src/testdir/todos.vim \
+- 		src/testdir/os2.vim \
+- 		src/xxd/Make_os2.mak \
+- 
+  # source files for QNX (in the extra archive)
+  SRC_QNX =	\
+  		src/os_qnx.c \
+--- 445,450 ----
+***************
+*** 470,476 ****
+  		$(SRC_DOS) \
+  		$(SRC_DOS_BIN) \
+  		$(SRC_MAC) \
+- 		$(SRC_OS2) \
+  		$(SRC_QNX) \
+  		$(SRC_VMS) \
+  		README_os390.txt \
+--- 461,466 ----
+*** ../vim-7.4.1015/README_os2.txt	2013-08-10 13:24:51.000000000 +0200
+--- README_os2.txt	2015-12-31 22:33:11.217893066 +0100
+***************
+*** 1,58 ****
+  README_os2.txt for version 7.4 of Vim: Vi IMproved.
+  
+! This file explains the installation of Vim on OS/2 systems.
+  See "README.txt" for general information about Vim.
+- 
+- 
+- NOTE: You will need two archives:
+-   vim74rt.zip	contains the runtime files (same as for the PC version)
+-   vim74os2.zip	contains the OS/2 executables
+- 
+- 1. Go to the directory where you want to put the Vim files.  Examples:
+- 	cd C:\
+- 	cd D:\editors
+- 
+- 2. Unpack the zip archives.  This will create a new directory "vim/vim74",
+-    in which all the distributed Vim files are placed.  Since the directory
+-    name includes the version number, it is unlikely that you overwrite
+-    existing files.
+-    Examples:
+- 	pkunzip -d vim74os2.zip
+- 	unzip vim74os2.zip
+- 
+-    After you unpacked the files, you can still move the whole directory tree
+-    to another location.
+- 
+- 3. Add the directory where vim.exe is to your path.  The simplest is to add a
+-    line to your autoexec.bat.  Examples:
+- 	set path=%path%;C:\vim\vim74
+- 	set path=%path%;D:\editors\vim\vim74
+- 
+- That's it!
+- 
+- 
+- Extra remarks:
+- 
+- - To avoid confusion between distributed files of different versions and your
+-   own modified vim scripts, it is recommended to use this directory layout:
+-   ("C:\vim" is used here as the root, replace with the path you use)
+-   Your own files:
+- 	C:\vim\_vimrc			Your personal vimrc.
+- 	C:\vim\_viminfo			Dynamic info for 'viminfo'.
+- 	C:\vim\...			Other files you made.
+-   Distributed files:
+- 	C:\vim\vim74\vim.exe		The Vim version 7.4 executable.
+- 	C:\vim\vim74\doc\*.txt		The version 7.4 documentation files.
+- 	C:\vim\vim74\bugreport.vim	A Vim version 7.4 script.
+- 	C:\vim\vim74\...		Other version 7.4 distributed files.
+-   In this case the $VIM environment variable would be set like this:
+- 	set VIM=C:\vim
+- 
+- - You can put your Vim executable anywhere else.  If the executable is not
+-   with the other distributed Vim files, you should set $VIM.  The simplest is
+-   to add a line to your autoexec.bat.  Examples:
+- 	set VIM=c:\vim
+- 	set VIM=d:\editors\vim
+- 
+- For further information, type this inside Vim:
+- 	:help os2
+--- 1,5 ----
+  README_os2.txt for version 7.4 of Vim: Vi IMproved.
+  
+! This file used to explain the installation of Vim on OS/2 systems.
+! However, support for OS/2 has been removed in patch 7.4.1008.
+  See "README.txt" for general information about Vim.
+diff: ../vim-7.4.1015/testdir/todos.vim: No such file or directory
+diff: testdir/todos.vim: No such file or directory
+*** ../vim-7.4.1015/src/xxd/Make_os2.mak	2010-05-15 13:04:06.000000000 +0200
+--- src/xxd/Make_os2.mak	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,11 ****
+- # A very (if most the most) simplistic Makefile for OS/2
+- 
+- CC=gcc
+- CFLAGS=-O2 -fno-strength-reduce -DOS2
+- 
+- xxd.exe: xxd.c
+- 	$(CC) $(CFLAGS) -s -o $@ $<
+- 
+- clean:
+- 	- del xxd.o
+- 	- del xxd.exe
+--- 0 ----
+*** ../vim-7.4.1015/src/version.c	2015-12-31 22:11:40.263983436 +0100
+--- src/version.c	2015-12-31 22:33:33.257652688 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1016,
+  /**/
+
+-- 
+MESKIMEN'S LAW
+    There's never time to do it right, but always time to do it over.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

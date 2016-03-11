@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1387
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1387
+Problem:    Win16 docs still referenced.
+Solution:   Remove Win16 files from the docs Makefile. (Kenichi Ito)
+Files:      runtime/doc/Makefile
+
+
+*** ../vim-7.4.1386/runtime/doc/Makefile	2016-01-28 22:36:15.056065002 +0100
+--- runtime/doc/Makefile	2016-02-22 20:04:06.978559716 +0100
+***************
+*** 32,38 ****
+  	ft_ada.txt \
+  	ft_sql.txt \
+  	gui.txt \
+- 	gui_w16.txt \
+  	gui_w32.txt \
+  	gui_x11.txt \
+  	hangulin.txt \
+--- 32,37 ----
+***************
+*** 166,172 ****
+  	ft_ada.html \
+  	ft_sql.html \
+  	gui.html \
+- 	gui_w16.html \
+  	gui_w32.html \
+  	gui_x11.html \
+  	hangulin.html \
+--- 166,171 ----
+***************
+*** 386,394 ****
+  russian.txt:
+  	touch russian.txt
+  
+- gui_w16.txt:
+- 	touch gui_w16.txt
+- 
+  gui_w32.txt:
+  	touch gui_w32.txt
+  
+--- 386,391 ----
+*** ../vim-7.4.1386/src/version.c	2016-02-22 11:39:24.180069361 +0100
+--- src/version.c	2016-02-22 20:04:57.758037247 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1387,
+  /**/
+
+-- 
+ARTHUR:  Bloody peasant!
+DENNIS:  Oh, what a give away.  Did you hear that, did you hear that, eh?
+         That's what I'm on about -- did you see him repressing me, you saw it
+         didn't you?
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

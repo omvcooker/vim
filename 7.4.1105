@@ -1,0 +1,149 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1105
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1105
+Problem:    When using slices there is a mixup of variable name and namespace.
+Solution:   Recognize variables that can't be a namespace. (Hirohito Higashi)
+Files:      src/eval.c, src/testdir/test_eval.in, src/testdir/test_eval.ok
+
+
+*** ../vim-7.4.1104/src/eval.c	2016-01-16 15:40:04.698704693 +0100
+--- src/eval.c	2016-01-16 16:43:16.634110573 +0100
+***************
+*** 115,120 ****
+--- 115,122 ----
+  static char *e_float_as_string = N_("E806: using Float as a String");
+  #endif
+  
++ #define NAMESPACE_CHAR	(char_u *)"abglstvw"
++ 
+  static dictitem_T	globvars_var;		/* variable used for g: */
+  #define globvarht globvardict.dv_hashtab
+  
+***************
+*** 20666,20672 ****
+  
+      /* Find the end of the name. */
+      for (p = *arg; eval_isnamec(*p); ++p)
+! 	;
+      if (p == *arg)	    /* no name found */
+  	return 0;
+  
+--- 20668,20684 ----
+  
+      /* Find the end of the name. */
+      for (p = *arg; eval_isnamec(*p); ++p)
+!     {
+! 	if (*p == ':')
+! 	{
+! 	    /* "s:" is start of "s:var", but "n:" is not and can be used in
+! 	     * slice "[n:]".  Also "xx:" is not a namespace. */
+! 	    len = (int)(p - *arg);
+! 	    if ((len == 1 && vim_strchr(NAMESPACE_CHAR, **arg) == NULL)
+! 		    || len > 1)
+! 		break;
+! 	}
+!     }
+      if (p == *arg)	    /* no name found */
+  	return 0;
+  
+***************
+*** 20766,20771 ****
+--- 20778,20784 ----
+      int		mb_nest = 0;
+      int		br_nest = 0;
+      char_u	*p;
++     int		len;
+  
+      if (expr_start != NULL)
+      {
+***************
+*** 20801,20806 ****
+--- 20814,20828 ----
+  	    if (*p == NUL)
+  		break;
+  	}
++ 	else if (br_nest == 0 && mb_nest == 0 && *p == ':')
++ 	{
++ 	    /* "s:" is start of "s:var", but "n:" is not and can be used in
++ 	     * slice "[n:]".  Also "xx:" is not a namespace. */
++ 	    len = (int)(p - arg);
++ 	    if ((len == 1 && vim_strchr(NAMESPACE_CHAR, *arg) == NULL)
++ 		    || len > 1)
++ 		break;
++ 	}
+  
+  	if (mb_nest == 0)
+  	{
+*** ../vim-7.4.1104/src/testdir/test_eval.in	2015-02-03 16:07:44.193584399 +0100
+--- src/testdir/test_eval.in	2016-01-16 16:28:28.807632920 +0100
+***************
+*** 218,223 ****
+--- 218,241 ----
+  0:call setpos('.', sp)
+  jyl:$put
+  :"
++ :" substring and variable name
++ :let str = 'abcdef'
++ :let n = 3
++ :$put =str[n:]
++ :$put =str[:n]
++ :$put =str[n:n]
++ :unlet n
++ :let nn = 3
++ :$put =str[nn:]
++ :$put =str[:nn]
++ :$put =str[nn:nn]
++ :unlet nn
++ :let b:nn = 4
++ :$put =str[b:nn:]
++ :$put =str[:b:nn]
++ :$put =str[b:nn:b:nn]
++ :unlet b:nn
++ :"
+  :/^start:/+1,$wq! test.out
+  :" vim: et ts=4 isk-=\: fmr=???,???
+  :call getchar()
+*** ../vim-7.4.1104/src/testdir/test_eval.ok	2015-02-03 16:07:44.193584399 +0100
+--- src/testdir/test_eval.ok	2016-01-16 16:32:18.677167326 +0100
+***************
+*** 351,353 ****
+--- 351,362 ----
+  Vim(call):E116: Invalid arguments for function append
+  {{{1 getcurpos/setpos
+  6
++ def
++ abcd
++ d
++ def
++ abcd
++ d
++ ef
++ abcde
++ e
+*** ../vim-7.4.1104/src/version.c	2016-01-16 16:20:23.716823201 +0100
+--- src/version.c	2016-01-16 16:27:31.556247014 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1105,
+  /**/
+
+-- 
+BEDEVERE: Wait.  Wait ... tell me, what also floats on water?
+ALL:      Bread?  No, no, no.  Apples .... gravy ... very small rocks ...
+ARTHUR:   A duck.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

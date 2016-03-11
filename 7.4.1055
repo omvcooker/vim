@@ -1,0 +1,105 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1055
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1055
+Problem:    Running "make newtests" in src/testdir has no output.
+Solution:   List the messages file when a test fails. (Christian Brabandt)
+            Update the list of tests.
+Files:      src/Makefile, src/testdir/Makefile
+
+
+*** ../vim-7.4.1054/src/Makefile	2016-01-01 17:20:00.720657954 +0100
+--- src/Makefile	2016-01-06 21:19:02.475907629 +0100
+***************
+*** 1962,1967 ****
+--- 1962,1968 ----
+  	test_tagcase \
+  	test_textobjects \
+  	test_utf8 \
++ 	test_wordcount \
+  	test_writefile \
+  	test2 test3 test4 test5 test6 test7 test8 test9 \
+  	test10 test11 test12 test13 test14 test15 test16 test17 test18 test19 \
+***************
+*** 1977,1987 ****
+--- 1978,1992 ----
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+  test_assert \
++ 	test_backspace_opt \
+  	test_cdo \
++ 	test_menu \
++ 	test_quickfix \
+  	test_searchpos \
+  	test_set \
+  	test_sort \
+  	test_undolevels \
++ 	test_unlet \
+  	test_viml \
+  	test_alot:
+  	cd testdir; rm -f $@.res test.log messages; $(MAKE) -f Makefile $@.res VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+***************
+*** 1991,1997 ****
+  	cat testdir/messages
+  
+  newtests:
+! 	cd testdir; rm -f $@.res test.log messages; $(MAKE) -f Makefile newtests VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  	@if test -f testdir/test.log; then \
+  		cat testdir/test.log; \
+  	fi
+--- 1996,2002 ----
+  	cat testdir/messages
+  
+  newtests:
+! 	cd testdir; rm -f $@.res test.log messages; $(MAKE) -f Makefile newtestssilent VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  	@if test -f testdir/test.log; then \
+  		cat testdir/test.log; \
+  	fi
+*** ../vim-7.4.1054/src/testdir/Makefile	2015-12-29 14:26:51.831787607 +0100
+--- src/testdir/Makefile	2016-01-06 21:16:14.141299743 +0100
+***************
+*** 120,126 ****
+  # Limitation: Only works with the +eval feature.
+  RUN_VIMTEST = VIMRUNTIME=$(SCRIPTSOURCE); export VIMRUNTIME; $(VALGRIND) $(VIMPROG) -f -u unix.vim -U NONE --noplugin
+  
+! newtests: $(NEW_TESTS)
+  
+  .vim.res:
+  	$(RUN_VIMTEST) -u NONE -S runtest.vim $*.vim
+--- 120,130 ----
+  # Limitation: Only works with the +eval feature.
+  RUN_VIMTEST = VIMRUNTIME=$(SCRIPTSOURCE); export VIMRUNTIME; $(VALGRIND) $(VIMPROG) -f -u unix.vim -U NONE --noplugin
+  
+! newtests: newtestssilent
+! 	@/bin/sh -c "if test -f messages && grep -q 'FAILED' messages; then cat messages && cat test.log; fi"
+! 
+! newtestssilent: $(NEW_TESTS)
+! 
+  
+  .vim.res:
+  	$(RUN_VIMTEST) -u NONE -S runtest.vim $*.vim
+*** ../vim-7.4.1054/src/version.c	2016-01-05 22:04:25.741036054 +0100
+--- src/version.c	2016-01-06 20:48:05.162371882 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1055,
+  /**/
+
+-- 
+It is illegal to rob a bank and then shoot at the bank teller with a water
+pistol.
+		[real standing law in Louisana, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,189 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1170
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1170 (after 7.4.1169)
+Problem:    Missing changes in src/Makefile, Filelist.
+Solution:   Add the missing changes.
+Files:      Filelist, src/Makefile
+
+
+*** ../vim-7.4.1169/Filelist	2016-01-23 19:45:48.626931291 +0100
+--- Filelist	2016-01-24 20:38:29.960715750 +0100
+***************
+*** 13,18 ****
+--- 13,19 ----
+  		src/ascii.h \
+  		src/blowfish.c \
+  		src/buffer.c \
++ 		src/channel.c \
+  		src/charset.c \
+  		src/crypt.c \
+  		src/crypt_zip.c \
+***************
+*** 39,46 ****
+  		src/gui_beval.h \
+  		src/hardcopy.c \
+  		src/hashtab.c \
+- 		src/keymap.h \
+  		src/json.c \
+  		src/macros.h \
+  		src/main.c \
+  		src/mark.c \
+--- 40,47 ----
+  		src/gui_beval.h \
+  		src/hardcopy.c \
+  		src/hashtab.c \
+  		src/json.c \
++ 		src/keymap.h \
+  		src/macros.h \
+  		src/main.c \
+  		src/mark.c \
+***************
+*** 114,119 ****
+--- 115,121 ----
+  		src/proto.h \
+  		src/proto/blowfish.pro \
+  		src/proto/buffer.pro \
++ 		src/proto/channel.pro \
+  		src/proto/charset.pro \
+  		src/proto/crypt.pro \
+  		src/proto/crypt_zip.pro \
+*** ../vim-7.4.1169/src/Makefile	2016-01-23 19:45:48.622931332 +0100
+--- src/Makefile	2016-01-24 18:17:34.700633749 +0100
+***************
+*** 462,467 ****
+--- 462,471 ----
+  # Uncomment this when you do not want the netbeans interface.
+  #CONF_OPT_NETBEANS = --disable-netbeans
+  
++ # CHANNEL - inter process communication. Same conditions as NetBeans.
++ # Uncomment this when you do not want inter process communication.
++ #CONF_OPT_CHANNEL = --disable-channel
++ 
+  # SNIFF - Include support for SNiFF+.
+  #CONF_OPT_SNIFF = --enable-sniff
+  
+***************
+*** 1536,1542 ****
+  
+  EXTRA_SRC = hangulin.c if_lua.c if_mzsch.c auto/if_perl.c if_perlsfio.c \
+  	    if_python.c if_python3.c if_tcl.c if_ruby.c if_sniff.c \
+! 	    gui_beval.c workshop.c wsdebug.c integration.c netbeans.c \
+  	    $(GRESOURCE_SRC)
+  
+  # Unittest files
+--- 1540,1547 ----
+  
+  EXTRA_SRC = hangulin.c if_lua.c if_mzsch.c auto/if_perl.c if_perlsfio.c \
+  	    if_python.c if_python3.c if_tcl.c if_ruby.c if_sniff.c \
+! 	    gui_beval.c workshop.c wsdebug.c integration.c \
+! 	    netbeans.c channel.c \
+  	    $(GRESOURCE_SRC)
+  
+  # Unittest files
+***************
+*** 1552,1559 ****
+  # Which files to check with lint.  Select one of these three lines.  ALL_SRC
+  # checks more, but may not work well for checking a GUI that wasn't configured.
+  # The perl sources also don't work well with lint.
+! LINT_SRC = $(BASIC_SRC) $(GUI_SRC) $(HANGULIN_SRC) $(PYTHON_SRC) $(PYTHON3_SRC) $(TCL_SRC) \
+! 	$(SNIFF_SRC) $(WORKSHOP_SRC) $(WSDEBUG_SRC) $(NETBEANS_SRC)
+  #LINT_SRC = $(SRC)
+  #LINT_SRC = $(ALL_SRC)
+  #LINT_SRC = $(BASIC_SRC)
+--- 1557,1566 ----
+  # Which files to check with lint.  Select one of these three lines.  ALL_SRC
+  # checks more, but may not work well for checking a GUI that wasn't configured.
+  # The perl sources also don't work well with lint.
+! LINT_SRC = $(BASIC_SRC) $(GUI_SRC) $(HANGULIN_SRC) \
+! 	   $(PYTHON_SRC) $(PYTHON3_SRC) $(TCL_SRC) \
+! 	   $(SNIFF_SRC) $(WORKSHOP_SRC) $(WSDEBUG_SRC) \
+! 	   $(NETBEANS_SRC) $(CHANNEL_SRC)
+  #LINT_SRC = $(SRC)
+  #LINT_SRC = $(ALL_SRC)
+  #LINT_SRC = $(BASIC_SRC)
+***************
+*** 1621,1626 ****
+--- 1628,1634 ----
+  	$(OS_EXTRA_OBJ) \
+  	$(WORKSHOP_OBJ) \
+  	$(NETBEANS_OBJ) \
++ 	$(CHANNEL_OBJ) \
+  	$(WSDEBUG_OBJ)
+  
+  OBJ = $(OBJ_COMMON) \
+***************
+*** 1689,1694 ****
+--- 1697,1703 ----
+  	gui_beval.pro \
+  	workshop.pro \
+  	netbeans.pro \
++ 	channel.pro \
+  	$(ALL_GUI_PRO) \
+  	$(TCL_PRO)
+  
+***************
+*** 1731,1737 ****
+  		$(CONF_OPT_CSCOPE) $(CONF_OPT_MULTIBYTE) $(CONF_OPT_INPUT) \
+  		$(CONF_OPT_OUTPUT) $(CONF_OPT_GPM) $(CONF_OPT_WORKSHOP) \
+  		$(CONF_OPT_SNIFF) $(CONF_OPT_FEAT) $(CONF_TERM_LIB) \
+! 		$(CONF_OPT_COMPBY) $(CONF_OPT_ACL)  $(CONF_OPT_NETBEANS) \
+  		$(CONF_ARGS) $(CONF_OPT_MZSCHEME) $(CONF_OPT_PLTHOME) \
+  		$(CONF_OPT_LUA) $(CONF_OPT_LUA_PREFIX) \
+  		$(CONF_OPT_SYSMOUSE); \
+--- 1740,1747 ----
+  		$(CONF_OPT_CSCOPE) $(CONF_OPT_MULTIBYTE) $(CONF_OPT_INPUT) \
+  		$(CONF_OPT_OUTPUT) $(CONF_OPT_GPM) $(CONF_OPT_WORKSHOP) \
+  		$(CONF_OPT_SNIFF) $(CONF_OPT_FEAT) $(CONF_TERM_LIB) \
+! 		$(CONF_OPT_COMPBY) $(CONF_OPT_ACL) $(CONF_OPT_NETBEANS) \
+! 		$(CONF_OPT_CHANNEL) \
+  		$(CONF_ARGS) $(CONF_OPT_MZSCHEME) $(CONF_OPT_PLTHOME) \
+  		$(CONF_OPT_LUA) $(CONF_OPT_LUA_PREFIX) \
+  		$(CONF_OPT_SYSMOUSE); \
+***************
+*** 2896,2901 ****
+--- 2906,2914 ----
+  objects/netbeans.o: netbeans.c
+  	$(CCC) -o $@ netbeans.c
+  
++ objects/channel.o: channel.c
++ 	$(CCC) -o $@ channel.c
++ 
+  Makefile:
+  	@echo The name of the makefile MUST be "Makefile" (with capital M)!!!!
+  
+***************
+*** 3337,3339 ****
+--- 3350,3356 ----
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+   globals.h farsi.h arabic.h version.h
++ objects/channel.o: channel.c vim.h auto/config.h feature.h os_unix.h \
++  auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
++  regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
++  globals.h farsi.h arabic.h version.h
+*** ../vim-7.4.1169/src/version.c	2016-01-24 20:36:18.870082307 +0100
+--- src/version.c	2016-01-24 20:39:12.852268663 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1170,
+  /**/
+
+-- 
+Micro$oft: where do you want to go today?
+    Linux: where do you want to go tomorrow?
+  FreeBSD: are you guys coming, or what?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

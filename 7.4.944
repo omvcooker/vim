@@ -1,0 +1,506 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.944
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.944
+Problem:    Writing tests for Vim script is hard.
+Solution:   Add assertEqual(), assertFalse() and assertTrue() functions.  Add
+            the v:errors variable.  Add the runtest script. Add a first new
+            style test script.
+Files:      src/eval.c, src/vim.h, src/misc2.c, src/testdir/Makefile,
+            src/testdir/runtest.vim, src/testdir/test_assert.vim,
+            runtime/doc/eval.txt
+
+
+*** ../vim-7.4.943/src/eval.c	2015-09-29 16:53:18.200480733 +0200
+--- src/eval.c	2015-11-29 16:45:12.155720718 +0100
+***************
+*** 368,373 ****
+--- 368,374 ----
+      {VV_NAME("option_new",	 VAR_STRING), VV_RO},
+      {VV_NAME("option_old",	 VAR_STRING), VV_RO},
+      {VV_NAME("option_type",	 VAR_STRING), VV_RO},
++     {VV_NAME("errors",		 VAR_LIST), 0},
+  };
+  
+  /* shorthand */
+***************
+*** 472,477 ****
+--- 473,481 ----
+  static void f_argidx __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_arglistid __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_argv __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_assertEqual __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_assertFalse __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_assertTrue __ARGS((typval_T *argvars, typval_T *rettv));
+  #ifdef FEAT_FLOAT
+  static void f_asin __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_atan __ARGS((typval_T *argvars, typval_T *rettv));
+***************
+*** 8068,8073 ****
+--- 8072,8080 ----
+      {"argidx",		0, 0, f_argidx},
+      {"arglistid",	0, 2, f_arglistid},
+      {"argv",		0, 1, f_argv},
++     {"assertEqual",	2, 3, f_assertEqual},
++     {"assertFalse",	1, 2, f_assertFalse},
++     {"assertTrue",	1, 2, f_assertTrue},
+  #ifdef FEAT_FLOAT
+      {"asin",		1, 1, f_asin},	/* WJMc */
+      {"atan",		1, 1, f_atan},
+***************
+*** 9124,9129 ****
+--- 9131,9243 ----
+  					       alist_name(&ARGLIST[idx]), -1);
+  }
+  
++ static void assertError __ARGS((garray_T *gap));
++ static void prepareForAssertError __ARGS((garray_T*gap));
++ static void assertBool __ARGS((typval_T *argvars, int isTrue));
++ 
++ /*
++  * Add an assert error to v:errors.
++  */
++     static void
++ assertError(gap)
++     garray_T	*gap;
++ {
++     struct vimvar   *vp = &vimvars[VV_ERRORS];
++ 
++     if (vp->vv_type != VAR_LIST || vimvars[VV_ERRORS].vv_list == NULL)
++ 	/* Make sure v:errors is a list. */
++ 	set_vim_var_list(VV_ERRORS, list_alloc());
++     list_append_string(vimvars[VV_ERRORS].vv_list, gap->ga_data, gap->ga_len);
++ }
++ 
++     static void
++ prepareForAssertError(gap)
++     garray_T	*gap;
++ {
++     char buf[NUMBUFLEN];
++ 
++     ga_init2(gap, 1, 100);
++     ga_concat(gap, sourcing_name);
++     sprintf(buf, " line %ld", (long)sourcing_lnum);
++     ga_concat(gap, (char_u *)buf);
++ }
++ 
++ /*
++  * "assertEqual(expected, actual[, msg])" function
++  */
++     static void
++ f_assertEqual(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv UNUSED;
++ {
++     garray_T	ga;
++     char_u	*tofree;
++     char_u	numbuf[NUMBUFLEN];
++ 
++     if (!tv_equal(&argvars[0], &argvars[1], FALSE, FALSE))
++     {
++ 	prepareForAssertError(&ga);
++ 	ga_concat(&ga, (char_u *)": Expected ");
++ 	ga_concat(&ga, tv2string(&argvars[0], &tofree, numbuf, 0));
++ 	vim_free(tofree);
++ 	ga_concat(&ga, (char_u *)" but got ");
++ 	ga_concat(&ga, tv2string(&argvars[1], &tofree, numbuf, 0));
++ 	vim_free(tofree);
++ 	assertError(&ga);
++ 	ga_clear(&ga);
++     }
++ }
++ 
++     static void
++ assertBool(argvars, isTrue)
++     typval_T	*argvars;
++     int		isTrue;
++ {
++     int		error = FALSE;
++     garray_T	ga;
++     char_u	*tofree;
++     char_u	numbuf[NUMBUFLEN];
++ 
++     if (argvars[0].v_type != VAR_NUMBER
++ 	    || (get_tv_number_chk(&argvars[0], &error) == 0) == isTrue
++ 	    || error)
++     {
++ 	prepareForAssertError(&ga);
++ 	ga_concat(&ga, (char_u *)": Expected ");
++ 	if (isTrue)
++ 	    ga_concat(&ga, (char_u *)"True ");
++ 	else
++ 	    ga_concat(&ga, (char_u *)"False ");
++ 	ga_concat(&ga, (char_u *)"but got ");
++ 	ga_concat(&ga, tv2string(&argvars[0], &tofree, numbuf, 0));
++ 	vim_free(tofree);
++ 	assertError(&ga);
++ 	ga_clear(&ga);
++     }
++ }
++ 
++ /*
++  * "assertFalse(actual[, msg])" function
++  */
++     static void
++ f_assertFalse(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv UNUSED;
++ {
++     assertBool(argvars, FALSE);
++ }
++ 
++ /*
++  * "assertTrue(actual[, msg])" function
++  */
++     static void
++ f_assertTrue(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv UNUSED;
++ {
++     assertBool(argvars, TRUE);
++ }
++ 
+  #ifdef FEAT_FLOAT
+  /*
+   * "asin()" function
+*** ../vim-7.4.943/src/vim.h	2015-07-17 17:38:00.567399623 +0200
+--- src/vim.h	2015-11-29 14:53:31.936054759 +0100
+***************
+*** 1902,1908 ****
+  #define VV_OPTION_NEW   59
+  #define VV_OPTION_OLD   60
+  #define VV_OPTION_TYPE  61
+! #define VV_LEN		62	/* number of v: vars */
+  
+  #ifdef FEAT_CLIPBOARD
+  
+--- 1902,1909 ----
+  #define VV_OPTION_NEW   59
+  #define VV_OPTION_OLD   60
+  #define VV_OPTION_TYPE  61
+! #define VV_ERRORS	62
+! #define VV_LEN		63	/* number of v: vars */
+  
+  #ifdef FEAT_CLIPBOARD
+  
+*** ../vim-7.4.943/src/misc2.c	2015-11-10 19:04:18.729542221 +0100
+--- src/misc2.c	2015-11-29 15:59:56.977106043 +0100
+***************
+*** 2092,2097 ****
+--- 2092,2098 ----
+  
+  /*
+   * Concatenate a string to a growarray which contains characters.
++  * When "s" is NULL does not do anything.
+   * Note: Does NOT copy the NUL at the end!
+   */
+      void
+***************
+*** 2099,2106 ****
+      garray_T	*gap;
+      char_u	*s;
+  {
+!     int    len = (int)STRLEN(s);
+  
+      if (ga_grow(gap, len) == OK)
+      {
+  	mch_memmove((char *)gap->ga_data + gap->ga_len, s, (size_t)len);
+--- 2100,2110 ----
+      garray_T	*gap;
+      char_u	*s;
+  {
+!     int    len;
+  
++     if (s == NULL)
++ 	return;
++     len = (int)STRLEN(s);
+      if (ga_grow(gap, len) == OK)
+      {
+  	mch_memmove((char *)gap->ga_data + gap->ga_len, s, (size_t)len);
+*** ../vim-7.4.943/src/testdir/Makefile	2015-11-28 14:29:20.344223803 +0100
+--- src/testdir/Makefile	2015-11-29 16:08:44.823408011 +0100
+***************
+*** 68,82 ****
+  		test_utf8.out \
+  		test_writefile.out
+  
+  SCRIPTS_GUI = test16.out
+  
+  SCRIPTS_BENCH = bench_re_freeze.out
+  
+! .SUFFIXES: .in .out
+  
+! nongui:	nolog $(SCRIPTS) report
+  
+! gui:	nolog $(SCRIPTS) $(SCRIPTS_GUI) report
+  
+  benchmark: $(SCRIPTS_BENCH)
+  
+--- 68,84 ----
+  		test_utf8.out \
+  		test_writefile.out
+  
++ NEW_TESTS = test_assert.res
++ 
+  SCRIPTS_GUI = test16.out
+  
+  SCRIPTS_BENCH = bench_re_freeze.out
+  
+! .SUFFIXES: .in .out .res .vim
+  
+! nongui:	nolog $(SCRIPTS) newtests report
+  
+! gui:	nolog $(SCRIPTS) $(SCRIPTS_GUI) newtests report
+  
+  benchmark: $(SCRIPTS_BENCH)
+  
+***************
+*** 95,101 ****
+  RUN_VIM = VIMRUNTIME=$(SCRIPTSOURCE); export VIMRUNTIME; $(VALGRIND) $(VIMPROG) -u unix.vim -U NONE --noplugin -s dotest.in
+  
+  clean:
+! 	-rm -rf *.out *.failed *.rej *.orig test.log $(RM_ON_RUN) $(RM_ON_START) valgrind.*
+  
+  test1.out: test1.in
+  	-rm -rf $*.failed $(RM_ON_RUN) $(RM_ON_START) wrongtermsize
+--- 97,103 ----
+  RUN_VIM = VIMRUNTIME=$(SCRIPTSOURCE); export VIMRUNTIME; $(VALGRIND) $(VIMPROG) -u unix.vim -U NONE --noplugin -s dotest.in
+  
+  clean:
+! 	-rm -rf *.out *.failed *.res *.rej *.orig test.log $(RM_ON_RUN) $(RM_ON_START) valgrind.*
+  
+  test1.out: test1.in
+  	-rm -rf $*.failed $(RM_ON_RUN) $(RM_ON_START) wrongtermsize
+***************
+*** 157,159 ****
+--- 159,172 ----
+  
+  nolog:
+  	-rm -f test.log
++ 
++ 
++ # New style of tests uses Vim script with assert calls.  These are easier
++ # to write and a lot easier to read and debug.
++ # Limitation: Only works with the +eval feature.
++ RUN_VIMTEST = VIMRUNTIME=$(SCRIPTSOURCE); export VIMRUNTIME; $(VALGRIND) $(VIMPROG) -u unix.vim -U NONE --noplugin
++ 
++ newtests: $(NEW_TESTS)
++ 
++ .vim.res:
++ 	$(RUN_VIMTEST) -u runtest.vim $*.vim
+*** ../vim-7.4.943/src/testdir/runtest.vim	2015-11-29 17:31:53.669293134 +0100
+--- src/testdir/runtest.vim	2015-11-29 17:27:48.991967016 +0100
+***************
+*** 0 ****
+--- 1,97 ----
++ " This script is sourced while editing the .vim file with the tests.
++ " When the script is successful the .res file will be created.
++ " Errors are appended to the test.log file.
++ "
++ " The test script may contain anything, only functions that start with
++ " "Test_" are special.  These will be invoked and should contain assert
++ " functions.  See test_assert.vim for an example.
++ "
++ " It is possible to source other files that contain "Test_" functions.  This
++ " can speed up testing, since Vim does not need to restart.  But be careful
++ " that the tests do not interfere with each other.
++ "
++ " If an error cannot be detected properly with an assert function add the
++ " error to the v:errors list:
++ "   call add(v:errors, 'test foo failed: Cannot find xyz')
++ "
++ " If preparation for each Test_ function is needed, define a SetUp function.
++ " It will be called before each Test_ function.
++ "
++ " If cleanup after each Test_ function is needed, define a TearDown function.
++ " It will be called after each Test_ function.
++ 
++ " Without the +eval feature we can't run these tests, bail out.
++ if 0
++   quit!
++ endif
++ 
++ " Check that the screen size is at least 24 x 80 characters.
++ if &lines < 24 || &columns < 80 
++   let error = 'Screen size too small! Tests require at least 24 lines with 80 characters'
++   echoerr error
++   split test.log
++   $put =error
++   w
++   cquit
++ endif
++ 
++ " Source the test script.  First grab the file name, in case the script
++ " navigates away.
++ let testname = expand('%')
++ source %
++ 
++ " Locate Test_ functions and execute them.
++ redir @q
++ function /^Test_
++ redir END
++ let tests = split(substitute(@q, 'function \(\k*()\)', '\1', 'g'))
++ 
++ let done = 0
++ let fail = 0
++ let errors = []
++ for test in tests
++   if exists("*SetUp")
++     call SetUp()
++   endif
++ 
++   let done += 1
++   try
++     exe 'call ' . test
++   catch
++     let fail += 1
++     call add(v:errors, 'Caught exception in ' . test . ': ' . v:exception . ' @ ' . v:throwpoint)
++   endtry
++ 
++   if len(v:errors) > 0
++     let fail += 1
++     call add(errors, 'Found errors in ' . test . ':')
++     call extend(errors, v:errors)
++     let v:errors = []
++   endif
++ 
++   if exists("*TearDown")
++     call TearDown()
++   endif
++ endfor
++ 
++ if fail == 0
++   " Success, create the .res file so that make knows it's done.
++   split %:r.res
++   write
++ endif
++ 
++ if len(errors) > 0
++   " Append errors to test.log
++   split test.log
++   call append(line('$'), '')
++   call append(line('$'), 'From ' . testname . ':')
++   call append(line('$'), errors)
++   write
++ endif
++ 
++ echo 'Executed ' . done . (done > 1 ? ' tests': ' test')
++ if fail > 0
++   echo fail . ' FAILED'
++ endif
++ 
++ qall!
+*** ../vim-7.4.943/src/testdir/test_assert.vim	2015-11-29 17:31:53.677293047 +0100
+--- src/testdir/test_assert.vim	2015-11-29 17:29:43.674713619 +0100
+***************
+*** 0 ****
+--- 1,19 ----
++ " Test that the methods used for testing work.
++ 
++ func Test_assertFalse()
++   call assertFalse(0)
++ endfunc
++ 
++ func Test_assertTrue()
++   call assertTrue(1)
++   call assertTrue(123)
++ endfunc
++ 
++ func Test_assertEqual()
++   let s = 'foo'
++   call assertEqual('foo', s)
++   let n = 4
++   call assertEqual(4, n)
++   let l = [1, 2, 3]
++   call assertEqual([1, 2, 3], l)
++ endfunc
+*** ../vim-7.4.943/runtime/doc/eval.txt	2015-08-11 14:26:03.586931222 +0200
+--- runtime/doc/eval.txt	2015-11-29 16:45:20.891626037 +0100
+***************
+*** 1379,1384 ****
+--- 1379,1393 ----
+  	:  ... handle error
+  <		"errmsg" also works, for backwards compatibility.
+  
++ 					*v:errors* *errors-variable*
++ v:errors	Errors found by assert functions, such as |assertTrue()|.
++ 		This is a list of strings.
++ 		The assert functions append an item when an assert fails.
++ 		To remove old results make it empty: >
++ 	:let v:errors = []
++ <		If v:errors is set to anything but a list it is made an empty
++ 		list by the assert function.
++ 
+  					*v:exception* *exception-variable*
+  v:exception	The value of the exception most recently caught and not
+  		finished.  See also |v:throwpoint| and |throw-variables|.
+***************
+*** 1735,1740 ****
+--- 1746,1754 ----
+  				Number	argument list id
+  argv( {nr})			String	{nr} entry of the argument list
+  argv( )				List	the argument list
++ assertEqual( {exp}, {act})  	none    assert that {exp} equals {act}
++ assertFalse( {actual})		none    assert that {actual} is false
++ assertTrue( {actual})		none    assert that {actual} is true
+  asin( {expr})			Float	arc sine of {expr}
+  atan( {expr})			Float	arc tangent of {expr}
+  atan2( {expr}, {expr})		Float   arc tangent of {expr1} / {expr2}
+***************
+*** 2152,2157 ****
+--- 2166,2196 ----
+  <		Without the {nr} argument a |List| with the whole |arglist| is
+  		returned.
+  
++ 							*assertEqual()*
++ assertEqual({expected}, {actual})
++ 		When {expected} and {actual} are not equal an error message is
++ 		added to |v:errors|.
++ 		There is no automatic conversion, the String "4" is different
++ 		from the Number 4.  And the number 4 is different from the
++ 		Float 4.0.  The value of 'ignorecase' is not used here, case
++ 		always matters.
++ 		Example: >
++ 	assertEqual('foo', 'bar')
++ <		Will result in a string to be added to |v:errors|:
++ 	test.vim line 12: Expected 'foo' but got 'bar' ~
++ 
++ assertFalse({actual})					*assertFalse()*
++ 		When {actual} is not false an error message is added to
++ 		|v:errors|, like with |assertEqual()|..
++ 		A value is false when it is zero. When "{actual}" is not a
++ 		number the assert fails.
++ 
++ assertTrue({actual})					*assertTrue()*
++ 		When {actual} is not true an error message is added to
++ 		|v:errors|, like with |assertEqual()|..
++ 		A value is true when it is a non-zeron number.  When {actual}
++ 		is not a number the assert fails.
++ 
+  asin({expr})						*asin()*
+  		Return the arc sine of {expr} measured in radians, as a |Float|
+  		in the range of [-pi/2, pi/2].
+*** ../vim-7.4.943/src/version.c	2015-11-28 14:29:20.348223759 +0100
+--- src/version.c	2015-11-29 17:30:53.717948204 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     944,
+  /**/
+
+-- 
+You are not really successful until someone claims he sat
+beside you in school.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

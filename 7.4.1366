@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1366
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1366
+Problem:    Typo in test and resulting error in test result.
+Solution:   Fix the typo and correct the result. (James McCoy, close #650)
+Files:      src/testdir/test_charsearch.in, src/testdir/test_charsearch.ok
+
+
+*** ../vim-7.4.1365/src/testdir/test_charsearch.in	2016-01-03 22:16:16.004130318 +0100
+--- src/testdir/test_charsearch.in	2016-02-20 15:05:14.589142968 +0100
+***************
+*** 14,20 ****
+  /^Z
+  ylfep:call setcharsearch({'char': 'k'})
+  ;p:call setcharsearch({'forward': 0})
+! $;p:call setcharseearch({'until'}: 1})
+  ;;p:
+  :/^X/,$w! test.out
+  :qa!
+--- 14,21 ----
+  /^Z
+  ylfep:call setcharsearch({'char': 'k'})
+  ;p:call setcharsearch({'forward': 0})
+! $;p:call setcharsearch({'until': 1})
+! :set cpo-=;
+  ;;p:
+  :/^X/,$w! test.out
+  :qa!
+*** ../vim-7.4.1365/src/testdir/test_charsearch.ok	2015-08-11 14:26:03.594931131 +0200
+--- src/testdir/test_charsearch.ok	2016-02-20 15:05:14.589142968 +0100
+***************
+*** 1,3 ****
+  XabcdeXfghijkeXmnopqreXtuvwxyz
+  YabcdeYfghiYjkeYmnopqreYtuvwxyz
+! ZabcdeZfghijkZemnokZqretkZvwxyz
+--- 1,3 ----
+  XabcdeXfghijkeXmnopqreXtuvwxyz
+  YabcdeYfghiYjkeYmnopqreYtuvwxyz
+! ZabcdeZfghijkZZemnokqretkZvwxyz
+*** ../vim-7.4.1365/src/version.c	2016-02-20 14:41:36.503890373 +0100
+--- src/version.c	2016-02-20 15:06:13.956526673 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1366,
+  /**/
+
+-- 
+'I generally avoid temptation unless I can't resist it."
+		-- Mae West
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

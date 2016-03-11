@@ -1,0 +1,526 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1203
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1203
+Problem:    Still more files still using __ARGS.
+Solution:   Remove __ARGS in really the last files.
+Files:      src/proto/if_mzsch.pro, src/if_mzsch.c, src/vim.h,
+            src/proto/gui_gtk_gresources.pro, src/proto/gui_mac.pro,
+            src/proto/if_ole.pro, src/proto/os_qnx.pro,
+            src/Makefile
+
+
+*** ../vim-7.4.1202/src/proto/if_mzsch.pro	2013-01-30 14:32:36.000000000 +0100
+--- src/proto/if_mzsch.pro	2016-01-30 13:10:56.363888174 +0100
+***************
+*** 1,20 ****
+  /* if_mzsch.c */
+! int mzscheme_enabled __ARGS((int verbose));
+! void mzscheme_end __ARGS((void));
+! void ex_mzscheme __ARGS((exarg_T *eap));
+! void ex_mzfile __ARGS((exarg_T *eap));
+! void mzscheme_buffer_free __ARGS((buf_T *buf));
+! void mzscheme_window_free __ARGS((win_T *win));
+! char *mzscheme_version __ARGS((void));
+  void raise_vim_exn(const char *add_info);
+! void raise_if_error __ARGS((void));
+! buf_T *get_valid_buffer __ARGS((void *));
+! win_T *get_valid_window __ARGS((void *));
+! void mzvim_check_threads __ARGS((void));
+! void mzvim_reset_timer __ARGS((void));
+! void *mzvim_eval_string __ARGS((char_u *str));
+! int mzthreads_allowed __ARGS((void));
+! int mzscheme_main __ARGS((int argc, char **argv));
+! void do_mzeval __ARGS((char_u *str, typval_T *rettv));
+! int vim_main2 __ARGS((int argc, char **argv));
+  /* vim: set ft=c : */
+--- 1,17 ----
+  /* if_mzsch.c */
+! int mzscheme_enabled(int verbose);
+! void mzvim_check_threads(void);
+! void mzvim_reset_timer(void);
+! void mzscheme_end(void);
+! int mzscheme_main(int argc, char **argv);
+! void mzscheme_buffer_free(buf_T *buf);
+! void mzscheme_window_free(win_T *win);
+! void ex_mzscheme(exarg_T *eap);
+! void ex_mzfile(exarg_T *eap);
+! void do_mzeval(char_u *str, typval_T *rettv);
+  void raise_vim_exn(const char *add_info);
+! void raise_if_error(void);
+! buf_T *get_valid_buffer(void *obj);
+! win_T *get_valid_window(void *obj);
+! int mzthreads_allowed(void);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1202/src/if_mzsch.c	2016-01-24 13:58:36.693212344 +0100
+--- src/if_mzsch.c	2016-01-30 13:07:07.014268844 +0100
+***************
+*** 29,34 ****
+--- 29,47 ----
+   * depend". */
+  #if defined(FEAT_MZSCHEME) || defined(PROTO)
+  
++ #ifdef PROTO
++ typedef int Scheme_Object;
++ typedef int Scheme_Closed_Prim;
++ typedef int Scheme_Env;
++ typedef int Scheme_Hash_Table;
++ typedef int Scheme_Type;
++ typedef int Scheme_Thread;
++ typedef int Scheme_Closed_Prim;
++ typedef int mzshort;
++ typedef int Scheme_Prim;
++ typedef int HINSTANCE;
++ #endif
++ 
+  /*
+   * scheme_register_tls_space is only available on 32-bit Windows until
+   * racket-6.3.  See
+***************
+*** 248,254 ****
+  # define BUFFER_REF(buf) (vim_mz_buffer *)((buf)->b_mzscheme_ref)
+  #endif
+  
+! #ifdef DYNAMIC_MZSCHEME
+  static Scheme_Object *dll_scheme_eof;
+  static Scheme_Object *dll_scheme_false;
+  static Scheme_Object *dll_scheme_void;
+--- 261,267 ----
+  # define BUFFER_REF(buf) (vim_mz_buffer *)((buf)->b_mzscheme_ref)
+  #endif
+  
+! #if defined(DYNAMIC_MZSCHEME) || defined(PROTO)
+  static Scheme_Object *dll_scheme_eof;
+  static Scheme_Object *dll_scheme_false;
+  static Scheme_Object *dll_scheme_void;
+***************
+*** 406,411 ****
+--- 419,426 ----
+  static void (*dll_scheme_set_config_path)(Scheme_Object *p);
+  # endif
+  
++ #if defined(DYNAMIC_MZSCHEME) /* not when defined(PROTO) */
++ 
+  /* arrays are imported directly */
+  # define scheme_eof dll_scheme_eof
+  # define scheme_false dll_scheme_false
+***************
+*** 539,544 ****
+--- 554,561 ----
+  #  endif
+  # endif
+  
++ #endif
++ 
+  typedef struct
+  {
+      char    *name;
+***************
+*** 866,872 ****
+  }
+  #endif
+  
+! #ifdef MZSCHEME_GUI_THREADS
+  static void setup_timer(void);
+  static void remove_timer(void);
+  
+--- 883,889 ----
+  }
+  #endif
+  
+! #if defined(MZSCHEME_GUI_THREADS) || defined(PROTO)
+  static void setup_timer(void);
+  static void remove_timer(void);
+  
+*** ../vim-7.4.1202/src/vim.h	2016-01-29 23:20:35.313308119 +0100
+--- src/vim.h	2016-01-30 13:10:43.104025829 +0100
+***************
+*** 2319,2322 ****
+--- 2319,2327 ----
+  # define MAX_OPEN_CHANNELS 0
+  #endif
+  
++ #ifdef FEAT_MZSCHEME
++ /* this is in main.c, cproto can't handle it. */
++ int vim_main2(int argc, char **argv);
++ #endif
++ 
+  #endif /* VIM__H */
+*** ../vim-7.4.1202/src/proto/gui_gtk_gresources.pro	2015-12-29 18:52:33.348054385 +0100
+--- src/proto/gui_gtk_gresources.pro	2016-01-30 13:12:02.087205846 +0100
+***************
+*** 1,5 ****
+  /* auto/gui_gtk_gresources.c */
+! GResource *gui_gtk_get_resource __ARGS((void));
+! void gui_gtk_register_resource __ARGS((void));
+! void gui_gtk_unregister_resource __ARGS((void));
+  /* vim: set ft=c : */
+--- 1,5 ----
+  /* auto/gui_gtk_gresources.c */
+! GResource *gui_gtk_get_resource(void);
+! void gui_gtk_unregister_resource(void);
+! void gui_gtk_register_resource(void);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1202/src/proto/gui_mac.pro	2011-01-16 00:31:46.000000000 +0100
+--- src/proto/gui_mac.pro	2016-01-30 13:13:48.710098802 +0100
+***************
+*** 4,117 ****
+   * Mac specific prototypes
+   */
+  
+! pascal Boolean WaitNextEventWrp __ARGS((EventMask eventMask, EventRecord *theEvent, UInt32 sleep, RgnHandle mouseRgn));
+! pascal void gui_mac_scroll_action __ARGS((ControlHandle theControl, short partCode));
+  pascal void gui_mac_drag_thumb (ControlHandle theControl, short partCode);
+! void gui_mac_handle_event __ARGS((EventRecord *event));
+! void gui_mac_doMouseDown __ARGS((EventRecord *theEvent));
+! void gui_mac_do_key __ARGS((EventRecord *theEvent));
+! void gui_mac_handle_menu __ARGS((long menuChoice));
+! void gui_mac_focus_change __ARGS((EventRecord *event));
+! void gui_mac_update __ARGS((EventRecord *event));
+! short gui_mch_get_mac_menu_item_index __ARGS((vimmenu_T *menu, vimmenu_T *parent));
+! void gui_mch_set_blinking __ARGS((long wait, long on, long off));
+! void gui_mch_stop_blink __ARGS((void));
+! void gui_mch_start_blink __ARGS((void));
+! void gui_mch_getmouse __ARGS((int *x, int *y));
+! void gui_mch_setmouse __ARGS((int x, int y));
+! void gui_mch_prepare __ARGS((int *argc, char **argv));
+! int gui_mch_init_check __ARGS((void));
+! int gui_mch_init __ARGS((void));
+! void gui_mch_new_colors __ARGS((void));
+! int gui_mch_open __ARGS((void));
+! void gui_mch_exit __ARGS((int));
+! void gui_mch_set_winsize __ARGS((int width, int height, int min_width, int min_height, int base_width, int base_height));
+! int gui_mch_get_winpos __ARGS((int *x, int *y));
+! void gui_mch_set_winpos __ARGS((int x, int y));
+! void gui_mch_set_shellsize __ARGS((int width, int height, int min_width, int min_height, int base_width, int base_height, int direction));
+! void gui_mch_get_screen_dimensions __ARGS((int *screen_w, int *screen_h));
+! void gui_mch_set_text_area_pos __ARGS((int x, int y, int w, int h));
+! void gui_mch_enable_scrollbar __ARGS((scrollbar_T *sb, int flag));
+! void gui_mch_set_scrollbar_thumb __ARGS((scrollbar_T *sb, long val, long size, long max));
+! void gui_mch_set_scrollbar_pos __ARGS((scrollbar_T *sb, int x, int y, int w, int h));
+! void gui_mch_create_scrollbar __ARGS((scrollbar_T *sb, int orient));
+! void gui_mch_destroy_scrollbar __ARGS((scrollbar_T *sb));
+! int gui_mch_adjust_charheight __ARGS((void));
+! int gui_mch_init_font __ARGS((char_u *font_name, int fontset));
+! GuiFont gui_mch_get_font __ARGS((char_u *name, int giveErrorIfMissing));
+! char_u *gui_mch_get_fontname __ARGS((GuiFont font, char_u *name));
+! GuiFont gui_mac_find_font __ARGS((char_u *font_name));
+! void gui_mch_set_font __ARGS((GuiFont font));
+! int gui_mch_same_font __ARGS((GuiFont f1, GuiFont f2));
+! void gui_mch_free_font __ARGS((GuiFont font));
+! guicolor_T gui_mch_get_color __ARGS((char_u *name));
+! void gui_mch_set_fg_color __ARGS((guicolor_T color));
+! void gui_mch_set_bg_color __ARGS((guicolor_T color));
+! void gui_mch_set_sp_color __ARGS((guicolor_T color));
+! void gui_mch_draw_string __ARGS((int row, int col, char_u *s, int len, int flags));
+! int gui_mch_haskey __ARGS((char_u *name));
+! void gui_mch_beep __ARGS((void));
+! void gui_mch_flash __ARGS((int msec));
+! void gui_mch_invert_rectangle __ARGS((int r, int c, int nr, int nc));
+! void gui_mch_iconify __ARGS((void));
+! void gui_mch_settitle __ARGS((char_u *title, char_u *icon));
+! void gui_mch_draw_hollow_cursor __ARGS((guicolor_T color));
+! void gui_mch_draw_part_cursor __ARGS((int w, int h, guicolor_T color));
+! void gui_mch_update __ARGS((void));
+! int gui_mch_wait_for_chars __ARGS((int wtime));
+! void gui_mch_flush __ARGS((void));
+! void gui_mch_clear_block __ARGS((int row1, int col1, int row2, int col2));
+! void gui_mch_clear_all __ARGS((void));
+! void gui_mch_delete_lines __ARGS((int row, int num_lines));
+! void gui_mch_insert_lines __ARGS((int row, int num_lines));
+! void gui_mch_enable_menu __ARGS((int flag));
+! void gui_mch_set_menu_pos __ARGS((int x, int y, int w, int h));
+! /*void gui_mch_add_menu __ARGS((vimmenu_T *menu, vimmenu_T *parent, int idx));*/
+! void gui_mch_add_menu __ARGS((vimmenu_T *menu, int pos));
+! /*void gui_mch_add_menu_item __ARGS((vimmenu_T *menu, vimmenu_T *parent, int idx));*/
+! void gui_mch_add_menu_item __ARGS((vimmenu_T *menu, int idx));
+! void gui_mch_show_popupmenu __ARGS((vimmenu_T *menu));
+! void gui_mch_destroy_menu __ARGS((vimmenu_T *menu));
+! void gui_mch_menu_grey __ARGS((vimmenu_T *menu, int grey));
+! void gui_mch_menu_hidden __ARGS((vimmenu_T *menu, int hidden));
+! void gui_mch_draw_menubar __ARGS((void));
+! int gui_mch_get_lightness __ARGS((guicolor_T pixel));
+! long_u gui_mch_get_rgb __ARGS((guicolor_T pixel));
+! int gui_mch_get_mouse_x __ARGS((void));
+! int gui_mch_get_mouse_y __ARGS((void));
+! void gui_mch_setmouse __ARGS((int x, int y));
+! void gui_mch_show_popupmenu __ARGS((vimmenu_T *menu));
+! int gui_mch_dialog __ARGS((int type, char_u *title, char_u *message, char_u *buttons, int dfltbutton, char_u *textfield, int ex_cmd));
+! char_u *gui_mch_browse __ARGS((int saving, char_u *title, char_u *dflt, char_u *ext, char_u *initdir, char_u *filter));
+! void gui_mch_set_foreground __ARGS((void));
+! void gui_mch_show_tabline __ARGS((int showit));
+! int gui_mch_showing_tabline __ARGS((void));
+! void gui_mch_update_tabline __ARGS((void));
+! void gui_mch_set_curtab __ARGS((int nr));
+! 
+! char_u *C2Pascal_save __ARGS((char_u *Cstring));
+! char_u *C2Pascal_save_and_remove_backslash __ARGS((char_u *Cstring));
+! int_u EventModifiers2VimMouseModifiers __ARGS((EventModifiers macModifiers));
+! char_u **new_fnames_from_AEDesc __ARGS((AEDesc *theList, long *numFiles, OSErr *error));
+! 
+! 
+! void gui_request_selection __ARGS((void));
+! void gui_mch_lose_selection __ARGS((void));
+! int gui_mch_own_selection __ARGS((void));
+! void gui_mch_clear_selection __ARGS((void));
+! 
+! void gui_win_new_height __ARGS((win_T *wp));
+! void gui_win_comp_pos __ARGS((void));
+! void gui_win_free __ARGS((win_T *wp));
+! void gui_win_alloc __ARGS((win_T *wp));
+  void mch_post_buffer_write (buf_T *buf);
+  
+! void mch_errmsg __ARGS((char *str));
+! void mch_display_error __ARGS((void));
+! void clip_mch_lose_selection __ARGS((VimClipboard *cbd));
+! void clip_mch_request_selection __ARGS((VimClipboard *cbd));
+! void clip_mch_set_selection __ARGS((VimClipboard *cbd));
+! int clip_mch_own_selection __ARGS((VimClipboard *cbd));
+  
+  pascal	OSErr	FindProcessBySignature( const OSType targetType,
+  					const OSType targetCreator, ProcessSerialNumberPtr psnPtr );
+--- 4,117 ----
+   * Mac specific prototypes
+   */
+  
+! pascal Boolean WaitNextEventWrp(EventMask eventMask, EventRecord *theEvent, UInt32 sleep, RgnHandle mouseRgn);
+! pascal void gui_mac_scroll_action(ControlHandle theControl, short partCode);
+  pascal void gui_mac_drag_thumb (ControlHandle theControl, short partCode);
+! void gui_mac_handle_event(EventRecord *event);
+! void gui_mac_doMouseDown(EventRecord *theEvent);
+! void gui_mac_do_key(EventRecord *theEvent);
+! void gui_mac_handle_menu(long menuChoice);
+! void gui_mac_focus_change(EventRecord *event);
+! void gui_mac_update(EventRecord *event);
+! short gui_mch_get_mac_menu_item_index(vimmenu_T *menu, vimmenu_T *parent);
+! void gui_mch_set_blinking(long wait, long on, long off);
+! void gui_mch_stop_blink(void);
+! void gui_mch_start_blink(void);
+! void gui_mch_getmouse(int *x, int *y);
+! void gui_mch_setmouse(int x, int y);
+! void gui_mch_prepare(int *argc, char **argv);
+! int gui_mch_init_check(void);
+! int gui_mch_init(void);
+! void gui_mch_new_colors(void);
+! int gui_mch_open(void);
+! void gui_mch_exit(int);
+! void gui_mch_set_winsize(int width, int height, int min_width, int min_height, int base_width, int base_height);
+! int gui_mch_get_winpos(int *x, int *y);
+! void gui_mch_set_winpos(int x, int y);
+! void gui_mch_set_shellsize(int width, int height, int min_width, int min_height, int base_width, int base_height, int direction);
+! void gui_mch_get_screen_dimensions(int *screen_w, int *screen_h);
+! void gui_mch_set_text_area_pos(int x, int y, int w, int h);
+! void gui_mch_enable_scrollbar(scrollbar_T *sb, int flag);
+! void gui_mch_set_scrollbar_thumb(scrollbar_T *sb, long val, long size, long max);
+! void gui_mch_set_scrollbar_pos(scrollbar_T *sb, int x, int y, int w, int h);
+! void gui_mch_create_scrollbar(scrollbar_T *sb, int orient);
+! void gui_mch_destroy_scrollbar(scrollbar_T *sb);
+! int gui_mch_adjust_charheight(void);
+! int gui_mch_init_font(char_u *font_name, int fontset);
+! GuiFont gui_mch_get_font(char_u *name, int giveErrorIfMissing);
+! char_u *gui_mch_get_fontname(GuiFont font, char_u *name);
+! GuiFont gui_mac_find_font(char_u *font_name);
+! void gui_mch_set_font(GuiFont font);
+! int gui_mch_same_font(GuiFont f1, GuiFont f2);
+! void gui_mch_free_font(GuiFont font);
+! guicolor_T gui_mch_get_color(char_u *name);
+! void gui_mch_set_fg_color(guicolor_T color);
+! void gui_mch_set_bg_color(guicolor_T color);
+! void gui_mch_set_sp_color(guicolor_T color);
+! void gui_mch_draw_string(int row, int col, char_u *s, int len, int flags);
+! int gui_mch_haskey(char_u *name);
+! void gui_mch_beep(void);
+! void gui_mch_flash(int msec);
+! void gui_mch_invert_rectangle(int r, int c, int nr, int nc);
+! void gui_mch_iconify(void);
+! void gui_mch_settitle(char_u *title, char_u *icon);
+! void gui_mch_draw_hollow_cursor(guicolor_T color);
+! void gui_mch_draw_part_cursor(int w, int h, guicolor_T color);
+! void gui_mch_update(void);
+! int gui_mch_wait_for_chars(int wtime);
+! void gui_mch_flush(void);
+! void gui_mch_clear_block(int row1, int col1, int row2, int col2);
+! void gui_mch_clear_all(void);
+! void gui_mch_delete_lines(int row, int num_lines);
+! void gui_mch_insert_lines(int row, int num_lines);
+! void gui_mch_enable_menu(int flag);
+! void gui_mch_set_menu_pos(int x, int y, int w, int h);
+! /*void gui_mch_add_menu(vimmenu_T *menu, vimmenu_T *parent, int idx);*/
+! void gui_mch_add_menu(vimmenu_T *menu, int pos);
+! /*void gui_mch_add_menu_item(vimmenu_T *menu, vimmenu_T *parent, int idx);*/
+! void gui_mch_add_menu_item(vimmenu_T *menu, int idx);
+! void gui_mch_show_popupmenu(vimmenu_T *menu);
+! void gui_mch_destroy_menu(vimmenu_T *menu);
+! void gui_mch_menu_grey(vimmenu_T *menu, int grey);
+! void gui_mch_menu_hidden(vimmenu_T *menu, int hidden);
+! void gui_mch_draw_menubar(void);
+! int gui_mch_get_lightness(guicolor_T pixel);
+! long_u gui_mch_get_rgb(guicolor_T pixel);
+! int gui_mch_get_mouse_x(void);
+! int gui_mch_get_mouse_y(void);
+! void gui_mch_setmouse(int x, int y);
+! void gui_mch_show_popupmenu(vimmenu_T *menu);
+! int gui_mch_dialog(int type, char_u *title, char_u *message, char_u *buttons, int dfltbutton, char_u *textfield, int ex_cmd);
+! char_u *gui_mch_browse(int saving, char_u *title, char_u *dflt, char_u *ext, char_u *initdir, char_u *filter);
+! void gui_mch_set_foreground(void);
+! void gui_mch_show_tabline(int showit);
+! int gui_mch_showing_tabline(void);
+! void gui_mch_update_tabline(void);
+! void gui_mch_set_curtab(int nr);
+! 
+! char_u *C2Pascal_save(char_u *Cstring);
+! char_u *C2Pascal_save_and_remove_backslash(char_u *Cstring);
+! int_u EventModifiers2VimMouseModifiers(EventModifiers macModifiers);
+! char_u **new_fnames_from_AEDesc(AEDesc *theList, long *numFiles, OSErr *error);
+! 
+! 
+! void gui_request_selection(void);
+! void gui_mch_lose_selection(void);
+! int gui_mch_own_selection(void);
+! void gui_mch_clear_selection(void);
+! 
+! void gui_win_new_height(win_T *wp);
+! void gui_win_comp_pos(void);
+! void gui_win_free(win_T *wp);
+! void gui_win_alloc(win_T *wp);
+  void mch_post_buffer_write (buf_T *buf);
+  
+! void mch_errmsg(char *str);
+! void mch_display_error(void);
+! void clip_mch_lose_selection(VimClipboard *cbd);
+! void clip_mch_request_selection(VimClipboard *cbd);
+! void clip_mch_set_selection(VimClipboard *cbd);
+! int clip_mch_own_selection(VimClipboard *cbd);
+  
+  pascal	OSErr	FindProcessBySignature( const OSType targetType,
+  					const OSType targetCreator, ProcessSerialNumberPtr psnPtr );
+***************
+*** 129,145 ****
+  pascal OSErr Handle_KAHL_GTTX_AE (const AppleEvent *theAEvent, AppleEvent *theReply, long refCon);
+  void Send_KAHL_MOD_AE (buf_T *buf);
+  
+! void gui_mac_doInContentClick __ARGS((EventRecord *theEvent, WindowPtr	 whichWindow));
+! void gui_mac_doInDragClick __ARGS((Point where, WindowPtr whichWindow));
+! void gui_mac_doInGrowClick __ARGS((Point where, WindowPtr whichWindow));
+! void gui_mac_doUpdateEvent __ARGS((EventRecord *event));
+! void gui_mac_doActivateEvent __ARGS((EventRecord *event));
+! void gui_mac_doSuspendEvent __ARGS((EventRecord *event));
+! void gui_mac_doKeyEvent __ARGS((EventRecord *theEvent));
+! void gui_mac_doMouseDownEvent __ARGS((EventRecord *theEvent));
+! void gui_mac_doMouseMovedEvent __ARGS((EventRecord *event));
+! void gui_mac_doMouseUpEvent __ARGS((EventRecord *theEvent));
+! void gui_mch_mousehide __ARGS((int hide));
+  
+  int C2PascalString (char_u *CString, Str255 *PascalString);
+  int GetFSSpecFromPath ( char_u *file, FSSpec *fileFSSpec);
+--- 129,145 ----
+  pascal OSErr Handle_KAHL_GTTX_AE (const AppleEvent *theAEvent, AppleEvent *theReply, long refCon);
+  void Send_KAHL_MOD_AE (buf_T *buf);
+  
+! void gui_mac_doInContentClick(EventRecord *theEvent, WindowPtr	 whichWindow);
+! void gui_mac_doInDragClick(Point where, WindowPtr whichWindow);
+! void gui_mac_doInGrowClick(Point where, WindowPtr whichWindow);
+! void gui_mac_doUpdateEvent(EventRecord *event);
+! void gui_mac_doActivateEvent(EventRecord *event);
+! void gui_mac_doSuspendEvent(EventRecord *event);
+! void gui_mac_doKeyEvent(EventRecord *theEvent);
+! void gui_mac_doMouseDownEvent(EventRecord *theEvent);
+! void gui_mac_doMouseMovedEvent(EventRecord *event);
+! void gui_mac_doMouseUpEvent(EventRecord *theEvent);
+! void gui_mch_mousehide(int hide);
+  
+  int C2PascalString (char_u *CString, Str255 *PascalString);
+  int GetFSSpecFromPath ( char_u *file, FSSpec *fileFSSpec);
+*** ../vim-7.4.1202/src/proto/if_ole.pro	2010-05-15 13:04:08.000000000 +0200
+--- src/proto/if_ole.pro	2016-01-30 13:14:28.409686576 +0100
+***************
+*** 1,5 ****
+  /* if_ole.cpp */
+! void InitOLE __ARGS((int* pbDoRestart));
+! void UninitOLE __ARGS((void));
+! void RegisterMe __ARGS((int silent));
+! void UnregisterMe __ARGS((int bNotifyUser));
+--- 1,5 ----
+  /* if_ole.cpp */
+! void InitOLE(int* pbDoRestart);
+! void UninitOLE(void);
+! void RegisterMe(int silent);
+! void UnregisterMe(int bNotifyUser);
+*** ../vim-7.4.1202/src/proto/os_qnx.pro	2010-05-15 13:04:08.000000000 +0200
+--- src/proto/os_qnx.pro	2016-01-30 13:15:02.997327417 +0100
+***************
+*** 1,8 ****
+  /* os_qnx.c */
+! void qnx_init __ARGS((void));
+! void qnx_clip_init __ARGS((void));
+! int clip_mch_own_selection __ARGS((VimClipboard *cbd));
+! void clip_mch_lose_selection __ARGS((VimClipboard *cbd));
+! void clip_mch_request_selection __ARGS((VimClipboard *cbd));
+! void clip_mch_set_selection __ARGS((VimClipboard *cbd));
+  /* vim: set ft=c : */
+--- 1,8 ----
+  /* os_qnx.c */
+! void qnx_init(void);
+! void qnx_clip_init (void);
+! int clip_mch_own_selection(VimClipboard *cbd);
+! void clip_mch_lose_selection(VimClipboard *cbd);
+! void clip_mch_request_selection(VimClipboard *cbd);
+! void clip_mch_set_selection(VimClipboard *cbd);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1202/src/Makefile	2016-01-29 23:46:16.737225022 +0100
+--- src/Makefile	2016-01-30 12:56:44.936731151 +0100
+***************
+*** 1661,1666 ****
+--- 1661,1667 ----
+  	hangulin.pro \
+  	if_cscope.pro \
+  	if_lua.pro \
++ 	if_mzsch.pro \
+  	if_python.pro \
+  	if_python3.pro \
+  	if_ruby.pro \
+***************
+*** 1668,1673 ****
+--- 1669,1675 ----
+  	json.pro \
+  	main.pro \
+  	mark.pro \
++ 	mbyte.pro \
+  	memfile.pro \
+  	memline.pro \
+  	menu.pro \
+***************
+*** 1675,1681 ****
+  	misc1.pro \
+  	misc2.pro \
+  	move.pro \
+- 	mbyte.pro \
+  	normal.pro \
+  	ops.pro \
+  	option.pro \
+--- 1677,1682 ----
+*** ../vim-7.4.1202/src/version.c	2016-01-29 23:46:16.741224979 +0100
+--- src/version.c	2016-01-30 13:11:19.071652431 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1203,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+85. Choice between paying Compuserve bill and paying for kids education
+    is a no brainer -- although a bit painful for your kids.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

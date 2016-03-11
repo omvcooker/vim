@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1212
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1212 (after 7.4.1207)
+Problem:    Can't build with Motif.
+Solution:   Fix function declaration.(Dominique Pelle)
+Files:      src/gui_motif.c
+
+
+*** ../vim-7.4.1211/src/gui_motif.c	2016-01-30 16:39:20.438376481 +0100
+--- src/gui_motif.c	2016-01-30 19:43:51.575263364 +0100
+***************
+*** 118,124 ****
+   */
+  
+      static void
+! scroll_cb(Widget w UNUSED, XtPointer client_data, call_data)
+  {
+      scrollbar_T *sb;
+      long	value;
+--- 118,124 ----
+   */
+  
+      static void
+! scroll_cb(Widget w UNUSED, XtPointer client_data, XtPointer call_data)
+  {
+      scrollbar_T *sb;
+      long	value;
+*** ../vim-7.4.1211/src/version.c	2016-01-30 19:39:45.285838531 +0100
+--- src/version.c	2016-01-30 19:44:33.006830249 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1212,
+  /**/
+
+-- 
+From "know your smileys":
+ :-)-O	Smiling doctor with stethoscope
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

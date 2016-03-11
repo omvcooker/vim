@@ -1,0 +1,72 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1011
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1011
+Problem:    Can't build with Strawberry Perl.
+Solution:   Include stdbool.h. (Ken Takata, closes #328)
+Files:      Filelist, src/Make_mvc.mak, src/if_perl_msvc/stdbool.h
+
+
+*** ../vim-7.4.1010/Filelist	2015-12-29 19:03:17.345095098 +0100
+--- Filelist	2015-12-31 20:52:57.775344833 +0100
+***************
+*** 315,320 ****
+--- 315,321 ----
+  		src/if_ole.cpp \
+  		src/if_ole.h \
+  		src/if_ole.idl \
++ 		src/if_perl_msvc/stdbool.h \
+  		src/iid_ole.c \
+  		src/os_dos.h \
+  		src/os_msdos.c \
+*** ../vim-7.4.1010/src/Make_mvc.mak	2015-12-11 19:38:41.475588610 +0100
+--- src/Make_mvc.mak	2015-12-31 20:50:34.764893945 +0100
+***************
+*** 826,831 ****
+--- 826,836 ----
+  
+  PERL_EXE = $(PERL)\Bin$(PERL_ARCH)\perl
+  PERL_INC = /I $(PERL_INCDIR)
++ !if $(MSVC_MAJOR) <= 11
++ # ActivePerl 5.20+ requires stdbool.h but VC2012 or earlier doesn't have it.
++ # Use a stub stdbool.h.
++ PERL_INC = $(PERL_INC) /I if_perl_msvc
++ !endif
+  PERL_OBJ = $(OUTDIR)\if_perl.obj $(OUTDIR)\if_perlsfio.obj
+  XSUBPP = $(PERL)\lib\ExtUtils\xsubpp
+  !if exist($(XSUBPP))
+*** ../vim-7.4.1010/src/if_perl_msvc/stdbool.h	1970-01-01 01:00:00.000000000 +0100
+--- src/if_perl_msvc/stdbool.h	2015-12-31 20:50:34.764893945 +0100
+***************
+*** 0 ****
+--- 1,3 ----
++ /* A stub stdbool.h for VC2012 or earlier.
++  * ActivePerl 5.20+ requires stdbool.h but VC2012 doesn't have it. */
++ #define bool char
+*** ../vim-7.4.1010/src/version.c	2015-12-31 20:46:34.703494577 +0100
+--- src/version.c	2015-12-31 20:53:39.930888218 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1011,
+  /**/
+
+-- 
+FATHER: We are here today to witness the union of two young people in the
+        joyful bond of the holy wedlock.  Unfortunately, one of them, my son
+        Herbert, has just fallen to his death.
+   [Murmurs from CROWD;  the BRIDE smiles with relief, coughs.]
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

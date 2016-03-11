@@ -1,0 +1,567 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1246
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1246
+Problem:    The channel functionality isn't tested.
+Solution:   Add a test using a Python test server.
+Files:      src/channel.c, src/proto/channel.pro,
+            src/testdir/test_channel.vim, src/testdir/test_channel.py,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-7.4.1245/src/channel.c	2016-02-02 18:43:13.432238900 +0100
+--- src/channel.c	2016-02-02 23:10:58.604582429 +0100
+***************
+*** 523,541 ****
+  }
+  
+  /*
+!  * Use the read buffer of channel "ch_idx" and parse JSON messages that are
+   * complete.  The messages are added to the queue.
+   */
+!     void
+! channel_read_json(int ch_idx)
+  {
+      js_read_T	reader;
+      typval_T	listtv;
+      jsonq_T	*item;
+      jsonq_T	*head = &channels[ch_idx].ch_json_head;
+  
+      if (channel_peek(ch_idx) == NULL)
+! 	return;
+  
+      /* TODO: make reader work properly */
+      /* reader.js_buf = channel_peek(ch_idx); */
+--- 523,543 ----
+  }
+  
+  /*
+!  * Use the read buffer of channel "ch_idx" and parse a JSON messages that is
+   * complete.  The messages are added to the queue.
++  * Return TRUE if there is more to read.
+   */
+!     static int
+! channel_parse_json(int ch_idx)
+  {
+      js_read_T	reader;
+      typval_T	listtv;
+      jsonq_T	*item;
+      jsonq_T	*head = &channels[ch_idx].ch_json_head;
++     int		ret;
+  
+      if (channel_peek(ch_idx) == NULL)
+! 	return FALSE;
+  
+      /* TODO: make reader work properly */
+      /* reader.js_buf = channel_peek(ch_idx); */
+***************
+*** 544,569 ****
+      reader.js_fill = NULL;
+      /* reader.js_fill = channel_fill; */
+      reader.js_cookie = &ch_idx;
+!     if (json_decode(&reader, &listtv) == OK)
+      {
+! 	item = (jsonq_T *)alloc((unsigned)sizeof(jsonq_T));
+! 	if (item == NULL)
+  	    clear_tv(&listtv);
+  	else
+  	{
+! 	    item->value = alloc_tv();
+! 	    if (item->value == NULL)
+! 	    {
+! 		vim_free(item);
+  		clear_tv(&listtv);
+- 	    }
+  	    else
+  	    {
+! 		*item->value = listtv;
+! 		item->prev = head->prev;
+! 		head->prev = item;
+! 		item->next = head;
+! 		item->prev->next = item;
+  	    }
+  	}
+      }
+--- 546,580 ----
+      reader.js_fill = NULL;
+      /* reader.js_fill = channel_fill; */
+      reader.js_cookie = &ch_idx;
+!     ret = json_decode(&reader, &listtv);
+!     if (ret == OK)
+      {
+! 	if (listtv.v_type != VAR_LIST)
+! 	{
+! 	    /* TODO: give error */
+  	    clear_tv(&listtv);
++ 	}
+  	else
+  	{
+! 	    item = (jsonq_T *)alloc((unsigned)sizeof(jsonq_T));
+! 	    if (item == NULL)
+  		clear_tv(&listtv);
+  	    else
+  	    {
+! 		item->value = alloc_tv();
+! 		if (item->value == NULL)
+! 		{
+! 		    vim_free(item);
+! 		    clear_tv(&listtv);
+! 		}
+! 		else
+! 		{
+! 		    *item->value = listtv;
+! 		    item->prev = head->prev;
+! 		    head->prev = item;
+! 		    item->next = head;
+! 		    item->prev->next = item;
+! 		}
+  	    }
+  	}
+      }
+***************
+*** 571,579 ****
+--- 582,597 ----
+      /* Put the unread part back into the channel.
+       * TODO: insert in front */
+      if (reader.js_buf[reader.js_used] != NUL)
++     {
+  	channel_save(ch_idx, reader.js_buf + reader.js_used,
+  		(int)(reader.js_end - reader.js_buf) - reader.js_used);
++ 	ret = TRUE;
++     }
++     else
++ 	ret = FALSE;
++ 
+      vim_free(reader.js_buf);
++     return ret;
+  }
+  
+  /*
+***************
+*** 607,613 ****
+  	typval_T    *tv = &l->lv_first->li_tv;
+  
+  	if ((id > 0 && tv->v_type == VAR_NUMBER && tv->vval.v_number == id)
+! 	      || id <= 0)
+  	{
+  	    *rettv = item->value;
+  	    remove_json_node(item);
+--- 625,632 ----
+  	typval_T    *tv = &l->lv_first->li_tv;
+  
+  	if ((id > 0 && tv->v_type == VAR_NUMBER && tv->vval.v_number == id)
+! 	      || (id <= 0
+! 		      && (tv->v_type != VAR_NUMBER || tv->vval.v_number < 0)))
+  	{
+  	    *rettv = item->value;
+  	    remove_json_node(item);
+***************
+*** 717,739 ****
+      int		seq_nr = -1;
+      int		json_mode = channels[idx].ch_json_mode;
+  
+-     if (channel_peek(idx) == NULL)
+- 	return FALSE;
+      if (channels[idx].ch_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+      if (json_mode)
+      {
+! 	/* Get any json message. Return if there isn't one. */
+! 	channel_read_json(idx);
+  	if (channel_get_json(idx, -1, &listtv) == FAIL)
+- 	    return FALSE;
+- 	if (listtv->v_type != VAR_LIST)
+  	{
+! 	    /* TODO: give error */
+! 	    clear_tv(listtv);
+! 	    return FALSE;
+  	}
+  
+  	list = listtv->vval.v_list;
+--- 736,754 ----
+      int		seq_nr = -1;
+      int		json_mode = channels[idx].ch_json_mode;
+  
+      if (channels[idx].ch_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+      if (json_mode)
+      {
+! 	/* Get any json message in the queue. */
+  	if (channel_get_json(idx, -1, &listtv) == FAIL)
+  	{
+! 	    /* Parse readahead, return when there is still no message. */
+! 	    channel_parse_json(idx);
+! 	    if (channel_get_json(idx, -1, &listtv) == FAIL)
+! 		return FALSE;
+  	}
+  
+  	list = listtv->vval.v_list;
+***************
+*** 767,772 ****
+--- 782,792 ----
+  	}
+  	seq_nr = typetv->vval.v_number;
+      }
++     else if (channel_peek(idx) == NULL)
++     {
++ 	/* nothing to read on raw channel */
++ 	return FALSE;
++     }
+      else
+      {
+  	/* For a raw channel we don't know where the message ends, just get
+***************
+*** 1080,1098 ****
+      int
+  channel_read_json_block(int ch_idx, int id, typval_T **rettv)
+  {
+      for (;;)
+      {
+! 	channel_read_json(ch_idx);
+  
+  	/* search for messsage "id" */
+  	if (channel_get_json(ch_idx, id, rettv) == OK)
+  	    return OK;
+  
+! 	/* Wait for up to 2 seconds.
+! 	 * TODO: use timeout set on the channel. */
+! 	if (channel_wait(channels[ch_idx].ch_fd, 2000) == FAIL)
+! 	    break;
+! 	channel_read(ch_idx);
+      }
+      return FAIL;
+  }
+--- 1100,1128 ----
+      int
+  channel_read_json_block(int ch_idx, int id, typval_T **rettv)
+  {
++     int  more;
++ 
+      for (;;)
+      {
+! 	more = channel_parse_json(ch_idx);
+  
+  	/* search for messsage "id" */
+  	if (channel_get_json(ch_idx, id, rettv) == OK)
+  	    return OK;
+  
+! 	if (!more)
+! 	{
+! 	    /* Handle any other messages in the queue.  If done some more
+! 	     * messages may have arrived. */
+! 	    if (channel_parse_messages())
+! 		continue;
+! 
+! 	    /* Wait for up to 2 seconds.
+! 	     * TODO: use timeout set on the channel. */
+! 	    if (channel_wait(channels[ch_idx].ch_fd, 2000) == FAIL)
+! 		break;
+! 	    channel_read(ch_idx);
+! 	}
+      }
+      return FAIL;
+  }
+***************
+*** 1246,1261 ****
+  # endif /* !FEAT_GUI_W32 && HAVE_SELECT */
+  
+  /*
+!  * Invoked from the main loop when it's save to execute received commands.
+   */
+!     void
+  channel_parse_messages(void)
+  {
+      int	    i;
+  
+      for (i = 0; i < channel_count; ++i)
+  	while (may_invoke_callback(i) == OK)
+! 	    ;
+  }
+  
+  #endif /* FEAT_CHANNEL */
+--- 1276,1298 ----
+  # endif /* !FEAT_GUI_W32 && HAVE_SELECT */
+  
+  /*
+!  * Execute queued up commands.
+!  * Invoked from the main loop when it's safe to execute received commands.
+!  * Return TRUE when something was done.
+   */
+!     int
+  channel_parse_messages(void)
+  {
+      int	    i;
++     int	    ret = FALSE;
+  
+      for (i = 0; i < channel_count; ++i)
+  	while (may_invoke_callback(i) == OK)
+! 	{
+! 	    i = 0;  /* start over */
+! 	    ret = TRUE;
+! 	}
+!     return ret;
+  }
+  
+  #endif /* FEAT_CHANNEL */
+*** ../vim-7.4.1245/src/proto/channel.pro	2016-02-01 21:38:13.319011999 +0100
+--- src/proto/channel.pro	2016-02-02 23:02:18.850114798 +0100
+***************
+*** 4,26 ****
+  void channel_set_json_mode(int idx, int json_mode);
+  void channel_set_callback(int idx, char_u *callback);
+  void channel_set_req_callback(int idx, char_u *callback);
+  int channel_is_open(int idx);
+  void channel_close(int idx);
+  int channel_save(int idx, char_u *buf, int len);
+  char_u *channel_peek(int idx);
+- char_u *channel_get(int idx);
+- int channel_collapse(int idx);
+  void channel_clear(int idx);
+  int channel_get_id(void);
+  void channel_read(int idx);
+  char_u *channel_read_block(int idx);
+  int channel_read_json_block(int ch_idx, int id, typval_T **rettv);
+- void channel_read_json(int ch_idx);
+  int channel_socket2idx(sock_T fd);
+  int channel_send(int idx, char_u *buf, char *fun);
+  int channel_poll_setup(int nfd_in, void *fds_in);
+  int channel_poll_check(int ret_in, void *fds_in);
+  int channel_select_setup(int maxfd_in, void *rfds_in);
+  int channel_select_check(int ret_in, void *rfds_in);
+! void channel_parse_messages(void);
+  /* vim: set ft=c : */
+--- 4,25 ----
+  void channel_set_json_mode(int idx, int json_mode);
+  void channel_set_callback(int idx, char_u *callback);
+  void channel_set_req_callback(int idx, char_u *callback);
++ char_u *channel_get(int idx);
++ int channel_collapse(int idx);
+  int channel_is_open(int idx);
+  void channel_close(int idx);
+  int channel_save(int idx, char_u *buf, int len);
+  char_u *channel_peek(int idx);
+  void channel_clear(int idx);
+  int channel_get_id(void);
+  void channel_read(int idx);
+  char_u *channel_read_block(int idx);
+  int channel_read_json_block(int ch_idx, int id, typval_T **rettv);
+  int channel_socket2idx(sock_T fd);
+  int channel_send(int idx, char_u *buf, char *fun);
+  int channel_poll_setup(int nfd_in, void *fds_in);
+  int channel_poll_check(int ret_in, void *fds_in);
+  int channel_select_setup(int maxfd_in, void *rfds_in);
+  int channel_select_check(int ret_in, void *rfds_in);
+! int channel_parse_messages(void);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1245/src/testdir/test_channel.vim	2016-02-02 23:18:58.075502073 +0100
+--- src/testdir/test_channel.vim	2016-02-02 23:21:39.813796294 +0100
+***************
+*** 0 ****
+--- 1,53 ----
++ " Test for channel functions.
++ scriptencoding utf-8
++ 
++ " This requires the Python command to run the test server.
++ " This most likely only works on Unix.
++ if !has('unix') || !executable('python')
++   finish
++ endif
++ 
++ func Test_communicate()
++   " The Python program writes the port number in Xportnr.
++   silent !./test_channel.py&
++ 
++   " Wait for up to 2 seconds for the port number to be there.
++   let cnt = 20
++   let l = []
++   while cnt > 0
++     try
++       let l = readfile("Xportnr")
++     catch
++     endtry
++     if len(l) >= 1
++       break
++     endif
++     sleep 100m
++     let cnt -= 1
++   endwhile
++   call delete("Xportnr")
++ 
++   if len(l) == 0
++     " Can't make the connection, give up.
++     call system("killall test_channel.py")
++     return
++   endif
++   let port = l[0]
++   let handle = ch_open('localhost:' . port, 'json')
++ 
++   " Simple string request and reply.
++   call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
++ 
++   " Request that triggers sending two ex commands.  These will usually be
++   " handled before getting the response, but it's not guaranteed, thus wait a
++   " tiny bit for the commands to get executed.
++   call assert_equal('ok', ch_sendexpr(handle, 'make change'))
++   sleep 10m
++   call assert_equal('added1', getline(line('$') - 1))
++   call assert_equal('added2', getline('$'))
++ 
++   " make the server quit, can't check if this works, should not hang.
++   call ch_sendexpr(handle, '!quit!', 0)
++ 
++   call system("killall test_channel.py")
++ endfunc
+*** ../vim-7.4.1245/src/testdir/test_channel.py	2016-02-02 23:18:58.079502031 +0100
+--- src/testdir/test_channel.py	2016-02-02 23:12:56.923324733 +0100
+***************
+*** 0 ****
+--- 1,110 ----
++ #!/usr/bin/python
++ #
++ # Server that will accept connections from a Vim channel.
++ # Run this server and then in Vim you can open the channel:
++ #  :let handle = ch_open('localhost:8765', 'json')
++ #
++ # Then Vim can send requests to the server:
++ #  :let response = ch_sendexpr(handle, 'hello!')
++ #
++ # And you can control Vim by typing a JSON message here, e.g.:
++ #   ["ex","echo 'hi there'"]
++ #
++ # There is no prompt, just type a line and press Enter.
++ # To exit cleanly type "quit<Enter>".
++ #
++ # See ":help channel-demo" in Vim.
++ #
++ # This requires Python 2.6 or later.
++ 
++ from __future__ import print_function
++ import json
++ import socket
++ import sys
++ import threading
++ 
++ try:
++     # Python 3
++     import socketserver
++ except ImportError:
++     # Python 2
++     import SocketServer as socketserver
++ 
++ thesocket = None
++ 
++ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
++ 
++     def handle(self):
++         print("=== socket opened ===")
++         global thesocket
++         thesocket = self.request
++         while True:
++             try:
++                 data = self.request.recv(4096).decode('utf-8')
++             except socket.error:
++                 print("=== socket error ===")
++                 break
++             except IOError:
++                 print("=== socket closed ===")
++                 break
++             if data == '':
++                 print("=== socket closed ===")
++                 break
++             print("received: {}".format(data))
++             try:
++                 decoded = json.loads(data)
++             except ValueError:
++                 print("json decoding failed")
++                 decoded = [-1, '']
++ 
++             # Send a response if the sequence number is positive.
++             # Negative numbers are used for "eval" responses.
++             if decoded[0] >= 0:
++                 if decoded[1] == 'hello!':
++                     # simply send back a string
++                     response = "got it"
++                 elif decoded[1] == 'make change':
++                     # Send two ex commands at the same time, before replying to
++                     # the request.
++                     cmd = '["ex","call append(\\"$\\",\\"added1\\")"]'
++                     cmd += '["ex","call append(\\"$\\",\\"added2\\")"]'
++                     print("sending: {}".format(cmd))
++                     thesocket.sendall(cmd.encode('utf-8'))
++                     response = "ok"
++                 elif decoded[1] == '!quit!':
++                     # we're done
++                     sys.exit(0)
++                 else:
++                     response = "what?"
++ 
++                 encoded = json.dumps([decoded[0], response])
++                 print("sending: {}".format(encoded))
++                 thesocket.sendall(encoded.encode('utf-8'))
++ 
++         thesocket = None
++ 
++ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
++     pass
++ 
++ if __name__ == "__main__":
++     HOST, PORT = "localhost", 0
++ 
++     server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
++     ip, port = server.server_address
++ 
++     # Start a thread with the server -- that thread will then start one
++     # more thread for each request
++     server_thread = threading.Thread(target=server.serve_forever)
++ 
++     # Exit the server thread when the main thread terminates
++     server_thread.daemon = True
++     server_thread.start()
++ 
++     # Write the port number in Xportnr, so that the test knows it.
++     f = open("Xportnr", "w")
++     f.write("{}".format(port))
++     f.close()
++ 
++     # Block here
++     print("Listening on port {}".format(port))
++     server.serve_forever()
+*** ../vim-7.4.1245/src/testdir/Make_all.mak	2016-01-21 23:32:14.154035915 +0100
+--- src/testdir/Make_all.mak	2016-02-02 20:56:59.400837716 +0100
+***************
+*** 171,176 ****
+--- 171,177 ----
+  NEW_TESTS = test_arglist.res \
+  	    test_assert.res \
+  	    test_cdo.res \
++ 	    test_channel.res \
+  	    test_hardcopy.res \
+  	    test_increment.res \
+  	    test_langmap.res \
+*** ../vim-7.4.1245/src/version.c	2016-02-02 20:52:38.223567818 +0100
+--- src/version.c	2016-02-02 23:17:45.076272157 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1246,
+  /**/
+
+-- 
+Amnesia is one of my favorite words, but I forgot what it means.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,94 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1202
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1202
+Problem:    Still one more file still using __ARGS.
+Solution:   Remove __ARGS in the last file. (script by Hirohito Higashi)
+            (closes #612)
+Files:      src/proto/os_mac_conv.pro, src/os_mac_conv.c, src/Makefile
+
+
+*** ../vim-7.4.1201/src/proto/os_mac_conv.pro	2010-05-15 13:04:08.000000000 +0200
+--- src/proto/os_mac_conv.pro	2016-01-29 23:43:45.334805838 +0100
+***************
+*** 1,12 ****
+  /* os_mac_conv.c */
+! char_u *mac_string_convert __ARGS((char_u *ptr, int len, int *lenp, int fail_on_error, int from_enc, int to_enc, int *unconvlenp));
+! int macroman2enc __ARGS((char_u *ptr, long *sizep, long real_size));
+! int enc2macroman __ARGS((char_u *from, size_t fromlen, char_u *to, int *tolenp, int maxtolen, char_u *rest, int *restlenp));
+! void mac_conv_init __ARGS((void));
+! void mac_conv_cleanup __ARGS((void));
+! char_u *mac_utf16_to_enc __ARGS((unsigned short *from, size_t fromLen, size_t *actualLen));
+! unsigned short *mac_enc_to_utf16 __ARGS((char_u *from, size_t fromLen, size_t *actualLen));
+! void * mac_enc_to_cfstring __ARGS((char_u *from, size_t fromLen));
+! char_u *mac_precompose_path __ARGS((char_u *decompPath, size_t decompLen, size_t *precompLen));
+! void mac_lang_init __ARGS((void));
+  /* vim: set ft=c : */
+--- 1,12 ----
+  /* os_mac_conv.c */
+! char_u *mac_string_convert(char_u *ptr, int len, int *lenp, int fail_on_error, int from_enc, int to_enc, int *unconvlenp);
+! int macroman2enc(char_u *ptr, long *sizep, long real_size);
+! int enc2macroman(char_u *from, size_t fromlen, char_u *to, int *tolenp, int maxtolen, char_u *rest, int *restlenp);
+! void mac_conv_init(void);
+! void mac_conv_cleanup(void);
+! char_u *mac_utf16_to_enc(unsigned short *from, size_t fromLen, size_t *actualLen);
+! unsigned short *mac_enc_to_utf16(char_u *from, size_t fromLen, size_t *actualLen);
+! void *mac_enc_to_cfstring(char_u *from, size_t fromLen);
+! char_u *mac_precompose_path(char_u *decompPath, size_t decompLen, size_t *precompLen);
+! void mac_lang_init(void);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1201/src/os_mac_conv.c	2016-01-29 22:46:58.962534859 +0100
+--- src/os_mac_conv.c	2016-01-29 23:43:39.254869314 +0100
+***************
+*** 17,23 ****
+  #define BalloonEval int   /* used in header files */
+  
+  #include "vim.h"
+! #ifndef FEAT_GUI_MAC
+  # include <CoreServices/CoreServices.h>
+  #endif
+  
+--- 17,24 ----
+  #define BalloonEval int   /* used in header files */
+  
+  #include "vim.h"
+! 
+! #if !defined(FEAT_GUI_MAC) && !defined(PROTO)
+  # include <CoreServices/CoreServices.h>
+  #endif
+  
+*** ../vim-7.4.1201/src/Makefile	2016-01-29 23:20:35.317308077 +0100
+--- src/Makefile	2016-01-29 23:41:51.151997878 +0100
+***************
+*** 1679,1684 ****
+--- 1679,1685 ----
+  	normal.pro \
+  	ops.pro \
+  	option.pro \
++ 	os_mac_conv.pro \
+  	os_unix.pro \
+  	popupmnu.pro \
+  	pty.pro \
+*** ../vim-7.4.1201/src/version.c	2016-01-29 23:23:01.711780688 +0100
+--- src/version.c	2016-01-29 23:40:10.197051707 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1202,
+  /**/
+
+-- 
+ASCII stupid question, get a stupid ANSI.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

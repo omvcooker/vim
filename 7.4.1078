@@ -1,0 +1,50 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1078
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1078
+Problem:    MSVC: "make clean" doesn't cleanup in the tee directory.
+Solution:   Add the commands to cleanup tee. (Erich Ritz)
+Files:      src/Make_mvc.mak
+
+
+*** ../vim-7.4.1077/src/Make_mvc.mak	2016-01-07 22:45:04.613148057 +0100
+--- src/Make_mvc.mak	2016-01-10 15:14:01.079713283 +0100
+***************
+*** 1060,1065 ****
+--- 1060,1068 ----
+  	cd xxd
+  	$(MAKE) /NOLOGO -f Make_mvc.mak clean
+  	cd ..
++ 	cd tee
++ 	$(MAKE) /NOLOGO -f Make_mvc.mak clean
++ 	cd ..
+  	cd GvimExt
+  	$(MAKE) /NOLOGO -f Makefile clean
+  	cd ..
+*** ../vim-7.4.1077/src/version.c	2016-01-10 14:35:53.844384077 +0100
+--- src/version.c	2016-01-10 15:20:20.979592783 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1078,
+  /**/
+
+-- 
+The Characters and incidents portrayed and the names used are fictitious and
+any similarity to the names, characters, or history of any person is entirely
+accidental and unintentional.
+                                  Signed RICHARD M. NIXON
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

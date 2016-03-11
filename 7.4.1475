@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1475
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1475
+Problem:    When using hangulinput with utf-8 a CSI character is
+            misintepreted.
+Solution:   Convert CSI to K_CSI. (SungHyun Nam)
+Files:      src/ui.c
+
+
+*** ../vim-7.4.1474/src/ui.c	2016-02-27 18:13:05.240593068 +0100
+--- src/ui.c	2016-03-03 11:40:32.693060629 +0100
+***************
+*** 1689,1701 ****
+  
+      tmpbuf = hangul_string_convert(s, &len);
+      if (tmpbuf != NULL)
+  	s = tmpbuf;
+  
+!     while (len--)
+! 	inbuf[inbufcount++] = *s++;
+! 
+!     if (tmpbuf != NULL)
+  	vim_free(tmpbuf);
+  }
+  #endif
+  
+--- 1689,1709 ----
+  
+      tmpbuf = hangul_string_convert(s, &len);
+      if (tmpbuf != NULL)
++     {
+  	s = tmpbuf;
+  
+! 	for (; len--; s++)
+! 	{
+! 	    inbuf[inbufcount++] = *s;
+! 	    if (*s == CSI)
+! 	    {
+! 		/* Turn CSI into K_CSI. */
+! 		inbuf[inbufcount++] = KS_EXTRA;
+! 		inbuf[inbufcount++] = (int)KE_CSI;
+! 	    }
+! 	}
+  	vim_free(tmpbuf);
++     }
+  }
+  #endif
+  
+*** ../vim-7.4.1474/src/version.c	2016-03-02 22:16:28.512450505 +0100
+--- src/version.c	2016-03-03 11:41:56.928177531 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1475,
+  /**/
+
+-- 
+DENNIS: You can't expect to wield supreme executive power just 'cause some
+        watery tart threw a sword at you!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

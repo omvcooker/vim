@@ -1,0 +1,1336 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1191
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1191
+Problem:    The channel feature isn't working yet.
+Solution:   Add the connect(), disconnect(), sendexpr() and sendraw()
+            functions.  Add initial documentation.  Add a demo server.
+Files:      src/channel.c, src/eval.c, src/proto/channel.pro,
+            src/proto/eval.pro, runtime/doc/channel.txt, runtime/doc/eval.txt,
+            runtime/doc/Makefile, runtime/tools/demoserver.py
+
+
+*** ../vim-7.4.1190/src/channel.c	2016-01-27 21:08:12.523796763 +0100
+--- src/channel.c	2016-01-28 22:27:43.421469442 +0100
+***************
+*** 77,87 ****
+  typedef struct readqueue queue_T;
+  
+  typedef struct {
+!     sock_T  ch_fd;	/* the socket, -1 for a closed channel */
+!     int	    ch_idx;	/* used by channel_poll_setup() */
+!     queue_T ch_head;	/* dummy node, header for circular queue */
+  
+!     int	    ch_error;	/* When TRUE an error was reported.  Avoids giving
+  			 * pages full of error messages when the other side
+  			 * has exited, only mention the first error until the
+  			 * connection works again. */
+--- 77,87 ----
+  typedef struct readqueue queue_T;
+  
+  typedef struct {
+!     sock_T    ch_fd;	/* the socket, -1 for a closed channel */
+!     int	      ch_idx;	/* used by channel_poll_setup() */
+!     queue_T   ch_head;	/* dummy node, header for circular queue */
+  
+!     int	      ch_error;	/* When TRUE an error was reported.  Avoids giving
+  			 * pages full of error messages when the other side
+  			 * has exited, only mention the first error until the
+  			 * connection works again. */
+***************
+*** 89,101 ****
+      XtInputId ch_inputHandler;  /* Cookie for input */
+  #endif
+  #ifdef FEAT_GUI_GTK
+!     gint ch_inputHandler;	/* Cookie for input */
+  #endif
+  #ifdef FEAT_GUI_W32
+!     int  ch_inputHandler;	/* simply ret.value of WSAAsyncSelect() */
+  #endif
+  
+!     void (*ch_close_cb)(void);	/* callback invoked when channel is closed */
+  } channel_T;
+  
+  /*
+--- 89,107 ----
+      XtInputId ch_inputHandler;  /* Cookie for input */
+  #endif
+  #ifdef FEAT_GUI_GTK
+!     gint      ch_inputHandler;	/* Cookie for input */
+  #endif
+  #ifdef FEAT_GUI_W32
+!     int       ch_inputHandler;	/* simply ret.value of WSAAsyncSelect() */
+  #endif
+  
+!     void      (*ch_close_cb)(void); /* callback for when channel is closed */
+! 
+!     char_u    *ch_callback;	/* function to call when a msg is not handled */
+!     char_u    *ch_req_callback;	/* function to call for current request */
+!     int	      ch_will_block;	/* do not use callback right now */
+! 
+!     int	      ch_json_mode;
+  } channel_T;
+  
+  /*
+***************
+*** 190,196 ****
+  	channel->ch_inputHandler =
+  	    XtAppAddInput((XtAppContext)app_context, channel->ch_fd,
+  			 (XtPointer)(XtInputReadMask + XtInputExceptMask),
+! 					messageFromNetbeans, (XtPointer)idx);
+  # else
+  #  ifdef FEAT_GUI_GTK
+      /*
+--- 196,202 ----
+  	channel->ch_inputHandler =
+  	    XtAppAddInput((XtAppContext)app_context, channel->ch_fd,
+  			 (XtPointer)(XtInputReadMask + XtInputExceptMask),
+! 				   messageFromNetbeans, (XtPointer)(long)idx);
+  # else
+  #  ifdef FEAT_GUI_GTK
+      /*
+***************
+*** 383,394 ****
+  }
+  
+  /*
+   * Return TRUE when channel "idx" is open.
+   */
+      int
+  channel_is_open(int idx)
+  {
+!     return channels[idx].ch_fd >= 0;
+  }
+  
+  /*
+--- 389,540 ----
+  }
+  
+  /*
++  * Set the json mode of channel "idx" to TRUE or FALSE.
++  */
++     void
++ channel_set_json_mode(int idx, int json_mode)
++ {
++     channels[idx].ch_json_mode = json_mode;
++ }
++ 
++ /*
++  * Set the callback for channel "idx".
++  */
++     void
++ channel_set_callback(int idx, char_u *callback)
++ {
++     vim_free(channels[idx].ch_callback);
++     channels[idx].ch_callback = vim_strsave(callback);
++ }
++ 
++ /*
++  * Set the callback for channel "idx" for the next response.
++  */
++     void
++ channel_set_req_callback(int idx, char_u *callback)
++ {
++     vim_free(channels[idx].ch_req_callback);
++     channels[idx].ch_req_callback = callback == NULL
++ 					       ? NULL : vim_strsave(callback);
++ }
++ 
++ /*
++  * Set the flag that the callback for channel "idx" should not be used now.
++  */
++     void
++ channel_will_block(int idx)
++ {
++     channels[idx].ch_will_block = TRUE;
++ }
++ 
++ /*
++  * Decode JSON "msg", which must have the form "[nr, expr]".
++  * Put "expr" in "tv".
++  * Return OK or FAIL.
++  */
++     int
++ channel_decode_json(char_u *msg, typval_T *tv)
++ {
++     js_read_T	reader;
++     typval_T	listtv;
++ 
++     reader.js_buf = msg;
++     reader.js_eof = TRUE;
++     reader.js_used = 0;
++     json_decode(&reader, &listtv);
++     /* TODO: use the sequence number */
++     if (listtv.v_type == VAR_LIST
++ 	  && listtv.vval.v_list->lv_len == 2
++ 	  && listtv.vval.v_list->lv_first->li_tv.v_type == VAR_NUMBER)
++     {
++ 	/* Move the item from the list and then change the type to avoid the
++ 	 * item being freed. */
++ 	*tv = listtv.vval.v_list->lv_last->li_tv;
++ 	listtv.vval.v_list->lv_last->li_tv.v_type = VAR_NUMBER;
++ 	list_unref(listtv.vval.v_list);
++ 	return OK;
++     }
++ 
++     /* give error message? */
++     clear_tv(&listtv);
++     return FAIL;
++ }
++ 
++ /*
++  * Invoke the "callback" on channel "idx".
++  */
++     static void
++ invoke_callback(int idx, char_u *callback)
++ {
++     typval_T	argv[3];
++     typval_T	rettv;
++     int		dummy;
++     char_u	*msg;
++     int		ret = OK;
++ 
++     argv[0].v_type = VAR_NUMBER;
++     argv[0].vval.v_number = idx;
++ 
++     /* Concatenate everything into one buffer.
++      * TODO: only read what the callback will use.
++      * TODO: avoid multiple allocations. */
++     while (channel_collapse(idx) == OK)
++ 	;
++     msg = channel_get(idx);
++ 
++     if (channels[idx].ch_json_mode)
++ 	ret = channel_decode_json(msg, &argv[1]);
++     else
++     {
++ 	argv[1].v_type = VAR_STRING;
++ 	argv[1].vval.v_string = msg;
++     }
++ 
++     if (ret == OK)
++     {
++ 	call_func(callback, (int)STRLEN(callback),
++ 				 &rettv, 2, argv, 0L, 0L, &dummy, TRUE, NULL);
++ 	/* If an echo command was used the cursor needs to be put back where
++ 	 * it belongs. */
++ 	setcursor();
++ 	cursor_on();
++ 	out_flush();
++     }
++     vim_free(msg);
++ }
++ 
++ /*
++  * Invoke a callback for channel "idx" if needed.
++  */
++     static void
++ may_invoke_callback(int idx)
++ {
++     if (channels[idx].ch_will_block)
++ 	return;
++     if (channel_peek(idx) == NULL)
++ 	return;
++ 
++     if (channels[idx].ch_req_callback != NULL)
++     {
++ 	/* invoke the one-time callback */
++ 	invoke_callback(idx, channels[idx].ch_req_callback);
++ 	channels[idx].ch_req_callback = NULL;
++ 	return;
++     }
++ 
++     if (channels[idx].ch_callback != NULL)
++ 	/* invoke the channel callback */
++ 	invoke_callback(idx, channels[idx].ch_callback);
++ }
++ 
++ /*
+   * Return TRUE when channel "idx" is open.
++  * Also returns FALSE or invalid "idx".
+   */
+      int
+  channel_is_open(int idx)
+  {
+!     return idx >= 0 && idx < channel_count && channels[idx].ch_fd >= 0;
+  }
+  
+  /*
+***************
+*** 407,412 ****
+--- 553,560 ----
+  #ifdef FEAT_GUI
+  	channel_gui_unregister(idx);
+  #endif
++ 	vim_free(channel->ch_callback);
++ 	channel->ch_callback = NULL;
+      }
+  }
+  
+***************
+*** 551,572 ****
+  #define MAXMSGSIZE 4096
+  
+  /*
+!  * Read from channel "idx".  The data is put in the read queue.
+   */
+!     void
+! channel_read(int idx)
+  {
+-     static char_u	*buf = NULL;
+-     int			len = 0;
+-     int			readlen = 0;
+  #ifdef HAVE_SELECT
+      struct timeval	tval;
+      fd_set		rfds;
+  #else
+- # ifdef HAVE_POLL
+      struct pollfd	fds;
+! # endif
+  #endif
+      channel_T		*channel = &channels[idx];
+  
+      if (channel->ch_fd < 0)
+--- 699,762 ----
+  #define MAXMSGSIZE 4096
+  
+  /*
+!  * Check for reading from "fd" with "timeout" msec.
+!  * Return FAIL when there is nothing to read.
+   */
+!     static int
+! channel_wait(int fd, int timeout)
+  {
+  #ifdef HAVE_SELECT
+      struct timeval	tval;
+      fd_set		rfds;
++     int			ret;
++ 
++     FD_ZERO(&rfds);
++     FD_SET(fd, &rfds);
++     tval.tv_sec = timeout / 1000;
++     tval.tv_usec = (timeout % 1000) * 1000;
++     for (;;)
++     {
++ 	ret = select(fd + 1, &rfds, NULL, NULL, &tval);
++ # ifdef EINTR
++ 	if (ret == -1 && errno == EINTR)
++ 	    continue;
++ # endif
++ 	if (ret <= 0)
++ 	    return FAIL;
++ 	break;
++     }
+  #else
+      struct pollfd	fds;
+! 
+!     fds.fd = fd;
+!     fds.events = POLLIN;
+!     if (poll(&fds, 1, timeout) <= 0)
+! 	return FAIL;
+  #endif
++     return OK;
++ }
++ 
++ /*
++  * Return a unique ID to be used in a message.
++  */
++     int
++ channel_get_id()
++ {
++     static int next_id = 1;
++ 
++     return next_id++;
++ }
++ 
++ /*
++  * Read from channel "idx" for as long as there is something to read.
++  * The data is put in the read queue.
++  */
++     void
++ channel_read(int idx)
++ {
++     static char_u	*buf = NULL;
++     int			len = 0;
++     int			readlen = 0;
+      channel_T		*channel = &channels[idx];
+  
+      if (channel->ch_fd < 0)
+***************
+*** 588,608 ****
+       * MAXMSGSIZE long. */
+      for (;;)
+      {
+! #ifdef HAVE_SELECT
+! 	FD_ZERO(&rfds);
+! 	FD_SET(channel->ch_fd, &rfds);
+! 	tval.tv_sec = 0;
+! 	tval.tv_usec = 0;
+! 	if (select(channel->ch_fd + 1, &rfds, NULL, NULL, &tval) <= 0)
+! 	    break;
+! #else
+! # ifdef HAVE_POLL
+! 	fds.fd = channel->ch_fd;
+! 	fds.events = POLLIN;
+! 	if (poll(&fds, 1, 0) <= 0)
+  	    break;
+- # endif
+- #endif
+  	len = sock_read(channel->ch_fd, buf, MAXMSGSIZE);
+  	if (len <= 0)
+  	    break;	/* error or nothing more to read */
+--- 778,785 ----
+       * MAXMSGSIZE long. */
+      for (;;)
+      {
+! 	if (channel_wait(channel->ch_fd, 0) == FAIL)
+  	    break;
+  	len = sock_read(channel->ch_fd, buf, MAXMSGSIZE);
+  	if (len <= 0)
+  	    break;	/* error or nothing more to read */
+***************
+*** 641,652 ****
+--- 818,861 ----
+  	}
+      }
+  
++     may_invoke_callback(idx);
++ 
+  #if defined(CH_HAS_GUI) && defined(FEAT_GUI_GTK)
+      if (CH_HAS_GUI && gtk_main_level() > 0)
+  	gtk_main_quit();
+  #endif
+  }
+  
++ /*
++  * Read from channel "idx".  Blocks until there is something to read or the
++  * timeout expires.
++  * Returns what was read in allocated memory.
++  * Returns NULL in case of error or timeout.
++  */
++     char_u *
++ channel_read_block(int idx)
++ {
++     if (channel_peek(idx) == NULL)
++     {
++ 	/* Wait for up to 2 seconds.
++ 	 * TODO: use timeout set on the channel. */
++ 	if (channel_wait(channels[idx].ch_fd, 2000) == FAIL)
++ 	{
++ 	    channels[idx].ch_will_block = FALSE;
++ 	    return NULL;
++ 	}
++ 	channel_read(idx);
++     }
++ 
++     /* Concatenate everything into one buffer.
++      * TODO: avoid multiple allocations. */
++     while (channel_collapse(idx) == OK)
++ 	;
++ 
++     channels[idx].ch_will_block = FALSE;
++     return channel_get(idx);
++ }
++ 
+  # if defined(FEAT_GUI_W32) || defined(PROTO)
+  /*
+   * Lookup the channel index from the socket.
+***************
+*** 668,675 ****
+  /*
+   * Write "buf" (NUL terminated string) to channel "idx".
+   * When "fun" is not NULL an error message might be given.
+   */
+!     void
+  channel_send(int idx, char_u *buf, char *fun)
+  {
+      channel_T	*channel = &channels[idx];
+--- 877,885 ----
+  /*
+   * Write "buf" (NUL terminated string) to channel "idx".
+   * When "fun" is not NULL an error message might be given.
++  * Return FAIL or OK.
+   */
+!     int
+  channel_send(int idx, char_u *buf, char *fun)
+  {
+      channel_T	*channel = &channels[idx];
+***************
+*** 683,690 ****
+  	    EMSG2("E630: %s(): write while not connected", fun);
+  	}
+  	channel->ch_error = TRUE;
+      }
+!     else if (sock_write(channel->ch_fd, buf, len) != len)
+      {
+  	if (!channel->ch_error && fun != NULL)
+  	{
+--- 893,902 ----
+  	    EMSG2("E630: %s(): write while not connected", fun);
+  	}
+  	channel->ch_error = TRUE;
++ 	return FAIL;
+      }
+! 
+!     if (sock_write(channel->ch_fd, buf, len) != len)
+      {
+  	if (!channel->ch_error && fun != NULL)
+  	{
+***************
+*** 692,700 ****
+  	    EMSG2("E631: %s(): write failed", fun);
+  	}
+  	channel->ch_error = TRUE;
+      }
+!     else
+! 	channel->ch_error = FALSE;
+  }
+  
+  # if (defined(UNIX) && !defined(HAVE_SELECT)) || defined(PROTO)
+--- 904,914 ----
+  	    EMSG2("E631: %s(): write failed", fun);
+  	}
+  	channel->ch_error = TRUE;
++ 	return FAIL;
+      }
+! 
+!     channel->ch_error = FALSE;
+!     return OK;
+  }
+  
+  # if (defined(UNIX) && !defined(HAVE_SELECT)) || defined(PROTO)
+*** ../vim-7.4.1190/src/eval.c	2016-01-26 19:59:04.571324075 +0100
+--- src/eval.c	2016-01-28 20:34:22.680942445 +0100
+***************
+*** 458,464 ****
+  static int find_internal_func(char_u *name);
+  static char_u *deref_func_name(char_u *name, int *lenp, int no_autoload);
+  static int get_func_tv(char_u *name, int len, typval_T *rettv, char_u **arg, linenr_T firstline, linenr_T lastline, int *doesrange, int evaluate, dict_T *selfdict);
+- static int call_func(char_u *funcname, int len, typval_T *rettv, int argcount, typval_T *argvars, linenr_T firstline, linenr_T lastline, int *doesrange, int evaluate, dict_T *selfdict);
+  static void emsg_funcname(char *ermsg, char_u *name);
+  static int non_zero_arg(typval_T *argvars);
+  
+--- 458,463 ----
+***************
+*** 516,521 ****
+--- 515,523 ----
+  static void f_cos(typval_T *argvars, typval_T *rettv);
+  static void f_cosh(typval_T *argvars, typval_T *rettv);
+  #endif
++ #ifdef FEAT_CHANNEL
++ static void f_connect(typval_T *argvars, typval_T *rettv);
++ #endif
+  static void f_count(typval_T *argvars, typval_T *rettv);
+  static void f_cscope_connection(typval_T *argvars, typval_T *rettv);
+  static void f_cursor(typval_T *argsvars, typval_T *rettv);
+***************
+*** 524,529 ****
+--- 526,534 ----
+  static void f_did_filetype(typval_T *argvars, typval_T *rettv);
+  static void f_diff_filler(typval_T *argvars, typval_T *rettv);
+  static void f_diff_hlID(typval_T *argvars, typval_T *rettv);
++ #ifdef FEAT_CHANNEL
++ static void f_disconnect(typval_T *argvars, typval_T *rettv);
++ #endif
+  static void f_empty(typval_T *argvars, typval_T *rettv);
+  static void f_escape(typval_T *argvars, typval_T *rettv);
+  static void f_eval(typval_T *argvars, typval_T *rettv);
+***************
+*** 698,703 ****
+--- 703,712 ----
+  static void f_searchpair(typval_T *argvars, typval_T *rettv);
+  static void f_searchpairpos(typval_T *argvars, typval_T *rettv);
+  static void f_searchpos(typval_T *argvars, typval_T *rettv);
++ #ifdef FEAT_CHANNEL
++ static void f_sendexpr(typval_T *argvars, typval_T *rettv);
++ static void f_sendraw(typval_T *argvars, typval_T *rettv);
++ #endif
+  static void f_server2client(typval_T *argvars, typval_T *rettv);
+  static void f_serverlist(typval_T *argvars, typval_T *rettv);
+  static void f_setbufvar(typval_T *argvars, typval_T *rettv);
+***************
+*** 8170,8175 ****
+--- 8179,8187 ----
+      {"complete_check",	0, 0, f_complete_check},
+  #endif
+      {"confirm",		1, 4, f_confirm},
++ #ifdef FEAT_CHANNEL
++     {"connect",		2, 3, f_connect},
++ #endif
+      {"copy",		1, 1, f_copy},
+  #ifdef FEAT_FLOAT
+      {"cos",		1, 1, f_cos},
+***************
+*** 8183,8188 ****
+--- 8195,8203 ----
+      {"did_filetype",	0, 0, f_did_filetype},
+      {"diff_filler",	1, 1, f_diff_filler},
+      {"diff_hlID",	2, 2, f_diff_hlID},
++ #ifdef FEAT_CHANNEL
++     {"disconnect",	1, 1, f_disconnect},
++ #endif
+      {"empty",		1, 1, f_empty},
+      {"escape",		2, 2, f_escape},
+      {"eval",		1, 1, f_eval},
+***************
+*** 8361,8366 ****
+--- 8376,8385 ----
+      {"searchpair",	3, 7, f_searchpair},
+      {"searchpairpos",	3, 7, f_searchpairpos},
+      {"searchpos",	1, 4, f_searchpos},
++ #ifdef FEAT_CHANNEL
++     {"sendexpr",	2, 3, f_sendexpr},
++     {"sendraw",		2, 3, f_sendraw},
++ #endif
+      {"server2client",	2, 2, f_server2client},
+      {"serverlist",	0, 0, f_serverlist},
+      {"setbufvar",	3, 3, f_setbufvar},
+***************
+*** 8674,8680 ****
+   * Return FAIL when the function can't be called,  OK otherwise.
+   * Also returns OK when an error was encountered while executing the function.
+   */
+!     static int
+  call_func(funcname, len, rettv, argcount, argvars, firstline, lastline,
+  						doesrange, evaluate, selfdict)
+      char_u	*funcname;	/* name of the function */
+--- 8693,8699 ----
+   * Return FAIL when the function can't be called,  OK otherwise.
+   * Also returns OK when an error was encountered while executing the function.
+   */
+!     int
+  call_func(funcname, len, rettv, argcount, argvars, firstline, lastline,
+  						doesrange, evaluate, selfdict)
+      char_u	*funcname;	/* name of the function */
+***************
+*** 10293,10298 ****
+--- 10312,10394 ----
+      rettv->vval.v_number = n;
+  }
+  
++ #ifdef FEAT_CHANNEL
++ /*
++  * Get a callback from "arg".  It can be a Funcref or a function name.
++  * When "arg" is zero return an empty string.
++  * Return NULL for an invalid argument.
++  */
++     static char_u *
++ get_callback(typval_T *arg)
++ {
++     if (arg->v_type == VAR_FUNC || arg->v_type == VAR_STRING)
++ 	return arg->vval.v_string;
++     if (arg->v_type == VAR_NUMBER && arg->vval.v_number == 0)
++ 	return (char_u *)"";
++     EMSG(_("E999: Invalid callback argument"));
++     return NULL;
++ }
++ 
++ /*
++  * "connect()" function
++  */
++     static void
++ f_connect(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv;
++ {
++     char_u	*address;
++     char_u	*mode;
++     char_u	*callback = NULL;
++     char_u	buf1[NUMBUFLEN];
++     char_u	*p;
++     int		port;
++     int		json_mode = FALSE;
++ 
++     address = get_tv_string(&argvars[0]);
++     mode = get_tv_string_buf(&argvars[1], buf1);
++     if (argvars[2].v_type != VAR_UNKNOWN)
++     {
++ 	callback = get_callback(&argvars[2]);
++ 	if (callback == NULL)
++ 	    return;
++     }
++ 
++     /* parse address */
++     p = vim_strchr(address, ':');
++     if (p == NULL)
++     {
++ 	EMSG2(_(e_invarg2), address);
++ 	return;
++     }
++     *p++ = NUL;
++     port = atoi((char *)p);
++     if (*address == NUL || port <= 0)
++     {
++ 	p[-1] = ':';
++ 	EMSG2(_(e_invarg2), address);
++ 	return;
++     }
++ 
++     /* parse mode */
++     if (STRCMP(mode, "json") == 0)
++ 	json_mode = TRUE;
++     else if (STRCMP(mode, "raw") != 0)
++     {
++ 	EMSG2(_(e_invarg2), mode);
++ 	return;
++     }
++ 
++     rettv->vval.v_number = channel_open((char *)address, port, NULL);
++     if (rettv->vval.v_number >= 0)
++     {
++ 	channel_set_json_mode(rettv->vval.v_number, json_mode);
++ 	if (callback != NULL && *callback != NUL)
++ 	    channel_set_callback(rettv->vval.v_number, callback);
++     }
++ }
++ #endif
++ 
+  /*
+   * "cscope_connection([{num} , {dbpath} [, {prepend}]])" function
+   *
+***************
+*** 10545,10550 ****
+--- 10641,10686 ----
+  #endif
+  }
+  
++ #ifdef FEAT_CHANNEL
++ /*
++  * Get the channel index from the handle argument.
++  * Returns -1 if the handle is invalid or the channel is closed.
++  */
++     static int
++ get_channel_arg(typval_T *tv)
++ {
++     int ch_idx;
++ 
++     if (tv->v_type != VAR_NUMBER)
++     {
++ 	EMSG2(_(e_invarg2), get_tv_string(tv));
++ 	return -1;
++     }
++     ch_idx = tv->vval.v_number;
++ 
++     if (!channel_is_open(ch_idx))
++     {
++ 	EMSGN(_("E999: not an open channel"), ch_idx);
++ 	return -1;
++     }
++     return ch_idx;
++ }
++ 
++ /*
++  * "disconnect()" function
++  */
++     static void
++ f_disconnect(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv UNUSED;
++ {
++     int ch_idx = get_channel_arg(&argvars[0]);
++ 
++     if (ch_idx >= 0)
++ 	channel_close(ch_idx);
++ }
++ #endif
++ 
+  /*
+   * "empty({expr})" function
+   */
+***************
+*** 17378,17383 ****
+--- 17514,17622 ----
+  	list_append_number(rettv->vval.v_list, (varnumber_T)n);
+  }
+  
++ #ifdef FEAT_CHANNEL
++ /*
++  * common for "sendexpr()" and "sendraw()"
++  * Returns the channel index if the caller should read the response.
++  * Otherwise returns -1.
++  */
++     static int
++ send_common(typval_T *argvars, char_u *text, char *fun)
++ {
++     int		ch_idx;
++     char_u	*callback = NULL;
++ 
++     ch_idx = get_channel_arg(&argvars[0]);
++     if (ch_idx < 0)
++ 	return -1;
++ 
++     if (argvars[2].v_type != VAR_UNKNOWN)
++     {
++ 	callback = get_callback(&argvars[2]);
++ 	if (callback == NULL)
++ 	    return -1;
++     }
++     /* Set the callback or clear it. An empty callback means no callback and
++      * not reading the response. */
++     channel_set_req_callback(ch_idx,
++ 	    callback != NULL && *callback == NUL ? NULL : callback);
++     if (callback == NULL)
++ 	channel_will_block(ch_idx);
++ 
++     if (channel_send(ch_idx, text, fun) == OK && callback == NULL)
++ 	return ch_idx;
++     return -1;
++ }
++ 
++ /*
++  * "sendexpr()" function
++  */
++     static void
++ f_sendexpr(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv;
++ {
++     char_u	*text;
++     char_u	*resp;
++     typval_T	nrtv;
++     typval_T	listtv;
++     int		ch_idx;
++ 
++     /* return an empty string by default */
++     rettv->v_type = VAR_STRING;
++     rettv->vval.v_string = NULL;
++ 
++     nrtv.v_type = VAR_NUMBER;
++     nrtv.vval.v_number = channel_get_id();
++     if (rettv_list_alloc(&listtv) == FAIL)
++ 	return;
++     if (list_append_tv(listtv.vval.v_list, &nrtv) == FAIL
++ 	    || list_append_tv(listtv.vval.v_list, &argvars[1]) == FAIL)
++     {
++ 	list_unref(listtv.vval.v_list);
++ 	return;
++     }
++ 
++     text = json_encode(&listtv);
++     list_unref(listtv.vval.v_list);
++ 
++     ch_idx = send_common(argvars, text, "sendexpr");
++     if (ch_idx >= 0)
++     {
++ 	/* TODO: read until the whole JSON message is received */
++ 	/* TODO: only use the message with the right message ID */
++ 	resp = channel_read_block(ch_idx);
++ 	if (resp != NULL)
++ 	{
++ 	    channel_decode_json(resp, rettv);
++ 	    vim_free(resp);
++ 	}
++     }
++ }
++ 
++ /*
++  * "sendraw()" function
++  */
++     static void
++ f_sendraw(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv;
++ {
++     char_u	buf[NUMBUFLEN];
++     char_u	*text;
++     int		ch_idx;
++ 
++     /* return an empty string by default */
++     rettv->v_type = VAR_STRING;
++     rettv->vval.v_string = NULL;
++ 
++     text = get_tv_string_buf(&argvars[1], buf);
++     ch_idx = send_common(argvars, text, "sendraw");
++     if (ch_idx >= 0)
++ 	rettv->vval.v_string = channel_read_block(ch_idx);
++ }
++ #endif
++ 
+  
+      static void
+  f_server2client(argvars, rettv)
+*** ../vim-7.4.1190/src/proto/channel.pro	2016-01-27 21:08:12.527796721 +0100
+--- src/proto/channel.pro	2016-01-28 20:11:33.711227395 +0100
+***************
+*** 1,6 ****
+--- 1,11 ----
+  /* channel.c */
+  void channel_gui_register_all(void);
+  int channel_open(char *hostname, int port_in, void (*close_cb)(void));
++ void channel_set_json_mode(int idx, int json_mode);
++ void channel_set_callback(int idx, char_u *callback);
++ void channel_set_req_callback(int idx, char_u *callback);
++ void channel_will_block(int idx);
++ int channel_decode_json(char_u *msg, typval_T *tv);
+  int channel_is_open(int idx);
+  void channel_close(int idx);
+  void channel_save(int idx, char_u *buf, int len);
+***************
+*** 8,16 ****
+  char_u *channel_get(int idx);
+  int channel_collapse(int idx);
+  void channel_clear(int idx);
+  void channel_read(int idx);
+  int channel_socket2idx(sock_T fd);
+! void channel_send(int idx, char_u *buf, char *fun);
+  int channel_poll_setup(int nfd_in, void *fds_in);
+  int channel_poll_check(int ret_in, void *fds_in);
+  int channel_select_setup(int maxfd_in, void *rfds_in);
+--- 13,23 ----
+  char_u *channel_get(int idx);
+  int channel_collapse(int idx);
+  void channel_clear(int idx);
++ int channel_get_id(void);
+  void channel_read(int idx);
++ char_u *channel_read_block(int idx);
+  int channel_socket2idx(sock_T fd);
+! int channel_send(int idx, char_u *buf, char *fun);
+  int channel_poll_setup(int nfd_in, void *fds_in);
+  int channel_poll_check(int ret_in, void *fds_in);
+  int channel_select_setup(int maxfd_in, void *rfds_in);
+*** ../vim-7.4.1190/src/proto/eval.pro	2016-01-23 19:45:48.626931291 +0100
+--- src/proto/eval.pro	2016-01-28 20:12:58.310343903 +0100
+***************
+*** 82,87 ****
+--- 82,88 ----
+  int string2float(char_u *text, float_T *value);
+  char_u *get_function_name(expand_T *xp, int idx);
+  char_u *get_expr_name(expand_T *xp, int idx);
++ int call_func(char_u *funcname, int len, typval_T *rettv, int argcount, typval_T *argvars, linenr_T firstline, linenr_T lastline, int *doesrange, int evaluate, dict_T *selfdict);
+  int func_call(char_u *name, typval_T *args, dict_T *selfdict, typval_T *rettv);
+  void dict_extend(dict_T *d1, dict_T *d2, char_u *action);
+  void mzscheme_call_vim(char_u *name, typval_T *args, typval_T *rettv);
+*** ../vim-7.4.1190/runtime/doc/channel.txt	2016-01-28 22:32:21.954526665 +0100
+--- runtime/doc/channel.txt	2016-01-28 22:31:26.699110335 +0100
+***************
+*** 0 ****
+--- 1,218 ----
++ *channel.txt*      For Vim version 7.4.  Last change: 2016 Jan 28
++ 
++ 
++ 		  VIM REFERENCE MANUAL	  by Bram Moolenaar
++ 
++ 
++ 		      Inter-process communication		*channel*
++ 
++ DRAFT  DRAFT  DRAFT  DRAFT  DRAFT  DRAFT  DRAFT  DRAFT  DRAFT  DRAFT
++ 
++ Vim uses channels to communicate with other processes.
++ A channel uses a socket.				*socket-interface*
++ 
++ Vim current supports up to 10 simultanious channels.
++ The Netbeans interface also uses a channel. |netbeans|
++ 
++ 1. Demo					|channel-demo|
++ 2. Opening a channel			|channel-open|
++ 3. Using a JSON channel			|channel-use|
++ 4. Vim commands				|channel-commands|
++ 5. Using a raw channel			|channel-use|
++ 6. Job control				|job-control|
++ 
++ {Vi does not have any of these features}
++ {only available when compiled with the |+channel| feature}
++ 
++ ==============================================================================
++ 1. Demo							*channel-demo*
++ 
++ This requires Python.  The demo program can be found in
++ $VIMRUNTIME/tools/demoserver.py
++ Run it in one terminal.  We will call this T1.
++ 
++ Run Vim in another terminal.  Connect to the demo server with: >
++ 	let handle = connect('localhost:8765', 'json')
++ 
++ In T1 you should see:
++ 	=== socket opened === ~
++ 
++ You can now send a message to the server: >
++ 	echo sendexpr(handle, 'hello!')
++ 
++ The message is received in T1 and a response is sent back to Vim.
++ You can see the raw messages in T1.  What Vim sends is:
++ 	[1,"hello!"] ~
++ And the response is:
++ 	[1,"got it"] ~
++ The number will increase every time you send a message.
++ 
++ The server can send a command to Vim.  Type this on T1 (literally, including
++ the quotes): >
++ 	NOT IMPLEMENTED YET
++ 	["ex","echo 'hi there'"]
++ And you should see the message in Vim.
++ 
++ To handle asynchronous communication a callback needs to be used: >
++ 	func MyHandler(handle, msg)
++ 	  echo "from the handler: " . a:msg
++ 	endfunc
++ 	call sendexpr(handle, 'hello!', "MyHandler")
++ 
++ Instead of giving a callback with every send call, it can also be specified
++ when opening the channel: >
++ 	call disconnect(handle)
++ 	let handle = connect('localhost:8765', 'json', "MyHandler")
++ 	call sendexpr(handle, 'hello!', 0)
++ 
++ ==============================================================================
++ 2. Opening a channel					*channel-open*
++ 
++ To open a channel:
++     let handle = connect({address}, {mode}, {callback})
++ 
++ {address} has the form "hostname:port".  E.g., "localhost:8765".
++ 
++ {mode} can be:						*channel-mode*
++ 	"json" - Use JSON, see below; most convenient way
++ 	"raw"  - Use raw messages
++ 
++ 							*channel-callback*
++ {callback} is a function that is called when a message is received that is not
++ handled otherwise.  It gets two arguments: the channel handle and the received
++ message. Example: >
++ 	func Handle(handle, msg)
++ 	  echo 'Received: ' . a:msg
++ 	endfunc
++ 	let handle = connect("localhost:8765", 'json', "Handle")
++ 
++ When {mode} is "json" the "msg" argument is the body of the received message,
++ converted to Vim types.
++ When {mode} is "raw" the "msg" argument is the whole message as a string.
++ 
++ When {mode} is "json" the {callback} is optional.  When omitted it is only
++ possible to receive a message after sending one.
++ 
++ The handler can be added or changed later: >
++     call sethandler(handle, {callback})
++ When {callback} is empty (zero or an empty string) the handler is removed.
++ 
++ Once done with the channel, disconnect it like this: >
++     call disconnect(handle)
++ 
++ ==============================================================================
++ 3. Using a JSON channel					*channel-use*
++ 
++ If {mode} is "json" then a message can be sent synchronously like this: >
++     let response = sendexpr(handle, {expr})
++ This awaits a response from the other side.
++ 
++ To send a message, without handling a response: >
++     call sendexpr(handle, {expr}, 0)
++ 
++ To send a message and letting the response handled by a specific function,
++ asynchronously: >
++     call sendexpr(handle, {expr}, {callback})
++ 
++ The {expr} is converted to JSON and wrapped in an array.  An example of the
++ message that the receiver will get when {expr} is the string "hello":
++ 	[12,"hello"] ~
++ 
++ The format of the JSON sent is:
++     [{number},{expr}]
++ 
++ In which {number} is different every time.  It must be used in the response
++ (if any):
++ 
++     [{number},{response}]
++ 
++ This way Vim knows which sent message matches with which received message and
++ can call the right handler.  Also when the messages arrive out of order.
++ 
++ The sender must always send valid JSON to Vim.  Vim can check for the end of
++ the message by parsing the JSON.  It will only accept the message if the end
++ was received.
++ 
++ When the process wants to send a message to Vim without first receiving a
++ message, it must use the number zero:
++     [0,{response}]
++ 
++ Then channel handler will then get {response} converted to Vim types.  If the
++ channel does not have a handler the message is dropped.
++ 
++ On read error or disconnect() the string "DETACH" is sent, if still possible.
++ The channel will then be inactive.
++ 
++ ==============================================================================
++ 4. Vim commands						*channel-commands*
++ 
++ NOT IMPLEMENTED YET
++ 
++ With a "json" channel the process can send commands to Vim that will be
++ handled by Vim internally, it does not require a handler for the channel.
++ 
++ Possible commands are:
++     ["ex",     {Ex command}]
++     ["normal", {Normal mode command}]
++     ["eval",   {number}, {expression}]
++     ["expr",   {expression}]
++ 
++ With all of these: Be careful what these commands do!  You can easily
++ interfere with what the user is doing.  To avoid trouble use |mode()| to check
++ that the editor is in the expected state.  E.g., to send keys that must be
++ inserted as text, not executed as a command: >
++     ["ex","if mode() == 'i' | call feedkeys('ClassName') | endif"]
++ 
++ The "ex" command is executed as any Ex command.  There is no response for
++ completion or error.  You could use functions in an |autoload| script.
++ You can also invoke |feedkeys()| to insert anything.
++ 
++ The "normal" command is executed like with |:normal|.
++ 
++ The "eval" command will result in sending back the result of the expression:
++ 	[{number}, {result}]
++ Here {number} is the same as what was in the request.
++ 
++ The "expr" command is similar, but does not send back any response.
++ Example:
++ 	["expr","setline('$', ['one', 'two', 'three'])"]
++ 
++ ==============================================================================
++ 5. Using a raw channel					*channel-raw*
++ 
++ If {mode} is "raw" then a message can be send like this: >
++     let response = sendraw(handle, {string})
++ The {string} is sent as-is.  The response will be what can be read from the
++ channel right away.  Since Vim doesn't know how to recognize the end of the
++ message you need to take care of it yourself.
++ 
++ To send a message, without expecting a response: >
++     call sendraw(handle, {string}, 0)
++ The process can send back a response, the channel handler will be called with
++ it.
++ 
++ To send a message and letting the response handled by a specific function,
++ asynchronously: >
++     call sendraw(handle, {string}, {callback})
++ 
++ This {string} can also be JSON, use |jsonencode()| to create it and
++ |jsondecode()| to handle a received JSON message.
++ 
++ ==============================================================================
++ 6. Job control						*job-control*
++ 
++ NOT IMPLEMENTED YET
++ 
++ To start another process: >
++     call startjob({command})
++ 
++ This does not wait for {command} to exit.
++ 
++ TODO:
++ 
++     let handle = startjob({command}, 's')            # uses stdin/stdout
++     let handle = startjob({command}, '', {address})  # uses socket
++     let handle = startjob({command}, 'd', {address}) # start if connect fails
++ 
++ 
++  vim:tw=78:ts=8:ft=help:norl:
+*** ../vim-7.4.1190/runtime/doc/eval.txt	2016-01-28 14:11:33.839370441 +0100
+--- runtime/doc/eval.txt	2016-01-28 17:35:25.964170782 +0100
+***************
+*** 1795,1800 ****
+--- 1820,1827 ----
+  complete_check()		Number	check for key typed during completion
+  confirm( {msg} [, {choices} [, {default} [, {type}]]])
+  				Number	number of choice picked by user
++ connect( {address}, {mode} [, {callback}])
++ 				Number	open a channel
+  copy( {expr})			any	make a shallow copy of {expr}
+  cos( {expr})			Float	cosine of {expr}
+  cosh( {expr})			Float	hyperbolic cosine of {expr}
+***************
+*** 2002,2007 ****
+--- 2029,2038 ----
+  				List	search for other end of start/end pair
+  searchpos( {pattern} [, {flags} [, {stopline} [, {timeout}]]])
+  				List	search for {pattern}
++ sendexpr( {handle}, {expr} [, {callback}])
++ 				any	send {expr} over JSON channel {handle}
++ sendraw( {handle}, {string} [, {callback}])
++ 				any	send {string} over raw channel {handle}
+  server2client( {clientid}, {string})
+  				Number	send reply string
+  serverlist()			String	get a list of available servers
+***************
+*** 2631,2636 ****
+--- 2666,2683 ----
+  		don't fit, a vertical layout is used anyway.  For some systems
+  		the horizontal layout is always used.
+  
++ connect({address}, {mode} [, {callback}])		*connect()*
++ 		Open a channel to {address}.  See |channel|.
++ 
++ 		{address} has the form "hostname:port", e.g.,
++ 		"localhost:8765".
++ 
++ 		{mode} is either "json" or "raw".  See |channel-mode| for the
++ 		meaning.
++ 
++ 		{callback} is a function that handles received messages on the
++ 		channel.  See |channel-callback|.
++ 
+  							*copy()*
+  copy({expr})	Make a copy of {expr}.	For Numbers and Strings this isn't
+  		different from using {expr} directly.
+***************
+*** 5534,5539 ****
+--- 5613,5635 ----
+  <		In this example "submatch" is 2 when a lowercase letter is
+  		found |/\l|, 3 when an uppercase letter is found |/\u|.
+  
++ sendexpr({handle}, {expr} [, {callback}])		*sendexpr()*
++ 		Send {expr} over JSON channel {handle}.  See |channel-use|.
++ 
++ 		When {callback} is given returns immediately.  Without
++ 		{callback} waits for a JSON response and returns the decoded
++ 		expression.  When there is an error or timeout returns an
++ 		empty string.
++ 
++ 		When {callback} is zero no response is expected.
++ 		Otherwise {callback} must be a Funcref or the name of a
++ 		function.  It is called when the response is received.  See
++ 		|channel-callback|.
++ 
++ sendraw({handle}, {string} [, {callback}])		*sendraw()*
++ 		Send {string} over raw channel {handle}.  See |channel-raw|.
++ 		Works like |sendexpr()|, but does not decode the response.
++ 
+  server2client( {clientid}, {string})			*server2client()*
+  		Send a reply string to {clientid}.  The most recent {clientid}
+  		that sent a string can be retrieved with expand("<client>").
+*** ../vim-7.4.1190/runtime/doc/Makefile	2015-01-20 17:27:18.154026317 +0100
+--- runtime/doc/Makefile	2016-01-27 23:02:02.607942802 +0100
+***************
+*** 17,22 ****
+--- 17,23 ----
+  	arabic.txt \
+  	autocmd.txt \
+  	change.txt \
++ 	channel.txt \
+  	cmdline.txt \
+  	debug.txt \
+  	debugger.txt \
+***************
+*** 150,155 ****
+--- 152,158 ----
+  	arabic.html \
+  	autocmd.html \
+  	change.html \
++ 	channel.html \
+  	cmdline.html \
+  	debug.html \
+  	debugger.html \
+*** ../vim-7.4.1190/runtime/tools/demoserver.py	2016-01-28 22:32:21.970526496 +0100
+--- runtime/tools/demoserver.py	2016-01-28 17:58:39.577782689 +0100
+***************
+*** 0 ****
+--- 1,87 ----
++ #!/usr/bin/python
++ # Server that will accept connections from a Vim channel.
++ # Run this server and then in Vim you can open the channel:
++ #  :let handle = connect('localhost:8765', 'json')
++ #
++ # Then Vim can send requests to the server:
++ #  :let response = sendexpr(handle, 'hello!')
++ #
++ # And you can control Vim by typing a JSON message here, e.g.:
++ #   ["ex","echo 'hi there'"]
++ #
++ # See ":help channel-demo" in Vim.
++ 
++ import SocketServer
++ import json
++ import socket
++ import sys
++ import threading
++ 
++ thesocket = None
++ 
++ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
++ 
++     def handle(self):
++         print "=== socket opened ==="
++         global thesocket
++         thesocket = self.request
++         while True:
++             try:
++                 data = self.request.recv(4096)
++             except socket.error:
++                 print "=== socket error ==="
++                 break
++             except IOError:
++                 print "=== socket closed ==="
++                 break
++             if data == '':
++                 print "=== socket closed ==="
++                 break
++             print "received: {}".format(data)
++             try:
++                 decoded = json.loads(data)
++             except ValueError:
++                 print "json decoding failed"
++                 decoded = [0, '']
++ 
++             if decoded[1] == 'hello!':
++                 response = "got it"
++             else:
++                 response = "what?"
++             encoded = json.dumps([decoded[0], response])
++             print "sending {}".format(encoded)
++             self.request.sendall(encoded)
++         thesocket = None
++ 
++ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
++     pass
++ 
++ if __name__ == "__main__":
++     HOST, PORT = "localhost", 8765
++ 
++     server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
++     ip, port = server.server_address
++ 
++     # Start a thread with the server -- that thread will then start one
++     # more thread for each request
++     server_thread = threading.Thread(target=server.serve_forever)
++ 
++     # Exit the server thread when the main thread terminates
++     server_thread.daemon = True
++     server_thread.start()
++     print "Server loop running in thread: ", server_thread.name
++ 
++     print "Listening on port {}".format(PORT)
++     while True:
++         typed = sys.stdin.readline()
++         if "quit" in typed:
++             print "Goodbye!"
++             break
++         if thesocket is None:
++             print "No socket yet"
++         else:
++             print "sending {}".format(typed)
++             thesocket.sendall(typed)
++ 
++     server.shutdown()
++     server.server_close()
+*** ../vim-7.4.1190/src/version.c	2016-01-28 15:34:21.935646156 +0100
+--- src/version.c	2016-01-28 22:30:10.727912923 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1191,
+  /**/
+
+-- 
+Q: Should I clean my house or work on Vim?
+A: Whatever contains more bugs.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

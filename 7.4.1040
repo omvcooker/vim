@@ -1,0 +1,193 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1040
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1040
+Problem:    The tee command is not available on MS-Windows.
+Solution:   Adjust tee.c for MSVC and add a makefile. (Yasuhiro Matsumoto)
+Files:      src/tee/tee.c, src/tee/Make_mvc.mak, src/Make_mvc.mak
+
+
+*** ../vim-7.4.1039/src/tee/tee.c	2010-05-15 13:04:08.000000000 +0200
+--- src/tee/tee.c	2016-01-03 16:46:49.118087767 +0100
+***************
+*** 4,9 ****
+--- 4,10 ----
+   *
+   *	Author: Paul Slootman
+   *			(paul@wurtel.hobby.nl, paul@murphy.nl, paulS@toecompst.nl)
++  *	Modifications for MSVC: Yasuhiro Matsumoto
+   *
+   *	This source code is released into the public domain. It is provided on an
+   *	as-is basis and no responsibility is accepted for its failure to perform
+***************
+*** 26,34 ****
+   * precompiled for OS/2. That one probably works better.
+   */
+  
+! #include <unistd.h>
+  #include <malloc.h>
+  #include <stdio.h>
+  
+  void usage(void)
+  {
+--- 27,42 ----
+   * precompiled for OS/2. That one probably works better.
+   */
+  
+! #ifndef _MSC_VER
+! # include <unistd.h>
+! #endif
+  #include <malloc.h>
+  #include <stdio.h>
++ #include <fcntl.h>
++ 
++ #ifdef _WIN32
++ # define sysconf(x) -1
++ #endif
+  
+  void usage(void)
+  {
+***************
+*** 79,95 ****
+  	int	i;
+  	char	buf[BUFSIZ];
+  	int	n;
+! 	extern int	optind;
+  
+! 	while ((opt = getopt(argc, argv, "a")) != EOF)
+  	{
+! 		switch (opt)
+! 		{
+! 			case 'a':	append++;
+! 					break;
+! 			default:	usage();
+! 					exit(2);
+! 		}
+  	}
+  
+  	numfiles = argc - optind;
+--- 87,103 ----
+  	int	i;
+  	char	buf[BUFSIZ];
+  	int	n;
+! 	int	optind = 1;
+  
+! 	for (i = 1; i < argc; i++)
+  	{
+! 		if (argv[i][0] != '-')
+! 			break;
+! 		if (!strcmp(argv[i], "-a"))
+! 			append++;
+! 		else
+! 			usage();
+! 		optind++;
+  	}
+  
+  	numfiles = argc - optind;
+***************
+*** 124,132 ****
+  			exit(1);
+  		}
+  	}
+! 	_fsetmode(stdin,  "b");
+  	fflush(stdout);	/* needed for _fsetmode(stdout) */
+! 	_fsetmode(stdout, "b");
+  
+  	while ((n = myfread(buf, sizeof(char), sizeof(buf), stdin)) > 0)
+  	{
+--- 132,140 ----
+  			exit(1);
+  		}
+  	}
+! 	setmode(fileno(stdin),  O_BINARY);
+  	fflush(stdout);	/* needed for _fsetmode(stdout) */
+! 	setmode(fileno(stdout),  O_BINARY);
+  
+  	while ((n = myfread(buf, sizeof(char), sizeof(buf), stdin)) > 0)
+  	{
+*** ../vim-7.4.1039/src/tee/Make_mvc.mak	2016-01-03 16:55:34.152466274 +0100
+--- src/tee/Make_mvc.mak	2016-01-03 16:44:05.391839529 +0100
+***************
+*** 0 ****
+--- 1,14 ----
++ # A very (if not the most) simplistic Makefile for MSVC
++ 
++ CC=cl
++ CFLAGS=/O2
++ 
++ tee.exe: tee.obj
++ 	$(CC) $(CFLAGS) /Fo$@ $**
++ 
++ tee.obj: tee.c
++ 	$(CC) $(CFLAGS) /c $**
++ 
++ clean:
++ 	- del tee.obj
++ 	- del tee.exe
+*** ../vim-7.4.1039/src/Make_mvc.mak	2016-01-01 17:49:39.745569574 +0100
+--- src/Make_mvc.mak	2016-01-03 16:51:32.515054190 +0100
+***************
+*** 946,953 ****
+  !endif
+  !endif
+  
+! all:	$(VIM).exe vimrun.exe install.exe uninstal.exe xxd/xxd.exe \
+! 		GvimExt/gvimext.dll
+  
+  $(VIM).exe: $(OUTDIR) $(OBJ) $(GUI_OBJ) $(OLE_OBJ) $(OLE_IDL) $(MZSCHEME_OBJ) \
+  		$(LUA_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(PYTHON3_OBJ) $(RUBY_OBJ) $(TCL_OBJ) \
+--- 946,958 ----
+  !endif
+  !endif
+  
+! all:	$(VIM).exe \
+! 	vimrun.exe \
+! 	install.exe \
+! 	uninstal.exe \
+! 	xxd/xxd.exe \
+! 	tee/tee.exe \
+! 	GvimExt/gvimext.dll
+  
+  $(VIM).exe: $(OUTDIR) $(OBJ) $(GUI_OBJ) $(OLE_OBJ) $(OLE_IDL) $(MZSCHEME_OBJ) \
+  		$(LUA_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(PYTHON3_OBJ) $(RUBY_OBJ) $(TCL_OBJ) \
+***************
+*** 982,987 ****
+--- 987,997 ----
+  	$(MAKE) /NOLOGO -f Make_mvc.mak
+  	cd ..
+  
++ tee/tee.exe: tee/tee.c
++ 	cd tee
++ 	$(MAKE) /NOLOGO -f Make_mvc.mak
++ 	cd ..
++ 
+  GvimExt/gvimext.dll: GvimExt/gvimext.cpp GvimExt/gvimext.rc GvimExt/gvimext.h
+  	cd GvimExt
+  	$(MAKE) /NOLOGO -f Makefile $(MAKEFLAGS_GVIMEXT)
+*** ../vim-7.4.1039/src/version.c	2016-01-03 14:32:36.845030352 +0100
+--- src/version.c	2016-01-03 16:45:08.399165466 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1040,
+  /**/
+
+-- 
+   Arthur pulls Pin out.  The MONK blesses the grenade as ...
+ARTHUR:  (quietly) One, two, five ...
+GALAHAD: Three, sir!
+ARTHUR:  Three.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

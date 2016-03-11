@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1080
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1080
+Problem:    VS2015 has a function HandleToLong() that is shadowed by the macro
+            that Vim defines.
+Solution:   Do not define HandleToLong() for MSVC version 1400 and later.
+            (Mike Williams)
+Files:      src/gui_w32.c
+
+
+*** ../vim-7.4.1079/src/gui_w32.c	2015-11-19 20:23:34.410520484 +0100
+--- src/gui_w32.c	2016-01-10 16:04:24.918974633 +0100
+***************
+*** 1769,1777 ****
+  #endif
+  
+  #ifdef FEAT_EVAL
+! # ifndef HandleToLong
+! /* HandleToLong() only exists in compilers that can do 64 bit builds */
+! #  define HandleToLong(h) ((long)(h))
+  # endif
+      /* set the v:windowid variable */
+      set_vim_var_nr(VV_WINDOWID, HandleToLong(s_hwnd));
+--- 1769,1779 ----
+  #endif
+  
+  #ifdef FEAT_EVAL
+! # if !defined(_MSC_VER) || (_MSC_VER < 1400)
+! /* Define HandleToLong for old MS and non-MS compilers if not defined. */
+! #  ifndef HandleToLong
+! #   define HandleToLong(h) ((long)(h))
+! #  endif
+  # endif
+      /* set the v:windowid variable */
+      set_vim_var_nr(VV_WINDOWID, HandleToLong(s_hwnd));
+*** ../vim-7.4.1079/src/version.c	2016-01-10 16:00:49.397306149 +0100
+--- src/version.c	2016-01-10 16:06:22.149707124 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1080,
+  /**/
+
+-- 
+This message contains 78% recycled characters.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

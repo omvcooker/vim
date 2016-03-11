@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1359
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1359 (after 7.4.1356)
+Problem:    Channel test ch_sendexpr() times out.
+Solution:   Increase the timeout
+Files:      src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1358/src/testdir/test_channel.vim	2016-02-19 22:33:31.500263323 +0100
+--- src/testdir/test_channel.vim	2016-02-19 22:55:26.882409800 +0100
+***************
+*** 146,152 ****
+  
+    " check setting options (without testing the effect)
+    call ch_setoptions(handle, {'callback': 's:NotUsed'})
+!   call ch_setoptions(handle, {'timeout': 111})
+    call assert_fails("call ch_setoptions(handle, {'waittime': 111})", "E475")
+    call assert_fails("call ch_setoptions(handle, {'mode': 'json'})", "E475")
+  
+--- 146,152 ----
+  
+    " check setting options (without testing the effect)
+    call ch_setoptions(handle, {'callback': 's:NotUsed'})
+!   call ch_setoptions(handle, {'timeout': 1111})
+    call assert_fails("call ch_setoptions(handle, {'waittime': 111})", "E475")
+    call assert_fails("call ch_setoptions(handle, {'mode': 'json'})", "E475")
+  
+*** ../vim-7.4.1358/src/version.c	2016-02-19 22:46:30.608057906 +0100
+--- src/version.c	2016-02-19 22:58:12.008670647 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1359,
+  /**/
+
+-- 
+I have to exercise early in the morning before my brain
+figures out what I'm doing.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

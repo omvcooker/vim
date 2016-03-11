@@ -1,0 +1,774 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1225
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1225
+Problem:    Still a few old style function declarations.
+Solution:   Make them new style. (Hirohito Higashi)
+Files:      runtime/tools/blink.c, src/eval.c, src/ex_cmds2.c, src/ex_getln.c,
+            src/fileio.c, src/gui_w32.c, src/gui_x11.c, src/if_perl.xs,
+            src/os_unix.c, src/po/sjiscorr.c, src/pty.c
+
+
+*** ../vim-7.4.1224/runtime/tools/blink.c	2010-05-15 13:04:00.000000000 +0200
+--- runtime/tools/blink.c	2016-01-31 17:14:34.976620285 +0100
+***************
+*** 7,12 ****
+--- 7,13 ----
+  
+  #include <stdio.h>
+  
++ 	int
+  main()
+  {
+  	while (1)
+***************
+*** 18,21 ****
+--- 19,23 ----
+  		fflush(stdout);
+  		usleep(250000);		/* off time */
+  	}
++ 	return 0;
+  }
+*** ../vim-7.4.1224/src/eval.c	2016-01-31 16:28:00.609674294 +0100
+--- src/eval.c	2016-01-31 17:15:58.835750946 +0100
+***************
+*** 6001,6007 ****
+   * It is not initialized, don't forget to set v_lock.
+   */
+      listitem_T *
+! listitem_alloc()
+  {
+      return (listitem_T *)alloc(sizeof(listitem_T));
+  }
+--- 6001,6007 ----
+   * It is not initialized, don't forget to set v_lock.
+   */
+      listitem_T *
+! listitem_alloc(void)
+  {
+      return (listitem_T *)alloc(sizeof(listitem_T));
+  }
+***************
+*** 10902,10914 ****
+      rettv->vval.v_number = filewritable(get_tv_string(&argvars[0]));
+  }
+  
+- static void findfilendir(typval_T *argvars, typval_T *rettv, int find_what);
+- 
+      static void
+! findfilendir(argvars, rettv, find_what)
+!     typval_T	*argvars UNUSED;
+!     typval_T	*rettv;
+!     int		find_what UNUSED;
+  {
+  #ifdef FEAT_SEARCHPATH
+      char_u	*fname;
+--- 10902,10912 ----
+      rettv->vval.v_number = filewritable(get_tv_string(&argvars[0]));
+  }
+  
+      static void
+! findfilendir(
+!     typval_T	*argvars UNUSED,
+!     typval_T	*rettv,
+!     int		find_what UNUSED)
+  {
+  #ifdef FEAT_SEARCHPATH
+      char_u	*fname;
+*** ../vim-7.4.1224/src/ex_cmds2.c	2016-01-31 14:55:35.223538514 +0100
+--- src/ex_cmds2.c	2016-01-31 17:16:30.391423802 +0100
+***************
+*** 3627,3636 ****
+   * At least CodeWarrior 9 needed this code.
+   */
+      char *
+! fgets_cr(s, n, stream)
+!     char	*s;
+!     int		n;
+!     FILE	*stream;
+  {
+      int	c = 0;
+      int char_read = 0;
+--- 3627,3633 ----
+   * At least CodeWarrior 9 needed this code.
+   */
+      char *
+! fgets_cr(char *s, int n, FILE *stream)
+  {
+      int	c = 0;
+      int char_read = 0;
+*** ../vim-7.4.1224/src/ex_getln.c	2016-01-31 14:55:35.227538473 +0100
+--- src/ex_getln.c	2016-01-31 17:13:47.745109901 +0100
+***************
+*** 5646,5652 ****
+   * Returns NUL when something is wrong.
+   */
+      int
+! get_cmdline_type()
+  {
+      struct cmdline_info *p = get_ccline_ptr();
+  
+--- 5646,5652 ----
+   * Returns NUL when something is wrong.
+   */
+      int
+! get_cmdline_type(void)
+  {
+      struct cmdline_info *p = get_ccline_ptr();
+  
+*** ../vim-7.4.1224/src/fileio.c	2016-01-30 15:52:42.579439439 +0100
+--- src/fileio.c	2016-01-31 17:13:47.749109860 +0100
+***************
+*** 9987,9995 ****
+   * "curbuf" and "curwin" to match "buf".
+   */
+      void
+! aucmd_prepbuf(aco, buf)
+!     aco_save_T	*aco;		/* structure to save values in */
+!     buf_T	*buf;		/* new curbuf */
+  {
+      aco->save_curbuf = curbuf;
+      --curbuf->b_nwindows;
+--- 9987,9995 ----
+   * "curbuf" and "curwin" to match "buf".
+   */
+      void
+! aucmd_prepbuf(
+!     aco_save_T	*aco,		/* structure to save values in */
+!     buf_T	*buf)		/* new curbuf */
+  {
+      aco->save_curbuf = curbuf;
+      --curbuf->b_nwindows;
+***************
+*** 10003,10010 ****
+   * This is the non-autocommand version.
+   */
+      void
+! aucmd_restbuf(aco)
+!     aco_save_T	*aco;		/* structure holding saved values */
+  {
+      --curbuf->b_nwindows;
+      curbuf = aco->save_curbuf;
+--- 10003,10010 ----
+   * This is the non-autocommand version.
+   */
+      void
+! aucmd_restbuf(
+!     aco_save_T	*aco)		/* structure holding saved values */
+  {
+      --curbuf->b_nwindows;
+      curbuf = aco->save_curbuf;
+*** ../vim-7.4.1224/src/gui_w32.c	2016-01-30 17:24:01.794502490 +0100
+--- src/gui_w32.c	2016-01-31 17:13:47.749109860 +0100
+***************
+*** 2292,2298 ****
+   * Get IM status.  When IM is on, return not 0.  Else return 0.
+   */
+      int
+! im_get_status()
+  {
+      return global_ime_get_status();
+  }
+--- 2292,2298 ----
+   * Get IM status.  When IM is on, return not 0.  Else return 0.
+   */
+      int
+! im_get_status(void)
+  {
+      return global_ime_get_status();
+  }
+*** ../vim-7.4.1224/src/gui_x11.c	2016-01-30 18:13:48.555479495 +0100
+--- src/gui_x11.c	2016-01-31 17:13:47.749109860 +0100
+***************
+*** 2234,2241 ****
+  
+  /* NOT USED YET
+      static int
+! fontset_descent(fs)
+!     XFontSet fs;
+  {
+      XFontSetExtents *extents;
+  
+--- 2234,2240 ----
+  
+  /* NOT USED YET
+      static int
+! fontset_descent(XFontSet fs)
+  {
+      XFontSetExtents *extents;
+  
+*** ../vim-7.4.1224/src/if_perl.xs	2016-01-29 23:20:35.313308119 +0100
+--- src/if_perl.xs	2016-01-31 17:21:13.116494348 +0100
+***************
+*** 631,638 ****
+   * There were no DLL loaded, return FALSE.
+   */
+      int
+! perl_enabled(verbose)
+!     int		verbose;
+  {
+      return perl_runtime_link_init((char *)p_perldll, verbose) == OK;
+  }
+--- 631,637 ----
+   * There were no DLL loaded, return FALSE.
+   */
+      int
+! perl_enabled(int verbose)
+  {
+      return perl_runtime_link_init((char *)p_perldll, verbose) == OK;
+  }
+***************
+*** 644,650 ****
+   * there's nothing to actually parse.
+   */
+      static void
+! perl_init()
+  {
+      char *bootargs[] = { "VI", NULL };
+      int argc = 3;
+--- 643,649 ----
+   * there's nothing to actually parse.
+   */
+      static void
+! perl_init(void)
+  {
+      char *bootargs[] = { "VI", NULL };
+      int argc = 3;
+***************
+*** 670,676 ****
+   * perl_end(): clean up after ourselves
+   */
+      void
+! perl_end()
+  {
+      if (perl_interp)
+      {
+--- 669,675 ----
+   * perl_end(): clean up after ourselves
+   */
+      void
+! perl_end(void)
+  {
+      if (perl_interp)
+      {
+***************
+*** 696,704 ****
+   * split at '\n' first though.
+   */
+      void
+! msg_split(s, attr)
+!     char_u	*s;
+!     int		attr;	/* highlighting attributes */
+  {
+      char *next;
+      char *token = (char *)s;
+--- 695,703 ----
+   * split at '\n' first though.
+   */
+      void
+! msg_split(
+!     char_u	*s,
+!     int		attr)	/* highlighting attributes */
+  {
+      char *next;
+      char *token = (char *)s;
+***************
+*** 719,728 ****
+   * work properly.
+   */
+      char_u *
+! eval_to_string(arg, nextcmd, dolist)
+!     char_u	*arg UNUSED;
+!     char_u	**nextcmd UNUSED;
+!     int		dolist UNUSED;
+  {
+      return NULL;
+  }
+--- 718,727 ----
+   * work properly.
+   */
+      char_u *
+! eval_to_string(
+!     char_u	*arg UNUSED,
+!     char_u	**nextcmd UNUSED,
+!     int		dolist UNUSED)
+  {
+      return NULL;
+  }
+***************
+*** 740,748 ****
+   */
+  
+      static SV *
+! newWINrv(rv, ptr)
+!     SV	    *rv;
+!     win_T   *ptr;
+  {
+      sv_upgrade(rv, SVt_RV);
+      if (ptr->w_perl_private == NULL)
+--- 739,745 ----
+   */
+  
+      static SV *
+! newWINrv(SV *rv, win_T *ptr)
+  {
+      sv_upgrade(rv, SVt_RV);
+      if (ptr->w_perl_private == NULL)
+***************
+*** 758,766 ****
+  }
+  
+      static SV *
+! newBUFrv(rv, ptr)
+!     SV	    *rv;
+!     buf_T   *ptr;
+  {
+      sv_upgrade(rv, SVt_RV);
+      if (ptr->b_perl_private == NULL)
+--- 755,761 ----
+  }
+  
+      static SV *
+! newBUFrv(SV *rv, buf_T *ptr)
+  {
+      sv_upgrade(rv, SVt_RV);
+      if (ptr->b_perl_private == NULL)
+***************
+*** 780,787 ****
+   *	Remove all references to the window to be destroyed
+   */
+      void
+! perl_win_free(wp)
+!     win_T *wp;
+  {
+      if (wp->w_perl_private)
+  	sv_setiv((SV *)wp->w_perl_private, 0);
+--- 775,781 ----
+   *	Remove all references to the window to be destroyed
+   */
+      void
+! perl_win_free(win_T *wp)
+  {
+      if (wp->w_perl_private)
+  	sv_setiv((SV *)wp->w_perl_private, 0);
+***************
+*** 789,796 ****
+  }
+  
+      void
+! perl_buf_free(bp)
+!     buf_T *bp;
+  {
+      if (bp->b_perl_private)
+  	sv_setiv((SV *)bp->b_perl_private, 0);
+--- 783,789 ----
+  }
+  
+      void
+! perl_buf_free(buf_T *bp)
+  {
+      if (bp->b_perl_private)
+  	sv_setiv((SV *)bp->b_perl_private, 0);
+***************
+*** 834,840 ****
+   * Make the magical main::curwin and main::curbuf variables
+   */
+      static void
+! VIM_init()
+  {
+      static char cw[] = "main::curwin";
+      static char cb[] = "main::curbuf";
+--- 827,833 ----
+   * Make the magical main::curwin and main::curbuf variables
+   */
+      static void
+! VIM_init(void)
+  {
+      static char cw[] = "main::curwin";
+      static char cb[] = "main::curbuf";
+***************
+*** 866,873 ****
+   * ":perl"
+   */
+      void
+! ex_perl(eap)
+!     exarg_T	*eap;
+  {
+      char	*err;
+      char	*script;
+--- 859,865 ----
+   * ":perl"
+   */
+      void
+! ex_perl(exarg_T *eap)
+  {
+      char	*err;
+      char	*script;
+***************
+*** 947,954 ****
+  }
+  
+      static int
+! replace_line(line, end)
+!     linenr_T	*line, *end;
+  {
+      char *str;
+  
+--- 939,945 ----
+  }
+  
+      static int
+! replace_line(linenr_T *line, linenr_T *end)
+  {
+      char *str;
+  
+***************
+*** 989,996 ****
+  }
+  
+      static struct ref_map_S *
+! ref_map_find_SV(sv)
+!     SV	*const sv;
+  {
+      struct ref_map_S *refs = ref_map;
+      int count = 350;
+--- 980,986 ----
+  }
+  
+      static struct ref_map_S *
+! ref_map_find_SV(SV *const sv)
+  {
+      struct ref_map_S *refs = ref_map;
+      int count = 350;
+***************
+*** 1016,1024 ****
+  }
+  
+      static int
+! perl_to_vim(sv, rettv)
+!     SV		*sv;
+!     typval_T	*rettv;
+  {
+      if (SvROK(sv))
+  	sv = SvRV(sv);
+--- 1006,1012 ----
+  }
+  
+      static int
+! perl_to_vim(SV *sv, typval_T *rettv)
+  {
+      if (SvROK(sv))
+  	sv = SvRV(sv);
+***************
+*** 1171,1179 ****
+   * "perleval()"
+   */
+      void
+! do_perleval(str, rettv)
+!     char_u	*str;
+!     typval_T	*rettv;
+  {
+      char	*err = NULL;
+      STRLEN	err_len = 0;
+--- 1159,1165 ----
+   * "perleval()"
+   */
+      void
+! do_perleval(char_u *str, typval_T *rettv)
+  {
+      char	*err = NULL;
+      STRLEN	err_len = 0;
+***************
+*** 1241,1248 ****
+   * ":perldo".
+   */
+      void
+! ex_perldo(eap)
+!     exarg_T	*eap;
+  {
+      STRLEN	length;
+      SV		*sv;
+--- 1227,1233 ----
+   * ":perldo".
+   */
+      void
+! ex_perldo(exarg_T *eap)
+  {
+      STRLEN	length;
+      SV		*sv;
+***************
+*** 1314,1322 ****
+  }
+  
+  #ifndef FEAT_WINDOWS
+! int win_valid(win_T *w) { return TRUE; }
+! int win_count() { return 1; }
+! win_T *win_find_nr(int n) { return curwin; }
+  #endif
+  
+  XS(boot_VIM);
+--- 1299,1319 ----
+  }
+  
+  #ifndef FEAT_WINDOWS
+!     int
+! win_valid(win_T *w)
+! {
+!     return TRUE;
+! }
+!     int
+! win_count(void)
+! {
+!     return 1;
+! }
+!     win_T *
+! win_find_nr(int n)
+! {
+!     return curwin;
+! }
+  #endif
+  
+  XS(boot_VIM);
+***************
+*** 1513,1520 ****
+      curwin = savewin;
+  
+  void
+! Cursor(win, ...)
+!     VIWIN win
+  
+      PPCODE:
+      if (items == 1)
+--- 1510,1516 ----
+      curwin = savewin;
+  
+  void
+! Cursor(VIWIN win, ...)
+  
+      PPCODE:
+      if (items == 1)
+*** ../vim-7.4.1224/src/os_unix.c	2016-01-30 20:31:21.249607913 +0100
+--- src/os_unix.c	2016-01-31 17:22:19.607805633 +0100
+***************
+*** 2041,2055 ****
+  #else  /* FEAT_X11 */
+  
+      static int
+! get_x11_title(test_only)
+!     int	    test_only UNUSED;
+  {
+      return FALSE;
+  }
+  
+      static int
+! get_x11_icon(test_only)
+!     int	    test_only;
+  {
+      if (!test_only)
+      {
+--- 2041,2053 ----
+  #else  /* FEAT_X11 */
+  
+      static int
+! get_x11_title(int test_only UNUSED)
+  {
+      return FALSE;
+  }
+  
+      static int
+! get_x11_icon(int test_only)
+  {
+      if (!test_only)
+      {
+***************
+*** 2333,2341 ****
+  # endif
+  
+      void
+! mch_get_host_name(s, len)
+!     char_u  *s;
+!     int	    len;
+  {
+  # ifdef VAXC
+      vaxc$gethostname((char *)s, len);
+--- 2331,2337 ----
+  # endif
+  
+      void
+! mch_get_host_name(char_u *s, int len)
+  {
+  # ifdef VAXC
+      vaxc$gethostname((char *)s, len);
+***************
+*** 2743,2751 ****
+   * Copy security info from "from_file" to "to_file".
+   */
+      void
+! mch_copy_sec(from_file, to_file)
+!     char_u	*from_file;
+!     char_u	*to_file;
+  {
+      static const char * const smack_copied_attributes[] =
+  	{
+--- 2739,2745 ----
+   * Copy security info from "from_file" to "to_file".
+   */
+      void
+! mch_copy_sec(char_u *from_file, char_u *to_file)
+  {
+      static const char * const smack_copied_attributes[] =
+  	{
+*** ../vim-7.4.1224/src/po/sjiscorr.c	2016-01-30 21:29:52.232928463 +0100
+--- src/po/sjiscorr.c	2016-01-31 17:13:47.749109860 +0100
+***************
+*** 7,13 ****
+  #include <string.h>
+  
+  	int
+! main(int argc, char **argv);
+  {
+  	char buffer[BUFSIZ];
+  	char *p;
+--- 7,13 ----
+  #include <string.h>
+  
+  	int
+! main(int argc, char **argv)
+  {
+  	char buffer[BUFSIZ];
+  	char *p;
+*** ../vim-7.4.1224/src/pty.c	2016-01-30 20:31:21.249607913 +0100
+--- src/pty.c	2016-01-31 17:13:47.749109860 +0100
+***************
+*** 195,202 ****
+  	&& !defined(PTY_DONE)
+  #define PTY_DONE
+      int
+! OpenPTY(ttyn)
+!     char **ttyn;
+  {
+      char	*m, *s;
+      int		f;
+--- 195,201 ----
+  	&& !defined(PTY_DONE)
+  #define PTY_DONE
+      int
+! OpenPTY(char **ttyn)
+  {
+      char	*m, *s;
+      int		f;
+***************
+*** 220,227 ****
+  #if defined(__sgi) && !defined(PTY_DONE)
+  #define PTY_DONE
+      int
+! OpenPTY(ttyn)
+!     char **ttyn;
+  {
+      int f;
+      char *name;
+--- 219,225 ----
+  #if defined(__sgi) && !defined(PTY_DONE)
+  #define PTY_DONE
+      int
+! OpenPTY(char **ttyn)
+  {
+      int f;
+      char *name;
+***************
+*** 246,253 ****
+  #if defined(MIPS) && defined(HAVE_DEV_PTC) && !defined(PTY_DONE)
+  #define PTY_DONE
+      int
+! OpenPTY(ttyn)
+!     char **ttyn;
+  {
+      int		f;
+      struct stat buf;
+--- 244,250 ----
+  #if defined(MIPS) && defined(HAVE_DEV_PTC) && !defined(PTY_DONE)
+  #define PTY_DONE
+      int
+! OpenPTY(char **ttyn)
+  {
+      int		f;
+      struct stat buf;
+***************
+*** 274,281 ****
+   * Same for Mac OS X Leopard. */
+  #define PTY_DONE
+      int
+! OpenPTY(ttyn)
+!     char **ttyn;
+  {
+      int		f;
+      char	*m;
+--- 271,277 ----
+   * Same for Mac OS X Leopard. */
+  #define PTY_DONE
+      int
+! OpenPTY(char **ttyn)
+  {
+      int		f;
+      char	*m;
+***************
+*** 316,323 ****
+  #endif
+  
+      int
+! OpenPTY(ttyn)
+!     char **ttyn;
+  {
+      int		f;
+      /* used for opening a new pty-pair: */
+--- 312,318 ----
+  #endif
+  
+      int
+! OpenPTY(char **ttyn)
+  {
+      int		f;
+      /* used for opening a new pty-pair: */
+***************
+*** 363,370 ****
+  # endif
+  
+      int
+! OpenPTY(ttyn)
+!     char **ttyn;
+  {
+      char	*p, *q, *l, *d;
+      int		f;
+--- 358,364 ----
+  # endif
+  
+      int
+! OpenPTY(char **ttyn)
+  {
+      char	*p, *q, *l, *d;
+      int		f;
+*** ../vim-7.4.1224/src/version.c	2016-01-31 16:37:29.435752043 +0100
+--- src/version.c	2016-01-31 17:15:21.656136382 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1225,
+  /**/
+
+
+-- 
+From "know your smileys":
+ +<(:-) The Pope
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

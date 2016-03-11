@@ -1,0 +1,631 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1102
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1102
+Problem:    Debugger has no stack backtrace support.
+Solution:   Add "backtrace", "frame", "up" and "down" commands. (Alberto
+            Fanjul, closes #433)
+Files:      runtime/doc/repeat.txt, src/eval.c, src/ex_cmds2.c, src/globals.h,
+            src/testdir/Make_all.mak, src/testdir/test108.in,
+            src/testdir/test108.ok
+
+
+*** ../vim-7.4.1101/runtime/doc/repeat.txt	2015-11-19 17:56:09.434210164 +0100
+--- runtime/doc/repeat.txt	2016-01-16 15:23:43.525212634 +0100
+***************
+*** 476,491 ****
+  	finish		Finish the current script or user function and come
+  			back to debug mode for the command after the one that
+  			sourced or called it.
+  
+  About the additional commands in debug mode:
+  - There is no command-line completion for them, you get the completion for the
+    normal Ex commands only.
+! - You can shorten them, up to a single character: "c", "n", "s" and "f".
+  - Hitting <CR> will repeat the previous one.  When doing another command, this
+    is reset (because it's not clear what you want to repeat).
+  - When you want to use the Ex command with the same name, prepend a colon:
+    ":cont", ":next", ":finish" (or shorter).
+  
+  
+  DEFINING BREAKPOINTS
+  							*:breaka* *:breakadd*
+--- 483,526 ----
+  	finish		Finish the current script or user function and come
+  			back to debug mode for the command after the one that
+  			sourced or called it.
++ 							*>bt*
++ 							*>backtrace*
++ 							*>where*
++ 	backtrace	Show the call stacktrace for current debugging session.
++ 	bt
++ 	where
++ 							*>frame*
++ 	frame N		Goes to N bactrace level. + and - signs make movement
++ 			relative.  E.g., ":frame +3" goes three frames up.
++ 							*>up*
++ 	up		Goes one level up from call stacktrace.
++ 							*>down*
++ 	down		Goes one level down from call stacktrace.
+  
+  About the additional commands in debug mode:
+  - There is no command-line completion for them, you get the completion for the
+    normal Ex commands only.
+! - You can shorten them, up to a single character, unless more then one command
+!   starts with the same letter.  "f" stands for "finish", use "fr" for "frame".
+  - Hitting <CR> will repeat the previous one.  When doing another command, this
+    is reset (because it's not clear what you want to repeat).
+  - When you want to use the Ex command with the same name, prepend a colon:
+    ":cont", ":next", ":finish" (or shorter).
+  
++ The backtrace shows the hierarchy of function calls, e.g.:
++ 	>bt ~
++ 	  3 function One[3] ~
++ 	  2 Two[3] ~
++ 	->1 Three[3] ~
++ 	  0 Four ~
++ 	line 1: let four = 4 ~
++ 
++ The "->" points to the current frame.  Use "up", "down" and "frame N" to
++ select another frame.
++ 
++ In the current frame you can evaluate the local function variables.  There is
++ no way to see the command at the current line yet.
++ 
+  
+  DEFINING BREAKPOINTS
+  							*:breaka* *:breakadd*
+*** ../vim-7.4.1101/src/eval.c	2016-01-15 22:08:11.493121385 +0100
+--- src/eval.c	2016-01-16 14:07:07.798671414 +0100
+***************
+*** 812,817 ****
+--- 812,818 ----
+  static dictitem_T *find_var __ARGS((char_u *name, hashtab_T **htp, int no_autoload));
+  static dictitem_T *find_var_in_ht __ARGS((hashtab_T *ht, int htname, char_u *varname, int no_autoload));
+  static hashtab_T *find_var_ht __ARGS((char_u *name, char_u **varname));
++ static funccall_T *get_funccal __ARGS((void));
+  static void vars_clear_ext __ARGS((hashtab_T *ht, int free_val));
+  static void delete_var __ARGS((hashtab_T *ht, hashitem_T *hi));
+  static void list_one_var __ARGS((dictitem_T *v, char_u *prefix, int *first));
+***************
+*** 21735,21741 ****
+  
+  	if (current_funccal == NULL)
+  	    return &globvarht;			/* global variable */
+! 	return &current_funccal->l_vars.dv_hashtab; /* l: variable */
+      }
+      *varname = name + 2;
+      if (*name == 'g')				/* global variable */
+--- 21736,21742 ----
+  
+  	if (current_funccal == NULL)
+  	    return &globvarht;			/* global variable */
+! 	return &get_funccal()->l_vars.dv_hashtab; /* l: variable */
+      }
+      *varname = name + 2;
+      if (*name == 'g')				/* global variable */
+***************
+*** 21756,21764 ****
+      if (*name == 'v')				/* v: variable */
+  	return &vimvarht;
+      if (*name == 'a' && current_funccal != NULL) /* function argument */
+! 	return &current_funccal->l_avars.dv_hashtab;
+      if (*name == 'l' && current_funccal != NULL) /* local function variable */
+! 	return &current_funccal->l_vars.dv_hashtab;
+      if (*name == 's'				/* script variable */
+  	    && current_SID > 0 && current_SID <= ga_scripts.ga_len)
+  	return &SCRIPT_VARS(current_SID);
+--- 21757,21765 ----
+      if (*name == 'v')				/* v: variable */
+  	return &vimvarht;
+      if (*name == 'a' && current_funccal != NULL) /* function argument */
+! 	return &get_funccal()->l_avars.dv_hashtab;
+      if (*name == 'l' && current_funccal != NULL) /* local function variable */
+! 	return &get_funccal()->l_vars.dv_hashtab;
+      if (*name == 's'				/* script variable */
+  	    && current_SID > 0 && current_SID <= ga_scripts.ga_len)
+  	return &SCRIPT_VARS(current_SID);
+***************
+*** 21766,21771 ****
+--- 21767,21798 ----
+  }
+  
+  /*
++  * Get function call environment based on bactrace debug level
++  */
++     static funccall_T *
++ get_funccal()
++ {
++     int		i;
++     funccall_T	*funccal;
++     funccall_T	*temp_funccal;
++ 
++     funccal = current_funccal;
++     if (debug_backtrace_level > 0)
++     {
++         for (i = 0; i < debug_backtrace_level; i++)
++         {
++             temp_funccal = funccal->caller;
++             if (temp_funccal)
++                 funccal = temp_funccal;
++ 	    else
++                 /* backtrace level overflow. reset to max */
++                 debug_backtrace_level = i;
++         }
++     }
++     return funccal;
++ }
++ 
++ /*
+   * Get the string value of a (global/local) variable.
+   * Note: see get_tv_string() for how long the pointer remains valid.
+   * Returns NULL when it doesn't exist.
+*** ../vim-7.4.1101/src/ex_cmds2.c	2016-01-02 22:25:40.666710151 +0100
+--- src/ex_cmds2.c	2016-01-16 15:19:16.492072855 +0100
+***************
+*** 68,73 ****
+--- 68,77 ----
+  #if defined(FEAT_EVAL) || defined(PROTO)
+  static int debug_greedy = FALSE;	/* batch mode debugging: don't save
+  					   and restore typeahead. */
++ static int get_maxbacktrace_level(void);
++ static void do_setdebugtracelevel(char_u *arg);
++ static void do_checkbacktracelevel(void);
++ static void do_showbacktrace(char_u *cmd);
+  
+  /*
+   * do_debug(): Debug mode.
+***************
+*** 101,106 ****
+--- 105,114 ----
+  #define CMD_FINISH	4
+  #define CMD_QUIT	5
+  #define CMD_INTERRUPT	6
++ #define CMD_BACKTRACE	7
++ #define CMD_FRAME	8
++ #define CMD_UP		9
++ #define CMD_DOWN	10
+  
+  #ifdef ALWAYS_USE_GUI
+      /* Can't do this when there is no terminal for input/output. */
+***************
+*** 178,183 ****
+--- 186,192 ----
+  # endif
+  
+  	cmdline_row = msg_row;
++ 	msg_starthere();
+  	if (cmdline != NULL)
+  	{
+  	    /* If this is a debug command, set "last_cmd".
+***************
+*** 197,204 ****
+  		    case 's': last_cmd = CMD_STEP;
+  			      tail = "tep";
+  			      break;
+! 		    case 'f': last_cmd = CMD_FINISH;
+! 			      tail = "inish";
+  			      break;
+  		    case 'q': last_cmd = CMD_QUIT;
+  			      tail = "uit";
+--- 206,223 ----
+  		    case 's': last_cmd = CMD_STEP;
+  			      tail = "tep";
+  			      break;
+! 		    case 'f':
+! 			      last_cmd = 0;
+! 			      if (p[1] == 'r')
+! 			      {
+! 				  last_cmd = CMD_FRAME;
+! 				  tail = "rame";
+! 			      }
+! 			      else
+! 			      {
+! 				  last_cmd = CMD_FINISH;
+! 				  tail = "inish";
+! 			      }
+  			      break;
+  		    case 'q': last_cmd = CMD_QUIT;
+  			      tail = "uit";
+***************
+*** 206,211 ****
+--- 225,245 ----
+  		    case 'i': last_cmd = CMD_INTERRUPT;
+  			      tail = "nterrupt";
+  			      break;
++ 		    case 'b': last_cmd = CMD_BACKTRACE;
++ 			      if (p[1] == 't')
++ 				  tail = "t";
++ 			      else
++ 				  tail = "acktrace";
++ 			      break;
++ 		    case 'w': last_cmd = CMD_BACKTRACE;
++ 			      tail = "here";
++ 			      break;
++ 		    case 'u': last_cmd = CMD_UP;
++ 			      tail = "p";
++ 			      break;
++ 		    case 'd': last_cmd = CMD_DOWN;
++ 			      tail = "own";
++ 			      break;
+  		    default: last_cmd = 0;
+  		}
+  		if (last_cmd != 0)
+***************
+*** 217,223 ****
+  			++p;
+  			++tail;
+  		    }
+! 		    if (ASCII_ISALPHA(*p))
+  			last_cmd = 0;
+  		}
+  	    }
+--- 251,257 ----
+  			++p;
+  			++tail;
+  		    }
+! 		    if (ASCII_ISALPHA(*p) && last_cmd != CMD_FRAME)
+  			last_cmd = 0;
+  		}
+  	    }
+***************
+*** 250,256 ****
+--- 284,314 ----
+  			/* Do not repeat ">interrupt" cmd, continue stepping. */
+  			last_cmd = CMD_STEP;
+  			break;
++ 		    case CMD_BACKTRACE:
++ 			do_showbacktrace(cmd);
++ 			continue;
++ 		    case CMD_FRAME:
++ 			if (*p == NUL)
++ 			{
++ 			    do_showbacktrace(cmd);
++ 			}
++ 			else
++ 			{
++ 			    p = skipwhite(p);
++ 			    do_setdebugtracelevel(p);
++ 			}
++ 			continue;
++ 		    case CMD_UP:
++ 			debug_backtrace_level++;
++ 			do_checkbacktracelevel();
++ 			continue;
++ 		    case CMD_DOWN:
++ 			debug_backtrace_level--;
++ 			do_checkbacktracelevel();
++ 			continue;
+  		}
++ 		/* Going out reset backtrace_level */
++ 		debug_backtrace_level = 0;
+  		break;
+  	    }
+  
+***************
+*** 285,290 ****
+--- 343,434 ----
+      debug_did_msg = TRUE;
+  }
+  
++     static int
++ get_maxbacktrace_level(void)
++ {
++     char	*p, *q;
++     int		maxbacktrace = 1;
++ 
++     maxbacktrace = 0;
++     if (sourcing_name != NULL)
++     {
++ 	p = (char *)sourcing_name;
++ 	while ((q = strstr(p, "..")) != NULL)
++ 	{
++ 	    p = q + 2;
++ 	    maxbacktrace++;
++ 	}
++     }
++     return maxbacktrace;
++ }
++ 
++     static void
++ do_setdebugtracelevel(char_u *arg)
++ {
++     int level;
++ 
++     level = atoi((char *)arg);
++     if (*arg == '+' || level < 0)
++ 	debug_backtrace_level += level;
++     else
++ 	debug_backtrace_level = level;
++ 
++     do_checkbacktracelevel();
++ }
++ 
++     static void
++ do_checkbacktracelevel(void)
++ {
++     if (debug_backtrace_level < 0)
++     {
++ 	debug_backtrace_level = 0;
++ 	MSG(_("frame is zero"));
++     }
++     else
++     {
++ 	int max = get_maxbacktrace_level();
++ 
++ 	if (debug_backtrace_level > max)
++ 	{
++ 	    debug_backtrace_level = max;
++ 	    smsg((char_u *)_("frame at highest level: %d"), max);
++ 	}
++     }
++ }
++ 
++     static void
++ do_showbacktrace(char_u *cmd)
++ {
++     char    *cur;
++     char    *next;
++     int	    i = 0;
++     int	    max = get_maxbacktrace_level();
++ 
++     if (sourcing_name != NULL)
++     {
++ 	cur = (char *)sourcing_name;
++ 	while (!got_int)
++ 	{
++ 	    next = strstr(cur, "..");
++ 	    if (next != NULL)
++ 		*next = NUL;
++ 	    if (i == max - debug_backtrace_level)
++ 		smsg((char_u *)"->%d %s", max - i, cur);
++ 	    else
++ 		smsg((char_u *)"  %d %s", max - i, cur);
++ 	    ++i;
++ 	    if (next == NULL)
++ 		break;
++ 	    *next = '.';
++ 	    cur = next + 2;
++ 	}
++     }
++     if (sourcing_lnum != 0)
++        smsg((char_u *)_("line %ld: %s"), (long)sourcing_lnum, cmd);
++     else
++        smsg((char_u *)_("cmd: %s"), cmd);
++ }
++ 
+  /*
+   * ":debug".
+   */
+*** ../vim-7.4.1101/src/globals.h	2016-01-09 22:28:13.339790774 +0100
+--- src/globals.h	2016-01-16 13:54:14.627032937 +0100
+***************
+*** 231,236 ****
+--- 231,237 ----
+  EXTERN int	debug_break_level INIT(= -1);	/* break below this level */
+  EXTERN int	debug_did_msg INIT(= FALSE);	/* did "debug mode" message */
+  EXTERN int	debug_tick INIT(= 0);		/* breakpoint change count */
++ EXTERN int	debug_backtrace_level INIT(= 0); /* breakpoint backtrace level */
+  # ifdef FEAT_PROFILE
+  EXTERN int	do_profiling INIT(= PROF_NONE);	/* PROF_ values */
+  # endif
+*** ../vim-7.4.1101/src/testdir/Make_all.mak	2016-01-14 22:10:23.793193870 +0100
+--- src/testdir/Make_all.mak	2016-01-16 13:54:14.627032937 +0100
+***************
+*** 89,94 ****
+--- 89,95 ----
+  	test105.out \
+  	test106.out \
+  	test107.out \
++ 	test108.out \
+  	test_argument_0count.out \
+  	test_argument_count.out \
+  	test_autocmd_option.out \
+*** ../vim-7.4.1101/src/testdir/test108.in	2016-01-16 15:38:50.567498022 +0100
+--- src/testdir/test108.in	2016-01-16 15:35:20.617744510 +0100
+***************
+*** 0 ****
+--- 1,87 ----
++ Tests for backtrace debug commands.     vim: set ft=vim :
++ 
++ STARTTEST
++ :so small.vim
++ :function! Foo()
++ :   let var1 = 1
++ :   let var2 = Bar(var1) + 9
++ :   return var2
++ :endfunction
++ :
++ :function! Bar(var)
++ :    let var1 = 2 + a:var
++ :    let var2 = Bazz(var1) + 4
++ :    return var2
++ :endfunction
++ :
++ :function! Bazz(var)
++ :    let var1 = 3 + a:var
++ :    let var3 = "another var"
++ :    return var1
++ :endfunction
++ :new
++ :debuggreedy
++ :redir => out
++ :debug echo Foo()
++ step
++ step
++ step
++ step
++ step
++ step
++ echo "- show backtrace:\n"
++ backtrace
++ echo "\nshow variables on different levels:\n"
++ echo var1
++ up
++ back
++ echo var1
++ u
++ bt
++ echo var1
++ echo "\n- undefined vars:\n"
++ step
++ frame 2
++ echo "undefined var3 on former level:"
++ echo var3
++ fr 0
++ echo "here var3 is defined with \"another var\":"
++ echo var3
++ step
++ step
++ step
++ up
++ echo "\nundefined var2 on former level"
++ echo var2
++ down
++ echo "here var2 is defined with 10:"
++ echo var2
++ echo "\n- backtrace movements:\n"
++ b
++ echo "\nnext command cannot go down, we are on bottom\n"
++ down
++ up
++ echo "\nnext command cannot go up, we are on top\n"
++ up
++ b
++ echo "fil is not frame or finish, it is file"
++ fil
++ echo "\n- relative backtrace movement\n"
++ fr -1
++ frame
++ fra +1
++ fram
++ echo "\n- go beyond limits does not crash\n"
++ fr 100
++ fra
++ frame -40
++ fram
++ echo "\n- final result 19:"
++ cont
++ :0debuggreedy
++ :redir END
++ :$put =out
++ :w! test.out
++ :qa!
++ ENDTEST
++ 
+*** ../vim-7.4.1101/src/testdir/test108.ok	2016-01-16 15:38:50.571497979 +0100
+--- src/testdir/test108.ok	2016-01-16 15:35:46.125471601 +0100
+***************
+*** 0 ****
+--- 1,84 ----
++ 
++ 
++ 
++ - show backtrace:
++ 
++   2 function Foo[2]
++   1 Bar[2]
++ ->0 Bazz
++ line 2: let var3 = "another var"
++ 
++ show variables on different levels:
++ 
++ 6
++   2 function Foo[2]
++ ->1 Bar[2]
++   0 Bazz
++ line 2: let var3 = "another var"
++ 3
++ ->2 function Foo[2]
++   1 Bar[2]
++   0 Bazz
++ line 2: let var3 = "another var"
++ 1
++ 
++ - undefined vars:
++ 
++ undefined var3 on former level:
++ Error detected while processing function Foo[2]..Bar[2]..Bazz:
++ line    3:
++ E121: Undefined variable: var3
++ E15: Invalid expression: var3
++ here var3 is defined with "another var":
++ another var
++ 
++ undefined var2 on former level
++ Error detected while processing function Foo[2]..Bar:
++ line    3:
++ E121: Undefined variable: var2
++ E15: Invalid expression: var2
++ here var2 is defined with 10:
++ 10
++ 
++ - backtrace movements:
++ 
++   1 function Foo[2]
++ ->0 Bar
++ line 3: End of function
++ 
++ next command cannot go down, we are on bottom
++ 
++ frame is zero
++ 
++ next command cannot go up, we are on top
++ 
++ frame at highest level: 1
++ ->1 function Foo[2]
++   0 Bar
++ line 3: End of function
++ fil is not frame or finish, it is file
++ "[No Name]" --No lines in buffer--
++ 
++ - relative backtrace movement
++ 
++   1 function Foo[2]
++ ->0 Bar
++ line 3: End of function
++ ->1 function Foo[2]
++   0 Bar
++ line 3: End of function
++ 
++ - go beyond limits does not crash
++ 
++ frame at highest level: 1
++ ->1 function Foo[2]
++   0 Bar
++ line 3: End of function
++ frame is zero
++   1 function Foo[2]
++ ->0 Bar
++ line 3: End of function
++ 
++ - final result 19:
++ 19
++ 
+*** ../vim-7.4.1101/src/version.c	2016-01-15 22:52:17.863736622 +0100
+--- src/version.c	2016-01-16 13:55:03.290506763 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1102,
+  /**/
+
+-- 
+BEDEVERE:        Why do you think she is a witch?
+SECOND VILLAGER: She turned me into a newt.
+BEDEVERE:        A newt?
+SECOND VILLAGER: (After looking at himself for some time) I got better.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

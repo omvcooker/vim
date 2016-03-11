@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1326
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1326
+Problem:    Build rules are bit too complicated.
+Solution:   Remove -lwsock32 from Netbeans, it's already added for the channel
+            feature that it depends on. (Tony Mechelynck)
+Files:      src/Make_cyg_ming.mak
+
+
+*** ../vim-7.4.1325/src/Make_cyg_ming.mak	2016-02-15 21:22:06.470999629 +0100
+--- src/Make_cyg_ming.mak	2016-02-15 22:42:19.380335944 +0100
+***************
+*** 684,700 ****
+  NETBEANS=no
+  else
+  OBJ += $(OUTDIR)/netbeans.o
+- LIB += -lwsock32
+  endif
+  endif
+  endif
+  
+  ifeq ($(CHANNEL),yes)
+  OBJ += $(OUTDIR)/channel.o
+- ifneq ($(NETBEANS),yes)
+  LIB += -lwsock32
+  endif
+- endif
+  
+  ifeq ($(DIRECTX),yes)
+  # Only allow DIRECTX for a GUI build.
+--- 684,697 ----
+*** ../vim-7.4.1325/src/version.c	2016-02-15 22:37:33.843330641 +0100
+--- src/version.c	2016-02-15 22:43:17.807723185 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1326,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+271. You collect hilarious signatures from all 250 mailing lists you
+     are subscribed to.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

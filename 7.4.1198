@@ -1,0 +1,2816 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1198
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1198
+Problem:    Still using __ARGS.
+Solution:   Remove __ARGS in several files. (script by Hirohito Higashi)
+            Also remove use of HAVE_STDARG_H.
+Files:      src/gui_x11.c, src/hangulin.c, src/hardcopy.c, src/hashtab.c,
+            src/if_cscope.c, src/if_python3.c, src/if_sniff.c,
+            src/if_xcmdsrv.c, src/main.c, src/mark.c, src/mbyte.c,
+            src/memfile.c, src/memfile_test.c, src/memline.c, src/menu.c,
+            src/message.c, src/misc1.c, src/misc2.c, src/move.c,
+            src/netbeans.c, src/normal.c
+
+
+*** ../vim-7.4.1197/src/gui_x11.c	2015-11-24 15:38:39.691489300 +0100
+--- src/gui_x11.c	2016-01-29 22:15:36.310404139 +0100
+***************
+*** 123,131 ****
+  		XDrawImageString16(dpy, win, gc, x, y, (XChar2b *)str, n); \
+  	} while (0)
+  
+! static int check_fontset_sanity __ARGS((XFontSet fs));
+! static int fontset_width __ARGS((XFontSet fs));
+! static int fontset_ascent __ARGS((XFontSet fs));
+  #endif
+  
+  static guicolor_T	prev_fg_color = INVALCOLOR;
+--- 123,131 ----
+  		XDrawImageString16(dpy, win, gc, x, y, (XChar2b *)str, n); \
+  	} while (0)
+  
+! static int check_fontset_sanity(XFontSet fs);
+! static int fontset_width(XFontSet fs);
+! static int fontset_ascent(XFontSet fs);
+  #endif
+  
+  static guicolor_T	prev_fg_color = INVALCOLOR;
+***************
+*** 136,161 ****
+  static XButtonPressedEvent last_mouse_event;
+  #endif
+  
+! static int find_closest_color __ARGS((Colormap colormap, XColor *colorPtr));
+! static void gui_x11_timer_cb __ARGS((XtPointer timed_out, XtIntervalId *interval_id));
+! static void gui_x11_visibility_cb __ARGS((Widget w, XtPointer dud, XEvent *event, Boolean *dum));
+! static void gui_x11_expose_cb __ARGS((Widget w, XtPointer dud, XEvent *event, Boolean *dum));
+! static void gui_x11_resize_window_cb __ARGS((Widget w, XtPointer dud, XEvent *event, Boolean *dum));
+! static void gui_x11_focus_change_cb __ARGS((Widget w, XtPointer data, XEvent *event, Boolean *dum));
+! static void gui_x11_enter_cb __ARGS((Widget w, XtPointer data, XEvent *event, Boolean *dum));
+! static void gui_x11_leave_cb __ARGS((Widget w, XtPointer data, XEvent *event, Boolean *dum));
+! static void gui_x11_mouse_cb __ARGS((Widget w, XtPointer data, XEvent *event, Boolean *dum));
+  #ifdef FEAT_SNIFF
+! static void gui_x11_sniff_request_cb __ARGS((XtPointer closure, int *source, XtInputId *id));
+  #endif
+! static void gui_x11_check_copy_area __ARGS((void));
+  #ifdef FEAT_CLIENTSERVER
+! static void gui_x11_send_event_handler __ARGS((Widget, XtPointer, XEvent *, Boolean *));
+  #endif
+! static void gui_x11_wm_protocol_handler __ARGS((Widget, XtPointer, XEvent *, Boolean *));
+! static void gui_x11_blink_cb __ARGS((XtPointer timed_out, XtIntervalId *interval_id));
+! static Cursor gui_x11_create_blank_mouse __ARGS((void));
+! static void draw_curl __ARGS((int row, int col, int cells));
+  
+  
+  /*
+--- 136,161 ----
+  static XButtonPressedEvent last_mouse_event;
+  #endif
+  
+! static int find_closest_color(Colormap colormap, XColor *colorPtr);
+! static void gui_x11_timer_cb(XtPointer timed_out, XtIntervalId *interval_id);
+! static void gui_x11_visibility_cb(Widget w, XtPointer dud, XEvent *event, Boolean *dum);
+! static void gui_x11_expose_cb(Widget w, XtPointer dud, XEvent *event, Boolean *dum);
+! static void gui_x11_resize_window_cb(Widget w, XtPointer dud, XEvent *event, Boolean *dum);
+! static void gui_x11_focus_change_cb(Widget w, XtPointer data, XEvent *event, Boolean *dum);
+! static void gui_x11_enter_cb(Widget w, XtPointer data, XEvent *event, Boolean *dum);
+! static void gui_x11_leave_cb(Widget w, XtPointer data, XEvent *event, Boolean *dum);
+! static void gui_x11_mouse_cb(Widget w, XtPointer data, XEvent *event, Boolean *dum);
+  #ifdef FEAT_SNIFF
+! static void gui_x11_sniff_request_cb(XtPointer closure, int *source, XtInputId *id);
+  #endif
+! static void gui_x11_check_copy_area(void);
+  #ifdef FEAT_CLIENTSERVER
+! static void gui_x11_send_event_handler(Widget, XtPointer, XEvent *, Boolean *);
+  #endif
+! static void gui_x11_wm_protocol_handler(Widget, XtPointer, XEvent *, Boolean *);
+! static void gui_x11_blink_cb(XtPointer timed_out, XtIntervalId *interval_id);
+! static Cursor gui_x11_create_blank_mouse(void);
+! static void draw_curl(int row, int col, int cells);
+  
+  
+  /*
+***************
+*** 1312,1318 ****
+   */
+  static XtInputId _xsmp_xtinputid;
+  
+! static void local_xsmp_handle_requests __ARGS((XtPointer c, int *s, XtInputId *i));
+  
+      static void
+  local_xsmp_handle_requests(c, s, i)
+--- 1312,1318 ----
+   */
+  static XtInputId _xsmp_xtinputid;
+  
+! static void local_xsmp_handle_requests(XtPointer c, int *s, XtInputId *i);
+  
+      static void
+  local_xsmp_handle_requests(c, s, i)
+*** ../vim-7.4.1197/src/hangulin.c	2015-11-10 19:11:55.169027500 +0100
+--- src/hangulin.c	2016-01-29 22:15:54.942207155 +0100
+***************
+*** 35,44 ****
+  static int last_l = -1, last_ll = -1;
+  static int hangul_keyboard_type = HANGUL_DEFAULT_KEYBOARD;
+  
+! static void convert_ks_to_3 __ARGS((const char_u *src, int *fp, int *mp, int *lp));
+! static int convert_3_to_ks __ARGS((int fv, int mv, int lv, char_u *des));
+! static int hangul_automata2 __ARGS((char_u *buf, unsigned int *c));
+! static int hangul_automata3 __ARGS((char_u *buf, unsigned int *c));
+  
+  #define push(x)	 {stack[ sp++ ] = *(x); stack[sp++] = *((x)+1);}
+  #define pop(x)	 {*((x) + 1) = stack[--sp]; *(x) = stack[--sp];}
+--- 35,44 ----
+  static int last_l = -1, last_ll = -1;
+  static int hangul_keyboard_type = HANGUL_DEFAULT_KEYBOARD;
+  
+! static void convert_ks_to_3(const char_u *src, int *fp, int *mp, int *lp);
+! static int convert_3_to_ks(int fv, int mv, int lv, char_u *des);
+! static int hangul_automata2(char_u *buf, unsigned int *c);
+! static int hangul_automata3(char_u *buf, unsigned int *c);
+  
+  #define push(x)	 {stack[ sp++ ] = *(x); stack[sp++] = *((x)+1);}
+  #define pop(x)	 {*((x) + 1) = stack[--sp]; *(x) = stack[--sp];}
+*** ../vim-7.4.1197/src/hardcopy.c	2015-04-15 14:27:43.020135640 +0200
+--- src/hardcopy.c	2016-01-29 22:16:13.818007598 +0100
+***************
+*** 135,155 ****
+      int		ff;		    /* seen form feed character */
+  } prt_pos_T;
+  
+! static char_u *parse_list_options __ARGS((char_u *option_str, option_table_T *table, int table_size));
+  
+  #ifdef FEAT_SYN_HL
+! static long_u darken_rgb __ARGS((long_u rgb));
+! static long_u prt_get_term_color __ARGS((int colorindex));
+  #endif
+! static void prt_set_fg __ARGS((long_u fg));
+! static void prt_set_bg __ARGS((long_u bg));
+! static void prt_set_font __ARGS((int bold, int italic, int underline));
+! static void prt_line_number __ARGS((prt_settings_T *psettings, int page_line, linenr_T lnum));
+! static void prt_header __ARGS((prt_settings_T *psettings, int pagenum, linenr_T lnum));
+! static void prt_message __ARGS((char_u *s));
+! static colnr_T hardcopy_line __ARGS((prt_settings_T *psettings, int page_line, prt_pos_T *ppos));
+  #ifdef FEAT_SYN_HL
+! static void prt_get_attr __ARGS((int hl_id, prt_text_attr_T* pattr, int modec));
+  #endif
+  
+  /*
+--- 135,155 ----
+      int		ff;		    /* seen form feed character */
+  } prt_pos_T;
+  
+! static char_u *parse_list_options(char_u *option_str, option_table_T *table, int table_size);
+  
+  #ifdef FEAT_SYN_HL
+! static long_u darken_rgb(long_u rgb);
+! static long_u prt_get_term_color(int colorindex);
+  #endif
+! static void prt_set_fg(long_u fg);
+! static void prt_set_bg(long_u bg);
+! static void prt_set_font(int bold, int italic, int underline);
+! static void prt_line_number(prt_settings_T *psettings, int page_line, linenr_T lnum);
+! static void prt_header(prt_settings_T *psettings, int pagenum, linenr_T lnum);
+! static void prt_message(char_u *s);
+! static colnr_T hardcopy_line(prt_settings_T *psettings, int page_line, prt_pos_T *ppos);
+  #ifdef FEAT_SYN_HL
+! static void prt_get_attr(int hl_id, prt_text_attr_T* pattr, int modec);
+  #endif
+  
+  /*
+***************
+*** 1337,1383 ****
+  						     PRT_DSC_ENDCOMMENTS_TYPE}
+  };
+  
+! static void prt_write_file_raw_len __ARGS((char_u *buffer, int bytes));
+! static void prt_write_file __ARGS((char_u *buffer));
+! static void prt_write_file_len __ARGS((char_u *buffer, int bytes));
+! static void prt_write_string __ARGS((char *s));
+! static void prt_write_int __ARGS((int i));
+! static void prt_write_boolean __ARGS((int b));
+! static void prt_def_font __ARGS((char *new_name, char *encoding, int height, char *font));
+! static void prt_real_bits __ARGS((double real, int precision, int *pinteger, int *pfraction));
+! static void prt_write_real __ARGS((double val, int prec));
+! static void prt_def_var __ARGS((char *name, double value, int prec));
+! static void prt_flush_buffer __ARGS((void));
+! static void prt_resource_name __ARGS((char_u *filename, void *cookie));
+! static int prt_find_resource __ARGS((char *name, struct prt_ps_resource_S *resource));
+! static int prt_open_resource __ARGS((struct prt_ps_resource_S *resource));
+! static int prt_check_resource __ARGS((struct prt_ps_resource_S *resource, char_u *version));
+! static void prt_dsc_start __ARGS((void));
+! static void prt_dsc_noarg __ARGS((char *comment));
+! static void prt_dsc_textline __ARGS((char *comment, char *text));
+! static void prt_dsc_text __ARGS((char *comment, char *text));
+! static void prt_dsc_ints __ARGS((char *comment, int count, int *ints));
+! static void prt_dsc_requirements __ARGS((int duplex, int tumble, int collate, int color, int num_copies));
+! static void prt_dsc_docmedia __ARGS((char *paper_name, double width, double height, double weight, char *colour, char *type));
+! static void prt_dsc_resources __ARGS((char *comment, char *type, char *strings));
+! static void prt_dsc_font_resource __ARGS((char *resource, struct prt_ps_font_S *ps_font));
+! static float to_device_units __ARGS((int idx, double physsize, int def_number));
+! static void prt_page_margins __ARGS((double width, double height, double *left, double *right, double *top, double *bottom));
+! static void prt_font_metrics __ARGS((int font_scale));
+! static int prt_get_cpl __ARGS((void));
+! static int prt_get_lpp __ARGS((void));
+! static int prt_add_resource __ARGS((struct prt_ps_resource_S *resource));
+! static int prt_resfile_next_line __ARGS((void));
+! static int prt_resfile_strncmp __ARGS((int offset, char *string, int len));
+! static int prt_resfile_skip_nonws __ARGS((int offset));
+! static int prt_resfile_skip_ws __ARGS((int offset));
+! static int prt_next_dsc __ARGS((struct prt_dsc_line_S *p_dsc_line));
+  #ifdef FEAT_MBYTE
+! static int prt_build_cid_fontname __ARGS((int font, char_u *name, int name_len));
+! static void prt_def_cidfont __ARGS((char *new_name, int height, char *cidfont));
+! static void prt_dup_cidfont __ARGS((char *original_name, char *new_name));
+! static int prt_match_encoding __ARGS((char *p_encoding, struct prt_ps_mbfont_S *p_cmap, struct prt_ps_encoding_S **pp_mbenc));
+! static int prt_match_charset __ARGS((char *p_charset, struct prt_ps_mbfont_S *p_cmap, struct prt_ps_charset_S **pp_mbchar));
+  #endif
+  
+  /*
+--- 1337,1383 ----
+  						     PRT_DSC_ENDCOMMENTS_TYPE}
+  };
+  
+! static void prt_write_file_raw_len(char_u *buffer, int bytes);
+! static void prt_write_file(char_u *buffer);
+! static void prt_write_file_len(char_u *buffer, int bytes);
+! static void prt_write_string(char *s);
+! static void prt_write_int(int i);
+! static void prt_write_boolean(int b);
+! static void prt_def_font(char *new_name, char *encoding, int height, char *font);
+! static void prt_real_bits(double real, int precision, int *pinteger, int *pfraction);
+! static void prt_write_real(double val, int prec);
+! static void prt_def_var(char *name, double value, int prec);
+! static void prt_flush_buffer(void);
+! static void prt_resource_name(char_u *filename, void *cookie);
+! static int prt_find_resource(char *name, struct prt_ps_resource_S *resource);
+! static int prt_open_resource(struct prt_ps_resource_S *resource);
+! static int prt_check_resource(struct prt_ps_resource_S *resource, char_u *version);
+! static void prt_dsc_start(void);
+! static void prt_dsc_noarg(char *comment);
+! static void prt_dsc_textline(char *comment, char *text);
+! static void prt_dsc_text(char *comment, char *text);
+! static void prt_dsc_ints(char *comment, int count, int *ints);
+! static void prt_dsc_requirements(int duplex, int tumble, int collate, int color, int num_copies);
+! static void prt_dsc_docmedia(char *paper_name, double width, double height, double weight, char *colour, char *type);
+! static void prt_dsc_resources(char *comment, char *type, char *strings);
+! static void prt_dsc_font_resource(char *resource, struct prt_ps_font_S *ps_font);
+! static float to_device_units(int idx, double physsize, int def_number);
+! static void prt_page_margins(double width, double height, double *left, double *right, double *top, double *bottom);
+! static void prt_font_metrics(int font_scale);
+! static int prt_get_cpl(void);
+! static int prt_get_lpp(void);
+! static int prt_add_resource(struct prt_ps_resource_S *resource);
+! static int prt_resfile_next_line(void);
+! static int prt_resfile_strncmp(int offset, char *string, int len);
+! static int prt_resfile_skip_nonws(int offset);
+! static int prt_resfile_skip_ws(int offset);
+! static int prt_next_dsc(struct prt_dsc_line_S *p_dsc_line);
+  #ifdef FEAT_MBYTE
+! static int prt_build_cid_fontname(int font, char_u *name, int name_len);
+! static void prt_def_cidfont(char *new_name, int height, char *cidfont);
+! static void prt_dup_cidfont(char *original_name, char *new_name);
+! static int prt_match_encoding(char *p_encoding, struct prt_ps_mbfont_S *p_cmap, struct prt_ps_encoding_S **pp_mbenc);
+! static int prt_match_charset(char *p_charset, struct prt_ps_mbfont_S *p_cmap, struct prt_ps_charset_S **pp_mbchar);
+  #endif
+  
+  /*
+*** ../vim-7.4.1197/src/hashtab.c	2012-11-28 18:27:46.000000000 +0100
+--- src/hashtab.c	2016-01-29 22:16:25.905879808 +0100
+***************
+*** 41,47 ****
+  /* Magic value for algorithm that walks through the array. */
+  #define PERTURB_SHIFT 5
+  
+! static int hash_may_resize __ARGS((hashtab_T *ht, int minitems));
+  
+  #if 0 /* currently not used */
+  /*
+--- 41,47 ----
+  /* Magic value for algorithm that walks through the array. */
+  #define PERTURB_SHIFT 5
+  
+! static int hash_may_resize(hashtab_T *ht, int minitems);
+  
+  #if 0 /* currently not used */
+  /*
+*** ../vim-7.4.1197/src/if_cscope.c	2015-08-11 19:13:55.138175689 +0200
+--- src/if_cscope.c	2016-01-29 22:18:01.740866758 +0100
+***************
+*** 20,62 ****
+  #endif
+  #include "if_cscope.h"
+  
+! static void	    cs_usage_msg __ARGS((csid_e x));
+! static int	    cs_add __ARGS((exarg_T *eap));
+! static void	    cs_stat_emsg __ARGS((char *fname));
+! static int	    cs_add_common __ARGS((char *, char *, char *));
+! static int	    cs_check_for_connections __ARGS((void));
+! static int	    cs_check_for_tags __ARGS((void));
+! static int	    cs_cnt_connections __ARGS((void));
+! static void	    cs_reading_emsg __ARGS((int idx));
+! static int	    cs_cnt_matches __ARGS((int idx));
+! static char *	    cs_create_cmd __ARGS((char *csoption, char *pattern));
+! static int	    cs_create_connection __ARGS((int i));
+! static void	    do_cscope_general __ARGS((exarg_T *eap, int make_split));
+  #ifdef FEAT_QUICKFIX
+! static void	    cs_file_results __ARGS((FILE *, int *));
+  #endif
+! static void	    cs_fill_results __ARGS((char *, int , int *, char ***,
+! 			char ***, int *));
+! static int	    cs_find __ARGS((exarg_T *eap));
+! static int	    cs_find_common __ARGS((char *opt, char *pat, int, int, int, char_u *cmdline));
+! static int	    cs_help __ARGS((exarg_T *eap));
+! static void	    clear_csinfo __ARGS((int i));
+! static int	    cs_insert_filelist __ARGS((char *, char *, char *,
+! 			struct stat *));
+! static int	    cs_kill __ARGS((exarg_T *eap));
+! static void	    cs_kill_execute __ARGS((int, char *));
+! static cscmd_T *    cs_lookup_cmd __ARGS((exarg_T *eap));
+! static char *	    cs_make_vim_style_matches __ARGS((char *, char *,
+! 			char *, char *));
+! static char *	    cs_manage_matches __ARGS((char **, char **, int, mcmd_e));
+! static char *	    cs_parse_results __ARGS((int cnumber, char *buf, int bufsize, char **context, char **linenumber, char **search));
+! static char *	    cs_pathcomponents __ARGS((char *path));
+! static void	    cs_print_tags_priv __ARGS((char **, char **, int));
+! static int	    cs_read_prompt __ARGS((int));
+! static void	    cs_release_csp __ARGS((int, int freefnpp));
+! static int	    cs_reset __ARGS((exarg_T *eap));
+! static char *	    cs_resolve_file __ARGS((int, char *));
+! static int	    cs_show __ARGS((exarg_T *eap));
+  
+  
+  static csinfo_T *   csinfo = NULL;
+--- 20,62 ----
+  #endif
+  #include "if_cscope.h"
+  
+! static void	    cs_usage_msg(csid_e x);
+! static int	    cs_add(exarg_T *eap);
+! static void	    cs_stat_emsg(char *fname);
+! static int	    cs_add_common(char *, char *, char *);
+! static int	    cs_check_for_connections(void);
+! static int	    cs_check_for_tags(void);
+! static int	    cs_cnt_connections(void);
+! static void	    cs_reading_emsg(int idx);
+! static int	    cs_cnt_matches(int idx);
+! static char *	    cs_create_cmd(char *csoption, char *pattern);
+! static int	    cs_create_connection(int i);
+! static void	    do_cscope_general(exarg_T *eap, int make_split);
+  #ifdef FEAT_QUICKFIX
+! static void	    cs_file_results(FILE *, int *);
+  #endif
+! static void	    cs_fill_results(char *, int , int *, char ***,
+! 			char ***, int *);
+! static int	    cs_find(exarg_T *eap);
+! static int	    cs_find_common(char *opt, char *pat, int, int, int, char_u *cmdline);
+! static int	    cs_help(exarg_T *eap);
+! static void	    clear_csinfo(int i);
+! static int	    cs_insert_filelist(char *, char *, char *,
+! 			struct stat *);
+! static int	    cs_kill(exarg_T *eap);
+! static void	    cs_kill_execute(int, char *);
+! static cscmd_T *    cs_lookup_cmd(exarg_T *eap);
+! static char *	    cs_make_vim_style_matches(char *, char *,
+! 			char *, char *);
+! static char *	    cs_manage_matches(char **, char **, int, mcmd_e);
+! static char *	    cs_parse_results(int cnumber, char *buf, int bufsize, char **context, char **linenumber, char **search);
+! static char *	    cs_pathcomponents(char *path);
+! static void	    cs_print_tags_priv(char **, char **, int);
+! static int	    cs_read_prompt(int);
+! static void	    cs_release_csp(int, int freefnpp);
+! static int	    cs_reset(exarg_T *eap);
+! static char *	    cs_resolve_file(int, char *);
+! static int	    cs_show(exarg_T *eap);
+  
+  
+  static csinfo_T *   csinfo = NULL;
+***************
+*** 1405,1411 ****
+  }
+  
+  #ifndef UNIX
+! static char *GetWin32Error __ARGS((void));
+  
+      static char *
+  GetWin32Error()
+--- 1405,1411 ----
+  }
+  
+  #ifndef UNIX
+! static char *GetWin32Error(void);
+  
+      static char *
+  GetWin32Error()
+*** ../vim-7.4.1197/src/if_python3.c	2016-01-09 14:57:10.504884946 +0100
+--- src/if_python3.c	2016-01-29 22:18:32.012546798 +0100
+***************
+*** 692,698 ****
+  /* Load the standard Python exceptions - don't import the symbols from the
+   * DLL, as this can cause errors (importing data symbols is not reliable).
+   */
+! static void get_py3_exceptions __ARGS((void));
+  
+      static void
+  get_py3_exceptions()
+--- 692,698 ----
+  /* Load the standard Python exceptions - don't import the symbols from the
+   * DLL, as this can cause errors (importing data symbols is not reliable).
+   */
+! static void get_py3_exceptions(void);
+  
+      static void
+  get_py3_exceptions()
+*** ../vim-7.4.1197/src/if_sniff.c	2015-08-25 19:49:46.724725068 +0200
+--- src/if_sniff.c	2016-01-29 22:19:02.644223052 +0100
+***************
+*** 126,146 ****
+  
+  /*-------- Function Prototypes ----------------------------------*/
+  
+! static int ConnectToSniffEmacs __ARGS((void));
+! static void sniff_connect __ARGS((void));
+! static void HandleSniffRequest __ARGS((char* buffer));
+! static int get_request __ARGS((int fd, char *buf, int maxlen));
+! static void WriteToSniff __ARGS((char *str));
+! static void SendRequest __ARGS((struct sn_cmd *command, char* symbol));
+! static void vi_msg __ARGS((char *));
+! static void vi_error_msg __ARGS((char *));
+! static char *vi_symbol_under_cursor __ARGS((void));
+! static void vi_open_file __ARGS((char *));
+! static char *vi_buffer_name __ARGS((void));
+! static buf_T *vi_find_buffer __ARGS((char *));
+! static void vi_exec_cmd __ARGS((char *));
+! static void vi_set_cursor_pos __ARGS((long char_nr));
+! static long vi_cursor_pos __ARGS((void));
+  
+  /* debug trace */
+  #if 0
+--- 126,146 ----
+  
+  /*-------- Function Prototypes ----------------------------------*/
+  
+! static int ConnectToSniffEmacs(void);
+! static void sniff_connect(void);
+! static void HandleSniffRequest(char* buffer);
+! static int get_request(int fd, char *buf, int maxlen);
+! static void WriteToSniff(char *str);
+! static void SendRequest(struct sn_cmd *command, char* symbol);
+! static void vi_msg(char *);
+! static void vi_error_msg(char *);
+! static char *vi_symbol_under_cursor(void);
+! static void vi_open_file(char *);
+! static char *vi_buffer_name(void);
+! static buf_T *vi_find_buffer(char *);
+! static void vi_exec_cmd(char *);
+! static void vi_set_cursor_pos(long char_nr);
+! static long vi_cursor_pos(void);
+  
+  /* debug trace */
+  #if 0
+*** ../vim-7.4.1197/src/if_xcmdsrv.c	2015-10-13 20:21:45.220226141 +0200
+--- src/if_xcmdsrv.c	2016-01-29 22:19:25.295983656 +0100
+***************
+*** 167,173 ****
+  static garray_T serverReply = { 0, 0, 0, 0, 0 };
+  enum ServerReplyOp { SROP_Find, SROP_Add, SROP_Delete };
+  
+! typedef int (*EndCond) __ARGS((void *));
+  
+  struct x_cmdqueue
+  {
+--- 167,173 ----
+  static garray_T serverReply = { 0, 0, 0, 0, 0 };
+  enum ServerReplyOp { SROP_Find, SROP_Add, SROP_Delete };
+  
+! typedef int (*EndCond)(void *);
+  
+  struct x_cmdqueue
+  {
+***************
+*** 186,206 ****
+   * Forward declarations for procedures defined later in this file:
+   */
+  
+! static Window	LookupName __ARGS((Display *dpy, char_u *name, int delete, char_u **loose));
+! static int	SendInit __ARGS((Display *dpy));
+! static int	DoRegisterName __ARGS((Display *dpy, char_u *name));
+! static void	DeleteAnyLingerer __ARGS((Display *dpy, Window w));
+! static int	GetRegProp __ARGS((Display *dpy, char_u **regPropp, long_u *numItemsp, int domsg));
+! static int	WaitForPend __ARGS((void *p));
+! static int	WaitForReply __ARGS((void *p));
+! static int	WindowValid __ARGS((Display *dpy, Window w));
+! static void	ServerWait __ARGS((Display *dpy, Window w, EndCond endCond, void *endData, int localLoop, int seconds));
+! static struct ServerReply *ServerReplyFind __ARGS((Window w, enum ServerReplyOp op));
+! static int	AppendPropCarefully __ARGS((Display *display, Window window, Atom property, char_u *value, int length));
+! static int	x_error_check __ARGS((Display *dpy, XErrorEvent *error_event));
+! static int	IsSerialName __ARGS((char_u *name));
+! static void	save_in_queue __ARGS((char_u *buf, long_u len));
+! static void	server_parse_message __ARGS((Display *dpy, char_u *propInfo, long_u numItems));
+  
+  /* Private variables for the "server" functionality */
+  static Atom	registryProperty = None;
+--- 186,206 ----
+   * Forward declarations for procedures defined later in this file:
+   */
+  
+! static Window	LookupName(Display *dpy, char_u *name, int delete, char_u **loose);
+! static int	SendInit(Display *dpy);
+! static int	DoRegisterName(Display *dpy, char_u *name);
+! static void	DeleteAnyLingerer(Display *dpy, Window w);
+! static int	GetRegProp(Display *dpy, char_u **regPropp, long_u *numItemsp, int domsg);
+! static int	WaitForPend(void *p);
+! static int	WaitForReply(void *p);
+! static int	WindowValid(Display *dpy, Window w);
+! static void	ServerWait(Display *dpy, Window w, EndCond endCond, void *endData, int localLoop, int seconds);
+! static struct ServerReply *ServerReplyFind(Window w, enum ServerReplyOp op);
+! static int	AppendPropCarefully(Display *display, Window window, Atom property, char_u *value, int length);
+! static int	x_error_check(Display *dpy, XErrorEvent *error_event);
+! static int	IsSerialName(char_u *name);
+! static void	save_in_queue(char_u *buf, long_u len);
+! static void	server_parse_message(Display *dpy, char_u *propInfo, long_u numItems);
+  
+  /* Private variables for the "server" functionality */
+  static Atom	registryProperty = None;
+*** ../vim-7.4.1197/src/main.c	2016-01-20 22:47:57.657335800 +0100
+--- src/main.c	2016-01-29 22:20:14.171467146 +0100
+***************
+*** 94,130 ****
+  #define EDIT_QF	    4	    /* start in quickfix mode */
+  
+  #if (defined(UNIX) || defined(VMS)) && !defined(NO_VIM_MAIN)
+! static int file_owned __ARGS((char *fname));
+  #endif
+! static void mainerr __ARGS((int, char_u *));
+  #ifndef NO_VIM_MAIN
+! static void main_msg __ARGS((char *s));
+! static void usage __ARGS((void));
+! static int get_number_arg __ARGS((char_u *p, int *idx, int def));
+  # if defined(HAVE_LOCALE_H) || defined(X_LOCALE)
+! static void init_locale __ARGS((void));
+  # endif
+! static void parse_command_name __ARGS((mparm_T *parmp));
+! static void early_arg_scan __ARGS((mparm_T *parmp));
+! static void command_line_scan __ARGS((mparm_T *parmp));
+! static void check_tty __ARGS((mparm_T *parmp));
+! static void read_stdin __ARGS((void));
+! static void create_windows __ARGS((mparm_T *parmp));
+  # ifdef FEAT_WINDOWS
+! static void edit_buffers __ARGS((mparm_T *parmp, char_u *cwd));
+  # endif
+! static void exe_pre_commands __ARGS((mparm_T *parmp));
+! static void exe_commands __ARGS((mparm_T *parmp));
+! static void source_startup_scripts __ARGS((mparm_T *parmp));
+! static void main_start_gui __ARGS((void));
+  # if defined(HAS_SWAP_EXISTS_ACTION)
+! static void check_swap_exists_action __ARGS((void));
+  # endif
+  # if defined(FEAT_CLIENTSERVER) || defined(PROTO)
+! static void exec_on_server __ARGS((mparm_T *parmp));
+! static void prepare_server __ARGS((mparm_T *parmp));
+! static void cmdsrv_main __ARGS((int *argc, char **argv, char_u *serverName_arg, char_u **serverStr));
+! static char_u *serverMakeName __ARGS((char_u *arg, char *cmd));
+  # endif
+  #endif
+  
+--- 94,130 ----
+  #define EDIT_QF	    4	    /* start in quickfix mode */
+  
+  #if (defined(UNIX) || defined(VMS)) && !defined(NO_VIM_MAIN)
+! static int file_owned(char *fname);
+  #endif
+! static void mainerr(int, char_u *);
+  #ifndef NO_VIM_MAIN
+! static void main_msg(char *s);
+! static void usage(void);
+! static int get_number_arg(char_u *p, int *idx, int def);
+  # if defined(HAVE_LOCALE_H) || defined(X_LOCALE)
+! static void init_locale(void);
+  # endif
+! static void parse_command_name(mparm_T *parmp);
+! static void early_arg_scan(mparm_T *parmp);
+! static void command_line_scan(mparm_T *parmp);
+! static void check_tty(mparm_T *parmp);
+! static void read_stdin(void);
+! static void create_windows(mparm_T *parmp);
+  # ifdef FEAT_WINDOWS
+! static void edit_buffers(mparm_T *parmp, char_u *cwd);
+  # endif
+! static void exe_pre_commands(mparm_T *parmp);
+! static void exe_commands(mparm_T *parmp);
+! static void source_startup_scripts(mparm_T *parmp);
+! static void main_start_gui(void);
+  # if defined(HAS_SWAP_EXISTS_ACTION)
+! static void check_swap_exists_action(void);
+  # endif
+  # if defined(FEAT_CLIENTSERVER) || defined(PROTO)
+! static void exec_on_server(mparm_T *parmp);
+! static void prepare_server(mparm_T *parmp);
+! static void cmdsrv_main(int *argc, char **argv, char_u *serverName_arg, char_u **serverStr);
+! static char_u *serverMakeName(char_u *arg, char *cmd);
+  # endif
+  #endif
+  
+***************
+*** 3442,3448 ****
+  #endif
+  
+  #if defined(STARTUPTIME) || defined(PROTO)
+! static void time_diff __ARGS((struct timeval *then, struct timeval *now));
+  
+  static struct timeval	prev_timeval;
+  
+--- 3442,3448 ----
+  #endif
+  
+  #if defined(STARTUPTIME) || defined(PROTO)
+! static void time_diff(struct timeval *then, struct timeval *now);
+  
+  static struct timeval	prev_timeval;
+  
+***************
+*** 3556,3562 ****
+   * Common code for the X command server and the Win32 command server.
+   */
+  
+! static char_u *build_drop_cmd __ARGS((int filec, char **filev, int tabs, int sendReply));
+  
+  /*
+   * Do the client-server stuff, unless "--servername ''" was used.
+--- 3556,3562 ----
+   * Common code for the X command server and the Win32 command server.
+   */
+  
+! static char_u *build_drop_cmd(int filec, char **filev, int tabs, int sendReply);
+  
+  /*
+   * Do the client-server stuff, unless "--servername ''" was used.
+*** ../vim-7.4.1197/src/mark.c	2014-03-23 15:12:29.923264336 +0100
+--- src/mark.c	2016-01-29 22:19:59.663620457 +0100
+***************
+*** 27,41 ****
+  #define EXTRA_MARKS 10					/* marks 0-9 */
+  static xfmark_T namedfm[NMARKS + EXTRA_MARKS];		/* marks with file nr */
+  
+! static void fname2fnum __ARGS((xfmark_T *fm));
+! static void fmarks_check_one __ARGS((xfmark_T *fm, char_u *name, buf_T *buf));
+! static char_u *mark_line __ARGS((pos_T *mp, int lead_len));
+! static void show_one_mark __ARGS((int, char_u *, pos_T *, char_u *, int current));
+  #ifdef FEAT_JUMPLIST
+! static void cleanup_jumplist __ARGS((void));
+  #endif
+  #ifdef FEAT_VIMINFO
+! static void write_one_filemark __ARGS((FILE *fp, xfmark_T *fm, int c1, int c2));
+  #endif
+  
+  /*
+--- 27,41 ----
+  #define EXTRA_MARKS 10					/* marks 0-9 */
+  static xfmark_T namedfm[NMARKS + EXTRA_MARKS];		/* marks with file nr */
+  
+! static void fname2fnum(xfmark_T *fm);
+! static void fmarks_check_one(xfmark_T *fm, char_u *name, buf_T *buf);
+! static char_u *mark_line(pos_T *mp, int lead_len);
+! static void show_one_mark(int, char_u *, pos_T *, char_u *, int current);
+  #ifdef FEAT_JUMPLIST
+! static void cleanup_jumplist(void);
+  #endif
+  #ifdef FEAT_VIMINFO
+! static void write_one_filemark(FILE *fp, xfmark_T *fm, int c1, int c2);
+  #endif
+  
+  /*
+***************
+*** 1558,1564 ****
+      return retval;
+  }
+  
+! static void write_one_mark __ARGS((FILE *fp_out, int c, pos_T *pos));
+  
+  /*
+   * Write all the named marks for all buffers.
+--- 1558,1564 ----
+      return retval;
+  }
+  
+! static void write_one_mark(FILE *fp_out, int c, pos_T *pos);
+  
+  /*
+   * Write all the named marks for all buffers.
+*** ../vim-7.4.1197/src/mbyte.c	2016-01-24 15:35:55.529110654 +0100
+--- src/mbyte.c	2016-01-29 22:20:27.431327024 +0100
+***************
+*** 131,146 ****
+  
+  #if defined(FEAT_MBYTE) || defined(PROTO)
+  
+! static int enc_canon_search __ARGS((char_u *name));
+! static int dbcs_char2len __ARGS((int c));
+! static int dbcs_char2bytes __ARGS((int c, char_u *buf));
+! static int dbcs_ptr2len __ARGS((char_u *p));
+! static int dbcs_ptr2len_len __ARGS((char_u *p, int size));
+! static int utf_ptr2cells_len __ARGS((char_u *p, int size));
+! static int dbcs_char2cells __ARGS((int c));
+! static int dbcs_ptr2cells_len __ARGS((char_u *p, int size));
+! static int dbcs_ptr2char __ARGS((char_u *p));
+! static int utf_safe_read_char_adv __ARGS((char_u **s, size_t *n));
+  
+  /*
+   * Lookup table to quickly get the length in bytes of a UTF-8 character from
+--- 131,146 ----
+  
+  #if defined(FEAT_MBYTE) || defined(PROTO)
+  
+! static int enc_canon_search(char_u *name);
+! static int dbcs_char2len(int c);
+! static int dbcs_char2bytes(int c, char_u *buf);
+! static int dbcs_ptr2len(char_u *p);
+! static int dbcs_ptr2len_len(char_u *p, int size);
+! static int utf_ptr2cells_len(char_u *p, int size);
+! static int dbcs_char2cells(int c);
+! static int dbcs_ptr2cells_len(char_u *p, int size);
+! static int dbcs_ptr2char(char_u *p);
+! static int utf_safe_read_char_adv(char_u **s, size_t *n);
+  
+  /*
+   * Lookup table to quickly get the length in bytes of a UTF-8 character from
+***************
+*** 1195,1201 ****
+      long first;
+      long last;
+  };
+! static int intable __ARGS((struct interval *table, size_t size, int c));
+  
+  /*
+   * Return TRUE if "c" is in "table[size / sizeof(struct interval)]".
+--- 1195,1201 ----
+      long first;
+      long last;
+  };
+! static int intable(struct interval *table, size_t size, int c);
+  
+  /*
+   * Return TRUE if "c" is in "table[size / sizeof(struct interval)]".
+***************
+*** 2827,2834 ****
+  	{0x118a0,0x118bf,1,32}
+  };
+  
+! static int utf_convert __ARGS((int a, convertStruct table[], int tableSize));
+! static int utf_strnicmp __ARGS((char_u *s1, char_u *s2, size_t n1, size_t n2));
+  
+  /*
+   * Generic conversion function for case operations.
+--- 2827,2834 ----
+  	{0x118a0,0x118bf,1,32}
+  };
+  
+! static int utf_convert(int a, convertStruct table[], int tableSize);
+! static int utf_strnicmp(char_u *s1, char_u *s2, size_t n1, size_t n2);
+  
+  /*
+   * Generic conversion function for case operations.
+***************
+*** 4000,4006 ****
+  #endif
+  
+  #if defined(FEAT_MBYTE) || defined(FEAT_POSTSCRIPT) || defined(PROTO)
+! static int enc_alias_search __ARGS((char_u *name));
+  
+  /*
+   * Skip the Vim specific head of a 'encoding' name.
+--- 4000,4006 ----
+  #endif
+  
+  #if defined(FEAT_MBYTE) || defined(FEAT_POSTSCRIPT) || defined(PROTO)
+! static int enc_alias_search(char_u *name);
+  
+  /*
+   * Skip the Vim specific head of a 'encoding' name.
+***************
+*** 4226,4232 ****
+  
+  # if defined(USE_ICONV) || defined(PROTO)
+  
+! static char_u *iconv_string __ARGS((vimconv_T *vcp, char_u *str, int slen, int *unconvlenp, int *resultlenp));
+  
+  /*
+   * Call iconv_open() with a check if iconv() works properly (there are broken
+--- 4226,4232 ----
+  
+  # if defined(USE_ICONV) || defined(PROTO)
+  
+! static char_u *iconv_string(vimconv_T *vcp, char_u *str, int slen, int *unconvlenp, int *resultlenp);
+  
+  /*
+   * Call iconv_open() with a check if iconv() works properly (there are broken
+***************
+*** 5552,5563 ****
+  #  define USE_X11R6_XIM
+  # endif
+  
+! static int xim_real_init __ARGS((Window x11_window, Display *x11_display));
+  
+  
+  #ifdef USE_X11R6_XIM
+! static void xim_instantiate_cb __ARGS((Display *display, XPointer client_data, XPointer	call_data));
+! static void xim_destroy_cb __ARGS((XIM im, XPointer client_data, XPointer call_data));
+  
+      static void
+  xim_instantiate_cb(display, client_data, call_data)
+--- 5552,5563 ----
+  #  define USE_X11R6_XIM
+  # endif
+  
+! static int xim_real_init(Window x11_window, Display *x11_display);
+  
+  
+  #ifdef USE_X11R6_XIM
+! static void xim_instantiate_cb(Display *display, XPointer client_data, XPointer	call_data);
+! static void xim_destroy_cb(XIM im, XPointer client_data, XPointer call_data);
+  
+      static void
+  xim_instantiate_cb(display, client_data, call_data)
+*** ../vim-7.4.1197/src/memfile.c	2015-12-19 15:28:14.112228963 +0100
+--- src/memfile.c	2016-01-29 22:20:39.015204617 +0100
+***************
+*** 69,96 ****
+  
+  static long_u	total_mem_used = 0;	/* total memory used for memfiles */
+  
+! static void mf_ins_hash __ARGS((memfile_T *, bhdr_T *));
+! static void mf_rem_hash __ARGS((memfile_T *, bhdr_T *));
+! static bhdr_T *mf_find_hash __ARGS((memfile_T *, blocknr_T));
+! static void mf_ins_used __ARGS((memfile_T *, bhdr_T *));
+! static void mf_rem_used __ARGS((memfile_T *, bhdr_T *));
+! static bhdr_T *mf_release __ARGS((memfile_T *, int));
+! static bhdr_T *mf_alloc_bhdr __ARGS((memfile_T *, int));
+! static void mf_free_bhdr __ARGS((bhdr_T *));
+! static void mf_ins_free __ARGS((memfile_T *, bhdr_T *));
+! static bhdr_T *mf_rem_free __ARGS((memfile_T *));
+! static int  mf_read __ARGS((memfile_T *, bhdr_T *));
+! static int  mf_write __ARGS((memfile_T *, bhdr_T *));
+! static int  mf_write_block __ARGS((memfile_T *mfp, bhdr_T *hp, off_t offset, unsigned size));
+! static int  mf_trans_add __ARGS((memfile_T *, bhdr_T *));
+! static void mf_do_open __ARGS((memfile_T *, char_u *, int));
+! static void mf_hash_init __ARGS((mf_hashtab_T *));
+! static void mf_hash_free __ARGS((mf_hashtab_T *));
+! static void mf_hash_free_all __ARGS((mf_hashtab_T *));
+! static mf_hashitem_T *mf_hash_find __ARGS((mf_hashtab_T *, blocknr_T));
+! static void mf_hash_add_item __ARGS((mf_hashtab_T *, mf_hashitem_T *));
+! static void mf_hash_rem_item __ARGS((mf_hashtab_T *, mf_hashitem_T *));
+! static int mf_hash_grow __ARGS((mf_hashtab_T *));
+  
+  /*
+   * The functions for using a memfile:
+--- 69,96 ----
+  
+  static long_u	total_mem_used = 0;	/* total memory used for memfiles */
+  
+! static void mf_ins_hash(memfile_T *, bhdr_T *);
+! static void mf_rem_hash(memfile_T *, bhdr_T *);
+! static bhdr_T *mf_find_hash(memfile_T *, blocknr_T);
+! static void mf_ins_used(memfile_T *, bhdr_T *);
+! static void mf_rem_used(memfile_T *, bhdr_T *);
+! static bhdr_T *mf_release(memfile_T *, int);
+! static bhdr_T *mf_alloc_bhdr(memfile_T *, int);
+! static void mf_free_bhdr(bhdr_T *);
+! static void mf_ins_free(memfile_T *, bhdr_T *);
+! static bhdr_T *mf_rem_free(memfile_T *);
+! static int  mf_read(memfile_T *, bhdr_T *);
+! static int  mf_write(memfile_T *, bhdr_T *);
+! static int  mf_write_block(memfile_T *mfp, bhdr_T *hp, off_t offset, unsigned size);
+! static int  mf_trans_add(memfile_T *, bhdr_T *);
+! static void mf_do_open(memfile_T *, char_u *, int);
+! static void mf_hash_init(mf_hashtab_T *);
+! static void mf_hash_free(mf_hashtab_T *);
+! static void mf_hash_free_all(mf_hashtab_T *);
+! static mf_hashitem_T *mf_hash_find(mf_hashtab_T *, blocknr_T);
+! static void mf_hash_add_item(mf_hashtab_T *, mf_hashitem_T *);
+! static void mf_hash_rem_item(mf_hashtab_T *, mf_hashitem_T *);
+! static int mf_hash_grow(mf_hashtab_T *);
+  
+  /*
+   * The functions for using a memfile:
+*** ../vim-7.4.1197/src/memfile_test.c	2012-11-24 14:20:39.000000000 +0100
+--- src/memfile_test.c	2016-01-29 22:21:08.410894001 +0100
+***************
+*** 25,31 ****
+  #define index_to_key(i) ((i) ^ 15167)
+  #define TEST_COUNT 50000
+  
+! static void test_mf_hash __ARGS((void));
+  
+  /*
+   * Test mf_hash_*() functions.
+--- 25,31 ----
+  #define index_to_key(i) ((i) ^ 15167)
+  #define TEST_COUNT 50000
+  
+! static void test_mf_hash(void);
+  
+  /*
+   * Test mf_hash_*() functions.
+*** ../vim-7.4.1197/src/memline.c	2015-12-31 19:53:16.266087765 +0100
+--- src/memline.c	2016-01-29 22:21:22.430745862 +0100
+***************
+*** 235,275 ****
+  } upd_block0_T;
+  
+  #ifdef FEAT_CRYPT
+! static void ml_set_mfp_crypt __ARGS((buf_T *buf));
+! static void ml_set_b0_crypt __ARGS((buf_T *buf, ZERO_BL *b0p));
+  #endif
+! static int ml_check_b0_id __ARGS((ZERO_BL *b0p));
+! static void ml_upd_block0 __ARGS((buf_T *buf, upd_block0_T what));
+! static void set_b0_fname __ARGS((ZERO_BL *, buf_T *buf));
+! static void set_b0_dir_flag __ARGS((ZERO_BL *b0p, buf_T *buf));
+  #ifdef FEAT_MBYTE
+! static void add_b0_fenc __ARGS((ZERO_BL *b0p, buf_T *buf));
+  #endif
+! static time_t swapfile_info __ARGS((char_u *));
+! static int recov_file_names __ARGS((char_u **, char_u *, int prepend_dot));
+! static int ml_append_int __ARGS((buf_T *, linenr_T, char_u *, colnr_T, int, int));
+! static int ml_delete_int __ARGS((buf_T *, linenr_T, int));
+! static char_u *findswapname __ARGS((buf_T *, char_u **, char_u *));
+! static void ml_flush_line __ARGS((buf_T *));
+! static bhdr_T *ml_new_data __ARGS((memfile_T *, int, int));
+! static bhdr_T *ml_new_ptr __ARGS((memfile_T *));
+! static bhdr_T *ml_find_line __ARGS((buf_T *, linenr_T, int));
+! static int ml_add_stack __ARGS((buf_T *));
+! static void ml_lineadd __ARGS((buf_T *, int));
+! static int b0_magic_wrong __ARGS((ZERO_BL *));
+  #ifdef CHECK_INODE
+! static int fnamecmp_ino __ARGS((char_u *, char_u *, long));
+  #endif
+! static void long_to_char __ARGS((long, char_u *));
+! static long char_to_long __ARGS((char_u *));
+  #if defined(UNIX) || defined(WIN3264)
+! static char_u *make_percent_swname __ARGS((char_u *dir, char_u *name));
+  #endif
+  #ifdef FEAT_CRYPT
+! static cryptstate_T *ml_crypt_prepare __ARGS((memfile_T *mfp, off_t offset, int reading));
+  #endif
+  #ifdef FEAT_BYTEOFF
+! static void ml_updatechunk __ARGS((buf_T *buf, long line, long len, int updtype));
+  #endif
+  
+  /*
+--- 235,275 ----
+  } upd_block0_T;
+  
+  #ifdef FEAT_CRYPT
+! static void ml_set_mfp_crypt(buf_T *buf);
+! static void ml_set_b0_crypt(buf_T *buf, ZERO_BL *b0p);
+  #endif
+! static int ml_check_b0_id(ZERO_BL *b0p);
+! static void ml_upd_block0(buf_T *buf, upd_block0_T what);
+! static void set_b0_fname(ZERO_BL *, buf_T *buf);
+! static void set_b0_dir_flag(ZERO_BL *b0p, buf_T *buf);
+  #ifdef FEAT_MBYTE
+! static void add_b0_fenc(ZERO_BL *b0p, buf_T *buf);
+  #endif
+! static time_t swapfile_info(char_u *);
+! static int recov_file_names(char_u **, char_u *, int prepend_dot);
+! static int ml_append_int(buf_T *, linenr_T, char_u *, colnr_T, int, int);
+! static int ml_delete_int(buf_T *, linenr_T, int);
+! static char_u *findswapname(buf_T *, char_u **, char_u *);
+! static void ml_flush_line(buf_T *);
+! static bhdr_T *ml_new_data(memfile_T *, int, int);
+! static bhdr_T *ml_new_ptr(memfile_T *);
+! static bhdr_T *ml_find_line(buf_T *, linenr_T, int);
+! static int ml_add_stack(buf_T *);
+! static void ml_lineadd(buf_T *, int);
+! static int b0_magic_wrong(ZERO_BL *);
+  #ifdef CHECK_INODE
+! static int fnamecmp_ino(char_u *, char_u *, long);
+  #endif
+! static void long_to_char(long, char_u *);
+! static long char_to_long(char_u *);
+  #if defined(UNIX) || defined(WIN3264)
+! static char_u *make_percent_swname(char_u *dir, char_u *name);
+  #endif
+  #ifdef FEAT_CRYPT
+! static cryptstate_T *ml_crypt_prepare(memfile_T *mfp, off_t offset, int reading);
+  #endif
+  #ifdef FEAT_BYTEOFF
+! static void ml_updatechunk(buf_T *buf, long line, long len, int updtype);
+  #endif
+  
+  /*
+***************
+*** 4089,4095 ****
+      return retval;
+  }
+  
+! static void attention_message __ARGS((buf_T *buf, char_u *fname));
+  
+  /*
+   * Print the ATTENTION message: info about an existing swap file.
+--- 4089,4095 ----
+      return retval;
+  }
+  
+! static void attention_message(buf_T *buf, char_u *fname);
+  
+  /*
+   * Print the ATTENTION message: info about an existing swap file.
+***************
+*** 4140,4146 ****
+  }
+  
+  #ifdef FEAT_AUTOCMD
+! static int do_swapexists __ARGS((buf_T *buf, char_u *fname));
+  
+  /*
+   * Trigger the SwapExists autocommands.
+--- 4140,4146 ----
+  }
+  
+  #ifdef FEAT_AUTOCMD
+! static int do_swapexists(buf_T *buf, char_u *fname);
+  
+  /*
+   * Trigger the SwapExists autocommands.
+*** ../vim-7.4.1197/src/menu.c	2014-03-23 15:12:29.923264336 +0100
+--- src/menu.c	2016-01-29 22:21:39.486565648 +0100
+***************
+*** 19,65 ****
+  #define MENUDEPTH   10		/* maximum depth of menus */
+  
+  #ifdef FEAT_GUI_W32
+! static int add_menu_path __ARGS((char_u *, vimmenu_T *, int *, char_u *, int));
+  #else
+! static int add_menu_path __ARGS((char_u *, vimmenu_T *, int *, char_u *));
+  #endif
+! static int menu_nable_recurse __ARGS((vimmenu_T *menu, char_u *name, int modes, int enable));
+! static int remove_menu __ARGS((vimmenu_T **, char_u *, int, int silent));
+! static void free_menu __ARGS((vimmenu_T **menup));
+! static void free_menu_string __ARGS((vimmenu_T *, int));
+! static int show_menus __ARGS((char_u *, int));
+! static void show_menus_recursive __ARGS((vimmenu_T *, int, int));
+! static int menu_name_equal __ARGS((char_u *name, vimmenu_T *menu));
+! static int menu_namecmp __ARGS((char_u *name, char_u *mname));
+! static int get_menu_cmd_modes __ARGS((char_u *, int, int *, int *));
+! static char_u *popup_mode_name __ARGS((char_u *name, int idx));
+! static char_u *menu_text __ARGS((char_u *text, int *mnemonic, char_u **actext));
+  #ifdef FEAT_GUI
+! static int get_menu_mode __ARGS((void));
+! static void gui_update_menus_recurse __ARGS((vimmenu_T *, int));
+  #endif
+  
+  #if defined(FEAT_GUI_W32) && defined(FEAT_TEAROFF)
+! static void gui_create_tearoffs_recurse __ARGS((vimmenu_T *menu, const char_u *pname, int *pri_tab, int pri_idx));
+! static void gui_add_tearoff __ARGS((char_u *tearpath, int *pri_tab, int pri_idx));
+! static void gui_destroy_tearoffs_recurse __ARGS((vimmenu_T *menu));
+  static int s_tearoffs = FALSE;
+  #endif
+  
+! static int menu_is_hidden __ARGS((char_u *name));
+  #if defined(FEAT_CMDL_COMPL) || (defined(FEAT_GUI_W32) && defined(FEAT_TEAROFF))
+! static int menu_is_tearoff __ARGS((char_u *name));
+  #endif
+  
+  #if defined(FEAT_MULTI_LANG) || defined(FEAT_TOOLBAR)
+! static char_u *menu_skip_part __ARGS((char_u *p));
+  #endif
+  #ifdef FEAT_MULTI_LANG
+! static char_u *menutrans_lookup __ARGS((char_u *name, int len));
+! static void menu_unescape_name  __ARGS((char_u	*p));
+  #endif
+  
+! static char_u *menu_translate_tab_and_shift __ARGS((char_u *arg_start));
+  
+  /* The character for each menu mode */
+  static char_u	menu_mode_chars[] = {'n', 'v', 's', 'o', 'i', 'c', 't'};
+--- 19,65 ----
+  #define MENUDEPTH   10		/* maximum depth of menus */
+  
+  #ifdef FEAT_GUI_W32
+! static int add_menu_path(char_u *, vimmenu_T *, int *, char_u *, int);
+  #else
+! static int add_menu_path(char_u *, vimmenu_T *, int *, char_u *);
+  #endif
+! static int menu_nable_recurse(vimmenu_T *menu, char_u *name, int modes, int enable);
+! static int remove_menu(vimmenu_T **, char_u *, int, int silent);
+! static void free_menu(vimmenu_T **menup);
+! static void free_menu_string(vimmenu_T *, int);
+! static int show_menus(char_u *, int);
+! static void show_menus_recursive(vimmenu_T *, int, int);
+! static int menu_name_equal(char_u *name, vimmenu_T *menu);
+! static int menu_namecmp(char_u *name, char_u *mname);
+! static int get_menu_cmd_modes(char_u *, int, int *, int *);
+! static char_u *popup_mode_name(char_u *name, int idx);
+! static char_u *menu_text(char_u *text, int *mnemonic, char_u **actext);
+  #ifdef FEAT_GUI
+! static int get_menu_mode(void);
+! static void gui_update_menus_recurse(vimmenu_T *, int);
+  #endif
+  
+  #if defined(FEAT_GUI_W32) && defined(FEAT_TEAROFF)
+! static void gui_create_tearoffs_recurse(vimmenu_T *menu, const char_u *pname, int *pri_tab, int pri_idx);
+! static void gui_add_tearoff(char_u *tearpath, int *pri_tab, int pri_idx);
+! static void gui_destroy_tearoffs_recurse(vimmenu_T *menu);
+  static int s_tearoffs = FALSE;
+  #endif
+  
+! static int menu_is_hidden(char_u *name);
+  #if defined(FEAT_CMDL_COMPL) || (defined(FEAT_GUI_W32) && defined(FEAT_TEAROFF))
+! static int menu_is_tearoff(char_u *name);
+  #endif
+  
+  #if defined(FEAT_MULTI_LANG) || defined(FEAT_TOOLBAR)
+! static char_u *menu_skip_part(char_u *p);
+  #endif
+  #ifdef FEAT_MULTI_LANG
+! static char_u *menutrans_lookup(char_u *name, int len);
+! static void menu_unescape_name(char_u	*p);
+  #endif
+  
+! static char_u *menu_translate_tab_and_shift(char_u *arg_start);
+  
+  /* The character for each menu mode */
+  static char_u	menu_mode_chars[] = {'n', 'v', 's', 'o', 'i', 'c', 't'};
+*** ../vim-7.4.1197/src/message.c	2015-07-21 17:53:11.581527951 +0200
+--- src/message.c	2016-01-29 22:33:22.691142006 +0100
+***************
+*** 19,46 ****
+  # include <math.h>
+  #endif
+  
+! static int other_sourcing_name __ARGS((void));
+! static char_u *get_emsg_source __ARGS((void));
+! static char_u *get_emsg_lnum __ARGS((void));
+! static void add_msg_hist __ARGS((char_u *s, int len, int attr));
+! static void hit_return_msg __ARGS((void));
+! static void msg_home_replace_attr __ARGS((char_u *fname, int attr));
+  #ifdef FEAT_MBYTE
+! static char_u *screen_puts_mbyte __ARGS((char_u *s, int l, int attr));
+  #endif
+! static void msg_puts_attr_len __ARGS((char_u *str, int maxlen, int attr));
+! static void msg_puts_display __ARGS((char_u *str, int maxlen, int attr, int recurse));
+! static void msg_scroll_up __ARGS((void));
+! static void inc_msg_scrolled __ARGS((void));
+! static void store_sb_text __ARGS((char_u **sb_str, char_u *s, int attr, int *sb_col, int finish));
+! static void t_puts __ARGS((int *t_col, char_u *t_s, char_u *s, int attr));
+! static void msg_puts_printf __ARGS((char_u *str, int maxlen));
+! static int do_more_prompt __ARGS((int typed_char));
+! static void msg_screen_putchar __ARGS((int c, int attr));
+! static int  msg_check_screen __ARGS((void));
+! static void redir_write __ARGS((char_u *s, int maxlen));
+  #ifdef FEAT_CON_DIALOG
+! static char_u *msg_show_console_dialog __ARGS((char_u *message, char_u *buttons, int dfltbutton));
+  static int	confirm_msg_used = FALSE;	/* displaying confirm_msg */
+  static char_u	*confirm_msg = NULL;		/* ":confirm" message */
+  static char_u	*confirm_msg_tail;		/* tail of confirm_msg */
+--- 19,46 ----
+  # include <math.h>
+  #endif
+  
+! static int other_sourcing_name(void);
+! static char_u *get_emsg_source(void);
+! static char_u *get_emsg_lnum(void);
+! static void add_msg_hist(char_u *s, int len, int attr);
+! static void hit_return_msg(void);
+! static void msg_home_replace_attr(char_u *fname, int attr);
+  #ifdef FEAT_MBYTE
+! static char_u *screen_puts_mbyte(char_u *s, int l, int attr);
+  #endif
+! static void msg_puts_attr_len(char_u *str, int maxlen, int attr);
+! static void msg_puts_display(char_u *str, int maxlen, int attr, int recurse);
+! static void msg_scroll_up(void);
+! static void inc_msg_scrolled(void);
+! static void store_sb_text(char_u **sb_str, char_u *s, int attr, int *sb_col, int finish);
+! static void t_puts(int *t_col, char_u *t_s, char_u *s, int attr);
+! static void msg_puts_printf(char_u *str, int maxlen);
+! static int do_more_prompt(int typed_char);
+! static void msg_screen_putchar(int c, int attr);
+! static int  msg_check_screen(void);
+! static void redir_write(char_u *s, int maxlen);
+  #ifdef FEAT_CON_DIALOG
+! static char_u *msg_show_console_dialog(char_u *message, char_u *buttons, int dfltbutton);
+  static int	confirm_msg_used = FALSE;	/* displaying confirm_msg */
+  static char_u	*confirm_msg = NULL;		/* ":confirm" message */
+  static char_u	*confirm_msg_tail;		/* tail of confirm_msg */
+***************
+*** 343,407 ****
+   * shorter than IOSIZE!!!
+   */
+  #ifndef PROTO
+- # ifndef HAVE_STDARG_H
+- 
+- int
+- #ifdef __BORLANDC__
+- _RTLENTRYF
+- #endif
+- smsg __ARGS((char_u *, long, long, long,
+- 			long, long, long, long, long, long, long));
+- int
+- #ifdef __BORLANDC__
+- _RTLENTRYF
+- #endif
+- smsg_attr __ARGS((int, char_u *, long, long, long,
+- 			long, long, long, long, long, long, long));
+- 
+- int vim_snprintf __ARGS((char *, size_t, char *, long, long, long,
+- 				   long, long, long, long, long, long, long));
+- 
+- /*
+-  * smsg(str, arg, ...) is like using sprintf(buf, str, arg, ...) and then
+-  * calling msg(buf).
+-  * The buffer used is IObuff, the message is truncated at IOSIZE.
+-  */
+- 
+- /* VARARGS */
+-     int
+- #ifdef __BORLANDC__
+- _RTLENTRYF
+- #endif
+- smsg(s, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+-     char_u	*s;
+-     long	a1, a2, a3, a4, a5, a6, a7, a8, a9, a10;
+- {
+-     return smsg_attr(0, s, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+- }
+- 
+- /* VARARGS */
+-     int
+- #ifdef __BORLANDC__
+- _RTLENTRYF
+- #endif
+- smsg_attr(attr, s, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+-     int		attr;
+-     char_u	*s;
+-     long	a1, a2, a3, a4, a5, a6, a7, a8, a9, a10;
+- {
+-     vim_snprintf((char *)IObuff, IOSIZE, (char *)s,
+- 				     a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+-     return msg_attr(IObuff, attr);
+- }
+- 
+- # else /* HAVE_STDARG_H */
+  
+  int vim_snprintf(char *str, size_t str_m, char *fmt, ...);
+  
+      int
+! #ifdef __BORLANDC__
+  _RTLENTRYF
+! #endif
+  smsg(char_u *s, ...)
+  {
+      va_list arglist;
+--- 343,355 ----
+   * shorter than IOSIZE!!!
+   */
+  #ifndef PROTO
+  
+  int vim_snprintf(char *str, size_t str_m, char *fmt, ...);
+  
+      int
+! # ifdef __BORLANDC__
+  _RTLENTRYF
+! # endif
+  smsg(char_u *s, ...)
+  {
+      va_list arglist;
+***************
+*** 413,421 ****
+  }
+  
+      int
+! #ifdef __BORLANDC__
+  _RTLENTRYF
+! #endif
+  smsg_attr(int attr, char_u *s, ...)
+  {
+      va_list arglist;
+--- 361,369 ----
+  }
+  
+      int
+! # ifdef __BORLANDC__
+  _RTLENTRYF
+! # endif
+  smsg_attr(int attr, char_u *s, ...)
+  {
+      va_list arglist;
+***************
+*** 426,432 ****
+      return msg_attr(IObuff, attr);
+  }
+  
+- # endif /* HAVE_STDARG_H */
+  #endif
+  
+  /*
+--- 374,379 ----
+***************
+*** 2270,2277 ****
+  
+  static msgchunk_T *last_msgchunk = NULL; /* last displayed text */
+  
+! static msgchunk_T *msg_sb_start __ARGS((msgchunk_T *mps));
+! static msgchunk_T *disp_sb_line __ARGS((int row, msgchunk_T *smp));
+  
+  static int do_clear_sb_text = FALSE;	/* clear text on next msg */
+  
+--- 2217,2224 ----
+  
+  static msgchunk_T *last_msgchunk = NULL; /* last displayed text */
+  
+! static msgchunk_T *msg_sb_start(msgchunk_T *mps);
+! static msgchunk_T *disp_sb_line(int row, msgchunk_T *smp);
+  
+  static int do_clear_sb_text = FALSE;	/* clear text on next msg */
+  
+***************
+*** 3483,3489 ****
+      return retval;
+  }
+  
+! static int copy_char __ARGS((char_u *from, char_u *to, int lowercase));
+  
+  /*
+   * Copy one character from "*from" to "*to", taking care of multi-byte
+--- 3430,3436 ----
+      return retval;
+  }
+  
+! static int copy_char(char_u *from, char_u *to, int lowercase);
+  
+  /*
+   * Copy one character from "*from" to "*to", taking care of multi-byte
+***************
+*** 3925,3937 ****
+  }
+  #endif
+  
+! #if defined(HAVE_STDARG_H) && defined(FEAT_EVAL)
+  static char *e_printf = N_("E766: Insufficient arguments for printf()");
+  
+! static long tv_nr __ARGS((typval_T *tvs, int *idxp));
+! static char *tv_str __ARGS((typval_T *tvs, int *idxp));
+  # ifdef FEAT_FLOAT
+! static double tv_float __ARGS((typval_T *tvs, int *idxp));
+  # endif
+  
+  /*
+--- 3872,3884 ----
+  }
+  #endif
+  
+! #if defined(FEAT_EVAL)
+  static char *e_printf = N_("E766: Insufficient arguments for printf()");
+  
+! static long tv_nr(typval_T *tvs, int *idxp);
+! static char *tv_str(typval_T *tvs, int *idxp);
+  # ifdef FEAT_FLOAT
+! static double tv_float(typval_T *tvs, int *idxp);
+  # endif
+  
+  /*
+***************
+*** 4055,4061 ****
+   * understand this. */
+  #ifndef PROTO
+  
+- # ifdef HAVE_STDARG_H
+  /* Like vim_vsnprintf() but append to the string. */
+      int
+  vim_snprintf_add(char *str, size_t str_m, char *fmt, ...)
+--- 4002,4007 ----
+***************
+*** 4074,4101 ****
+      va_end(ap);
+      return str_l;
+  }
+- # else
+- /* Like vim_vsnprintf() but append to the string. */
+-     int
+- vim_snprintf_add(str, str_m, fmt, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+-     char	*str;
+-     size_t	str_m;
+-     char	*fmt;
+-     long	a1, a2, a3, a4, a5, a6, a7, a8, a9, a10;
+- {
+-     size_t	len = STRLEN(str);
+-     size_t	space;
+- 
+-     if (str_m <= len)
+- 	space = 0;
+-     else
+- 	space = str_m - len;
+-     return vim_vsnprintf(str + len, space, fmt,
+- 				     a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+- }
+- # endif
+  
+- # ifdef HAVE_STDARG_H
+      int
+  vim_snprintf(char *str, size_t str_m, char *fmt, ...)
+  {
+--- 4020,4026 ----
+***************
+*** 4110,4135 ****
+  
+      int
+  vim_vsnprintf(str, str_m, fmt, ap, tvs)
+- # else
+-     /* clumsy way to work around missing va_list */
+- #  define get_a_arg(i) (++i, i == 2 ? a1 : i == 3 ? a2 : i == 4 ? a3 : i == 5 ? a4 : i == 6 ? a5 : i == 7 ? a6 : i == 8 ? a7 : i == 9 ? a8 : i == 10 ? a9 : a10)
+- 
+- /* VARARGS */
+-     int
+- #ifdef __BORLANDC__
+- _RTLENTRYF
+- #endif
+- vim_snprintf(str, str_m, fmt, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+- # endif
+      char	*str;
+      size_t	str_m;
+      char	*fmt;
+- # ifdef HAVE_STDARG_H
+      va_list	ap;
+      typval_T	*tvs;
+- # else
+-     long	a1, a2, a3, a4, a5, a6, a7, a8, a9, a10;
+- # endif
+  {
+      size_t	str_l = 0;
+      char	*p = fmt;
+--- 4035,4045 ----
+***************
+*** 4168,4180 ****
+  	    char    length_modifier = '\0';
+  
+  	    /* temporary buffer for simple numeric->string conversion */
+! #ifdef FEAT_FLOAT
+! # define TMP_LEN 350	/* On my system 1e308 is the biggest number possible.
+  			 * That sounds reasonable to use as the maximum
+  			 * printable. */
+! #else
+! # define TMP_LEN 32
+! #endif
+  	    char    tmp[TMP_LEN];
+  
+  	    /* string address in case of string argument */
+--- 4078,4090 ----
+  	    char    length_modifier = '\0';
+  
+  	    /* temporary buffer for simple numeric->string conversion */
+! # ifdef FEAT_FLOAT
+! #  define TMP_LEN 350	/* On my system 1e308 is the biggest number possible.
+  			 * That sounds reasonable to use as the maximum
+  			 * printable. */
+! # else
+! #  define TMP_LEN 32
+! # endif
+  	    char    tmp[TMP_LEN];
+  
+  	    /* string address in case of string argument */
+***************
+*** 4229,4242 ****
+  
+  		p++;
+  		j =
+- #ifndef HAVE_STDARG_H
+- 		    get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  		    tvs != NULL ? tv_nr(tvs, &arg_idx) :
+  # endif
+  			va_arg(ap, int);
+- #endif
+  		if (j >= 0)
+  		    min_field_width = j;
+  		else
+--- 4139,4148 ----
+***************
+*** 4266,4279 ****
+  		    int j;
+  
+  		    j =
+- #ifndef HAVE_STDARG_H
+- 			get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  			tvs != NULL ? tv_nr(tvs, &arg_idx) :
+  # endif
+  			    va_arg(ap, int);
+- #endif
+  		    p++;
+  		    if (j >= 0)
+  			precision = j;
+--- 4172,4181 ----
+***************
+*** 4342,4355 ****
+  			int j;
+  
+  			j =
+- #ifndef HAVE_STDARG_H
+- 			    get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  			    tvs != NULL ? tv_nr(tvs, &arg_idx) :
+  # endif
+  				va_arg(ap, int);
+- #endif
+  			/* standard demands unsigned char */
+  			uchar_arg = (unsigned char)j;
+  			str_arg = (char *)&uchar_arg;
+--- 4244,4253 ----
+***************
+*** 4359,4372 ****
+  		case 's':
+  		case 'S':
+  		    str_arg =
+- #ifndef HAVE_STDARG_H
+- 				(char *)get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  				tvs != NULL ? tv_str(tvs, &arg_idx) :
+  # endif
+  				    va_arg(ap, char *);
+- #endif
+  		    if (str_arg == NULL)
+  		    {
+  			str_arg = "[NULL]";
+--- 4257,4266 ----
+***************
+*** 4383,4400 ****
+  		    {
+  			/* Don't put the #if inside memchr(), it can be a
+  			 * macro. */
+! #if VIM_SIZEOF_INT <= 2
+  			char *q = memchr(str_arg, '\0', precision);
+! #else
+  			/* memchr on HP does not like n > 2^31  !!! */
+  			char *q = memchr(str_arg, '\0',
+  				  precision <= (size_t)0x7fffffffL ? precision
+  						       : (size_t)0x7fffffffL);
+! #endif
+  			str_arg_l = (q == NULL) ? precision
+  						      : (size_t)(q - str_arg);
+  		    }
+! #ifdef FEAT_MBYTE
+  		    if (fmt_spec == 'S')
+  		    {
+  			if (min_field_width != 0)
+--- 4277,4294 ----
+  		    {
+  			/* Don't put the #if inside memchr(), it can be a
+  			 * macro. */
+! # if VIM_SIZEOF_INT <= 2
+  			char *q = memchr(str_arg, '\0', precision);
+! # else
+  			/* memchr on HP does not like n > 2^31  !!! */
+  			char *q = memchr(str_arg, '\0',
+  				  precision <= (size_t)0x7fffffffL ? precision
+  						       : (size_t)0x7fffffffL);
+! # endif
+  			str_arg_l = (q == NULL) ? precision
+  						      : (size_t)(q - str_arg);
+  		    }
+! # ifdef FEAT_MBYTE
+  		    if (fmt_spec == 'S')
+  		    {
+  			if (min_field_width != 0)
+***************
+*** 4411,4417 ****
+  			    str_arg_l = precision = p1 - (char_u *)str_arg;
+  			}
+  		    }
+! #endif
+  		    break;
+  
+  		default:
+--- 4305,4311 ----
+  			    str_arg_l = precision = p1 - (char_u *)str_arg;
+  			}
+  		    }
+! # endif
+  		    break;
+  
+  		default:
+***************
+*** 4448,4461 ****
+  		    {
+  			length_modifier = '\0';
+  			ptr_arg =
+- #ifndef HAVE_STDARG_H
+- 				 (void *)get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  				 tvs != NULL ? (void *)tv_str(tvs, &arg_idx) :
+  # endif
+  					va_arg(ap, void *);
+- #endif
+  			if (ptr_arg != NULL)
+  			    arg_sign = 1;
+  		    }
+--- 4342,4351 ----
+***************
+*** 4468,4481 ****
+  			case 'h':
+  			    /* char and short arguments are passed as int. */
+  			    int_arg =
+- #ifndef HAVE_STDARG_H
+- 					get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  					tvs != NULL ? tv_nr(tvs, &arg_idx) :
+  # endif
+  					    va_arg(ap, int);
+- #endif
+  			    if (int_arg > 0)
+  				arg_sign =  1;
+  			    else if (int_arg < 0)
+--- 4358,4367 ----
+***************
+*** 4483,4496 ****
+  			    break;
+  			case 'l':
+  			    long_arg =
+- #ifndef HAVE_STDARG_H
+- 					get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  					tvs != NULL ? tv_nr(tvs, &arg_idx) :
+  # endif
+  					    va_arg(ap, long int);
+- #endif
+  			    if (long_arg > 0)
+  				arg_sign =  1;
+  			    else if (long_arg < 0)
+--- 4369,4378 ----
+***************
+*** 4506,4534 ****
+  			    case '\0':
+  			    case 'h':
+  				uint_arg =
+- #ifndef HAVE_STDARG_H
+- 					    get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  					    tvs != NULL ? (unsigned)
+  							tv_nr(tvs, &arg_idx) :
+  # endif
+  						va_arg(ap, unsigned int);
+- #endif
+  				if (uint_arg != 0)
+  				    arg_sign = 1;
+  				break;
+  			    case 'l':
+  				ulong_arg =
+- #ifndef HAVE_STDARG_H
+- 					    get_a_arg(arg_idx);
+- #else
+  # if defined(FEAT_EVAL)
+  					    tvs != NULL ? (unsigned long)
+  							tv_nr(tvs, &arg_idx) :
+  # endif
+  						va_arg(ap, unsigned long int);
+- #endif
+  				if (ulong_arg != 0)
+  				    arg_sign = 1;
+  				break;
+--- 4388,4408 ----
+***************
+*** 4675,4681 ****
+  		    break;
+  		}
+  
+! #ifdef FEAT_FLOAT
+  	    case 'f':
+  	    case 'e':
+  	    case 'E':
+--- 4549,4555 ----
+  		    break;
+  		}
+  
+! # ifdef FEAT_FLOAT
+  	    case 'f':
+  	    case 'e':
+  	    case 'E':
+***************
+*** 4690,4703 ****
+  		    int		remove_trailing_zeroes = FALSE;
+  
+  		    f =
+- # ifndef HAVE_STDARG_H
+- 			get_a_arg(arg_idx);
+- # else
+  #  if defined(FEAT_EVAL)
+  			tvs != NULL ? tv_float(tvs, &arg_idx) :
+  #  endif
+  			    va_arg(ap, double);
+- # endif
+  		    abs_f = f < 0 ? -f : f;
+  
+  		    if (fmt_spec == 'g' || fmt_spec == 'G')
+--- 4564,4573 ----
+***************
+*** 4713,4723 ****
+  		    }
+  
+  		    if (fmt_spec == 'f' &&
+! #ifdef VAX
+  			    abs_f > 1.0e38
+! #else
+  			    abs_f > 1.0e307
+! #endif
+  			    )
+  		    {
+  			/* Avoid a buffer overflow */
+--- 4583,4593 ----
+  		    }
+  
+  		    if (fmt_spec == 'f' &&
+! #  ifdef VAX
+  			    abs_f > 1.0e38
+! #  else
+  			    abs_f > 1.0e307
+! #  endif
+  			    )
+  		    {
+  			/* Avoid a buffer overflow */
+***************
+*** 4810,4816 ****
+  		    str_arg = tmp;
+  		    break;
+  		}
+! #endif
+  
+  	    default:
+  		/* unrecognized conversion specifier, keep format string
+--- 4680,4686 ----
+  		    str_arg = tmp;
+  		    break;
+  		}
+! # endif
+  
+  	    default:
+  		/* unrecognized conversion specifier, keep format string
+***************
+*** 4949,4958 ****
+  	str[str_l <= str_m - 1 ? str_l : str_m - 1] = '\0';
+      }
+  
+- #ifdef HAVE_STDARG_H
+      if (tvs != NULL && tvs[arg_idx - 1].v_type != VAR_UNKNOWN)
+  	EMSG(_("E767: Too many arguments to printf()"));
+- #endif
+  
+      /* Return the number of characters formatted (excluding trailing nul
+       * character), that is, the number of characters that would have been
+--- 4819,4826 ----
+*** ../vim-7.4.1197/src/misc1.c	2016-01-17 18:23:51.535928735 +0100
+--- src/misc1.c	2016-01-29 22:34:12.894612381 +0100
+***************
+*** 14,25 ****
+  #include "vim.h"
+  #include "version.h"
+  
+! static char_u *vim_version_dir __ARGS((char_u *vimdir));
+! static char_u *remove_tail __ARGS((char_u *p, char_u *pend, char_u *name));
+  #if defined(FEAT_CMDL_COMPL)
+! static void init_users __ARGS((void));
+  #endif
+! static int copy_indent __ARGS((int size, char_u	*src));
+  
+  /* All user names (for ~user completion as done by shell). */
+  #if defined(FEAT_CMDL_COMPL) || defined(PROTO)
+--- 14,25 ----
+  #include "vim.h"
+  #include "version.h"
+  
+! static char_u *vim_version_dir(char_u *vimdir);
+! static char_u *remove_tail(char_u *p, char_u *pend, char_u *name);
+  #if defined(FEAT_CMDL_COMPL)
+! static void init_users(void);
+  #endif
+! static int copy_indent(int size, char_u	*src);
+  
+  /* All user names (for ~user completion as done by shell). */
+  #if defined(FEAT_CMDL_COMPL) || defined(PROTO)
+***************
+*** 541,547 ****
+  
+  #if defined(FEAT_CINDENT) || defined(FEAT_SMARTINDENT)
+  
+! static int cin_is_cinword __ARGS((char_u *line));
+  
+  /*
+   * Return TRUE if the string "line" starts with a word from 'cinwords'.
+--- 541,547 ----
+  
+  #if defined(FEAT_CINDENT) || defined(FEAT_SMARTINDENT)
+  
+! static int cin_is_cinword(char_u *line);
+  
+  /*
+   * Return TRUE if the string "line" starts with a word from 'cinwords'.
+***************
+*** 2819,2827 ****
+  #endif
+  }
+  
+! static void changedOneline __ARGS((buf_T *buf, linenr_T lnum));
+! static void changed_lines_buf __ARGS((buf_T *buf, linenr_T lnum, linenr_T lnume, long xtra));
+! static void changed_common __ARGS((linenr_T lnum, colnr_T col, linenr_T lnume, long xtra));
+  
+  /*
+   * Changed bytes within a single line for the current buffer.
+--- 2819,2827 ----
+  #endif
+  }
+  
+! static void changedOneline(buf_T *buf, linenr_T lnum);
+! static void changed_lines_buf(buf_T *buf, linenr_T lnum, linenr_T lnume, long xtra);
+! static void changed_common(linenr_T lnum, colnr_T col, linenr_T lnume, long xtra);
+  
+  /*
+   * Changed bytes within a single line for the current buffer.
+***************
+*** 4913,4919 ****
+  }
+  
+  #if defined(FEAT_SEARCHPATH)
+! static char_u *gettail_dir __ARGS((char_u *fname));
+  
+  /*
+   * Return the end of the directory name, on the first path
+--- 4913,4919 ----
+  }
+  
+  #if defined(FEAT_SEARCHPATH)
+! static char_u *gettail_dir(char_u *fname);
+  
+  /*
+   * Return the end of the directory name, on the first path
+***************
+*** 5285,5294 ****
+  
+  #if defined(FEAT_CINDENT) || defined(FEAT_SYN_HL)
+  
+! static char_u	*skip_string __ARGS((char_u *p));
+! static pos_T *ind_find_start_comment __ARGS((void));
+! static pos_T *ind_find_start_CORS __ARGS((void));
+! static pos_T *find_start_rawstring __ARGS((int ind_maxcomment));
+  
+  /*
+   * Find the start of a comment, not knowing if we are in a comment right now.
+--- 5285,5294 ----
+  
+  #if defined(FEAT_CINDENT) || defined(FEAT_SYN_HL)
+  
+! static char_u	*skip_string(char_u *p);
+! static pos_T *ind_find_start_comment(void);
+! static pos_T *ind_find_start_CORS(void);
+! static pos_T *find_start_rawstring(int ind_maxcomment);
+  
+  /*
+   * Find the start of a comment, not knowing if we are in a comment right now.
+***************
+*** 5508,5550 ****
+   * Below "XXX" means that this function may unlock the current line.
+   */
+  
+! static char_u	*cin_skipcomment __ARGS((char_u *));
+! static int	cin_nocode __ARGS((char_u *));
+! static pos_T	*find_line_comment __ARGS((void));
+! static int	cin_has_js_key __ARGS((char_u *text));
+! static int	cin_islabel_skip __ARGS((char_u **));
+! static int	cin_isdefault __ARGS((char_u *));
+! static char_u	*after_label __ARGS((char_u *l));
+! static int	get_indent_nolabel __ARGS((linenr_T lnum));
+! static int	skip_label __ARGS((linenr_T, char_u **pp));
+! static int	cin_first_id_amount __ARGS((void));
+! static int	cin_get_equal_amount __ARGS((linenr_T lnum));
+! static int	cin_ispreproc __ARGS((char_u *));
+! static int	cin_ispreproc_cont __ARGS((char_u **pp, linenr_T *lnump));
+! static int	cin_iscomment __ARGS((char_u *));
+! static int	cin_islinecomment __ARGS((char_u *));
+! static int	cin_isterminated __ARGS((char_u *, int, int));
+! static int	cin_isinit __ARGS((void));
+! static int	cin_isfuncdecl __ARGS((char_u **, linenr_T, linenr_T));
+! static int	cin_isif __ARGS((char_u *));
+! static int	cin_iselse __ARGS((char_u *));
+! static int	cin_isdo __ARGS((char_u *));
+! static int	cin_iswhileofdo __ARGS((char_u *, linenr_T));
+! static int	cin_is_if_for_while_before_offset __ARGS((char_u *line, int *poffset));
+! static int	cin_iswhileofdo_end __ARGS((int terminated));
+! static int	cin_isbreak __ARGS((char_u *));
+! static int	cin_is_cpp_baseclass __ARGS((cpp_baseclass_cache_T *cached));
+! static int	get_baseclass_amount __ARGS((int col));
+! static int	cin_ends_in __ARGS((char_u *, char_u *, char_u *));
+! static int	cin_starts_with __ARGS((char_u *s, char *word));
+! static int	cin_skip2pos __ARGS((pos_T *trypos));
+! static pos_T	*find_start_brace __ARGS((void));
+! static pos_T	*find_match_paren __ARGS((int));
+! static pos_T	*find_match_char __ARGS((int c, int ind_maxparen));
+! static int	corr_ind_maxparen __ARGS((pos_T *startpos));
+! static int	find_last_paren __ARGS((char_u *l, int start, int end));
+! static int	find_match __ARGS((int lookfor, linenr_T ourscope));
+! static int	cin_is_cpp_namespace __ARGS((char_u *));
+  
+  /*
+   * Skip over white space and C comments within the line.
+--- 5508,5550 ----
+   * Below "XXX" means that this function may unlock the current line.
+   */
+  
+! static char_u	*cin_skipcomment(char_u *);
+! static int	cin_nocode(char_u *);
+! static pos_T	*find_line_comment(void);
+! static int	cin_has_js_key(char_u *text);
+! static int	cin_islabel_skip(char_u **);
+! static int	cin_isdefault(char_u *);
+! static char_u	*after_label(char_u *l);
+! static int	get_indent_nolabel(linenr_T lnum);
+! static int	skip_label(linenr_T, char_u **pp);
+! static int	cin_first_id_amount(void);
+! static int	cin_get_equal_amount(linenr_T lnum);
+! static int	cin_ispreproc(char_u *);
+! static int	cin_ispreproc_cont(char_u **pp, linenr_T *lnump);
+! static int	cin_iscomment(char_u *);
+! static int	cin_islinecomment(char_u *);
+! static int	cin_isterminated(char_u *, int, int);
+! static int	cin_isinit(void);
+! static int	cin_isfuncdecl(char_u **, linenr_T, linenr_T);
+! static int	cin_isif(char_u *);
+! static int	cin_iselse(char_u *);
+! static int	cin_isdo(char_u *);
+! static int	cin_iswhileofdo(char_u *, linenr_T);
+! static int	cin_is_if_for_while_before_offset(char_u *line, int *poffset);
+! static int	cin_iswhileofdo_end(int terminated);
+! static int	cin_isbreak(char_u *);
+! static int	cin_is_cpp_baseclass(cpp_baseclass_cache_T *cached);
+! static int	get_baseclass_amount(int col);
+! static int	cin_ends_in(char_u *, char_u *, char_u *);
+! static int	cin_starts_with(char_u *s, char *word);
+! static int	cin_skip2pos(pos_T *trypos);
+! static pos_T	*find_start_brace(void);
+! static pos_T	*find_match_paren(int);
+! static pos_T	*find_match_char(int c, int ind_maxparen);
+! static int	corr_ind_maxparen(pos_T *startpos);
+! static int	find_last_paren(char_u *l, int start, int end);
+! static int	find_match(int lookfor, linenr_T ourscope);
+! static int	cin_is_cpp_namespace(char_u *);
+  
+  /*
+   * Skip over white space and C comments within the line.
+***************
+*** 9337,9343 ****
+  
+  #if defined(FEAT_LISP) || defined(PROTO)
+  
+! static int lisp_match __ARGS((char_u *p));
+  
+      static int
+  lisp_match(p)
+--- 9337,9343 ----
+  
+  #if defined(FEAT_LISP) || defined(PROTO)
+  
+! static int lisp_match(char_u *p);
+  
+      static int
+  lisp_match(p)
+***************
+*** 9860,9867 ****
+  #if !defined(NO_EXPANDPATH) || defined(PROTO)
+  
+  # ifdef VIM_BACKTICK
+! static int vim_backtick __ARGS((char_u *p));
+! static int expand_backtick __ARGS((garray_T *gap, char_u *pat, int flags));
+  # endif
+  
+  # if defined(MSDOS) || defined(FEAT_GUI_W16) || defined(WIN3264)
+--- 9860,9867 ----
+  #if !defined(NO_EXPANDPATH) || defined(PROTO)
+  
+  # ifdef VIM_BACKTICK
+! static int vim_backtick(char_u *p);
+! static int expand_backtick(garray_T *gap, char_u *pat, int flags);
+  # endif
+  
+  # if defined(MSDOS) || defined(FEAT_GUI_W16) || defined(WIN3264)
+***************
+*** 10216,10222 ****
+   * Unix style wildcard expansion code.
+   * It's here because it's used both for Unix and Mac.
+   */
+! static int	pstrcmp __ARGS((const void *, const void *));
+  
+      static int
+  pstrcmp(a, b)
+--- 10216,10222 ----
+   * Unix style wildcard expansion code.
+   * It's here because it's used both for Unix and Mac.
+   */
+! static int	pstrcmp(const void *, const void *);
+  
+      static int
+  pstrcmp(a, b)
+***************
+*** 10450,10461 ****
+  #endif
+  
+  #if defined(FEAT_SEARCHPATH)
+! static int find_previous_pathsep __ARGS((char_u *path, char_u **psep));
+! static int is_unique __ARGS((char_u *maybe_unique, garray_T *gap, int i));
+! static void expand_path_option __ARGS((char_u *curdir, garray_T	*gap));
+! static char_u *get_path_cutoff __ARGS((char_u *fname, garray_T *gap));
+! static void uniquefy_paths __ARGS((garray_T *gap, char_u *pattern));
+! static int expand_in_path __ARGS((garray_T *gap, char_u	*pattern, int flags));
+  
+  /*
+   * Moves "*psep" back to the previous path separator in "path".
+--- 10450,10461 ----
+  #endif
+  
+  #if defined(FEAT_SEARCHPATH)
+! static int find_previous_pathsep(char_u *path, char_u **psep);
+! static int is_unique(char_u *maybe_unique, garray_T *gap, int i);
+! static void expand_path_option(char_u *curdir, garray_T	*gap);
+! static char_u *get_path_cutoff(char_u *fname, garray_T *gap);
+! static void uniquefy_paths(garray_T *gap, char_u *pattern);
+! static int expand_in_path(garray_T *gap, char_u	*pattern, int flags);
+  
+  /*
+   * Moves "*psep" back to the previous path separator in "path".
+***************
+*** 10872,10878 ****
+  }
+  #endif
+  
+! static int has_env_var __ARGS((char_u *p));
+  
+  /*
+   * Return TRUE if "p" contains what looks like an environment variable.
+--- 10872,10878 ----
+  }
+  #endif
+  
+! static int has_env_var(char_u *p);
+  
+  /*
+   * Return TRUE if "p" contains what looks like an environment variable.
+***************
+*** 10899,10905 ****
+  }
+  
+  #ifdef SPECIAL_WILDCHAR
+! static int has_special_wildchar __ARGS((char_u *p));
+  
+  /*
+   * Return TRUE if "p" contains a special wildcard character.
+--- 10899,10905 ----
+  }
+  
+  #ifdef SPECIAL_WILDCHAR
+! static int has_special_wildchar(char_u *p);
+  
+  /*
+   * Return TRUE if "p" contains a special wildcard character.
+*** ../vim-7.4.1197/src/misc2.c	2016-01-18 23:28:44.161810727 +0100
+--- src/misc2.c	2016-01-29 22:34:33.386396208 +0100
+***************
+*** 17,23 ****
+  static char_u	*ff_expand_buffer = NULL; /* used for expanding filenames */
+  
+  #if defined(FEAT_VIRTUALEDIT) || defined(PROTO)
+! static int coladvance2 __ARGS((pos_T *pos, int addspaces, int finetune, colnr_T wcol));
+  
+  /*
+   * Return TRUE if in the current mode we need to use virtual.
+--- 17,23 ----
+  static char_u	*ff_expand_buffer = NULL; /* used for expanding filenames */
+  
+  #if defined(FEAT_VIRTUALEDIT) || defined(PROTO)
+! static int coladvance2(pos_T *pos, int addspaces, int finetune, colnr_T wcol);
+  
+  /*
+   * Return TRUE if in the current mode we need to use virtual.
+***************
+*** 699,708 ****
+  static long_u num_alloc;
+  static long_u num_freed;
+  
+! static void mem_pre_alloc_s __ARGS((size_t *sizep));
+! static void mem_pre_alloc_l __ARGS((long_u *sizep));
+! static void mem_post_alloc __ARGS((void **pp, size_t size));
+! static void mem_pre_free __ARGS((void **pp));
+  
+      static void
+  mem_pre_alloc_s(sizep)
+--- 699,708 ----
+  static long_u num_alloc;
+  static long_u num_freed;
+  
+! static void mem_pre_alloc_s(size_t *sizep);
+! static void mem_pre_alloc_l(long_u *sizep);
+! static void mem_post_alloc(void **pp, size_t size);
+! static void mem_pre_free(void **pp);
+  
+      static void
+  mem_pre_alloc_s(sizep)
+***************
+*** 798,804 ****
+  #endif /* MEM_PROFILE */
+  
+  #ifdef FEAT_EVAL
+! static int alloc_does_fail __ARGS((long_u size));
+  
+      static int
+  alloc_does_fail(size)
+--- 798,804 ----
+  #endif /* MEM_PROFILE */
+  
+  #ifdef FEAT_EVAL
+! static int alloc_does_fail(long_u size);
+  
+      static int
+  alloc_does_fail(size)
+***************
+*** 1064,1070 ****
+  #if defined(EXITFREE) || defined(PROTO)
+  
+  # if defined(FEAT_SEARCHPATH)
+! static void free_findfile __ARGS((void));
+  # endif
+  
+  /*
+--- 1064,1070 ----
+  #if defined(EXITFREE) || defined(PROTO)
+  
+  # if defined(FEAT_SEARCHPATH)
+! static void free_findfile(void);
+  # endif
+  
+  /*
+***************
+*** 4025,4052 ****
+  
+  /* locally needed functions */
+  #ifdef FEAT_PATH_EXTRA
+! static int ff_check_visited __ARGS((ff_visited_T **, char_u *, char_u *));
+  #else
+! static int ff_check_visited __ARGS((ff_visited_T **, char_u *));
+  #endif
+! static void vim_findfile_free_visited_list __ARGS((ff_visited_list_hdr_T **list_headp));
+! static void ff_free_visited_list __ARGS((ff_visited_T *vl));
+! static ff_visited_list_hdr_T* ff_get_visited_list __ARGS((char_u *, ff_visited_list_hdr_T **list_headp));
+  #ifdef FEAT_PATH_EXTRA
+! static int ff_wc_equal __ARGS((char_u *s1, char_u *s2));
+  #endif
+  
+! static void ff_push __ARGS((ff_search_ctx_T *search_ctx, ff_stack_T *stack_ptr));
+! static ff_stack_T *ff_pop __ARGS((ff_search_ctx_T *search_ctx));
+! static void ff_clear __ARGS((ff_search_ctx_T *search_ctx));
+! static void ff_free_stack_element __ARGS((ff_stack_T *stack_ptr));
+  #ifdef FEAT_PATH_EXTRA
+! static ff_stack_T *ff_create_stack_element __ARGS((char_u *, char_u *, int, int));
+  #else
+! static ff_stack_T *ff_create_stack_element __ARGS((char_u *, int, int));
+  #endif
+  #ifdef FEAT_PATH_EXTRA
+! static int ff_path_in_stoplist __ARGS((char_u *, int, char_u **));
+  #endif
+  
+  static char_u e_pathtoolong[] = N_("E854: path too long for completion");
+--- 4025,4052 ----
+  
+  /* locally needed functions */
+  #ifdef FEAT_PATH_EXTRA
+! static int ff_check_visited(ff_visited_T **, char_u *, char_u *);
+  #else
+! static int ff_check_visited(ff_visited_T **, char_u *);
+  #endif
+! static void vim_findfile_free_visited_list(ff_visited_list_hdr_T **list_headp);
+! static void ff_free_visited_list(ff_visited_T *vl);
+! static ff_visited_list_hdr_T* ff_get_visited_list(char_u *, ff_visited_list_hdr_T **list_headp);
+  #ifdef FEAT_PATH_EXTRA
+! static int ff_wc_equal(char_u *s1, char_u *s2);
+  #endif
+  
+! static void ff_push(ff_search_ctx_T *search_ctx, ff_stack_T *stack_ptr);
+! static ff_stack_T *ff_pop(ff_search_ctx_T *search_ctx);
+! static void ff_clear(ff_search_ctx_T *search_ctx);
+! static void ff_free_stack_element(ff_stack_T *stack_ptr);
+  #ifdef FEAT_PATH_EXTRA
+! static ff_stack_T *ff_create_stack_element(char_u *, char_u *, int, int);
+  #else
+! static ff_stack_T *ff_create_stack_element(char_u *, int, int);
+  #endif
+  #ifdef FEAT_PATH_EXTRA
+! static int ff_path_in_stoplist(char_u *, int, char_u **);
+  #endif
+  
+  static char_u e_pathtoolong[] = N_("E854: path too long for completion");
+***************
+*** 5816,5822 ****
+      void	*base;
+      size_t	elm_count;
+      size_t	elm_size;
+!     int (*cmp) __ARGS((const void *, const void *));
+  {
+      char_u	*buf;
+      char_u	*p1;
+--- 5816,5822 ----
+      void	*base;
+      size_t	elm_count;
+      size_t	elm_size;
+!     int (*cmp)(const void *, const void *);
+  {
+      char_u	*buf;
+      char_u	*p1;
+***************
+*** 5854,5860 ****
+  #ifdef __BORLANDC__
+  _RTLENTRYF
+  #endif
+! sort_compare __ARGS((const void *s1, const void *s2));
+  
+      static int
+  #ifdef __BORLANDC__
+--- 5854,5860 ----
+  #ifdef __BORLANDC__
+  _RTLENTRYF
+  #endif
+! sort_compare(const void *s1, const void *s2);
+  
+      static int
+  #ifdef __BORLANDC__
+***************
+*** 5989,5997 ****
+  #endif
+         char **environ;		/* the global which is your env. */
+  
+! static int  findenv __ARGS((char *name)); /* look for a name in the env. */
+! static int  newenv __ARGS((void));	/* copy env. from stack to heap */
+! static int  moreenv __ARGS((void));	/* incr. size of env. */
+  
+      int
+  putenv(string)
+--- 5989,5997 ----
+  #endif
+         char **environ;		/* the global which is your env. */
+  
+! static int  findenv(char *name); /* look for a name in the env. */
+! static int  newenv(void);	/* copy env. from stack to heap */
+! static int  moreenv(void);	/* incr. size of env. */
+  
+      int
+  putenv(string)
+*** ../vim-7.4.1197/src/move.c	2015-09-09 20:59:34.013186842 +0200
+--- src/move.c	2016-01-29 22:34:49.082230634 +0100
+***************
+*** 19,30 ****
+  
+  #include "vim.h"
+  
+! static void comp_botline __ARGS((win_T *wp));
+! static void redraw_for_cursorline __ARGS((win_T *wp));
+! static int scrolljump_value __ARGS((void));
+! static int check_top_offset __ARGS((void));
+! static void curs_rows __ARGS((win_T *wp));
+! static void validate_cheight __ARGS((void));
+  
+  typedef struct
+  {
+--- 19,30 ----
+  
+  #include "vim.h"
+  
+! static void comp_botline(win_T *wp);
+! static void redraw_for_cursorline(win_T *wp);
+! static int scrolljump_value(void);
+! static int check_top_offset(void);
+! static void curs_rows(win_T *wp);
+! static void validate_cheight(void);
+  
+  typedef struct
+  {
+***************
+*** 35,46 ****
+      int		    height;	/* height of added line */
+  } lineoff_T;
+  
+! static void topline_back __ARGS((lineoff_T *lp));
+! static void botline_forw __ARGS((lineoff_T *lp));
+  #ifdef FEAT_DIFF
+! static void botline_topline __ARGS((lineoff_T *lp));
+! static void topline_botline __ARGS((lineoff_T *lp));
+! static void max_topfill __ARGS((void));
+  #endif
+  
+  /*
+--- 35,46 ----
+      int		    height;	/* height of added line */
+  } lineoff_T;
+  
+! static void topline_back(lineoff_T *lp);
+! static void botline_forw(lineoff_T *lp);
+  #ifdef FEAT_DIFF
+! static void botline_topline(lineoff_T *lp);
+! static void topline_botline(lineoff_T *lp);
+! static void max_topfill(void);
+  #endif
+  
+  /*
+***************
+*** 2290,2296 ****
+      curwin->w_valid |= VALID_TOPLINE;
+  }
+  
+! static void get_scroll_overlap __ARGS((lineoff_T *lp, int dir));
+  
+  /*
+   * move screen 'count' pages up or down and update screen
+--- 2290,2296 ----
+      curwin->w_valid |= VALID_TOPLINE;
+  }
+  
+! static void get_scroll_overlap(lineoff_T *lp, int dir);
+  
+  /*
+   * move screen 'count' pages up or down and update screen
+*** ../vim-7.4.1197/src/netbeans.c	2016-01-27 21:08:12.523796763 +0100
+--- src/netbeans.c	2016-01-29 22:35:15.797948812 +0100
+***************
+*** 44,67 ****
+   * protocol implemented here also supports A-A-P. */
+  static char *ExtEdProtocolVersion = "2.5";
+  
+! static long pos2off __ARGS((buf_T *, pos_T *));
+! static pos_T *off2pos __ARGS((buf_T *, long));
+! static pos_T *get_off_or_lnum __ARGS((buf_T *buf, char_u **argp));
+! static long get_buf_size __ARGS((buf_T *));
+! static int netbeans_keystring __ARGS((char_u *keystr));
+! static void postpone_keycommand __ARGS((char_u *keystr));
+! static void special_keys __ARGS((char_u *args));
+! 
+! static int netbeans_connect __ARGS((char *, int));
+! static int getConnInfo __ARGS((char *file, char **host, char **port, char **password));
+! 
+! static void nb_init_graphics __ARGS((void));
+! static void coloncmd __ARGS((char *cmd, ...));
+! static void nb_set_curbuf __ARGS((buf_T *buf));
+! static void nb_parse_cmd __ARGS((char_u *));
+! static int  nb_do_cmd __ARGS((int, char_u *, int, int, char_u *));
+! static void nb_send __ARGS((char *buf, char *fun));
+! static void nb_free __ARGS((void));
+  
+  #define NETBEANS_OPEN (nb_channel_idx >= 0 && channel_is_open(nb_channel_idx))
+  static int nb_channel_idx = -1;
+--- 44,67 ----
+   * protocol implemented here also supports A-A-P. */
+  static char *ExtEdProtocolVersion = "2.5";
+  
+! static long pos2off(buf_T *, pos_T *);
+! static pos_T *off2pos(buf_T *, long);
+! static pos_T *get_off_or_lnum(buf_T *buf, char_u **argp);
+! static long get_buf_size(buf_T *);
+! static int netbeans_keystring(char_u *keystr);
+! static void postpone_keycommand(char_u *keystr);
+! static void special_keys(char_u *args);
+! 
+! static int netbeans_connect(char *, int);
+! static int getConnInfo(char *file, char **host, char **port, char **password);
+! 
+! static void nb_init_graphics(void);
+! static void coloncmd(char *cmd, ...);
+! static void nb_set_curbuf(buf_T *buf);
+! static void nb_parse_cmd(char_u *);
+! static int  nb_do_cmd(int, char_u *, int, int, char_u *);
+! static void nb_send(char *buf, char *fun);
+! static void nb_free(void);
+  
+  #define NETBEANS_OPEN (nb_channel_idx >= 0 && channel_is_open(nb_channel_idx))
+  static int nb_channel_idx = -1;
+***************
+*** 548,559 ****
+  static int globalsignmaplen = 0;
+  static int globalsignmapused = 0;
+  
+! static int  mapsigntype __ARGS((nbbuf_T *, int localsigntype));
+! static void addsigntype __ARGS((nbbuf_T *, int localsigntype, char_u *typeName,
+  			char_u *tooltip, char_u *glyphfile,
+! 			char_u *fg, char_u *bg));
+! static void print_read_msg __ARGS((nbbuf_T *buf));
+! static void print_save_msg __ARGS((nbbuf_T *buf, off_t nchars));
+  
+  static int curPCtype = -1;
+  
+--- 548,559 ----
+  static int globalsignmaplen = 0;
+  static int globalsignmapused = 0;
+  
+! static int  mapsigntype(nbbuf_T *, int localsigntype);
+! static void addsigntype(nbbuf_T *, int localsigntype, char_u *typeName,
+  			char_u *tooltip, char_u *glyphfile,
+! 			char_u *fg, char_u *bg);
+! static void print_read_msg(nbbuf_T *buf);
+! static void print_save_msg(nbbuf_T *buf, off_t nchars);
+  
+  static int curPCtype = -1;
+  
+*** ../vim-7.4.1197/src/normal.c	2016-01-21 23:32:14.150035957 +0100
+--- src/normal.c	2016-01-29 22:35:37.637718429 +0100
+***************
+*** 25,55 ****
+  static int	restart_VIsual_select = 0;
+  
+  #ifdef FEAT_EVAL
+! static void	set_vcount_ca __ARGS((cmdarg_T *cap, int *set_prevcount));
+  #endif
+  static int
+  #ifdef __BORLANDC__
+      _RTLENTRYF
+  #endif
+! 		nv_compare __ARGS((const void *s1, const void *s2));
+! static int	find_command __ARGS((int cmdchar));
+! static void	op_colon __ARGS((oparg_T *oap));
+! static void	op_function __ARGS((oparg_T *oap));
+  #if defined(FEAT_MOUSE)
+! static void	find_start_of_word __ARGS((pos_T *));
+! static void	find_end_of_word __ARGS((pos_T *));
+! static int	get_mouse_class __ARGS((char_u *p));
+! #endif
+! static void	prep_redo_cmd __ARGS((cmdarg_T *cap));
+! static void	prep_redo __ARGS((int regname, long, int, int, int, int, int));
+! static int	checkclearop __ARGS((oparg_T *oap));
+! static int	checkclearopq __ARGS((oparg_T *oap));
+! static void	clearop __ARGS((oparg_T *oap));
+! static void	clearopbeep __ARGS((oparg_T *oap));
+! static void	unshift_special __ARGS((cmdarg_T *cap));
+! static void	may_clear_cmdline __ARGS((void));
+  #ifdef FEAT_CMDL_INFO
+! static void	del_from_showcmd __ARGS((int));
+  #endif
+  
+  /*
+--- 25,55 ----
+  static int	restart_VIsual_select = 0;
+  
+  #ifdef FEAT_EVAL
+! static void	set_vcount_ca(cmdarg_T *cap, int *set_prevcount);
+  #endif
+  static int
+  #ifdef __BORLANDC__
+      _RTLENTRYF
+  #endif
+! 		nv_compare(const void *s1, const void *s2);
+! static int	find_command(int cmdchar);
+! static void	op_colon(oparg_T *oap);
+! static void	op_function(oparg_T *oap);
+  #if defined(FEAT_MOUSE)
+! static void	find_start_of_word(pos_T *);
+! static void	find_end_of_word(pos_T *);
+! static int	get_mouse_class(char_u *p);
+! #endif
+! static void	prep_redo_cmd(cmdarg_T *cap);
+! static void	prep_redo(int regname, long, int, int, int, int, int);
+! static int	checkclearop(oparg_T *oap);
+! static int	checkclearopq(oparg_T *oap);
+! static void	clearop(oparg_T *oap);
+! static void	clearopbeep(oparg_T *oap);
+! static void	unshift_special(cmdarg_T *cap);
+! static void	may_clear_cmdline(void);
+  #ifdef FEAT_CMDL_INFO
+! static void	del_from_showcmd(int);
+  #endif
+  
+  /*
+***************
+*** 57,181 ****
+   * n_*(): functions called to handle Normal mode commands.
+   * v_*(): functions called to handle Visual mode commands.
+   */
+! static void	nv_ignore __ARGS((cmdarg_T *cap));
+! static void	nv_nop __ARGS((cmdarg_T *cap));
+! static void	nv_error __ARGS((cmdarg_T *cap));
+! static void	nv_help __ARGS((cmdarg_T *cap));
+! static void	nv_addsub __ARGS((cmdarg_T *cap));
+! static void	nv_page __ARGS((cmdarg_T *cap));
+! static void	nv_gd __ARGS((oparg_T *oap, int nchar, int thisblock));
+! static int	nv_screengo __ARGS((oparg_T *oap, int dir, long dist));
+  #ifdef FEAT_MOUSE
+! static void	nv_mousescroll __ARGS((cmdarg_T *cap));
+! static void	nv_mouse __ARGS((cmdarg_T *cap));
+  #endif
+! static void	nv_scroll_line __ARGS((cmdarg_T *cap));
+! static void	nv_zet __ARGS((cmdarg_T *cap));
+  #ifdef FEAT_GUI
+! static void	nv_ver_scrollbar __ARGS((cmdarg_T *cap));
+! static void	nv_hor_scrollbar __ARGS((cmdarg_T *cap));
+  #endif
+  #ifdef FEAT_GUI_TABLINE
+! static void	nv_tabline __ARGS((cmdarg_T *cap));
+! static void	nv_tabmenu __ARGS((cmdarg_T *cap));
+  #endif
+! static void	nv_exmode __ARGS((cmdarg_T *cap));
+! static void	nv_colon __ARGS((cmdarg_T *cap));
+! static void	nv_ctrlg __ARGS((cmdarg_T *cap));
+! static void	nv_ctrlh __ARGS((cmdarg_T *cap));
+! static void	nv_clear __ARGS((cmdarg_T *cap));
+! static void	nv_ctrlo __ARGS((cmdarg_T *cap));
+! static void	nv_hat __ARGS((cmdarg_T *cap));
+! static void	nv_Zet __ARGS((cmdarg_T *cap));
+! static void	nv_ident __ARGS((cmdarg_T *cap));
+! static void	nv_tagpop __ARGS((cmdarg_T *cap));
+! static void	nv_scroll __ARGS((cmdarg_T *cap));
+! static void	nv_right __ARGS((cmdarg_T *cap));
+! static void	nv_left __ARGS((cmdarg_T *cap));
+! static void	nv_up __ARGS((cmdarg_T *cap));
+! static void	nv_down __ARGS((cmdarg_T *cap));
+  #ifdef FEAT_SEARCHPATH
+! static void	nv_gotofile __ARGS((cmdarg_T *cap));
+  #endif
+! static void	nv_end __ARGS((cmdarg_T *cap));
+! static void	nv_dollar __ARGS((cmdarg_T *cap));
+! static void	nv_search __ARGS((cmdarg_T *cap));
+! static void	nv_next __ARGS((cmdarg_T *cap));
+! static int	normal_search __ARGS((cmdarg_T *cap, int dir, char_u *pat, int opt));
+! static void	nv_csearch __ARGS((cmdarg_T *cap));
+! static void	nv_brackets __ARGS((cmdarg_T *cap));
+! static void	nv_percent __ARGS((cmdarg_T *cap));
+! static void	nv_brace __ARGS((cmdarg_T *cap));
+! static void	nv_mark __ARGS((cmdarg_T *cap));
+! static void	nv_findpar __ARGS((cmdarg_T *cap));
+! static void	nv_undo __ARGS((cmdarg_T *cap));
+! static void	nv_kundo __ARGS((cmdarg_T *cap));
+! static void	nv_Replace __ARGS((cmdarg_T *cap));
+  #ifdef FEAT_VREPLACE
+! static void	nv_vreplace __ARGS((cmdarg_T *cap));
+  #endif
+! static void	v_swap_corners __ARGS((int cmdchar));
+! static void	nv_replace __ARGS((cmdarg_T *cap));
+! static void	n_swapchar __ARGS((cmdarg_T *cap));
+! static void	nv_cursormark __ARGS((cmdarg_T *cap, int flag, pos_T *pos));
+! static void	v_visop __ARGS((cmdarg_T *cap));
+! static void	nv_subst __ARGS((cmdarg_T *cap));
+! static void	nv_abbrev __ARGS((cmdarg_T *cap));
+! static void	nv_optrans __ARGS((cmdarg_T *cap));
+! static void	nv_gomark __ARGS((cmdarg_T *cap));
+! static void	nv_pcmark __ARGS((cmdarg_T *cap));
+! static void	nv_regname __ARGS((cmdarg_T *cap));
+! static void	nv_visual __ARGS((cmdarg_T *cap));
+! static void	n_start_visual_mode __ARGS((int c));
+! static void	nv_window __ARGS((cmdarg_T *cap));
+! static void	nv_suspend __ARGS((cmdarg_T *cap));
+! static void	nv_g_cmd __ARGS((cmdarg_T *cap));
+! static void	n_opencmd __ARGS((cmdarg_T *cap));
+! static void	nv_dot __ARGS((cmdarg_T *cap));
+! static void	nv_redo __ARGS((cmdarg_T *cap));
+! static void	nv_Undo __ARGS((cmdarg_T *cap));
+! static void	nv_tilde __ARGS((cmdarg_T *cap));
+! static void	nv_operator __ARGS((cmdarg_T *cap));
+  #ifdef FEAT_EVAL
+! static void	set_op_var __ARGS((int optype));
+  #endif
+! static void	nv_lineop __ARGS((cmdarg_T *cap));
+! static void	nv_home __ARGS((cmdarg_T *cap));
+! static void	nv_pipe __ARGS((cmdarg_T *cap));
+! static void	nv_bck_word __ARGS((cmdarg_T *cap));
+! static void	nv_wordcmd __ARGS((cmdarg_T *cap));
+! static void	nv_beginline __ARGS((cmdarg_T *cap));
+! static void	adjust_cursor __ARGS((oparg_T *oap));
+! static void	adjust_for_sel __ARGS((cmdarg_T *cap));
+! static int	unadjust_for_sel __ARGS((void));
+! static void	nv_select __ARGS((cmdarg_T *cap));
+! static void	nv_goto __ARGS((cmdarg_T *cap));
+! static void	nv_normal __ARGS((cmdarg_T *cap));
+! static void	nv_esc __ARGS((cmdarg_T *oap));
+! static void	nv_edit __ARGS((cmdarg_T *cap));
+! static void	invoke_edit __ARGS((cmdarg_T *cap, int repl, int cmd, int startln));
+  #ifdef FEAT_TEXTOBJ
+! static void	nv_object __ARGS((cmdarg_T *cap));
+  #endif
+! static void	nv_record __ARGS((cmdarg_T *cap));
+! static void	nv_at __ARGS((cmdarg_T *cap));
+! static void	nv_halfpage __ARGS((cmdarg_T *cap));
+! static void	nv_join __ARGS((cmdarg_T *cap));
+! static void	nv_put __ARGS((cmdarg_T *cap));
+! static void	nv_open __ARGS((cmdarg_T *cap));
+  #ifdef FEAT_SNIFF
+! static void	nv_sniff __ARGS((cmdarg_T *cap));
+  #endif
+  #ifdef FEAT_NETBEANS_INTG
+! static void	nv_nbcmd __ARGS((cmdarg_T *cap));
+  #endif
+  #ifdef FEAT_DND
+! static void	nv_drop __ARGS((cmdarg_T *cap));
+  #endif
+  #ifdef FEAT_AUTOCMD
+! static void	nv_cursorhold __ARGS((cmdarg_T *cap));
+  #endif
+! static void	get_op_vcol __ARGS((oparg_T *oap, colnr_T col, int initial));
+  
+  static char *e_noident = N_("E349: No identifier under cursor");
+  
+--- 57,181 ----
+   * n_*(): functions called to handle Normal mode commands.
+   * v_*(): functions called to handle Visual mode commands.
+   */
+! static void	nv_ignore(cmdarg_T *cap);
+! static void	nv_nop(cmdarg_T *cap);
+! static void	nv_error(cmdarg_T *cap);
+! static void	nv_help(cmdarg_T *cap);
+! static void	nv_addsub(cmdarg_T *cap);
+! static void	nv_page(cmdarg_T *cap);
+! static void	nv_gd(oparg_T *oap, int nchar, int thisblock);
+! static int	nv_screengo(oparg_T *oap, int dir, long dist);
+  #ifdef FEAT_MOUSE
+! static void	nv_mousescroll(cmdarg_T *cap);
+! static void	nv_mouse(cmdarg_T *cap);
+  #endif
+! static void	nv_scroll_line(cmdarg_T *cap);
+! static void	nv_zet(cmdarg_T *cap);
+  #ifdef FEAT_GUI
+! static void	nv_ver_scrollbar(cmdarg_T *cap);
+! static void	nv_hor_scrollbar(cmdarg_T *cap);
+  #endif
+  #ifdef FEAT_GUI_TABLINE
+! static void	nv_tabline(cmdarg_T *cap);
+! static void	nv_tabmenu(cmdarg_T *cap);
+  #endif
+! static void	nv_exmode(cmdarg_T *cap);
+! static void	nv_colon(cmdarg_T *cap);
+! static void	nv_ctrlg(cmdarg_T *cap);
+! static void	nv_ctrlh(cmdarg_T *cap);
+! static void	nv_clear(cmdarg_T *cap);
+! static void	nv_ctrlo(cmdarg_T *cap);
+! static void	nv_hat(cmdarg_T *cap);
+! static void	nv_Zet(cmdarg_T *cap);
+! static void	nv_ident(cmdarg_T *cap);
+! static void	nv_tagpop(cmdarg_T *cap);
+! static void	nv_scroll(cmdarg_T *cap);
+! static void	nv_right(cmdarg_T *cap);
+! static void	nv_left(cmdarg_T *cap);
+! static void	nv_up(cmdarg_T *cap);
+! static void	nv_down(cmdarg_T *cap);
+  #ifdef FEAT_SEARCHPATH
+! static void	nv_gotofile(cmdarg_T *cap);
+  #endif
+! static void	nv_end(cmdarg_T *cap);
+! static void	nv_dollar(cmdarg_T *cap);
+! static void	nv_search(cmdarg_T *cap);
+! static void	nv_next(cmdarg_T *cap);
+! static int	normal_search(cmdarg_T *cap, int dir, char_u *pat, int opt);
+! static void	nv_csearch(cmdarg_T *cap);
+! static void	nv_brackets(cmdarg_T *cap);
+! static void	nv_percent(cmdarg_T *cap);
+! static void	nv_brace(cmdarg_T *cap);
+! static void	nv_mark(cmdarg_T *cap);
+! static void	nv_findpar(cmdarg_T *cap);
+! static void	nv_undo(cmdarg_T *cap);
+! static void	nv_kundo(cmdarg_T *cap);
+! static void	nv_Replace(cmdarg_T *cap);
+  #ifdef FEAT_VREPLACE
+! static void	nv_vreplace(cmdarg_T *cap);
+  #endif
+! static void	v_swap_corners(int cmdchar);
+! static void	nv_replace(cmdarg_T *cap);
+! static void	n_swapchar(cmdarg_T *cap);
+! static void	nv_cursormark(cmdarg_T *cap, int flag, pos_T *pos);
+! static void	v_visop(cmdarg_T *cap);
+! static void	nv_subst(cmdarg_T *cap);
+! static void	nv_abbrev(cmdarg_T *cap);
+! static void	nv_optrans(cmdarg_T *cap);
+! static void	nv_gomark(cmdarg_T *cap);
+! static void	nv_pcmark(cmdarg_T *cap);
+! static void	nv_regname(cmdarg_T *cap);
+! static void	nv_visual(cmdarg_T *cap);
+! static void	n_start_visual_mode(int c);
+! static void	nv_window(cmdarg_T *cap);
+! static void	nv_suspend(cmdarg_T *cap);
+! static void	nv_g_cmd(cmdarg_T *cap);
+! static void	n_opencmd(cmdarg_T *cap);
+! static void	nv_dot(cmdarg_T *cap);
+! static void	nv_redo(cmdarg_T *cap);
+! static void	nv_Undo(cmdarg_T *cap);
+! static void	nv_tilde(cmdarg_T *cap);
+! static void	nv_operator(cmdarg_T *cap);
+  #ifdef FEAT_EVAL
+! static void	set_op_var(int optype);
+  #endif
+! static void	nv_lineop(cmdarg_T *cap);
+! static void	nv_home(cmdarg_T *cap);
+! static void	nv_pipe(cmdarg_T *cap);
+! static void	nv_bck_word(cmdarg_T *cap);
+! static void	nv_wordcmd(cmdarg_T *cap);
+! static void	nv_beginline(cmdarg_T *cap);
+! static void	adjust_cursor(oparg_T *oap);
+! static void	adjust_for_sel(cmdarg_T *cap);
+! static int	unadjust_for_sel(void);
+! static void	nv_select(cmdarg_T *cap);
+! static void	nv_goto(cmdarg_T *cap);
+! static void	nv_normal(cmdarg_T *cap);
+! static void	nv_esc(cmdarg_T *oap);
+! static void	nv_edit(cmdarg_T *cap);
+! static void	invoke_edit(cmdarg_T *cap, int repl, int cmd, int startln);
+  #ifdef FEAT_TEXTOBJ
+! static void	nv_object(cmdarg_T *cap);
+  #endif
+! static void	nv_record(cmdarg_T *cap);
+! static void	nv_at(cmdarg_T *cap);
+! static void	nv_halfpage(cmdarg_T *cap);
+! static void	nv_join(cmdarg_T *cap);
+! static void	nv_put(cmdarg_T *cap);
+! static void	nv_open(cmdarg_T *cap);
+  #ifdef FEAT_SNIFF
+! static void	nv_sniff(cmdarg_T *cap);
+  #endif
+  #ifdef FEAT_NETBEANS_INTG
+! static void	nv_nbcmd(cmdarg_T *cap);
+  #endif
+  #ifdef FEAT_DND
+! static void	nv_drop(cmdarg_T *cap);
+  #endif
+  #ifdef FEAT_AUTOCMD
+! static void	nv_cursorhold(cmdarg_T *cap);
+  #endif
+! static void	get_op_vcol(oparg_T *oap, colnr_T col, int initial);
+  
+  static char *e_noident = N_("E349: No identifier under cursor");
+  
+***************
+*** 183,189 ****
+   * Function to be called for a Normal or Visual mode command.
+   * The argument is a cmdarg_T.
+   */
+! typedef void (*nv_func_T) __ARGS((cmdarg_T *cap));
+  
+  /* Values for cmd_flags. */
+  #define NV_NCH	    0x01	  /* may need to get a second char */
+--- 183,189 ----
+   * Function to be called for a Normal or Visual mode command.
+   * The argument is a cmdarg_T.
+   */
+! typedef void (*nv_func_T)(cmdarg_T *cap);
+  
+  /* Values for cmd_flags. */
+  #define NV_NCH	    0x01	  /* may need to get a second char */
+***************
+*** 3360,3366 ****
+  }
+  
+  #if defined(FEAT_BEVAL)
+! static int find_is_eval_item __ARGS((char_u *ptr, int *colp, int *nbp, int dir));
+  
+  /*
+   * Check for a balloon-eval special item to include when searching for an
+--- 3360,3366 ----
+  }
+  
+  #if defined(FEAT_BEVAL)
+! static int find_is_eval_item(char_u *ptr, int *colp, int *nbp, int dir);
+  
+  /*
+   * Check for a balloon-eval special item to include when searching for an
+***************
+*** 3760,3766 ****
+  static int	showcmd_is_clear = TRUE;
+  static int	showcmd_visual = FALSE;
+  
+! static void display_showcmd __ARGS((void));
+  
+      void
+  clear_showcmd()
+--- 3760,3766 ----
+  static int	showcmd_is_clear = TRUE;
+  static int	showcmd_visual = FALSE;
+  
+! static void display_showcmd(void);
+  
+      void
+  clear_showcmd()
+*** ../vim-7.4.1197/src/version.c	2016-01-29 22:13:26.051781481 +0100
+--- src/version.c	2016-01-29 22:14:23.403175011 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1198,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+78. You find yourself dialing IP numbers on the phone.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

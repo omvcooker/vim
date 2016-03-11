@@ -1,0 +1,169 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1522
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1522
+Problem:    Cannot write channel err to a buffer.
+Solution:   Implement it.
+Files:      src/channel.c, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1521/src/channel.c	2016-03-08 17:13:02.063486804 +0100
+--- src/channel.c	2016-03-08 20:09:58.769331230 +0100
+***************
+*** 871,877 ****
+   * Find a buffer matching "name" or create a new one.
+   */
+      static buf_T *
+! find_buffer(char_u *name)
+  {
+      buf_T *buf = NULL;
+      buf_T *save_curbuf = curbuf;
+--- 871,877 ----
+   * Find a buffer matching "name" or create a new one.
+   */
+      static buf_T *
+! find_buffer(char_u *name, int err)
+  {
+      buf_T *buf = NULL;
+      buf_T *save_curbuf = curbuf;
+***************
+*** 890,896 ****
+  	curbuf = buf;
+  	if (curbuf->b_ml.ml_mfp == NULL)
+  	    ml_open(curbuf);
+! 	ml_replace(1, (char_u *)"Reading from channel output...", TRUE);
+  	changed_bytes(1, 0);
+  	curbuf = save_curbuf;
+      }
+--- 890,897 ----
+  	curbuf = buf;
+  	if (curbuf->b_ml.ml_mfp == NULL)
+  	    ml_open(curbuf);
+! 	ml_replace(1, (char_u *)(err ? "Reading from channel error..."
+! 				   : "Reading from channel output..."), TRUE);
+  	changed_bytes(1, 0);
+  	curbuf = save_curbuf;
+      }
+***************
+*** 968,977 ****
+  	if (!(opt->jo_set & JO_OUT_MODE))
+  	    channel->ch_part[PART_OUT].ch_mode = MODE_NL;
+  	channel->ch_part[PART_OUT].ch_buffer =
+! 				       find_buffer(opt->jo_io_name[PART_OUT]);
+! 	ch_logs(channel, "writing to buffer '%s'",
+  		      (char *)channel->ch_part[PART_OUT].ch_buffer->b_ffname);
+      }
+  }
+  
+  /*
+--- 969,995 ----
+  	if (!(opt->jo_set & JO_OUT_MODE))
+  	    channel->ch_part[PART_OUT].ch_mode = MODE_NL;
+  	channel->ch_part[PART_OUT].ch_buffer =
+! 				find_buffer(opt->jo_io_name[PART_OUT], FALSE);
+! 	ch_logs(channel, "writing out to buffer '%s'",
+  		      (char *)channel->ch_part[PART_OUT].ch_buffer->b_ffname);
+      }
++ 
++     if ((opt->jo_set & JO_ERR_IO) && (opt->jo_io[PART_ERR] == JIO_BUFFER
++ 	 || (opt->jo_io[PART_ERR] == JIO_OUT && (opt->jo_set & JO_OUT_IO)
++ 				       && opt->jo_io[PART_OUT] == JIO_BUFFER)))
++     {
++ 	/* writing err to a buffer. Default mode is NL. */
++ 	if (!(opt->jo_set & JO_ERR_MODE))
++ 	    channel->ch_part[PART_ERR].ch_mode = MODE_NL;
++ 	if (opt->jo_io[PART_ERR] == JIO_OUT)
++ 	    channel->ch_part[PART_ERR].ch_buffer =
++ 					 channel->ch_part[PART_OUT].ch_buffer;
++ 	else
++ 	    channel->ch_part[PART_ERR].ch_buffer =
++ 				 find_buffer(opt->jo_io_name[PART_ERR], TRUE);
++ 	ch_logs(channel, "writing err to buffer '%s'",
++ 		      (char *)channel->ch_part[PART_ERR].ch_buffer->b_ffname);
++     }
+  }
+  
+  /*
+*** ../vim-7.4.1521/src/testdir/test_channel.vim	2016-03-08 19:07:18.312455917 +0100
+--- src/testdir/test_channel.vim	2016-03-08 20:10:24.809059393 +0100
+***************
+*** 633,638 ****
+--- 633,685 ----
+    endtry
+  endfunc
+  
++ func Test_pipe_err_to_buffer()
++   if !has('job')
++     return
++   endif
++   call ch_log('Test_pipe_err_to_buffer()')
++   let job = job_start(s:python . " test_channel_pipe.py",
++ 	\ {'err-io': 'buffer', 'err-name': 'pipe-err'})
++   call assert_equal("run", job_status(job))
++   try
++     let handle = job_getchannel(job)
++     call ch_sendraw(handle, "echoerr line one\n")
++     call ch_sendraw(handle, "echoerr line two\n")
++     call ch_sendraw(handle, "doubleerr this\n")
++     call ch_sendraw(handle, "quit\n")
++     sp pipe-err
++     call s:waitFor('line("$") >= 5')
++     call assert_equal(['Reading from channel error...', 'line one', 'line two', 'this', 'AND this'], getline(1, '$'))
++     bwipe!
++   finally
++     call job_stop(job)
++   endtry
++ endfunc
++ 
++ func Test_pipe_both_to_buffer()
++   if !has('job')
++     return
++   endif
++   call ch_log('Test_pipe_both_to_buffer()')
++   let job = job_start(s:python . " test_channel_pipe.py",
++ 	\ {'out-io': 'buffer', 'out-name': 'pipe-err', 'err-io': 'out'})
++   call assert_equal("run", job_status(job))
++   try
++     let handle = job_getchannel(job)
++     call ch_sendraw(handle, "echo line one\n")
++     call ch_sendraw(handle, "echoerr line two\n")
++     call ch_sendraw(handle, "double this\n")
++     call ch_sendraw(handle, "doubleerr that\n")
++     call ch_sendraw(handle, "quit\n")
++     sp pipe-err
++     call s:waitFor('line("$") >= 7')
++     call assert_equal(['Reading from channel output...', 'line one', 'line two', 'this', 'AND this', 'that', 'AND that', 'Goodbye!'], getline(1, '$'))
++     bwipe!
++   finally
++     call job_stop(job)
++   endtry
++ endfunc
++ 
+  func Test_pipe_from_buffer()
+    if !has('job')
+      return
+*** ../vim-7.4.1521/src/version.c	2016-03-08 19:19:57.492578243 +0100
+--- src/version.c	2016-03-08 20:10:44.244856500 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1522,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+17. You turn on your intercom when leaving the room so you can hear if new
+    e-mail arrives.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

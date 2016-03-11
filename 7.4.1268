@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1268
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1268
+Problem:    Waittime is used as seconds instead of milliseconds. (Hirohito
+            Higashi)
+Solution:   Divide by 1000.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1267/src/channel.c	2016-02-05 22:49:50.677170625 +0100
+--- src/channel.c	2016-02-06 18:11:39.586849888 +0100
+***************
+*** 440,447 ****
+  	FD_ZERO(&wfds);
+  	FD_SET(sd, &rfds);
+  	FD_SET(sd, &wfds);
+! 	tv.tv_sec = waittime;
+! 	tv.tv_usec = 0;
+  	ret = select((int)sd+1, &rfds, &wfds, NULL, &tv);
+  	if (ret < 0)
+  	{
+--- 440,447 ----
+  	FD_ZERO(&wfds);
+  	FD_SET(sd, &rfds);
+  	FD_SET(sd, &wfds);
+! 	tv.tv_sec = waittime / 1000;
+! 	tv.tv_usec = (waittime % 1000) * 1000;
+  	ret = select((int)sd+1, &rfds, &wfds, NULL, &tv);
+  	if (ret < 0)
+  	{
+*** ../vim-7.4.1267/src/version.c	2016-02-06 18:09:53.075952875 +0100
+--- src/version.c	2016-02-06 18:12:22.854401786 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1268,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+157. You fum through a magazine, you first check to see if it has a web
+     address.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

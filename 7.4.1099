@@ -1,0 +1,50 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1099
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1099
+Problem:    It's not easy to know if Vim supports blowfish. (Smu Johnson)
+Solution:   Add has('crypt-blowfish') and has('crypt-blowfish2').
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1098/src/eval.c	2016-01-15 21:23:15.670977827 +0100
+--- src/eval.c	2016-01-15 21:54:56.585926911 +0100
+***************
+*** 12994,12999 ****
+--- 12994,13001 ----
+  #endif
+  #ifdef FEAT_CRYPT
+  	"cryptv",
++ 	"crypt-blowfish",
++ 	"crypt-blowfish2",
+  #endif
+  #ifdef FEAT_CSCOPE
+  	"cscope",
+*** ../vim-7.4.1098/src/version.c	2016-01-15 21:23:15.670977827 +0100
+--- src/version.c	2016-01-15 22:08:04.509198537 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1099,
+  /**/
+
+
+-- 
+   A village.  Sound of chanting of Latin canon, punctuated by short, sharp
+   cracks.  It comes nearer.  We see it is a line of MONKS ala SEVENTH SEAL
+   flagellation scene, chanting and banging themselves on the foreheads with
+   wooden boards.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

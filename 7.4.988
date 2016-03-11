@@ -1,0 +1,114 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.988
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.988 (after 7.4.982)
+Problem:    Default test target is test49.out.
+Solution:   Add a build rule before including Make_all.mak.
+Files:      src/testdir/Make_dos.mak, src/testdir/Make_amiga.mak,
+            src/testdir/Make_ming.mak, src/testdir/Make_os2.mak,
+            src/testdir/Make_vms.mms, src/testdir/Makefile
+
+
+*** ../vim-7.4.987/src/testdir/Make_dos.mak	2015-12-28 21:35:07.773243000 +0100
+--- src/testdir/Make_dos.mak	2015-12-28 22:19:22.756213874 +0100
+***************
+*** 5,10 ****
+--- 5,12 ----
+  
+  VIMPROG = ..\\vim
+  
++ default: nongui
++ 
+  !include Make_all.mak
+  
+  # Omitted:
+*** ../vim-7.4.987/src/testdir/Make_amiga.mak	2015-12-28 16:26:36.363773987 +0100
+--- src/testdir/Make_amiga.mak	2015-12-28 22:19:43.523987359 +0100
+***************
+*** 5,10 ****
+--- 5,12 ----
+  
+  VIMPROG = /vim
+  
++ default: nongui
++ 
+  include Make_all.mak
+  
+  # These tests don't work (yet):
+*** ../vim-7.4.987/src/testdir/Make_ming.mak	2015-12-28 16:26:36.363773987 +0100
+--- src/testdir/Make_ming.mak	2015-12-28 22:21:29.326833305 +0100
+***************
+*** 24,29 ****
+--- 24,31 ----
+  
+  VIMPROG = ..$(DIRSLASH)vim
+  
++ default: vimall
++ 
+  include Make_all.mak
+  
+  # Omitted:
+*** ../vim-7.4.987/src/testdir/Make_os2.mak	2015-12-28 16:26:36.363773987 +0100
+--- src/testdir/Make_os2.mak	2015-12-28 22:21:54.358560257 +0100
+***************
+*** 8,13 ****
+--- 8,15 ----
+  
+  VIMPROG = ../vim.exe
+  
++ default: all
++ 
+  include Make_all.mak
+  
+  # Omitted:
+*** ../vim-7.4.987/src/testdir/Make_vms.mms	2015-12-28 16:26:36.363773987 +0100
+--- src/testdir/Make_vms.mms	2015-12-28 22:22:34.338124144 +0100
+***************
+*** 74,79 ****
+--- 74,81 ----
+  
+  VIMPROG = <->vim.exe
+  
++ default : all
++ 
+  # This probably doesn't work, please fix.
+  .INCLUDE Make_all.mak
+  
+*** ../vim-7.4.987/src/testdir/Makefile	2015-12-28 16:26:36.363773987 +0100
+--- src/testdir/Makefile	2015-12-28 22:23:10.249732393 +0100
+***************
+*** 14,19 ****
+--- 14,20 ----
+  #   This will make testing about 10 times as slow.
+  # VALGRIND = valgrind --tool=memcheck --leak-check=yes --num-callers=15 --log-file=valgrind.$*
+  
++ default: nongui
+  
+  # The list of tests is common to all systems.
+  # This defines NEW_TESTS, SCRIPTS_ALL, SCRIPTS_MORE* and SCRIPTS_GUI.
+*** ../vim-7.4.987/src/version.c	2015-12-28 22:05:24.517362734 +0100
+--- src/version.c	2015-12-28 22:23:38.445424809 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     988,
+  /**/
+
+-- 
+DEAD PERSON:  I'm getting better!
+CUSTOMER:     No, you're not -- you'll be stone dead in a moment.
+MORTICIAN:    Oh, I can't take him like that -- it's against regulations.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

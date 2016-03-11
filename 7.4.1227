@@ -1,0 +1,83 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1227
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1227
+Problem:    Compiler warnings.
+Solution:   Add UNUSED.  Add type cast. (Yegappan Lakshmanan)
+Files:      src/getchar.c, src/os_macosx.m
+
+
+*** ../vim-7.4.1226/src/getchar.c	2016-01-31 14:55:35.227538473 +0100
+--- src/getchar.c	2016-01-31 18:07:31.175813274 +0100
+***************
+*** 5322,5328 ****
+  #if defined(MSDOS) || defined(MSWIN) ||defined(MACOS)
+      int		i;
+  
+!     for (i = 0; i < sizeof(initmappings) / sizeof(struct initmap); ++i)
+  	add_map(initmappings[i].arg, initmappings[i].mode);
+  #endif
+  }
+--- 5322,5328 ----
+  #if defined(MSDOS) || defined(MSWIN) ||defined(MACOS)
+      int		i;
+  
+!     for (i = 0; i < (int)(sizeof(initmappings) / sizeof(struct initmap)); ++i)
+  	add_map(initmappings[i].arg, initmappings[i].mode);
+  #endif
+  }
+*** ../vim-7.4.1226/src/os_macosx.m	2011-06-20 00:23:57.000000000 +0200
+--- src/os_macosx.m	2016-01-31 18:07:31.175813274 +0100
+***************
+*** 37,49 ****
+  NSString *VimPboardType = @"VimPboardType";
+  
+      void
+! clip_mch_lose_selection(VimClipboard *cbd)
+  {
+  }
+  
+  
+      int
+! clip_mch_own_selection(VimClipboard *cbd)
+  {
+      /* This is called whenever there is a new selection and 'guioptions'
+       * contains the "a" flag (automatically copy selection).  Return TRUE, else
+--- 37,49 ----
+  NSString *VimPboardType = @"VimPboardType";
+  
+      void
+! clip_mch_lose_selection(VimClipboard *cbd UNUSED)
+  {
+  }
+  
+  
+      int
+! clip_mch_own_selection(VimClipboard *cbd UNUSED)
+  {
+      /* This is called whenever there is a new selection and 'guioptions'
+       * contains the "a" flag (automatically copy selection).  Return TRUE, else
+*** ../vim-7.4.1226/src/version.c	2016-01-31 17:56:02.966915370 +0100
+--- src/version.c	2016-01-31 18:07:44.515675529 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1227,
+  /**/
+
+-- 
+From "know your smileys":
+ @:-()	Elvis Presley
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

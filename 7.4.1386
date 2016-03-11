@@ -1,0 +1,86 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1386
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1386
+Problem:    When the Job exit callback is invoked, the job may be freed too
+            soon. (Yasuhiro Matsumoto)
+Solution:   Increase refcount.
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1385/src/eval.c	2016-02-21 23:12:36.546500335 +0100
+--- src/eval.c	2016-02-22 11:38:27.560656124 +0100
+***************
+*** 15039,15045 ****
+  	    typval_T	rettv;
+  	    int		dummy;
+  
+! 	    /* invoke the exit callback */
+  	    argv[0].v_type = VAR_JOB;
+  	    argv[0].vval.v_job = job;
+  	    argv[1].v_type = VAR_NUMBER;
+--- 15039,15046 ----
+  	    typval_T	rettv;
+  	    int		dummy;
+  
+! 	    /* invoke the exit callback; make sure the refcount is > 0 */
+! 	    ++job->jv_refcount;
+  	    argv[0].v_type = VAR_JOB;
+  	    argv[0].vval.v_job = job;
+  	    argv[1].v_type = VAR_NUMBER;
+***************
+*** 15047,15056 ****
+  	    call_func(job->jv_exit_cb, (int)STRLEN(job->jv_exit_cb),
+  				 &rettv, 2, argv, 0L, 0L, &dummy, TRUE, NULL);
+  	    clear_tv(&rettv);
+  	}
+  	if (job->jv_status == JOB_ENDED && job->jv_refcount == 0)
+  	{
+! 	    /* The job already was unreferenced, now that it ended it can be
+  	     * freed. Careful: caller must not use "job" after this! */
+  	    job_free(job);
+  	}
+--- 15048,15058 ----
+  	    call_func(job->jv_exit_cb, (int)STRLEN(job->jv_exit_cb),
+  				 &rettv, 2, argv, 0L, 0L, &dummy, TRUE, NULL);
+  	    clear_tv(&rettv);
++ 	    --job->jv_refcount;
+  	}
+  	if (job->jv_status == JOB_ENDED && job->jv_refcount == 0)
+  	{
+! 	    /* The job was already unreferenced, now that it ended it can be
+  	     * freed. Careful: caller must not use "job" after this! */
+  	    job_free(job);
+  	}
+*** ../vim-7.4.1385/src/version.c	2016-02-21 23:12:36.546500335 +0100
+--- src/version.c	2016-02-22 11:35:34.194452778 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1386,
+  /**/
+
+-- 
+A poem:                read aloud:
+
+<> !*''#               Waka waka bang splat tick tick hash,
+^"`$$-                 Caret quote back-tick dollar dollar dash,
+!*=@$_                 Bang splat equal at dollar under-score,
+%*<> ~#4               Percent splat waka waka tilde number four,
+&[]../                 Ampersand bracket bracket dot dot slash,
+|{,,SYSTEM HALTED      Vertical-bar curly-bracket comma comma CRASH.
+
+Fred Bremmer and Steve Kroese (Calvin College & Seminary of Grand Rapids, MI.)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

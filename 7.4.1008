@@ -1,0 +1,2705 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1008
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1008
+Problem:    The OS/2 code pollutes the source while nobody uses it these days.
+Solution:   Drop the support for OS/2. 
+Files:      src/feature.h, src/globals.h, src/macros.h, src/option.h,
+            src/os_unix.c, src/os_unix.h, src/proto/os_unix.pro, src/vim.h,
+            src/digraph.c, src/eval.c, src/ex_cmds.c, src/ex_docmd.c,
+            src/ex_getln.c, src/fileio.c, src/getchar.c, src/memline.c,
+            src/misc1.c, src/misc2.c, src/netbeans.c, src/option.c,
+            src/term.c, src/ui.c, src/window.c, src/os_os2_cfg.h,
+            src/Make_os2.mak, src/testdir/Make_os2.mak, src/testdir/os2.vim,
+            src/INSTALL, runtime/doc/os_os2.txt
+
+
+*** ../vim-7.4.1007/src/feature.h	2015-11-10 14:35:14.316069755 +0100
+--- src/feature.h	2015-12-31 18:37:54.894866800 +0100
+***************
+*** 60,66 ****
+   */
+  #if !defined(FEAT_TINY) && !defined(FEAT_SMALL) && !defined(FEAT_NORMAL) \
+  	&& !defined(FEAT_BIG) && !defined(FEAT_HUGE)
+! # if defined(MSWIN) || defined(DJGPP) || defined(OS2) || defined(VMS) || defined(MACOS) || defined(AMIGA)
+  #  define FEAT_BIG
+  # else
+  #  ifdef MSDOS
+--- 60,66 ----
+   */
+  #if !defined(FEAT_TINY) && !defined(FEAT_SMALL) && !defined(FEAT_NORMAL) \
+  	&& !defined(FEAT_BIG) && !defined(FEAT_HUGE)
+! # if defined(MSWIN) || defined(DJGPP) || defined(VMS) || defined(MACOS) || defined(AMIGA)
+  #  define FEAT_BIG
+  # else
+  #  ifdef MSDOS
+***************
+*** 1046,1052 ****
+   * +mouse		Any mouse support (any of the above enabled).
+   */
+  /* OS/2 and Amiga console have no mouse support */
+! #if !defined(AMIGA) && !defined(OS2)
+  # ifdef FEAT_NORMAL
+  #  define FEAT_MOUSE_XTERM
+  # endif
+--- 1046,1052 ----
+   * +mouse		Any mouse support (any of the above enabled).
+   */
+  /* OS/2 and Amiga console have no mouse support */
+! #if !defined(AMIGA)
+  # ifdef FEAT_NORMAL
+  #  define FEAT_MOUSE_XTERM
+  # endif
+*** ../vim-7.4.1007/src/globals.h	2015-04-21 18:33:33.902675797 +0200
+--- src/globals.h	2015-12-31 18:38:25.586535582 +0100
+***************
+*** 19,25 ****
+   */
+  EXTERN long	Rows			/* nr of rows in the screen */
+  #ifdef DO_INIT
+! # if defined(MSDOS) || defined(WIN3264) || defined(OS2)
+  			    = 25L
+  # else
+  			    = 24L
+--- 19,25 ----
+   */
+  EXTERN long	Rows			/* nr of rows in the screen */
+  #ifdef DO_INIT
+! # if defined(MSDOS) || defined(WIN3264)
+  			    = 25L
+  # else
+  			    = 24L
+***************
+*** 1534,1540 ****
+  #endif
+  EXTERN char_u e_secure[]	INIT(= N_("E523: Not allowed here"));
+  #if defined(AMIGA) || defined(MACOS) || defined(MSWIN)  \
+! 	|| defined(UNIX) || defined(VMS) || defined(OS2)
+  EXTERN char_u e_screenmode[]	INIT(= N_("E359: Screen mode setting not supported"));
+  #endif
+  EXTERN char_u e_scroll[]	INIT(= N_("E49: Invalid scroll size"));
+--- 1534,1540 ----
+  #endif
+  EXTERN char_u e_secure[]	INIT(= N_("E523: Not allowed here"));
+  #if defined(AMIGA) || defined(MACOS) || defined(MSWIN)  \
+! 	|| defined(UNIX) || defined(VMS)
+  EXTERN char_u e_screenmode[]	INIT(= N_("E359: Screen mode setting not supported"));
+  #endif
+  EXTERN char_u e_scroll[]	INIT(= N_("E49: Invalid scroll size"));
+*** ../vim-7.4.1007/src/macros.h	2015-09-15 14:12:01.386632480 +0200
+--- src/macros.h	2015-12-31 18:38:36.134421751 +0100
+***************
+*** 231,237 ****
+  #if defined(UNIX) || defined(VMS)  /* open in rw------- mode */
+  # define mch_open_rw(n, f)	mch_open((n), (f), (mode_t)0600)
+  #else
+! # if defined(MSDOS) || defined(MSWIN) || defined(OS2)  /* open read/write */
+  #  define mch_open_rw(n, f)	mch_open((n), (f), S_IREAD | S_IWRITE)
+  # else
+  #  define mch_open_rw(n, f)	mch_open((n), (f), 0)
+--- 231,237 ----
+  #if defined(UNIX) || defined(VMS)  /* open in rw------- mode */
+  # define mch_open_rw(n, f)	mch_open((n), (f), (mode_t)0600)
+  #else
+! # if defined(MSDOS) || defined(MSWIN)  /* open read/write */
+  #  define mch_open_rw(n, f)	mch_open((n), (f), S_IREAD | S_IWRITE)
+  # else
+  #  define mch_open_rw(n, f)	mch_open((n), (f), 0)
+*** ../vim-7.4.1007/src/option.h	2015-11-24 18:45:52.637647023 +0100
+--- src/option.h	2015-12-31 18:38:53.770231430 +0100
+***************
+*** 671,677 ****
+  #ifdef FEAT_MZSCHEME
+  EXTERN long	p_mzq;		/* 'mzquantum */
+  #endif
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  EXTERN int	p_odev;		/* 'opendevice' */
+  #endif
+  EXTERN char_u	*p_opfunc;	/* 'operatorfunc' */
+--- 671,677 ----
+  #ifdef FEAT_MZSCHEME
+  EXTERN long	p_mzq;		/* 'mzquantum */
+  #endif
+! #if defined(MSDOS) || defined(MSWIN)
+  EXTERN int	p_odev;		/* 'opendevice' */
+  #endif
+  EXTERN char_u	*p_opfunc;	/* 'operatorfunc' */
+*** ../vim-7.4.1007/src/os_unix.c	2015-12-31 18:29:43.344171841 +0100
+--- src/os_unix.c	2015-12-31 18:36:04.428058956 +0100
+***************
+*** 471,483 ****
+  	len = read_from_input_buf(buf, (long)maxlen);
+  	if (len > 0)
+  	{
+- #ifdef OS2
+- 	    int i;
+- 
+- 	    for (i = 0; i < len; i++)
+- 		if (buf[i] == 0)
+- 		    buf[i] = K_NUL;
+- #endif
+  	    return len;
+  	}
+      }
+--- 471,476 ----
+***************
+*** 1475,1488 ****
+      int	    argc UNUSED;
+      char    **argv UNUSED;
+  {
+- #ifdef OS2
+-     /*
+-      * Store argv[0], may be used for $VIM.  Only use it if it is an absolute
+-      * name, mostly it's just "vim" and found in the path, which is unusable.
+-      */
+-     if (mch_isFullName(argv[0]))
+- 	exe_name = vim_strsave((char_u *)argv[0]);
+- #endif
+      if (isatty(1))
+  	return OK;
+      return FAIL;
+--- 1468,1473 ----
+***************
+*** 2446,2469 ****
+  #endif
+  }
+  
+- #if defined(OS2) || defined(PROTO)
+- /*
+-  * Replace all slashes by backslashes.
+-  * When 'shellslash' set do it the other way around.
+-  */
+-     void
+- slash_adjust(p)
+-     char_u  *p;
+- {
+-     while (*p)
+-     {
+- 	if (*p == psepcN)
+- 	    *p = psepc;
+- 	mb_ptr_adv(p);
+-     }
+- }
+- #endif
+- 
+  /*
+   * Get absolute file name into "buf[len]".
+   *
+--- 2431,2436 ----
+***************
+*** 2476,2484 ****
+      int		force;		/* also expand when already absolute path */
+  {
+      int		l;
+- #ifdef OS2
+-     int		only_drive;	/* file name is only a drive letter */
+- #endif
+  #ifdef HAVE_FCHDIR
+      int		fd = -1;
+      static int	dont_fchdir = FALSE;	/* TRUE when fchdir() doesn't work */
+--- 2443,2448 ----
+***************
+*** 2517,2530 ****
+  	 * and then do the getwd() (and get back to where we were).
+  	 * This will get the correct path name with "../" things.
+  	 */
+- #ifdef OS2
+- 	only_drive = 0;
+- 	if (p != NULL
+- 		|| ((p = vim_strrchr(fname, '\\')) != NULL)
+- 		|| (((p = vim_strchr(fname,  ':')) != NULL) && ++only_drive))
+- #else
+  	if (p != NULL)
+- #endif
+  	{
+  #ifdef HAVE_FCHDIR
+  	    /*
+--- 2481,2487 ----
+***************
+*** 2558,2572 ****
+  	    }
+  	    else
+  	    {
+- #ifdef OS2
+- 		/*
+- 		 * compensate for case where ':' from "D:" was the only
+- 		 * path separator detected in the file name; the _next_
+- 		 * character has to be removed, and then restored later.
+- 		 */
+- 		if (only_drive)
+- 		    p++;
+- #endif
+  		/* The directory is copied into buf[], to be able to remove
+  		 * the file name without changing it (could be a string in
+  		 * read-only memory) */
+--- 2515,2520 ----
+***************
+*** 2581,2594 ****
+  			fname = p + 1;
+  		    *buf = NUL;
+  		}
+- #ifdef OS2
+- 		if (only_drive)
+- 		{
+- 		    p--;
+- 		    if (retval != FAIL)
+- 			fname--;
+- 		}
+- #endif
+  	    }
+  	}
+  	if (mch_dirname(buf, len) == FAIL)
+--- 2529,2534 ----
+***************
+*** 3205,3214 ****
+  	return NODE_NORMAL;
+      if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode))
+  	return NODE_NORMAL;
+- #ifndef OS2
+      if (S_ISBLK(st.st_mode))	/* block device isn't writable */
+  	return NODE_OTHER;
+- #endif
+      /* Everything else is writable? */
+      return NODE_WRITABLE;
+  }
+--- 3145,3152 ----
+***************
+*** 6321,6340 ****
+  {
+      for ( ; *p; mb_ptr_adv(p))
+      {
+- #ifndef OS2
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+  	else
+- #endif
+  	    if (vim_strchr((char_u *)
+  #ifdef VMS
+  				    "*?%"
+  #else
+- # ifdef OS2
+- 				    "*?"
+- # else
+  				    "*?[{'"
+- # endif
+  #endif
+  						, *p) != NULL)
+  	    return TRUE;
+--- 6259,6272 ----
+***************
+*** 6352,6375 ****
+  {
+      for ( ; *p; mb_ptr_adv(p))
+      {
+- #ifndef OS2
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+  	else
+- #endif
+  	    if (vim_strchr((char_u *)
+  #ifdef VMS
+  				    "*?%$"
+  #else
+- # ifdef OS2
+- #  ifdef VIM_BACKTICK
+- 				    "*?$`"
+- #  else
+- 				    "*?$"
+- #  endif
+- # else
+  				    "*?[{`'$"
+- # endif
+  #endif
+  						, *p) != NULL
+  		|| (*p == '~' && p[1] != NUL))
+--- 6284,6297 ----
+*** ../vim-7.4.1007/src/os_unix.h	2015-05-04 09:31:05.479605202 +0200
+--- src/os_unix.h	2015-12-31 18:41:23.148619408 +0100
+***************
+*** 274,282 ****
+  # endif
+  #endif
+  
+- #if !defined(USR_EXRC_FILE2) && defined(OS2)
+- # define USR_EXRC_FILE2 "$VIM/.exrc"
+- #endif
+  #if !defined(USR_EXRC_FILE2) && defined(VMS)
+  # define USR_EXRC_FILE2 "sys$login:_exrc"
+  #endif
+--- 274,279 ----
+***************
+*** 291,310 ****
+  
+  
+  #if !defined(USR_VIMRC_FILE2)
+! # ifdef OS2
+! #  define USR_VIMRC_FILE2	"$HOME/vimfiles/vimrc"
+  # else
+! #  ifdef VMS
+! #   define USR_VIMRC_FILE2	"sys$login:vimfiles/vimrc"
+! #  else
+! #    define USR_VIMRC_FILE2	"~/.vim/vimrc"
+! #  endif
+  # endif
+  #endif
+  
+- #if !defined(USR_VIMRC_FILE3) && defined(OS2)
+- # define USR_VIMRC_FILE3 "$VIM/.vimrc"
+- #endif
+  #if !defined(USR_VIMRC_FILE3) && defined(VMS)
+  # define USR_VIMRC_FILE3 "sys$login:_vimrc"
+  #endif
+--- 288,300 ----
+  
+  
+  #if !defined(USR_VIMRC_FILE2)
+! # ifdef VMS
+! #  define USR_VIMRC_FILE2	"sys$login:vimfiles/vimrc"
+  # else
+! #   define USR_VIMRC_FILE2	"~/.vim/vimrc"
+  # endif
+  #endif
+  
+  #if !defined(USR_VIMRC_FILE3) && defined(VMS)
+  # define USR_VIMRC_FILE3 "sys$login:_vimrc"
+  #endif
+***************
+*** 318,331 ****
+  #endif
+  
+  #ifndef USR_GVIMRC_FILE2
+! # ifdef OS2
+! #  define USR_GVIMRC_FILE2	"$HOME/vimfiles/gvimrc"
+  # else
+! #  ifdef VMS
+! #   define USR_GVIMRC_FILE2	"sys$login:vimfiles/gvimrc"
+! #  else
+! #   define USR_GVIMRC_FILE2	"~/.vim/gvimrc"
+! #  endif
+  # endif
+  #endif
+  
+--- 308,317 ----
+  #endif
+  
+  #ifndef USR_GVIMRC_FILE2
+! # ifdef VMS
+! #  define USR_GVIMRC_FILE2	"sys$login:vimfiles/gvimrc"
+  # else
+! #  define USR_GVIMRC_FILE2	"~/.vim/gvimrc"
+  # endif
+  #endif
+  
+***************
+*** 347,355 ****
+  #   define VIMINFO_FILE "$HOME/.viminfo"
+  #  endif
+  # endif
+- # if !defined(VIMINFO_FILE2) && defined(OS2)
+- #  define VIMINFO_FILE2 "$VIM/.viminfo"
+- # endif
+  # if !defined(VIMINFO_FILE2) && defined(VMS)
+  #  define VIMINFO_FILE2 "sys$login:_viminfo"
+  # endif
+--- 333,338 ----
+***************
+*** 374,447 ****
+  #endif
+  
+  #ifndef DFLT_BDIR
+! # ifdef OS2
+! #  define DFLT_BDIR     ".,c:/tmp,~/tmp,~/"
+  # else
+! #  ifdef VMS
+! #   define DFLT_BDIR    "./,sys$login:,tmp:"
+! #  else
+! #   define DFLT_BDIR    ".,~/tmp,~/"    /* default for 'backupdir' */
+! #  endif
+  # endif
+  #endif
+  
+  #ifndef DFLT_DIR
+! # ifdef OS2
+! #  define DFLT_DIR      ".,~/tmp,c:/tmp,/tmp"
+  # else
+! #  ifdef VMS
+! #   define DFLT_DIR     "./,sys$login:,tmp:"
+! #  else
+! #   define DFLT_DIR     ".,~/tmp,/var/tmp,/tmp" /* default for 'directory' */
+! #  endif
+  # endif
+  #endif
+  
+  #ifndef DFLT_VDIR
+! # ifdef OS2
+! #  define DFLT_VDIR     "$VIM/vimfiles/view"
+  # else
+! #  ifdef VMS
+! #   define DFLT_VDIR    "sys$login:vimfiles/view"
+! #  else
+! #   define DFLT_VDIR    "$HOME/.vim/view"       /* default for 'viewdir' */
+! #  endif
+  # endif
+  #endif
+  
+  #define DFLT_ERRORFILE		"errors.err"
+  
+! #ifdef OS2
+! # define DFLT_RUNTIMEPATH	"$HOME/vimfiles,$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after,$HOME/vimfiles/after"
+  #else
+! # ifdef VMS
+! #  define DFLT_RUNTIMEPATH      "sys$login:vimfiles,$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after,sys$login:vimfiles/after"
+  # else
+! #  ifdef RUNTIME_GLOBAL
+! #   define DFLT_RUNTIMEPATH	"~/.vim," RUNTIME_GLOBAL ",$VIMRUNTIME," RUNTIME_GLOBAL "/after,~/.vim/after"
+! #  else
+! #   define DFLT_RUNTIMEPATH	"~/.vim,$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after,~/.vim/after"
+! #  endif
+  # endif
+  #endif
+  
+! #ifdef OS2
+! /*
+!  * Try several directories to put the temp files.
+!  */
+! # define TEMPDIRNAMES	"$TMP", "$TEMP", "c:\\TMP", "c:\\TEMP", ""
+! # define TEMPNAMELEN	128
+! #else
+! # ifdef VMS
+! #  ifndef VAX
+! #   define VMS_TEMPNAM    /* to fix default .LIS extension */
+! #  endif
+! #  define TEMPNAME       "TMP:v?XXXXXX.txt"
+! #  define TEMPNAMELEN    28
+! # else
+! #  define TEMPDIRNAMES  "$TMPDIR", "/tmp", ".", "$HOME"
+! #  define TEMPNAMELEN    256
+  # endif
+  #endif
+  
+  /* Special wildcards that need to be handled by the shell */
+--- 357,407 ----
+  #endif
+  
+  #ifndef DFLT_BDIR
+! # ifdef VMS
+! #  define DFLT_BDIR    "./,sys$login:,tmp:"
+  # else
+! #  define DFLT_BDIR    ".,~/tmp,~/"    /* default for 'backupdir' */
+  # endif
+  #endif
+  
+  #ifndef DFLT_DIR
+! # ifdef VMS
+! #  define DFLT_DIR     "./,sys$login:,tmp:"
+  # else
+! #  define DFLT_DIR     ".,~/tmp,/var/tmp,/tmp" /* default for 'directory' */
+  # endif
+  #endif
+  
+  #ifndef DFLT_VDIR
+! # ifdef VMS
+! #  define DFLT_VDIR    "sys$login:vimfiles/view"
+  # else
+! #  define DFLT_VDIR    "$HOME/.vim/view"       /* default for 'viewdir' */
+  # endif
+  #endif
+  
+  #define DFLT_ERRORFILE		"errors.err"
+  
+! #ifdef VMS
+! # define DFLT_RUNTIMEPATH      "sys$login:vimfiles,$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after,sys$login:vimfiles/after"
+  #else
+! # ifdef RUNTIME_GLOBAL
+! #  define DFLT_RUNTIMEPATH	"~/.vim," RUNTIME_GLOBAL ",$VIMRUNTIME," RUNTIME_GLOBAL "/after,~/.vim/after"
+  # else
+! #  define DFLT_RUNTIMEPATH	"~/.vim,$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after,~/.vim/after"
+  # endif
+  #endif
+  
+! #ifdef VMS
+! # ifndef VAX
+! #  define VMS_TEMPNAM    /* to fix default .LIS extension */
+  # endif
++ # define TEMPNAME       "TMP:v?XXXXXX.txt"
++ # define TEMPNAMELEN    28
++ #else
++ /* Try several directories to put the temp files. */
++ # define TEMPDIRNAMES  "$TMPDIR", "/tmp", ".", "$HOME"
++ # define TEMPNAMELEN    256
+  #endif
+  
+  /* Special wildcards that need to be handled by the shell */
+*** ../vim-7.4.1007/src/proto/os_unix.pro	2015-03-21 17:32:14.066779916 +0100
+--- src/proto/os_unix.pro	2015-12-31 18:37:00.447454392 +0100
+***************
+*** 30,36 ****
+  void mch_get_host_name __ARGS((char_u *s, int len));
+  long mch_get_pid __ARGS((void));
+  int mch_dirname __ARGS((char_u *buf, int len));
+- void slash_adjust __ARGS((char_u *p));
+  int mch_FullName __ARGS((char_u *fname, char_u *buf, int len, int force));
+  int mch_isFullName __ARGS((char_u *fname));
+  void fname_case __ARGS((char_u *name, int len));
+--- 30,35 ----
+*** ../vim-7.4.1007/src/vim.h	2015-12-28 19:19:41.538241927 +0100
+--- src/vim.h	2015-12-31 18:41:51.500313456 +0100
+***************
+*** 1682,1688 ****
+  # endif
+  #endif
+  
+! #if defined(UNIX) || defined(FEAT_GUI) || defined(OS2) || defined(VMS) \
+  	|| defined(FEAT_CLIENTSERVER)
+  # define USE_INPUT_BUF
+  #endif
+--- 1682,1688 ----
+  # endif
+  #endif
+  
+! #if defined(UNIX) || defined(FEAT_GUI) || defined(VMS) \
+  	|| defined(FEAT_CLIENTSERVER)
+  # define USE_INPUT_BUF
+  #endif
+***************
+*** 2237,2243 ****
+  /* values for vim_handle_signal() that are not a signal */
+  #define SIGNAL_BLOCK	-1
+  #define SIGNAL_UNBLOCK  -2
+! #if !defined(UNIX) && !defined(VMS) && !defined(OS2)
+  # define vim_handle_signal(x) 0
+  #endif
+  
+--- 2237,2243 ----
+  /* values for vim_handle_signal() that are not a signal */
+  #define SIGNAL_BLOCK	-1
+  #define SIGNAL_UNBLOCK  -2
+! #if !defined(UNIX) && !defined(VMS)
+  # define vim_handle_signal(x) 0
+  #endif
+  
+*** ../vim-7.4.1007/src/digraph.c	2014-06-18 21:38:12.216418355 +0200
+--- src/digraph.c	2015-12-31 18:42:49.855683729 +0100
+***************
+*** 39,45 ****
+   * compilers cannot handle them (Amiga SAS/C is the most picky one).
+   */
+  static digr_T digraphdefault[] =
+! #if defined(MSDOS) || defined(OS2)
+  	/*
+  	 * MSDOS digraphs.
+  	 */
+--- 39,45 ----
+   * compilers cannot handle them (Amiga SAS/C is the most picky one).
+   */
+  static digr_T digraphdefault[] =
+! #if defined(MSDOS)
+  	/*
+  	 * MSDOS digraphs.
+  	 */
+***************
+*** 105,111 ****
+  	{NUL, NUL, NUL}
+  	};
+  
+! #else	/* !MSDOS && !OS2 */
+  # ifdef __MINT__
+  
+  	/*
+--- 105,111 ----
+  	{NUL, NUL, NUL}
+  	};
+  
+! #else	/* !MSDOS */
+  # ifdef __MINT__
+  
+  	/*
+***************
+*** 2007,2013 ****
+  #   endif /* EBCDIC */
+  #  endif    /* !HPUX_DIGRAPHS */
+  # endif	/* !__MINT__ */
+! #endif	/* !MSDOS && !OS2 */
+  
+  /*
+   * handle digraphs after typing a character
+--- 2007,2013 ----
+  #   endif /* EBCDIC */
+  #  endif    /* !HPUX_DIGRAPHS */
+  # endif	/* !__MINT__ */
+! #endif	/* !MSDOS */
+  
+  /*
+   * handle digraphs after typing a character
+*** ../vim-7.4.1007/src/eval.c	2015-12-28 22:51:16.787326891 +0100
+--- src/eval.c	2015-12-31 18:43:04.447526266 +0100
+***************
+*** 12791,12799 ****
+  #if defined(MACOS_X_UNIX)
+  	"macunix",
+  #endif
+- #ifdef OS2
+- 	"os2",
+- #endif
+  #ifdef __QNX__
+  	"qnx",
+  #endif
+--- 12791,12796 ----
+*** ../vim-7.4.1007/src/ex_cmds.c	2015-12-31 16:10:18.522599661 +0100
+--- src/ex_cmds.c	2015-12-31 18:44:01.690908550 +0100
+***************
+*** 1570,1576 ****
+      char_u	*buf;
+      long_u	len;
+  
+! #if (defined(UNIX) && !defined(ARCHIE)) || defined(OS2)
+      int		is_fish_shell;
+      char_u	*shell_name = get_isolated_shell_name();
+  
+--- 1570,1576 ----
+      char_u	*buf;
+      long_u	len;
+  
+! #if defined(UNIX) && !defined(ARCHIE)
+      int		is_fish_shell;
+      char_u	*shell_name = get_isolated_shell_name();
+  
+***************
+*** 1590,1596 ****
+      if (buf == NULL)
+  	return NULL;
+  
+! #if (defined(UNIX) && !defined(ARCHIE)) || defined(OS2)
+      /*
+       * Put braces around the command (for concatenated commands) when
+       * redirecting input and/or output.
+--- 1590,1596 ----
+      if (buf == NULL)
+  	return NULL;
+  
+! #if defined(UNIX) && !defined(ARCHIE)
+      /*
+       * Put braces around the command (for concatenated commands) when
+       * redirecting input and/or output.
+*** ../vim-7.4.1007/src/ex_docmd.c	2015-11-24 17:23:51.287041576 +0100
+--- src/ex_docmd.c	2015-12-31 18:44:30.866593715 +0100
+***************
+*** 3794,3800 ****
+  
+  	/* Check for environment variable */
+  	if (*xp->xp_pattern == '$'
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  		|| *xp->xp_pattern == '%'
+  #endif
+  		)
+--- 3794,3800 ----
+  
+  	/* Check for environment variable */
+  	if (*xp->xp_pattern == '$'
+! #if defined(MSDOS) || defined(MSWIN)
+  		|| *xp->xp_pattern == '%'
+  #endif
+  		)
+***************
+*** 5073,5079 ****
+  		 * For Unix and OS/2, when wildcards are expanded, this is
+  		 * done by ExpandOne() below.
+  		 */
+! #if defined(UNIX) || defined(OS2)
+  		if (!has_wildcards)
+  #endif
+  		    backslash_halve(eap->arg);
+--- 5073,5079 ----
+  		 * For Unix and OS/2, when wildcards are expanded, this is
+  		 * done by ExpandOne() below.
+  		 */
+! #if defined(UNIX)
+  		if (!has_wildcards)
+  #endif
+  		    backslash_halve(eap->arg);
+*** ../vim-7.4.1007/src/ex_getln.c	2015-12-17 14:04:20.341240206 +0100
+--- src/ex_getln.c	2015-12-31 18:44:48.950398574 +0100
+***************
+*** 4955,4961 ****
+  	if (*s == ' ')
+  	    ++s;	/* Skip space used for absolute path name. */
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  	e = vim_strchr(s, ';');
+  #else
+  	e = vim_strchr(s, ':');
+--- 4955,4961 ----
+  	if (*s == ' ')
+  	    ++s;	/* Skip space used for absolute path name. */
+  
+! #if defined(MSDOS) || defined(MSWIN)
+  	e = vim_strchr(s, ';');
+  #else
+  	e = vim_strchr(s, ':');
+*** ../vim-7.4.1007/src/fileio.c	2015-12-11 17:14:23.481067147 +0100
+--- src/fileio.c	2015-12-31 18:45:25.965999143 +0100
+***************
+*** 445,451 ****
+  	    return FAIL;
+  	}
+  #endif
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  	/*
+  	 * MS-Windows allows opening a device, but we will probably get stuck
+  	 * trying to read it.
+--- 445,451 ----
+  	    return FAIL;
+  	}
+  #endif
+! #if defined(MSDOS) || defined(MSWIN)
+  	/*
+  	 * MS-Windows allows opening a device, but we will probably get stuck
+  	 * trying to read it.
+***************
+*** 526,532 ****
+      file_readonly = FALSE;
+      if (read_stdin)
+      {
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  	/* Force binary I/O on stdin to avoid CR-LF -> LF conversion. */
+  	setmode(0, O_BINARY);
+  #endif
+--- 526,532 ----
+      file_readonly = FALSE;
+      if (read_stdin)
+      {
+! #if defined(MSDOS) || defined(MSWIN)
+  	/* Force binary I/O on stdin to avoid CR-LF -> LF conversion. */
+  	setmode(0, O_BINARY);
+  #endif
+***************
+*** 3553,3559 ****
+      }
+      if (c == NODE_WRITABLE)
+      {
+! # if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  	/* MS-Windows allows opening a device, but we will probably get stuck
+  	 * trying to write to it.  */
+  	if (!p_odev)
+--- 3553,3559 ----
+      }
+      if (c == NODE_WRITABLE)
+      {
+! # if defined(MSDOS) || defined(MSWIN)
+  	/* MS-Windows allows opening a device, but we will probably get stuck
+  	 * trying to write to it.  */
+  	if (!p_odev)
+***************
+*** 6055,6061 ****
+      if (fnamencmp(dir_name, full_path, len) == 0)
+      {
+  	p = full_path + len;
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  	/*
+  	 * MSDOS: when a file is in the root directory, dir_name will end in a
+  	 * slash, since C: by itself does not define a specific dir. In this
+--- 6055,6061 ----
+      if (fnamencmp(dir_name, full_path, len) == 0)
+      {
+  	p = full_path + len;
+! #if defined(MSDOS) || defined(MSWIN)
+  	/*
+  	 * MSDOS: when a file is in the root directory, dir_name will end in a
+  	 * slash, since C: by itself does not define a specific dir. In this
+***************
+*** 6072,6078 ****
+  #endif
+  	}
+      }
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+      /*
+       * When using a file in the current drive, remove the drive name:
+       * "A:\dir\file" -> "\dir\file".  This helps when moving a session file on
+--- 6072,6078 ----
+  #endif
+  	}
+      }
+! #if defined(MSDOS) || defined(MSWIN)
+      /*
+       * When using a file in the current drive, remove the drive name:
+       * "A:\dir\file" -> "\dir\file".  This helps when moving a session file on
+***************
+*** 6330,6336 ****
+  	else if ((int)STRLEN(e) + extlen > 4)
+  	    s = e + 4 - extlen;
+      }
+! #if defined(OS2) || defined(USE_LONG_FNAME) || defined(WIN3264)
+      /*
+       * If there is no file name, and the extension starts with '.', put a
+       * '_' before the dot, because just ".ext" may be invalid if it's on a
+--- 6330,6336 ----
+  	else if ((int)STRLEN(e) + extlen > 4)
+  	    s = e + 4 - extlen;
+      }
+! #if defined(USE_LONG_FNAME) || defined(WIN3264)
+      /*
+       * If there is no file name, and the extension starts with '.', put a
+       * '_' before the dot, because just ".ext" may be invalid if it's on a
+*** ../vim-7.4.1007/src/getchar.c	2015-09-15 18:29:35.488932799 +0200
+--- src/getchar.c	2015-12-31 18:45:57.109663078 +0100
+***************
+*** 962,969 ****
+  }
+  
+  /*
+!  * insert a string in position 'offset' in the typeahead buffer (for "@r"
+!  * and ":normal" command, vgetorpeek() and check_termcode())
+   *
+   * If noremap is REMAP_YES, new string can be mapped again.
+   * If noremap is REMAP_NONE, new string cannot be mapped again.
+--- 962,969 ----
+  }
+  
+  /*
+!  * Insert a string in position 'offset' in the typeahead buffer (for "@r"
+!  * and ":normal" command, vgetorpeek() and check_termcode()).
+   *
+   * If noremap is REMAP_YES, new string can be mapped again.
+   * If noremap is REMAP_NONE, new string cannot be mapped again.
+***************
+*** 5295,5301 ****
+  }
+  #endif
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2) || defined(MACOS)
+  
+  #define VIS_SEL	(VISUAL+SELECTMODE)	/* abbreviation */
+  
+--- 5295,5301 ----
+  }
+  #endif
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(MACOS)
+  
+  #define VIS_SEL	(VISUAL+SELECTMODE)	/* abbreviation */
+  
+***************
+*** 5308,5314 ****
+      int		mode;
+  } initmappings[] =
+  {
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  	/* Use the Windows (CUA) keybindings. */
+  # ifdef FEAT_GUI
+  	/* paste, copy and cut */
+--- 5308,5314 ----
+      int		mode;
+  } initmappings[] =
+  {
+! #if defined(MSDOS) || defined(MSWIN)
+  	/* Use the Windows (CUA) keybindings. */
+  # ifdef FEAT_GUI
+  	/* paste, copy and cut */
+***************
+*** 5379,5385 ****
+      void
+  init_mappings()
+  {
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2) || defined(MACOS)
+      int		i;
+  
+      for (i = 0; i < sizeof(initmappings) / sizeof(struct initmap); ++i)
+--- 5379,5385 ----
+      void
+  init_mappings()
+  {
+! #if defined(MSDOS) || defined(MSWIN) ||defined(MACOS)
+      int		i;
+  
+      for (i = 0; i < sizeof(initmappings) / sizeof(struct initmap); ++i)
+***************
+*** 5387,5393 ****
+  #endif
+  }
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2) \
+  	|| defined(FEAT_CMDWIN) || defined(MACOS) || defined(PROTO)
+  /*
+   * Add a mapping "map" for mode "mode".
+--- 5387,5393 ----
+  #endif
+  }
+  
+! #if defined(MSDOS) || defined(MSWIN) \
+  	|| defined(FEAT_CMDWIN) || defined(MACOS) || defined(PROTO)
+  /*
+   * Add a mapping "map" for mode "mode".
+*** ../vim-7.4.1007/src/memline.c	2015-08-08 18:23:41.219566256 +0200
+--- src/memline.c	2015-12-31 18:47:26.256701229 +0100
+***************
+*** 4211,4218 ****
+  #endif
+      char_u	*buf_fname = buf->b_fname;
+  
+! #if !defined(SHORT_FNAME) \
+! 		&& ((!defined(UNIX) && !defined(OS2)) || defined(ARCHIE))
+  # define CREATE_DUMMY_FILE
+      FILE	*dummyfd = NULL;
+  
+--- 4211,4217 ----
+  #endif
+      char_u	*buf_fname = buf->b_fname;
+  
+! #if !defined(SHORT_FNAME) && (!defined(UNIX) || defined(ARCHIE))
+  # define CREATE_DUMMY_FILE
+      FILE	*dummyfd = NULL;
+  
+***************
+*** 4272,4278 ****
+  	    fname = NULL;
+  	    break;
+  	}
+! #if (defined(UNIX) || defined(OS2)) && !defined(ARCHIE) && !defined(SHORT_FNAME)
+  /*
+   * Some systems have a MS-DOS compatible filesystem that use 8.3 character
+   * file names. If this is the first try and the swap file name does not fit in
+--- 4271,4277 ----
+  	    fname = NULL;
+  	    break;
+  	}
+! #if defined(UNIX) && !defined(ARCHIE) && !defined(SHORT_FNAME)
+  /*
+   * Some systems have a MS-DOS compatible filesystem that use 8.3 character
+   * file names. If this is the first try and the swap file name does not fit in
+***************
+*** 4323,4332 ****
+  		    {
+  			f1 = mch_open_rw((char *)fname,
+  					       O_RDWR|O_CREAT|O_EXCL|O_EXTRA);
+- #if defined(OS2)
+- 			if (f1 < 0 && errno == ENOENT)
+- 			    same = TRUE;
+- #endif
+  			created1 = TRUE;
+  		    }
+  		    if (f1 >= 0)
+--- 4322,4327 ----
+*** ../vim-7.4.1007/src/misc1.c	2015-11-10 14:06:48.761187118 +0100
+--- src/misc1.c	2015-12-31 18:48:22.428095243 +0100
+***************
+*** 3856,3862 ****
+  # endif
+  #endif
+  
+! #if defined(OS2) || defined(MSDOS) || defined(MSWIN)
+      /*
+       * Default home dir is C:/
+       * Best assumption we can make in such a situation.
+--- 3856,3862 ----
+  # endif
+  #endif
+  
+! #if defined(MSDOS) || defined(MSWIN)
+      /*
+       * Default home dir is C:/
+       * Best assumption we can make in such a situation.
+***************
+*** 3995,4001 ****
+  		    && at_start
+  #endif
+  	   )
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  		|| *src == '%'
+  #endif
+  		|| (*src == '~' && at_start))
+--- 3995,4001 ----
+  		    && at_start
+  #endif
+  	   )
+! #if defined(MSDOS) || defined(MSWIN)
+  		|| *src == '%'
+  #endif
+  		|| (*src == '~' && at_start))
+***************
+*** 4024,4044 ****
+  #endif
+  		{
+  		    while (c-- > 0 && *tail != NUL && ((vim_isIDc(*tail))
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  			    || (*src == '%' && *tail != '%')
+  #endif
+  			    ))
+  		    {
+- #ifdef OS2		/* env vars only in uppercase */
+- 			*var++ = TOUPPER_LOC(*tail);
+- 			tail++;	    /* toupper() may be a macro! */
+- #else
+  			*var++ = *tail++;
+- #endif
+  		    }
+  		}
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2) || defined(UNIX)
+  # ifdef UNIX
+  		if (src[1] == '{' && *tail != '}')
+  # else
+--- 4024,4039 ----
+  #endif
+  		{
+  		    while (c-- > 0 && *tail != NUL && ((vim_isIDc(*tail))
+! #if defined(MSDOS) || defined(MSWIN)
+  			    || (*src == '%' && *tail != '%')
+  #endif
+  			    ))
+  		    {
+  			*var++ = *tail++;
+  		    }
+  		}
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(UNIX)
+  # ifdef UNIX
+  		if (src[1] == '{' && *tail != '}')
+  # else
+***************
+*** 4056,4062 ****
+  #endif
+  		    *var = NUL;
+  		    var = vim_getenv(dst, &mustfree);
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2) || defined(UNIX)
+  		}
+  #endif
+  	    }
+--- 4051,4057 ----
+  #endif
+  		    *var = NUL;
+  		    var = vim_getenv(dst, &mustfree);
+! #if defined(MSDOS) || defined(MSWIN) || defined(UNIX)
+  		}
+  #endif
+  	    }
+***************
+*** 4249,4255 ****
+      char_u	*pend;
+      int		vimruntime;
+  
+! #if defined(OS2) || defined(MSDOS) || defined(MSWIN)
+      /* use "C:/" when $HOME is not set */
+      if (STRCMP(name, "HOME") == 0)
+  	return homedir;
+--- 4244,4250 ----
+      char_u	*pend;
+      int		vimruntime;
+  
+! #if defined(MSDOS) || defined(MSWIN)
+      /* use "C:/" when $HOME is not set */
+      if (STRCMP(name, "HOME") == 0)
+  	return homedir;
+***************
+*** 5000,5006 ****
+  {
+      char_u  *retval;
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+      /* may skip "c:" */
+      if (isalpha(path[0]) && path[1] == ':')
+  	retval = path + 2;
+--- 4995,5001 ----
+  {
+      char_u  *retval;
+  
+! #if defined(MSDOS) || defined(MSWIN)
+      /* may skip "c:" */
+      if (isalpha(path[0]) && path[1] == ':')
+  	retval = path + 2;
+***************
+*** 10882,10888 ****
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+  	else if (vim_strchr((char_u *)
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  				    "$%"
+  #else
+  				    "$"
+--- 10877,10883 ----
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+  	else if (vim_strchr((char_u *)
+! #if defined(MSDOS) || defined(MSWIN)
+  				    "$%"
+  #else
+  				    "$"
+*** ../vim-7.4.1007/src/misc2.c	2015-11-29 17:34:30.447580332 +0100
+--- src/misc2.c	2015-12-31 18:48:34.263967556 +0100
+***************
+*** 5521,5527 ****
+      if (vim_isAbsName(ff_file_to_find)
+  	    /* "..", "../path", "." and "./path": don't use the path_option */
+  	    || rel_to_curdir
+! #if defined(MSWIN) || defined(MSDOS) || defined(OS2)
+  	    /* handle "\tmp" as absolute path */
+  	    || vim_ispathsep(ff_file_to_find[0])
+  	    /* handle "c:name" as absolute path */
+--- 5521,5527 ----
+      if (vim_isAbsName(ff_file_to_find)
+  	    /* "..", "../path", "." and "./path": don't use the path_option */
+  	    || rel_to_curdir
+! #if defined(MSWIN) || defined(MSDOS)
+  	    /* handle "\tmp" as absolute path */
+  	    || vim_ispathsep(ff_file_to_find[0])
+  	    /* handle "c:name" as absolute path */
+*** ../vim-7.4.1007/src/netbeans.c	2015-07-17 14:16:49.846596759 +0200
+--- src/netbeans.c	2015-12-31 18:48:45.947841509 +0100
+***************
+*** 1862,1868 ****
+  		if (buf_was_empty)
+  		{
+  		    if (ff_detected == EOL_UNKNOWN)
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  			ff_detected = EOL_DOS;
+  #else
+  			ff_detected = EOL_UNIX;
+--- 1862,1868 ----
+  		if (buf_was_empty)
+  		{
+  		    if (ff_detected == EOL_UNKNOWN)
+! #if defined(MSDOS) || defined(MSWIN)
+  			ff_detected = EOL_DOS;
+  #else
+  			ff_detected = EOL_UNIX;
+*** ../vim-7.4.1007/src/option.c	2015-12-13 15:08:53.075742547 +0100
+--- src/option.c	2015-12-31 18:53:47.060593113 +0100
+***************
+*** 464,470 ****
+  
+  /* 'isprint' for latin1 is also used for MS-Windows cp1252, where 0x80 is used
+   * for the currency sign. */
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  # define ISP_LATIN1 (char_u *)"@,~-255"
+  #else
+  # define ISP_LATIN1 (char_u *)"@,161-255"
+--- 464,470 ----
+  
+  /* 'isprint' for latin1 is also used for MS-Windows cp1252, where 0x80 is used
+   * for the currency sign. */
+! #if defined(MSDOS) || defined(MSWIN)
+  # define ISP_LATIN1 (char_u *)"@,~-255"
+  #else
+  # define ISP_LATIN1 (char_u *)"@,161-255"
+***************
+*** 501,507 ****
+  			    (char_u *)NULL, PV_NONE,
+  #endif
+  			    {
+! #if (defined(MSDOS) || defined(WIN3264) || defined(OS2)) && !defined(FEAT_GUI_W32)
+  			    (char_u *)128L,
+  #else
+  			    (char_u *)224L,
+--- 501,507 ----
+  			    (char_u *)NULL, PV_NONE,
+  #endif
+  			    {
+! #if (defined(MSDOS) || defined(WIN3264)) && !defined(FEAT_GUI_W32)
+  			    (char_u *)128L,
+  #else
+  			    (char_u *)224L,
+***************
+*** 576,582 ****
+      {"background",  "bg",   P_STRING|P_VI_DEF|P_RCLR,
+  			    (char_u *)&p_bg, PV_NONE,
+  			    {
+! #if (defined(MSDOS) || defined(OS2) || defined(WIN3264)) && !defined(FEAT_GUI)
+  			    (char_u *)"dark",
+  #else
+  			    (char_u *)"light",
+--- 576,582 ----
+      {"background",  "bg",   P_STRING|P_VI_DEF|P_RCLR,
+  			    (char_u *)&p_bg, PV_NONE,
+  			    {
+! #if (defined(MSDOS) || defined(WIN3264)) && !defined(FEAT_GUI)
+  			    (char_u *)"dark",
+  #else
+  			    (char_u *)"light",
+***************
+*** 1600,1606 ****
+      {"isident",	    "isi",  P_STRING|P_VI_DEF|P_COMMA|P_NODUP,
+  			    (char_u *)&p_isi, PV_NONE,
+  			    {
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  			    (char_u *)"@,48-57,_,128-167,224-235",
+  #else
+  # ifdef EBCDIC
+--- 1600,1606 ----
+      {"isident",	    "isi",  P_STRING|P_VI_DEF|P_COMMA|P_NODUP,
+  			    (char_u *)&p_isi, PV_NONE,
+  			    {
+! #if defined(MSDOS) || defined(MSWIN)
+  			    (char_u *)"@,48-57,_,128-167,224-235",
+  #else
+  # ifdef EBCDIC
+***************
+*** 1626,1632 ****
+  				    "251-254",
+  #else
+  				(char_u *)"@,48-57,_",
+! # if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  				(char_u *)"@,48-57,_,128-167,224-235"
+  # else
+  				ISK_LATIN1
+--- 1626,1632 ----
+  				    "251-254",
+  #else
+  				(char_u *)"@,48-57,_",
+! # if defined(MSDOS) || defined(MSWIN)
+  				(char_u *)"@,48-57,_,128-167,224-235"
+  # else
+  				ISK_LATIN1
+***************
+*** 1636,1642 ****
+      {"isprint",	    "isp",  P_STRING|P_VI_DEF|P_RALL|P_COMMA|P_NODUP,
+  			    (char_u *)&p_isp, PV_NONE,
+  			    {
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2) \
+  		|| (defined(MACOS) && !defined(MACOS_X)) \
+  		|| defined(VMS)
+  			    (char_u *)"@,~-255",
+--- 1636,1642 ----
+      {"isprint",	    "isp",  P_STRING|P_VI_DEF|P_RALL|P_COMMA|P_NODUP,
+  			    (char_u *)&p_isp, PV_NONE,
+  			    {
+! #if defined(MSDOS) || defined(MSWIN) \
+  		|| (defined(MACOS) && !defined(MACOS_X)) \
+  		|| defined(VMS)
+  			    (char_u *)"@,~-255",
+***************
+*** 1682,1695 ****
+  #ifdef VMS
+  			    (char_u *)"help",
+  #else
+! # if defined(OS2)
+! 			    (char_u *)"view /",
+! # else
+! #  ifdef USEMAN_S
+  			    (char_u *)"man -s",
+! #  else
+  			    (char_u *)"man",
+- #  endif
+  # endif
+  #endif
+  #endif
+--- 1682,1691 ----
+  #ifdef VMS
+  			    (char_u *)"help",
+  #else
+! # ifdef USEMAN_S
+  			    (char_u *)"man -s",
+! # else
+  			    (char_u *)"man",
+  # endif
+  #endif
+  #endif
+***************
+*** 1737,1743 ****
+      {"lines",	    NULL,   P_NUM|P_NODEFAULT|P_NO_MKRC|P_VI_DEF|P_RCLR,
+  			    (char_u *)&Rows, PV_NONE,
+  			    {
+! #if defined(MSDOS) || defined(WIN3264) || defined(OS2)
+  			    (char_u *)25L,
+  #else
+  			    (char_u *)24L,
+--- 1733,1739 ----
+      {"lines",	    NULL,   P_NUM|P_NODEFAULT|P_NO_MKRC|P_VI_DEF|P_RCLR,
+  			    (char_u *)&Rows, PV_NONE,
+  			    {
+! #if defined(MSDOS) || defined(WIN3264)
+  			    (char_u *)25L,
+  #else
+  			    (char_u *)24L,
+***************
+*** 1969,1975 ****
+  			    (char_u *)NULL, PV_NONE,
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"opendevice",  "odev", P_BOOL|P_VI_DEF,
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  			    (char_u *)&p_odev, PV_NONE,
+  #else
+  			    (char_u *)NULL, PV_NONE,
+--- 1965,1971 ----
+  			    (char_u *)NULL, PV_NONE,
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"opendevice",  "odev", P_BOOL|P_VI_DEF,
+! #if defined(MSDOS) || defined(MSWIN)
+  			    (char_u *)&p_odev, PV_NONE,
+  #else
+  			    (char_u *)NULL, PV_NONE,
+***************
+*** 2301,2314 ****
+  #   if defined(WIN3264)
+  			    (char_u *)"",	/* set in set_init_1() */
+  #   else
+! #    if defined(OS2)
+! 			    (char_u *)"cmd.exe",
+! #    else
+! #     if defined(ARCHIE)
+  			    (char_u *)"gos",
+! #     else
+  			    (char_u *)"sh",
+- #     endif
+  #    endif
+  #   endif
+  #  endif
+--- 2297,2306 ----
+  #   if defined(WIN3264)
+  			    (char_u *)"",	/* set in set_init_1() */
+  #   else
+! #    if defined(ARCHIE)
+  			    (char_u *)"gos",
+! #    else
+  			    (char_u *)"sh",
+  #    endif
+  #   endif
+  #  endif
+***************
+*** 2321,2338 ****
+  #if defined(MSDOS) || defined(MSWIN)
+  			    (char_u *)"/c",
+  #else
+- # if defined(OS2)
+- 			    (char_u *)"/c",
+- # else
+  			    (char_u *)"-c",
+- # endif
+  #endif
+  				(char_u *)0L} SCRIPTID_INIT},
+      {"shellpipe",   "sp",   P_STRING|P_VI_DEF|P_SECURE,
+  #ifdef FEAT_QUICKFIX
+  			    (char_u *)&p_sp, PV_NONE,
+  			    {
+! #if defined(UNIX) || defined(OS2)
+  # ifdef ARCHIE
+  			    (char_u *)"2>",
+  # else
+--- 2313,2326 ----
+  #if defined(MSDOS) || defined(MSWIN)
+  			    (char_u *)"/c",
+  #else
+  			    (char_u *)"-c",
+  #endif
+  				(char_u *)0L} SCRIPTID_INIT},
+      {"shellpipe",   "sp",   P_STRING|P_VI_DEF|P_SECURE,
+  #ifdef FEAT_QUICKFIX
+  			    (char_u *)&p_sp, PV_NONE,
+  			    {
+! #if defined(UNIX)
+  # ifdef ARCHIE
+  			    (char_u *)"2>",
+  # else
+***************
+*** 2765,2771 ****
+      {"undolevels",  "ul",   P_NUM|P_VI_DEF,
+  			    (char_u *)&p_ul, PV_UL,
+  			    {
+! #if defined(UNIX) || defined(WIN3264) || defined(OS2) || defined(VMS)
+  			    (char_u *)1000L,
+  #else
+  			    (char_u *)100L,
+--- 2753,2759 ----
+      {"undolevels",  "ul",   P_NUM|P_VI_DEF,
+  			    (char_u *)&p_ul, PV_UL,
+  			    {
+! #if defined(UNIX) || defined(WIN3264) || defined(VMS)
+  			    (char_u *)1000L,
+  #else
+  			    (char_u *)100L,
+***************
+*** 2807,2813 ****
+      {"viminfo",	    "vi",   P_STRING|P_ONECOMMA|P_NODUP|P_SECURE,
+  #ifdef FEAT_VIMINFO
+  			    (char_u *)&p_viminfo, PV_NONE,
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  			    {(char_u *)"", (char_u *)"'100,<50,s10,h,rA:,rB:"}
+  #else
+  # ifdef AMIGA
+--- 2795,2801 ----
+      {"viminfo",	    "vi",   P_STRING|P_ONECOMMA|P_NODUP|P_SECURE,
+  #ifdef FEAT_VIMINFO
+  			    (char_u *)&p_viminfo, PV_NONE,
+! #if defined(MSDOS) || defined(MSWIN)
+  			    {(char_u *)"", (char_u *)"'100,<50,s10,h,rA:,rB:"}
+  #else
+  # ifdef AMIGA
+***************
+*** 3199,3205 ****
+       * Don't use it if it is empty.
+       */
+      if (((p = mch_getenv((char_u *)"SHELL")) != NULL && *p != NUL)
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2)
+  # ifdef __EMX__
+  	    || ((p = mch_getenv((char_u *)"EMXSHELL")) != NULL && *p != NUL)
+  # endif
+--- 3187,3193 ----
+       * Don't use it if it is empty.
+       */
+      if (((p = mch_getenv((char_u *)"SHELL")) != NULL && *p != NUL)
+! #if defined(MSDOS) || defined(MSWIN)
+  # ifdef __EMX__
+  	    || ((p = mch_getenv((char_u *)"EMXSHELL")) != NULL && *p != NUL)
+  # endif
+***************
+*** 3349,3358 ****
+      }
+  #endif
+  
+! #if defined(FEAT_POSTSCRIPT) && (defined(MSWIN) || defined(OS2) || defined(VMS) || defined(EBCDIC) || defined(MAC) || defined(hpux))
+      /* Set print encoding on platforms that don't default to latin1 */
+      set_string_default("penc",
+! # if defined(MSWIN) || defined(OS2)
+  		       (char_u *)"cp1252"
+  # else
+  #  ifdef VMS
+--- 3337,3346 ----
+      }
+  #endif
+  
+! #if defined(FEAT_POSTSCRIPT) && (defined(MSWIN) || defined(VMS) || defined(EBCDIC) || defined(MAC) || defined(hpux))
+      /* Set print encoding on platforms that don't default to latin1 */
+      set_string_default("penc",
+! # if defined(MSWIN)
+  		       (char_u *)"cp1252"
+  # else
+  #  ifdef VMS
+***************
+*** 3375,3381 ****
+  #ifdef FEAT_POSTSCRIPT
+      /* 'printexpr' must be allocated to be able to evaluate it. */
+      set_string_default("pexpr",
+! # if defined(MSWIN) || defined(MSDOS) || defined(OS2)
+  	    (char_u *)"system('copy' . ' ' . v:fname_in . (&printdevice == '' ? ' LPT1:' : (' \"' . &printdevice . '\"'))) . delete(v:fname_in)"
+  # else
+  #  ifdef VMS
+--- 3363,3369 ----
+  #ifdef FEAT_POSTSCRIPT
+      /* 'printexpr' must be allocated to be able to evaluate it. */
+      set_string_default("pexpr",
+! # if defined(MSWIN) || defined(MSDOS)
+  	    (char_u *)"system('copy' . ' ' . v:fname_in . (&printdevice == '' ? ' LPT1:' : (' \"' . &printdevice . '\"'))) . delete(v:fname_in)"
+  # else
+  #  ifdef VMS
+***************
+*** 3525,3531 ****
+  		options[opt_idx].flags |= P_DEF_ALLOCED;
+  	    }
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(OS2) || defined(MACOS) \
+  		|| defined(VMS)
+  	    if (STRCMP(p_enc, "latin1") == 0
+  # ifdef FEAT_MBYTE
+--- 3513,3519 ----
+  		options[opt_idx].flags |= P_DEF_ALLOCED;
+  	    }
+  
+! #if defined(MSDOS) || defined(MSWIN) || defined(MACOS) \
+  		|| defined(VMS)
+  	    if (STRCMP(p_enc, "latin1") == 0
+  # ifdef FEAT_MBYTE
+***************
+*** 3809,3815 ****
+      set_number_default("window", Rows - 1);
+  
+      /* For DOS console the default is always black. */
+! #if !((defined(MSDOS) || defined(OS2) || defined(WIN3264)) && !defined(FEAT_GUI))
+      /*
+       * If 'background' wasn't set by the user, try guessing the value,
+       * depending on the terminal name.  Only need to check for terminals
+--- 3797,3803 ----
+      set_number_default("window", Rows - 1);
+  
+      /* For DOS console the default is always black. */
+! #if !((defined(MSDOS) || defined(WIN3264)) && !defined(FEAT_GUI))
+      /*
+       * If 'background' wasn't set by the user, try guessing the value,
+       * depending on the terminal name.  Only need to check for terminals
+***************
+*** 3852,3858 ****
+      static char_u *
+  term_bg_default()
+  {
+! #if defined(MSDOS) || defined(OS2) || defined(WIN3264)
+      /* DOS console nearly always black */
+      return (char_u *)"dark";
+  #else
+--- 3840,3846 ----
+      static char_u *
+  term_bg_default()
+  {
+! #if defined(MSDOS) || defined(WIN3264)
+      /* DOS console nearly always black */
+      return (char_u *)"dark";
+  #else
+***************
+*** 3877,3883 ****
+      void
+  set_init_3()
+  {
+! #if defined(UNIX) || defined(OS2) || defined(WIN3264)
+  /*
+   * Set 'shellpipe' and 'shellredir', depending on the 'shell' option.
+   * This is done after other initializations, where 'shell' might have been
+--- 3865,3871 ----
+      void
+  set_init_3()
+  {
+! #if defined(UNIX) || defined(WIN3264)
+  /*
+   * Set 'shellpipe' and 'shellredir', depending on the 'shell' option.
+   * This is done after other initializations, where 'shell' might have been
+***************
+*** 3886,3908 ****
+      char_u  *p;
+      int	    idx_srr;
+      int	    do_srr;
+! #ifdef FEAT_QUICKFIX
+      int	    idx_sp;
+      int	    do_sp;
+! #endif
+  
+      idx_srr = findoption((char_u *)"srr");
+      if (idx_srr < 0)
+  	do_srr = FALSE;
+      else
+  	do_srr = !(options[idx_srr].flags & P_WAS_SET);
+! #ifdef FEAT_QUICKFIX
+      idx_sp = findoption((char_u *)"sp");
+      if (idx_sp < 0)
+  	do_sp = FALSE;
+      else
+  	do_sp = !(options[idx_sp].flags & P_WAS_SET);
+! #endif
+      p = get_isolated_shell_name();
+      if (p != NULL)
+      {
+--- 3874,3896 ----
+      char_u  *p;
+      int	    idx_srr;
+      int	    do_srr;
+! # ifdef FEAT_QUICKFIX
+      int	    idx_sp;
+      int	    do_sp;
+! # endif
+  
+      idx_srr = findoption((char_u *)"srr");
+      if (idx_srr < 0)
+  	do_srr = FALSE;
+      else
+  	do_srr = !(options[idx_srr].flags & P_WAS_SET);
+! # ifdef FEAT_QUICKFIX
+      idx_sp = findoption((char_u *)"sp");
+      if (idx_sp < 0)
+  	do_sp = FALSE;
+      else
+  	do_sp = !(options[idx_sp].flags & P_WAS_SET);
+! # endif
+      p = get_isolated_shell_name();
+      if (p != NULL)
+      {
+***************
+*** 3912,3934 ****
+  	 */
+  	if (	   fnamecmp(p, "csh") == 0
+  		|| fnamecmp(p, "tcsh") == 0
+! # if defined(OS2) || defined(WIN3264)	/* also check with .exe extension */
+  		|| fnamecmp(p, "csh.exe") == 0
+  		|| fnamecmp(p, "tcsh.exe") == 0
+  # endif
+  	   )
+  	{
+! #if defined(FEAT_QUICKFIX)
+  	    if (do_sp)
+  	    {
+! # ifdef WIN3264
+  		p_sp = (char_u *)">&";
+! # else
+  		p_sp = (char_u *)"|& tee";
+! # endif
+  		options[idx_sp].def_val[VI_DEFAULT] = p_sp;
+  	    }
+! #endif
+  	    if (do_srr)
+  	    {
+  		p_srr = (char_u *)">&";
+--- 3900,3922 ----
+  	 */
+  	if (	   fnamecmp(p, "csh") == 0
+  		|| fnamecmp(p, "tcsh") == 0
+! # if defined(WIN3264)	/* also check with .exe extension */
+  		|| fnamecmp(p, "csh.exe") == 0
+  		|| fnamecmp(p, "tcsh.exe") == 0
+  # endif
+  	   )
+  	{
+! # if defined(FEAT_QUICKFIX)
+  	    if (do_sp)
+  	    {
+! #  ifdef WIN3264
+  		p_sp = (char_u *)">&";
+! #  else
+  		p_sp = (char_u *)"|& tee";
+! #  endif
+  		options[idx_sp].def_val[VI_DEFAULT] = p_sp;
+  	    }
+! # endif
+  	    if (do_srr)
+  	    {
+  		p_srr = (char_u *)">&";
+***************
+*** 3936,3942 ****
+  	    }
+  	}
+  	else
+! # ifndef OS2	/* Always use bourne shell style redirection if we reach this */
+  	    if (       fnamecmp(p, "sh") == 0
+  		    || fnamecmp(p, "ksh") == 0
+  		    || fnamecmp(p, "mksh") == 0
+--- 3924,3930 ----
+  	    }
+  	}
+  	else
+! 	    /* Always use bourne shell style redirection if we reach this */
+  	    if (       fnamecmp(p, "sh") == 0
+  		    || fnamecmp(p, "ksh") == 0
+  		    || fnamecmp(p, "mksh") == 0
+***************
+*** 3945,3951 ****
+  		    || fnamecmp(p, "zsh-beta") == 0
+  		    || fnamecmp(p, "bash") == 0
+  		    || fnamecmp(p, "fish") == 0
+! #  ifdef WIN3264
+  		    || fnamecmp(p, "cmd") == 0
+  		    || fnamecmp(p, "sh.exe") == 0
+  		    || fnamecmp(p, "ksh.exe") == 0
+--- 3933,3939 ----
+  		    || fnamecmp(p, "zsh-beta") == 0
+  		    || fnamecmp(p, "bash") == 0
+  		    || fnamecmp(p, "fish") == 0
+! # ifdef WIN3264
+  		    || fnamecmp(p, "cmd") == 0
+  		    || fnamecmp(p, "sh.exe") == 0
+  		    || fnamecmp(p, "ksh.exe") == 0
+***************
+*** 3955,3975 ****
+  		    || fnamecmp(p, "zsh-beta.exe") == 0
+  		    || fnamecmp(p, "bash.exe") == 0
+  		    || fnamecmp(p, "cmd.exe") == 0
+- #  endif
+- 		    )
+  # endif
+  	    {
+! #if defined(FEAT_QUICKFIX)
+  		if (do_sp)
+  		{
+! # ifdef WIN3264
+  		    p_sp = (char_u *)">%s 2>&1";
+! # else
+  		    p_sp = (char_u *)"2>&1| tee";
+! # endif
+  		    options[idx_sp].def_val[VI_DEFAULT] = p_sp;
+  		}
+! #endif
+  		if (do_srr)
+  		{
+  		    p_srr = (char_u *)">%s 2>&1";
+--- 3943,3962 ----
+  		    || fnamecmp(p, "zsh-beta.exe") == 0
+  		    || fnamecmp(p, "bash.exe") == 0
+  		    || fnamecmp(p, "cmd.exe") == 0
+  # endif
++ 		    )
+  	    {
+! # if defined(FEAT_QUICKFIX)
+  		if (do_sp)
+  		{
+! #  ifdef WIN3264
+  		    p_sp = (char_u *)">%s 2>&1";
+! #  else
+  		    p_sp = (char_u *)"2>&1| tee";
+! #  endif
+  		    options[idx_sp].def_val[VI_DEFAULT] = p_sp;
+  		}
+! # endif
+  		if (do_srr)
+  		{
+  		    p_srr = (char_u *)">%s 2>&1";
+***************
+*** 3980,3986 ****
+      }
+  #endif
+  
+! #if defined(MSDOS) || defined(WIN3264) || defined(OS2)
+      /*
+       * Set 'shellcmdflag', 'shellxquote', and 'shellquote' depending on the
+       * 'shell' option.
+--- 3967,3973 ----
+      }
+  #endif
+  
+! #if defined(MSDOS) || defined(WIN3264)
+      /*
+       * Set 'shellcmdflag', 'shellxquote', and 'shellquote' depending on the
+       * 'shell' option.
+***************
+*** 7043,7049 ****
+      {
+  	if (VIM_ISDIGIT(*p_bs))
+  	{
+! 	    if (*p_bs >'2' || p_bs[1] != NUL)
+  		errmsg = e_invarg;
+  	}
+  	else if (check_opt_strings(p_bs, p_bs_values, TRUE) != OK)
+--- 7030,7036 ----
+      {
+  	if (VIM_ISDIGIT(*p_bs))
+  	{
+! 	    if (*p_bs > '2' || p_bs[1] != NUL)
+  		errmsg = e_invarg;
+  	}
+  	else if (check_opt_strings(p_bs, p_bs_values, TRUE) != OK)
+*** ../vim-7.4.1007/src/term.c	2015-12-03 21:17:19.570138967 +0100
+--- src/term.c	2015-12-31 18:54:33.556091529 +0100
+***************
+*** 2079,2085 ****
+  }
+  # endif
+  
+! # if ((defined(UNIX) || defined(VMS) || defined(OS2)) \
+  	&& defined(FEAT_MOUSE_TTY)) || defined(PROTO)
+      void
+  del_mouse_termcode(n)
+--- 2079,2085 ----
+  }
+  # endif
+  
+! # if ((defined(UNIX) || defined(VMS)) \
+  	&& defined(FEAT_MOUSE_TTY)) || defined(PROTO)
+      void
+  del_mouse_termcode(n)
+***************
+*** 2765,2771 ****
+  	OUT_STR(tgoto((char *)s, 0, n));
+  }
+  
+! #if (defined(FEAT_TITLE) && (defined(UNIX) || defined(OS2) || defined(VMS) || defined(MACOS_X))) || defined(PROTO)
+  /*
+   * Generic function to set window title, using t_ts and t_fs.
+   */
+--- 2765,2772 ----
+  	OUT_STR(tgoto((char *)s, 0, n));
+  }
+  
+! #if (defined(FEAT_TITLE) && (defined(UNIX) || defined(VMS) \
+! 	|| defined(MACOS_X))) || defined(PROTO)
+  /*
+   * Generic function to set window title, using t_ts and t_fs.
+   */
+*** ../vim-7.4.1007/src/ui.c	2015-11-10 14:35:14.316069755 +0100
+--- src/ui.c	2015-12-31 18:55:01.011795343 +0100
+***************
+*** 1772,1778 ****
+  fill_input_buf(exit_on_error)
+      int	exit_on_error UNUSED;
+  {
+! #if defined(UNIX) || defined(OS2) || defined(VMS) || defined(MACOS_X_UNIX)
+      int		len;
+      int		try;
+      static int	did_read_something = FALSE;
+--- 1772,1778 ----
+  fill_input_buf(exit_on_error)
+      int	exit_on_error UNUSED;
+  {
+! #if defined(UNIX) || defined(VMS) || defined(MACOS_X_UNIX)
+      int		len;
+      int		try;
+      static int	did_read_something = FALSE;
+***************
+*** 1796,1802 ****
+  	return;
+      }
+  #endif
+! #if defined(UNIX) || defined(OS2) || defined(VMS) || defined(MACOS_X_UNIX)
+      if (vim_is_input_buf_full())
+  	return;
+      /*
+--- 1796,1802 ----
+  	return;
+      }
+  #endif
+! #if defined(UNIX) || defined(VMS) || defined(MACOS_X_UNIX)
+      if (vim_is_input_buf_full())
+  	return;
+      /*
+***************
+*** 1940,1948 ****
+  	    ++inbufcount;
+  	}
+      }
+! #endif /* UNIX or OS2 or VMS*/
+  }
+! #endif /* defined(UNIX) || defined(FEAT_GUI) || defined(OS2)  || defined(VMS) */
+  
+  /*
+   * Exit because of an input read error.
+--- 1940,1948 ----
+  	    ++inbufcount;
+  	}
+      }
+! #endif /* UNIX or VMS*/
+  }
+! #endif /* defined(UNIX) || defined(FEAT_GUI) || defined(VMS) */
+  
+  /*
+   * Exit because of an input read error.
+*** ../vim-7.4.1007/src/window.c	2015-12-05 19:47:00.730636672 +0100
+--- src/window.c	2015-12-31 18:55:14.023654974 +0100
+***************
+*** 6531,6537 ****
+  	/* something failed; use the file name (truncate when too long) */
+  	vim_strncpy(buf, fname, len - 1);
+      }
+! #if defined(MACOS_CLASSIC) || defined(OS2) || defined(MSDOS) || defined(MSWIN)
+      slash_adjust(buf);
+  #endif
+      return retval;
+--- 6531,6537 ----
+  	/* something failed; use the file name (truncate when too long) */
+  	vim_strncpy(buf, fname, len - 1);
+      }
+! #if defined(MACOS_CLASSIC) || defined(MSDOS) || defined(MSWIN)
+      slash_adjust(buf);
+  #endif
+      return retval;
+*** ../vim-7.4.1007/src/os_os2_cfg.h	2014-02-23 22:52:33.372764715 +0100
+--- src/os_os2_cfg.h	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,254 ****
+- /* os_os2_cfg.h */
+- /* vi:set ts=8 sts=4 sw=4: */
+- 
+- #define CASE_INSENSITIVE_FILENAME   /* ignore case when comparing file names */
+- #define SPACE_IN_FILENAME
+- #define BACKSLASH_IN_FILENAME
+- #define BINARY_FILE_IO
+- #define USE_CRNL		/* lines end in CR-NL instead of NL */
+- #define NO_EXPANDPATH		/* always call mch_expand_wildcards */
+- #define USE_EXE_NAME		/* use argv[0] for $VIM */
+- #define USE_TERM_CONSOLE
+- #define HAVE_DUP		/* have dup() */
+- 
+- #define FNAME_ILLEGAL "\"*?><|" /* illegal characters in a file name */
+- 
+- /*
+-  * The rest is manually generated from configure.in by Paul Slootman.
+-  */
+- 
+- /* Define unless no X support found */
+- #undef HAVE_X11
+- 
+- /* Define when terminfo support found */
+- #undef TERMINFO
+- 
+- /* Define when termcap.h contains ospeed */
+- #define HAVE_OSPEED	1
+- 
+- #define HAVE_STRICMP
+- #define HAVE_STRNICMP
+- 
+- /* Define when ospeed can be extern */
+- #define OSPEED_EXTERN
+- 
+- /* Define when termcap.h contains UP, BC and PC */
+- #define HAVE_UP_BC_PC	1
+- 
+- /* Define when UP, BC and PC can be extern */
+- #define UP_BC_PC_EXTERN
+- 
+- /* Define when termcap.h defines outfuntype */
+- #undef HAVE_OUTFUNTYPE
+- 
+- /* Define when __DATE__ " " __TIME__ can be used */
+- #define HAVE_DATE_TIME	1
+- 
+- #undef UNIX	/* define always by current configure script */
+- 
+- /* Defined to the size of an int */
+- #define VIM_SIZEOF_INT 4
+- 
+- /*
+-  * If we cannot trust one of the following from the libraries, we use our
+-  * own safe but probably slower mch_memmove().
+-  */
+- #define USEBCOPY	1
+- #undef USEMEMMOVE
+- #undef USEMEMCPY
+- 
+- /* Define to empty if the keyword does not work.  */
+- #undef const
+- 
+- /* Define to `int' if <sys/types.h> doesn't define.  */
+- #undef mode_t
+- 
+- /* Define to `long' if <sys/types.h> doesn't define.  */
+- #undef off_t
+- 
+- /* Define to `long' if <sys/types.h> doesn't define.  */
+- #undef pid_t
+- 
+- /* Define to `unsigned' if <sys/types.h> doesn't define.  */
+- #undef size_t
+- 
+- /* Define to `int' if <sys/types.h> doesn't define.  */
+- #undef uid_t
+- 
+- /* Define to `int' if <sys/types.h> doesn't define.  */
+- #undef gid_t
+- 
+- /* Define if you can safely include both <sys/time.h> and <time.h>.  */
+- #define TIME_WITH_SYS_TIME	1
+- 
+- /* Define if you can safely include both <sys/time.h> and <sys/select.h>.  */
+- #define SYS_SELECT_WITH_SYS_TIME	1
+- 
+- /* Define as the return type of signal handlers (int or void).	*/
+- #define RETSIGTYPE void
+- 
+- /* Define as the command at the end of signal handlers ("" or "return 0;").  */
+- #define SIGRETURN
+- 
+- /* Define if toupper/tolower only work on lower/uppercase characters */
+- #undef BROKEN_TOUPPER
+- 
+- /* Define if tgetstr() has a second argument that is (char *) */
+- #undef TGETSTR_CHAR_P
+- 
+- /* Define if you have the sigset() function.  */
+- #undef HAVE_SIGSET
+- 
+- /* Define if the getcwd() function should not be used.	*/
+- #undef BAD_GETCWD
+- 
+- /* Define if you have the getcwd() function.  */
+- #define HAVE_GETCWD	1
+- 
+- /* Define if you have the getwd() function.  */
+- #define HAVE_GETWD	1
+- 
+- /* Define if you have the select() function.  */
+- #define HAVE_SELECT	1
+- 
+- /* Define if you have the strcspn() function.  */
+- #define HAVE_STRCSPN	1
+- 
+- /* Define if you have the strtol() function.  */
+- #define HAVE_STRTOL	1
+- 
+- /* Define if you have the tgetent() function.  */
+- #define HAVE_TGETENT	1
+- 
+- #define HAVE_STRFTIME	    /* guessed */
+- 
+- /* Define if you have the memset() function.  */
+- #define HAVE_MEMSET	1
+- 
+- /* Define if you have the strerror() function.	*/
+- #define HAVE_STRERROR	1
+- 
+- /* Define if you have the strcasecmp() function. */
+- #undef HAVE_STRCASECMP
+- 
+- /* Define if you have the fchown() function.  */
+- #undef HAVE_FCHOWN
+- 
+- /* Define if you have the rename() function. */
+- #define HAVE_RENAME	1
+- 
+- /* Define if you have the fsync() function. */
+- #undef HAVE_FSYNC   /* exists, but apparently Bad Things happen when used */
+- 
+- /* Define if you have the fchdir() function. */
+- #undef HAVE_FCHDIR
+- 
+- /* Define if you have the setenv() function. */
+- #undef HAVE_SETENV
+- 
+- /* Define if you have the putenv() function. */
+- #define HAVE_PUTENV	1
+- 
+- /* Define if you have the gettimeofday() function. */
+- #undef HAVE_GETTIMEOFDAY
+- 
+- /* Define if you have the getpwuid() function. */
+- #undef HAVE_GETPWUID
+- 
+- /* Define if you have the getpwnam() function. */
+- #undef HAVE_GETPWNAM
+- 
+- /* Define if you have the qsort() function. */
+- #define HAVE_QSORT  1
+- 
+- /* Define if you have the <dirent.h> header file.  */
+- #define HAVE_DIRENT_H	1
+- 
+- /* Define if you have the <sys/ndir.h> header file.  */
+- #undef HAVE_SYS_NDIR_H
+- 
+- /* Define if you have the <sys/dir.h> header file.  */
+- #undef HAVE_SYS_DIR_H
+- 
+- /* Define if you have the <ndir.h> header file.  */
+- #undef HAVE_NDIR_H
+- 
+- /* Define if you have <sys/wait.h> that is POSIX.1 compatible.	*/
+- #define HAVE_SYS_WAIT_H 1
+- 
+- /* Define if you have a <sys/wait.h> that is not POSIX.1 compatible. */
+- #undef HAVE_UNION_WAIT
+- 
+- /* This is currently unused in vim: */
+- /* Define if you have the ANSI C header files. */
+- /* #undef STDC_HEADERS */
+- 
+- /* added by David Sanders */
+- #define HAVE_STDARG_H 1
+- 
+- /* instead, we check a few STDC things ourselves */
+- #define HAVE_STDLIB_H	1
+- #undef HAVE_STRING_H	/* On EMX it is better to use strings.h */
+- 
+- /* Define if you have the <sys/select.h> header file.  */
+- #undef HAVE_SYS_SELECT_H
+- 
+- /* Define if you have the <sys/utsname.h> header file.	*/
+- #define HAVE_SYS_UTSNAME_H	1
+- 
+- /* Define if you have the <termcap.h> header file.  */
+- #define HAVE_TERMCAP_H	1
+- 
+- /* Define if you have the <fcntl.h> header file.  */
+- #define HAVE_FCNTL_H	1
+- 
+- /* Define if you have the <sgtty.h> header file.  */
+- #define HAVE_SGTTY_H	1
+- 
+- /* Define if you have the <sys/ioctl.h> header file.  */
+- #define HAVE_SYS_IOCTL_H	1
+- 
+- /* Define if you have the <sys/time.h> header file.  */
+- #define HAVE_SYS_TIME_H
+- 
+- /* Define if you have the <termio.h> header file.  */
+- #undef HAVE_TERMIO_H
+- 
+- /* Define if you have the <unistd.h> header file.  */
+- #define HAVE_UNISTD_H	1
+- 
+- /* Define if you have the <stropts.h> header file. */
+- #undef HAVE_STROPTS_H
+- 
+- /* Define if you have the <errno.h> header file. */
+- #define HAVE_ERRNO_H	1
+- 
+- /* Define if you have the <strings.h> header file. */
+- #define HAVE_STRINGS_H	1
+- 
+- /* Define if you have the <sys/systeminfo.h> header file. */
+- #undef HAVE_SYS_SYSTEMINFO_H
+- 
+- /* Define if you have the <locale.h> header file. */
+- #define HAVE_LOCALE_H	1
+- 
+- /* Define if you have the <sys/stream.h> header file. */
+- #undef HAVE_SYS_STREAM_H
+- 
+- /* Define if you have the <sys/ptem.h> header file. */
+- #undef HAVE_SYS_PTEM_H
+- 
+- /* Define if you have the <termios.h> header file. */
+- #define HAVE_TERMIOS_H	1
+- 
+- /* Define if you have the <libc.h> header file. */
+- #undef HAVE_LIBC_H
+- 
+- /* Define if you have the <sys/statfs.h> header file. */
+- #undef HAVE_SYS_STATFS_H
+- 
+- /* Define if you have the <sys/poll.h> header file. */
+- #undef HAVE_SYS_POLL_H
+- 
+- /* Define if you have the <pwd.h> header file. */
+- #undef HAVE_PWD_H
+--- 0 ----
+*** ../vim-7.4.1007/src/Make_os2.mak	2014-08-10 16:31:47.376709213 +0200
+--- src/Make_os2.mak	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,163 ****
+- #
+- # Makefile for VIM on OS/2 using EMX	vim:ts=8:sw=8:tw=78
+- #
+- # Created by: Paul Slootman
+- #
+- 
+- ### This Makefile has been successfully tested on these systems.
+- ### Check the (*) column for remarks, listed below.
+- ### Later code changes may cause small problems, otherwise Vim is supposed to
+- ### compile and run without problems.
+- ### Just to show that this is just like the Unix version!
+- 
+- #system:	      configurations:		     version (*) tested by:
+- #-------------	      ------------------------	     -------  -  ----------
+- #OS/2 Warp HPFS       gcc-2.7.2+emx-0.9b -GUI		4.5	 Paul Slootman
+- #OS/2 FAT	      gcc-2.6.3+emx	 -GUI		4.5	 Karsten Sievert
+- 
+- #>>>>> choose options:
+- 
+- ### See feature.h for a list of optionals.
+- ### Any other defines can be included here.
+- 
+- DEFINES = -DUSE_SYSTEM=1
+- 
+- #>>>>> name of the compiler and linker, name of lib directory
+- CC = gcc
+- 
+- #>>>>> end of choices
+- 
+- ### Name of target(s)
+- TARGET = vim.exe
+- 
+- ### Names of the tools that are also made
+- TOOLS = xxd/xxd.exe tee/tee.exe
+- 
+- ###########################################################################
+- 
+- INCL = vim.h globals.h option.h keymap.h macros.h ascii.h term.h os_unix.h structs.h os_os2_cfg.h
+- CFLAGS = -O2 -fno-strength-reduce -DOS2 -Wall -Iproto $(DEFINES)
+- 
+- OBJ = \
+- 	blowfish.o \
+- 	buffer.o \
+- 	charset.o \
+- 	crypt.o \
+- 	crypt_zip.o \
+- 	diff.o \
+- 	digraph.o \
+- 	edit.o \
+- 	eval.o \
+- 	ex_cmds.o \
+- 	ex_cmds2.o \
+- 	ex_docmd.o \
+- 	ex_eval.o \
+- 	ex_getln.o \
+- 	fileio.o \
+- 	fold.o \
+- 	getchar.o \
+- 	hardcopy.o \
+- 	hashtab.o \
+- 	main.o \
+- 	mark.o \
+- 	memfile.o \
+- 	memline.o \
+- 	menu.o \
+- 	message.o \
+- 	misc1.o \
+- 	misc2.o \
+- 	move.o \
+- 	mbyte.o \
+- 	normal.o \
+- 	ops.o \
+- 	option.o \
+- 	popupmnu.o \
+- 	quickfix.o \
+- 	regexp.o \
+- 	screen.o \
+- 	search.o \
+- 	sha256.o \
+- 	spell.o \
+- 	syntax.o \
+- 	tag.o \
+- 	term.o \
+- 	ui.o \
+- 	undo.o \
+- 	window.o \
+- 	os_unix.o
+- 
+- LIBS = -ltermcap
+- 
+- # Default target is making the executable
+- all: $(TARGET) $(TOOLS)
+- 
+- # Link the target for normal use
+- LFLAGS = -Zcrtdll -s -o $(TARGET) $(LIBS)
+- 
+- $(TARGET): $(OBJ) version.c version.h
+- 	$(CC) $(CFLAGS) version.c $(OBJ) $(LFLAGS)
+- 
+- xxd/xxd.exe: xxd/xxd.c
+- 	cd xxd & $(MAKE) -f Make_os2.mak
+- 
+- tee/tee.exe: tee/tee.c
+- 	cd tee & $(MAKE) -f Makefile
+- 
+- test:
+- 	cd testdir & $(MAKE) -f Make_os2.mak
+- 
+- clean:
+- 	-del *.o
+- 	-del *.exe
+- 	-del *.~ *~ *.bak
+- 	cd xxd   & $(MAKE) -f Make_os2.mak clean
+- 	cd tee   & $(MAKE) -f Makefile clean
+- 
+- ###########################################################################
+- 
+- os_unix.o:	os_unix.c  $(INCL)
+- blowfish.o:	blowfish.c  $(INCL)
+- buffer.o:	buffer.c  $(INCL)
+- charset.o:	charset.c  $(INCL)
+- crypt.o:	crypt.c  $(INCL)
+- crypt_zip.o:	crypt_zip.c  $(INCL)
+- diff.o:		diff.c  $(INCL)
+- digraph.o:	digraph.c  $(INCL)
+- edit.o:		edit.c  $(INCL)
+- eval.o:		eval.c  $(INCL)
+- ex_cmds.o:	ex_cmds.c  $(INCL)
+- ex_cmds2.o:	ex_cmds2.c  $(INCL)
+- ex_docmd.o:	ex_docmd.c  $(INCL) ex_cmds.h
+- ex_eval.o:	ex_eval.c  $(INCL) ex_cmds.h
+- ex_getln.o:	ex_getln.c  $(INCL)
+- fileio.o:	fileio.c  $(INCL)
+- fold.o:		fold.c  $(INCL)
+- getchar.o:	getchar.c  $(INCL)
+- hardcopy.o:	hardcopy.c  $(INCL)
+- hashtab.o:	hashtab.c  $(INCL)
+- main.o:		main.c  $(INCL)
+- mark.o:		mark.c  $(INCL)
+- memfile.o:	memfile.c  $(INCL)
+- memline.o:	memline.c  $(INCL)
+- menu.o:		menu.c  $(INCL)
+- message.o:	message.c  $(INCL)
+- misc1.o:	misc1.c  $(INCL)
+- misc2.o:	misc2.c  $(INCL)
+- move.o:		move.c  $(INCL)
+- mbyte.o:	mbyte.c  $(INCL)
+- normal.o:	normal.c  $(INCL)
+- ops.o:		ops.c  $(INCL)
+- option.o:	option.c  $(INCL)
+- popupmnu.o:	popupmnu.c  $(INCL)
+- quickfix.o:	quickfix.c  $(INCL)
+- regexp.o:	regexp.c  $(INCL)
+- screen.o:	screen.c  $(INCL)
+- search.o:	search.c  $(INCL)
+- sha256.o:	sha256.c  $(INCL)
+- spell.o:	spell.c  $(INCL)
+- syntax.o:	syntax.c  $(INCL)
+- tag.o:		tag.c  $(INCL)
+- term.o:		term.c  $(INCL)
+- ui.o:		ui.c  $(INCL)
+- undo.o:		undo.c  $(INCL)
+- window.o:	window.c  $(INCL)
+--- 0 ----
+*** ../vim-7.4.1007/src/testdir/Make_os2.mak	2015-12-28 22:24:37.388781777 +0100
+--- src/testdir/Make_os2.mak	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,67 ****
+- #
+- # Makefile to run all tests for Vim, on OS/2
+- #
+- # OUTDATED, probably doesn't work.
+- #
+- # Requires a set of Unix tools: echo, diff, etc.
+- #
+- 
+- VIMPROG = ../vim.exe
+- 
+- default: all
+- 
+- include Make_all.mak
+- 
+- # Omitted:
+- # test2		"\\tmp" doesn't work.
+- # test10	'errorformat' is different
+- # test11	requires sed
+- # test12	can't unlink a swap file
+- # test25	uses symbolic link
+- # test27	can't edit file with "*" in file name
+- # test52	only for Win32
+- # test85	no Lua interface
+- # test86, 87	no Python interface
+- # test97	\{ and \$ are not escaped characters.
+- 
+- SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+- 
+- SCRIPTS_BENCH = bench_re_freeze.out
+- 
+- .SUFFIXES: .in .out
+- 
+- all:	/tmp $(SCRIPTS_FIRST) $(SCRIPTS)
+- 	@echo ALL DONE
+- 
+- $(SCRIPTS_FIRST) $(SCRIPTS): $(VIMPROG)
+- 
+- # Must run test1 first to create small.vim.
+- $(SCRIPTS): $(SCRIPTS_FIRST)
+- 
+- benchmark: $(SCRIPTS_BENCH)
+- 
+- clean:
+- 	-rm -rf *.out Xdotest test.ok tiny.vim small.vim mbyte.vim viminfo
+- 
+- # Make sure all .in and .out files are in DOS fileformat.
+- .in.out:
+- 	$(VIMPROG) -u NONE -s todos.vim $*.in
+- 	$(VIMPROG) -u NONE -s todos.vim $*.ok
+- 	copy $*.ok test.ok
+- 	$(VIMPROG) -u os2.vim --noplugin -s dotest.in $*.in
+- 	$(VIMPROG) -u NONE -s todos.vim test.out
+- 	diff test.out $*.ok
+- 	rename test.out $*.out
+- 	-rm -rf X* viminfo
+- 	-del test.ok
+- 
+- # Create a directory for temp files
+- /tmp:
+- 	-mkdir /tmp
+- 
+- bench_re_freeze.out: bench_re_freeze.vim
+- 	-del $*.failed test.ok benchmark.out
+- 	copy $*.ok test.ok
+- 	$(VIMPROG) -u os2.vim --noplugin -s dotest.in $*.in
+- 	type benchmark.out
+- 
+--- 0 ----
+*** ../vim-7.4.1007/src/testdir/os2.vim	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/os2.vim	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,3 ****
+- " Settings for test script execution
+- " Always use "CMD.EXE", don't use the value of "$SHELL".
+- set shell=CMD.EXE shellquote= shellxquote= shellcmdflag=/c shellredir=>
+--- 0 ----
+*** ../vim-7.4.1007/src/INSTALL	2014-12-17 14:36:10.367090935 +0100
+--- src/INSTALL	2015-12-31 19:00:34.300199952 +0100
+***************
+*** 176,221 ****
+  3. OS/2
+  =======
+  
+! Summary:
+! ren Makefile Makefile.unix
+! ren makefile.os2 Makefile
+! make
+! 
+! This port of Vim to OS/2 is based on the emx environment together
+! with GNU C. The main design goal of emx is to simplify porting Unix
+! software to OS/2 and DOS. Because of this, almost all the Unix defines
+! etc. already existing in the Vim source code could be reused. Only where
+! OS/2 specifics came into play were additional changes necessary. Those
+! places can be found by searching for "OS2" and "__EMX__" (I've tried to
+! keep emx-specific things separate from generic OS/2 stuff).
+! 
+! Note: This OS/2 port works well for me and an additional OS/2 user on
+!       the Vim development team (Karsten Sievert); however, since I
+!       haven't had any other feedback from other people, that either
+!       means no (OS/2-specific) bugs exist, or no one has yet created
+!       a situation in which any bugs are apparent.
+!       Report any problems or other comments to paul@wau.mis.ah.nl
+!       (email valid up to at least September 1996, after that try
+!       paul@wurtel.hobby.nl, paul@murphy.nl, or paulS@toecompst.nl).
+!       Textmode/notextmode and binary mode both seem to work well.
+! 
+! Prerequisites:
+! - To compile, you need the emx environment (at least rev. 0.9b), GCC,
+!   some make utility (GNU make works fine). These are generally
+!   available as (ask Archie about them):
+!     emxrt.zip     emx runtime package
+!     emxdev.zip    emx development system (without compiler)
+!   GNU programs compiled for emx, patches and patched sources:
+!     gnudev1.zip   GNU development tools compiled for emx (part 1)
+!     gnudev2.zip   GNU development tools compiled for emx (part 2)
+!     gnumake.zip   GNU make
+! - Don't set a TERM environment variable; Vim defaults to os2ansi
+!   which is available as a builtin termcap entry. Using other values
+!   may give problems! (OS/2 ANSI emulation is quite limited.) If you
+!   need to set TERM for other programs, you may consider putting
+!   set term=os2ansi in the vimrc file.
+! 
+! Check ../runtime/doc/os_os2.txt for additional info on running Vim.
+  
+  
+  4. Atari MiNT
+--- 176,182 ----
+  3. OS/2
+  =======
+  
+! OS/2 support was removed in patch 7.4.1008
+  
+  
+  4. Atari MiNT
+*** ../vim-7.4.1007/runtime/doc/os_os2.txt	2013-08-10 13:24:58.000000000 +0200
+--- runtime/doc/os_os2.txt	2015-12-31 19:00:28.596261484 +0100
+***************
+*** 1,221 ****
+! *os_os2.txt*    For Vim version 7.4.  Last change: 2007 Apr 22
+  
+  
+  		  VIM REFERENCE MANUAL    by Paul Slootman
+  
+  
+  							*os2* *OS2* *OS/2*
+! This file contains the particularities for the OS/2 version of Vim.
+  
+! At present there is no native PM version of the GUI version of Vim: The OS/2
+! version is a console application.  However, there is now a Win32s-compatible
+! GUI version, which should be usable by owners of Warp 4 (which supports
+! Win32s) in a Win-OS/2 session.  The notes in this file refer to the native
+! console version.
+  
+  
+- NOTE
+- 
+- This OS/2 port works well for me and a couple of other OS/2 users; however,
+- since I haven't had much feedback, that either means no (OS/2-specific) bugs
+- exist (besides the ones mentioned below), or no one has yet created a
+- situation in which any bugs are apparent.  File I/O in Dos and Unix mode,
+- binary mode, and FAT handling all seem to work well, which would seem to be
+- the most likely places for trouble.
+- 
+- A known problem is that files opened by Vim are inherited by other programs
+- that are started via a shell escape from within Vim.  This specifically means
+- that Vim won't be able to remove the swap file(s) associated with buffers open
+- at the time the other program was started, until the other program is stopped.
+- At that time, the swap file may be removed, but if Vim could not do that the
+- first time, it won't be removed at all.  You'll get warnings that some other
+- Vim session may be editing the file when you start Vim up again on that file.
+- This can be reproduced with ":!start epm".  Now quit Vim, and start Vim again
+- with the file that was in the buffer at the time epm was started.  I'm working
+- on this!
+- 
+- A second problem is that Vim doesn't understand the situation when using it
+- when accessing the OS/2 system via the network, e.g. using telnet from a Unix
+- system, and then starting Vim.  The problem seems to be that OS/2 =sometimes=
+- recognizes function / cursor keys, and tries to convert those to the
+- corresponding OS/2 codes generated by the "normal" PC keyboard.  I've been
+- testing a workaround (mapping the OS/2 codes to the correct functions), but so
+- far I can't say anything conclusive (this is on Warp 3, by the way).  In the
+- meantime any help will be appreciated.
+- 
+- 
+- PREREQUISITES
+- 
+- To run Vim, you need the emx runtime environment (at least rev. 0.9b).  This
+- is generally available as (ask Archie about it):
+- 
+-     emxrt.zip     emx runtime package
+- 
+- I've included a copy of emx.dll, which should be copied to one of the
+- directories listed in your LIBPATH.  Emx is GPL'ed, but the emx.dll library is
+- not (read COPYING.EMX to find out what that means to you).
+- 
+- This emx.dll is from the emxfix04.zip package, which unfortunately has a bug,
+- eh, I mean a POSIX feature, in select().  Versions of Vim before 3.27 will
+- appear to hang when starting (actually, while processing vimrc).  Hit <Enter> a
+- couple of times until Vim starts working if this happens.  Next, get an up to
+- date version of Vim!
+- 
+- 
+- HELP AND VIMRC FILE
+- 
+- If you unpack the archive that Vim came in and run Vim directly from where it
+- was unpacked, Vim should be able to find the runtime files and your .vimrc
+- without any settings.
+- 
+- If you put the runtime files separately from the binary, the VIM environment
+- variable is used to find the location of the help files and the system .vimrc.
+- Place an entry such as this in CONFIG.SYS: >
+- 
+-   SET VIM=c:/local/lib/vim
+- 
+- Put your .vimrc and your other Vim files in this directory.  Copy the runtime
+- directory to this directory.  Each version of Vim has its own runtime
+- directory.  It will be called something like "c:/local/lib/vim/vim54".  Thus
+- you get a tree of Vim files like this:
+- 	c:/local/lib/vim/.vimrc
+- 	c:/local/lib/vim/vim54/filetype.vim
+- 	c:/local/lib/vim/vim54/doc/help.txt
+- 	etc.
+- 
+- Note: .vimrc may also be called _vimrc to accommodate those who have chosen to
+- install OS/2 on a FAT file system.  Vim first tries to find .vimrc and if that
+- fails, looks for _vimrc in the same place.  The existence of a .vimrc or
+- _vimrc file influences the 'compatible' options, which can have unexpected side
+- effects.  See |'compatible'|.
+- 
+- If you're using network drives with OS/2, then you can install Vim on a
+- network drive (including .vimrc; this is then called the "system" vimrc file),
+- and then use a personal copy of .vimrc (the "user" vimrc file).  This should be
+- located in a directory indicated by the HOME environment variable.
+- 
+- 
+- ENVIRONMENT VARIABLES IN FILE NAMES
+- 
+- This HOME environment variable is also used when using ~ in file names, so
+- ":e ~/textfile" will edit the file "textfile" in the directory referred to by
+- HOME.  Additionally you can use other environment variables in file names, as
+- in ":n $SRC/*.c".
+- 
+- The HOME environment variable is also used to locate the .viminfo file
+- (see |viminfo-file|).  There is no support yet for .viminfo on FAT file
+- systems yet, sorry.  You could try the -i startup flag (as in "vim -i
+- $HOME/_viminfo") however.
+- 
+- If the HOME environment variable is not set, the value "C:/" is used as a
+- default.
+- 
+- 
+- BACKSLASHES
+- 
+- Using slashes ('/') and backslashes ('\') can be a bit of a problem (see
+- |dos-backslash| for more explanation), but in almost all cases Vim does "The
+- Right Thing".  Vim itself uses backslashes in file names, but will happily
+- accept forward slashes if they are entered (in fact, sometimes that works
+- better!).
+- 
+- 
+- TEMP FILES
+- 
+- Temporary files (for filtering) are put in the first directory in the next
+- list that exists and where a file can be created:
+- 	$TMP
+- 	$TEMP
+- 	C:\TMP
+- 	C:\TEMP
+- 	current directory
+- 
+- 
+- TERMINAL SETTING
+- 
+- 							*os2ansi*
+- Use "os2ansi" as the TERM environment variable (or don't set it at all, as the
+- default is the correct value).  You can set term to os2ansi in the .vimrc, in
+- case you need TERM to be a different value for other applications.  The
+- problem is that OS/2 ANSI emulation is quite limited (it doesn't have insert /
+- delete line, for example).
+- 
+- If you want to use a different value for TERM (because of other programs, for
+- example), make sure that the termcap entry for that TERM value has the
+- appropriate key mappings.  The termcap.dat distributed with emx does not always
+- have them.  Here are some suitable values to add to the termcap entry of your
+- choice; these allow the cursor keys and the named function keys (such as
+- pagedown) to work.
+- 
+- 	:ku=\316H:kd=\316P:kl=\316K:kr=\316M:%i=\316t:#4=\316s:\
+- 	:kD=\316S:kI=\316R:kN=\316Q:kP=\316I:kh=\316G:@7=\316O:\
+- 	:k1=\316;:k2=\316<:k3=\316=:k4=\316>:k5=\316?:k6=\316@:\
+- 	:k7=\316A:k8=\316B:k9=\316C:k;=\316D:
+- 
+- 
+- Paul Slootman
+- 
+- 
+- 43 LINE WINDOW
+- 
+- A suggestion from Steven Tryon, on how to run Vim in a bigger window:
+- 
+- When I call Vim from an OS/2 WPS application such as PMMail it comes up
+- in the default 25-line mode.  To get a more useful window size I make
+- my external editor "vimbig.cmd" which in turn calls "vimbig2.cmd".
+- Brute force and awkwardness, perhaps, but it works.
+- 
+- vimbig.cmd: >
+-    @echo off
+-    start "Vi Improved" /f vimbig2.cmd %1 %2 %3 %4
+- 
+- vimbig2.cmd: >
+-    @echo off
+-    mode 80,43
+-    vim.exe %1 %2 %3 %4
+-    exit
+- <
+- 
+- CLIPBOARD ACCESS (provided by Alexander Wagner)
+- 
+- Vim for OS/2 has no direct access to the system clipboard.  To enable access
+- anyway you need an additional tool which gives you access to the clipboard
+- from within a vio application.  The freeware package clipbrd.zip by Stefan
+- Gruendel can be used for this purpose.  You might download the package
+- including precompiled binaries and all sources from:
+- 	http://www.os2site.com/sw/util/clipboard/index.html
+- 	http://download.uni-hd.de/ftp/pub/os2/pmtools/
+- 
+- Installation of this package is straight forward: just put the two executables
+- that come with this package into a directory within your PATH for Vim should
+- be able to call them from whatever directory you are working.
+- 
+- To copy text from the clipboard to your Vim session you can use the :r
+- command.  Simply call clipbrd.exe from within Vim in the following way: >
+- 
+- 	:r !clipbrd -r
+- 
+- To copy text from Vim to the system clipboard just mark the text in the usual
+- vim-manner and call: >
+- 
+- 	:!clipbrd -w
+- 
+- which will write your selection right into OS/2's clipboard.
+- 
+- For ease of use you might want to add some maps for these commands.  E.g. to
+- use F11 to paste the clipboard into Vim and F12 to copy selected text to the
+- clipboard you would use: >
+- 
+- 	if has("os2")
+- 	  imap <F11>     <ESC>:r !clipbrd -r<CR>i
+- 	  vmap <F12>     :!clipbrd -w<cr>
+- 	else
+- 	  imap <F11>     <ESC>"*p<CR>i
+- 	  vmap <F12>     "*y
+- 	endif
+- 
+- This will ensure that only on OS/2 clipbrd is called whereas on other
+- platforms vims build in mechanism is used.  (To enable this functions on every
+- load of Vim place the above lines in your .vimrc.)
+- 
+   vim:tw=78:ts=8:ft=help:norl:
+--- 1,13 ----
+! *os_os2.txt*    For Vim version 7.4.  Last change: 2015 Dec 31
+  
+  
+  		  VIM REFERENCE MANUAL    by Paul Slootman
+  
+  
+  							*os2* *OS2* *OS/2*
+! This file used to contain the particularities for the OS/2 version of Vim.
+  
+! The OS/2 support was removed in patch 7.4.1008.
+  
+  
+   vim:tw=78:ts=8:ft=help:norl:
+*** ../vim-7.4.1007/src/version.c	2015-12-31 18:29:43.344171841 +0100
+--- src/version.c	2015-12-31 18:34:30.681070695 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1008,
+  /**/
+
+-- 
+BLACK KNIGHT:  Come on you pansy!
+    [hah] [parry thrust]
+    [ARTHUR chops the BLACK KNIGHT's right arm off]
+ARTHUR:        Victory is mine!  [kneeling]
+               We thank thee Lord, that in thy merc-
+    [Black Knight kicks Arthur in the head while he is praying]
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

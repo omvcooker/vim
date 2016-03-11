@@ -1,0 +1,160 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1379
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1379
+Problem:    Channel test fails on Win32 console.
+Solution:   Don't sleep when timeout is zero. Call channel_wait() before
+            channel_read(). Channels are not polled during ":sleep". (Yukihiro
+            Nakadaira)
+Files:      src/channel.c, src/misc2.c, src/gui_w32.c, src/os_win32.c
+
+
+*** ../vim-7.4.1378/src/channel.c	2016-02-20 23:30:02.876652762 +0100
+--- src/channel.c	2016-02-21 17:15:05.606571877 +0100
+***************
+*** 1582,1588 ****
+  								 && nread > 0)
+  		return OK;
+  	    diff = deadline - GetTickCount();
+! 	    if (diff < 0)
+  		break;
+  	    /* Wait for 5 msec.
+  	     * TODO: increase the sleep time when looping more often */
+--- 1582,1588 ----
+  								 && nread > 0)
+  		return OK;
+  	    diff = deadline - GetTickCount();
+! 	    if (diff <= 0)
+  		break;
+  	    /* Wait for 5 msec.
+  	     * TODO: increase the sleep time when looping more often */
+***************
+*** 1881,1897 ****
+  	}
+      return NULL;
+  }
+  
+      void
+  channel_handle_events(void)
+  {
+      channel_T	*channel;
+      int		part;
+!     static int	loop = 0;
+! 
+!     /* Skip heavily polling */
+!     if (loop++ % 2)
+! 	return;
+  
+      for (channel = first_channel; channel != NULL; channel = channel->ch_next)
+      {
+--- 1881,1899 ----
+  	}
+      return NULL;
+  }
++ # endif
+  
++ # if defined(WIN32) || defined(PROTO)
++ /*
++  * Check the channels for anything that is ready to be read.
++  * The data is put in the read queue.
++  */
+      void
+  channel_handle_events(void)
+  {
+      channel_T	*channel;
+      int		part;
+!     sock_T	fd;
+  
+      for (channel = first_channel; channel != NULL; channel = channel->ch_next)
+      {
+***************
+*** 1907,1913 ****
+  	part = PART_SOCK;
+  #   endif
+  #  endif
+! 	channel_read(channel, part, "channel_handle_events");
+      }
+  }
+  # endif
+--- 1909,1919 ----
+  	part = PART_SOCK;
+  #   endif
+  #  endif
+! 	{
+! 	    fd = channel->ch_part[part].ch_fd;
+! 	    if (fd != INVALID_FD && channel_wait(channel, fd, 0) == OK)
+! 		channel_read(channel, part, "channel_handle_events");
+! 	}
+      }
+  }
+  # endif
+*** ../vim-7.4.1378/src/misc2.c	2016-02-20 13:54:39.145147032 +0100
+--- src/misc2.c	2016-02-21 17:13:32.423533333 +0100
+***************
+*** 6239,6244 ****
+--- 6239,6249 ----
+      void
+  parse_queued_messages(void)
+  {
++     /* For Win32 mch_breakcheck() does not check for input, do it here. */
++ # if defined(WIN32) && defined(FEAT_CHANNEL)
++     channel_handle_events();
++ # endif
++ 
+  # ifdef FEAT_NETBEANS_INTG
+      /* Process the queued netbeans messages. */
+      netbeans_parse_messages();
+*** ../vim-7.4.1378/src/gui_w32.c	2016-02-20 18:18:51.761033118 +0100
+--- src/gui_w32.c	2016-02-21 17:15:27.486346103 +0100
+***************
+*** 2248,2257 ****
+  	parse_queued_messages();
+  #endif
+  
+- #ifdef FEAT_CHANNEL
+- 	channel_handle_events();
+- #endif
+- 
+  	/*
+  	 * Don't use gui_mch_update() because then we will spin-lock until a
+  	 * char arrives, instead we use GetMessage() to hang until an
+--- 2248,2253 ----
+*** ../vim-7.4.1378/src/os_win32.c	2016-02-19 21:04:57.904318201 +0100
+--- src/os_win32.c	2016-02-21 17:15:57.074040727 +0100
+***************
+*** 1470,1479 ****
+  	serverProcessPendingMessages();
+  #endif
+  
+- #ifdef FEAT_CHANNEL
+- 	channel_handle_events();
+- #endif
+- 
+  	if (0
+  #ifdef FEAT_MOUSE
+  		|| g_nMouseClick != -1
+--- 1470,1475 ----
+*** ../vim-7.4.1378/src/version.c	2016-02-21 16:40:07.088383778 +0100
+--- src/version.c	2016-02-21 17:20:16.519360038 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1379,
+  /**/
+
+-- 
+Q: Is selling software the same as selling hardware?
+A: No, good hardware is sold new, good software has already been used by many.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

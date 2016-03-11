@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1517
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1517
+Problem:    Compiler warning with 64bit compiler.
+Solution:   Add typecast. (Mike Williams)
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1516/src/channel.c	2016-03-06 21:50:28.631838525 +0100
+--- src/channel.c	2016-03-08 17:11:34.412397086 +0100
+***************
+*** 1005,1011 ****
+  write_buf_line(buf_T *buf, linenr_T lnum, channel_T *channel)
+  {
+      char_u  *line = ml_get_buf(buf, lnum, FALSE);
+!     int	    len = STRLEN(line);
+      char_u  *p;
+  
+      /* TODO: check if channel can be written to, do not block on write */
+--- 1005,1011 ----
+  write_buf_line(buf_T *buf, linenr_T lnum, channel_T *channel)
+  {
+      char_u  *line = ml_get_buf(buf, lnum, FALSE);
+!     int	    len = (int)STRLEN(line);
+      char_u  *p;
+  
+      /* TODO: check if channel can be written to, do not block on write */
+*** ../vim-7.4.1516/src/version.c	2016-03-08 17:08:38.562223096 +0100
+--- src/version.c	2016-03-08 17:12:08.604042005 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1517,
+  /**/
+
+-- 
+Me?  A skeptic?  I trust you have proof.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

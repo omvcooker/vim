@@ -1,0 +1,114 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1146
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1146
+Problem:    Can't build with Python 3 interface using MingW.
+Solution:   Update the Makefile. (Yasuhiro Matsumoto, Ken Takata)
+Files:      src/Make_cyg_ming.mak
+
+
+*** ../vim-7.4.1145/src/Make_cyg_ming.mak	2016-01-16 16:20:23.708823286 +0100
+--- src/Make_cyg_ming.mak	2016-01-20 22:22:09.550777106 +0100
+***************
+*** 258,274 ****
+  ifndef PYTHON3_VER
+  PYTHON3_VER=31
+  endif
+  
+  ifeq (no,$(DYNAMIC_PYTHON3))
+! PYTHON3LIB=-L$(PYTHON3)/libs -lPYTHON$(PYTHON3_VER)
+  endif
+  
+  ifeq ($(CROSS),no)
+  PYTHON3INC=-I $(PYTHON3)/include
+  else
+  PYTHON3INC=-I $(PYTHON3)/win32inc
+  endif
+  endif
+  
+  #	TCL interface:
+  #	  TCL=[Path to TCL directory] (Set inside Make_cyg.mak or Make_ming.mak)
+--- 258,282 ----
+  ifndef PYTHON3_VER
+  PYTHON3_VER=31
+  endif
++ ifndef DYNAMIC_PYTHON3_DLL
++ DYNAMIC_PYTHON3_DLL=python$(PYTHON3_VER).dll
++ endif
++ ifdef PYTHON3_HOME
++ PYTHON3_HOME_DEF=-DPYTHON3_HOME=\"$(PYTHON3_HOME)\"
++ endif
+  
+  ifeq (no,$(DYNAMIC_PYTHON3))
+! PYTHON3LIB=-L$(PYTHON3)/libs -lpython$(PYTHON3_VER)
+  endif
+  
++ ifndef PYTHON3INC
+  ifeq ($(CROSS),no)
+  PYTHON3INC=-I $(PYTHON3)/include
+  else
+  PYTHON3INC=-I $(PYTHON3)/win32inc
+  endif
+  endif
++ endif
+  
+  #	TCL interface:
+  #	  TCL=[Path to TCL directory] (Set inside Make_cyg.mak or Make_ming.mak)
+***************
+*** 482,488 ****
+  ifdef PYTHON3 
+  CFLAGS += -DFEAT_PYTHON3 
+  ifeq (yes, $(DYNAMIC_PYTHON3))
+! CFLAGS += -DDYNAMIC_PYTHON3 -DDYNAMIC_PYTHON3_DLL=\"PYTHON$(PYTHON3_VER).dll\"
+  endif
+  endif
+  
+--- 490,496 ----
+  ifdef PYTHON3 
+  CFLAGS += -DFEAT_PYTHON3 
+  ifeq (yes, $(DYNAMIC_PYTHON3))
+! CFLAGS += -DDYNAMIC_PYTHON3 -DDYNAMIC_PYTHON3_DLL=\"$(DYNAMIC_PYTHON3_DLL)\"
+  endif
+  endif
+  
+***************
+*** 814,820 ****
+  	$(CC) -c $(CFLAGS) $(PYTHONINC) $(PYTHON_HOME_DEF) $< -o $@
+  
+  $(OUTDIR)/if_python3.o : if_python3.c if_py_both.h $(INCL)
+! 	$(CC) -c $(CFLAGS) $(PYTHON3INC) $< -o $@
+  
+  $(OUTDIR)/%.o : %.c $(INCL)
+  	$(CC) -c $(CFLAGS) $< -o $@
+--- 822,828 ----
+  	$(CC) -c $(CFLAGS) $(PYTHONINC) $(PYTHON_HOME_DEF) $< -o $@
+  
+  $(OUTDIR)/if_python3.o : if_python3.c if_py_both.h $(INCL)
+! 	$(CC) -c $(CFLAGS) $(PYTHON3INC) $(PYTHON3_HOME_DEF) $< -o $@
+  
+  $(OUTDIR)/%.o : %.c $(INCL)
+  	$(CC) -c $(CFLAGS) $< -o $@
+*** ../vim-7.4.1145/src/version.c	2016-01-20 22:11:53.257565658 +0100
+--- src/version.c	2016-01-20 22:22:23.662611310 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1146,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+19. All of your friends have an @ in their names.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,7099 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1208
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1208
+Problem:    Using old style function declarations.
+Solution:   Change to new style function declarations. (script by Hirohito
+            Higashi)
+Files:      src/gui_photon.c, src/gui_w32.c, src/gui_w48.c, src/gui_x11.c,
+            src/hangulin.c, src/hardcopy.c, src/hashtab.c, src/if_cscope.c,
+            src/if_mzsch.c, src/if_perlsfio.c, src/if_python.c,
+            src/if_python3.c, src/if_ruby.c, src/if_sniff.c, src/if_tcl.c,
+            src/if_xcmdsrv.c, src/integration.c
+
+
+*** ../vim-7.4.1207/src/gui_photon.c	2013-05-06 04:06:04.000000000 +0200
+--- src/gui_photon.c	2016-01-30 16:41:44.392877727 +0100
+***************
+*** 1111,1119 ****
+  /****************************************************************************/
+  
+      void
+! gui_mch_prepare(argc, argv)
+!     int	    *argc;
+!     char    **argv;
+  {
+      PtInit(NULL);
+  }
+--- 1111,1117 ----
+  /****************************************************************************/
+  
+      void
+! gui_mch_prepare(int *argc, char **argv)
+  {
+      PtInit(NULL);
+  }
+***************
+*** 1720,1726 ****
+   * Bring the Vim window to the foreground.
+   */
+      void
+! gui_mch_set_foreground()
+  {
+      PhWindowEvent_t event;
+  
+--- 1718,1724 ----
+   * Bring the Vim window to the foreground.
+   */
+      void
+! gui_mch_set_foreground(void)
+  {
+      PhWindowEvent_t event;
+  
+***************
+*** 1860,1867 ****
+  };
+  
+      void
+! mch_set_mouse_shape(shape)
+!     int	shape;
+  {
+      int	    id;
+  
+--- 1858,1864 ----
+  };
+  
+      void
+! mch_set_mouse_shape(int shape)
+  {
+      int	    id;
+  
+***************
+*** 2184,2190 ****
+  }
+  
+      void
+! gui_mch_clear_all()
+  {
+      PhRect_t text_rect = {
+  	{ gui.border_width, gui.border_width },
+--- 2181,2187 ----
+  }
+  
+      void
+! gui_mch_clear_all(void)
+  {
+      PhRect_t text_rect = {
+  	{ gui.border_width, gui.border_width },
+***************
+*** 3078,3086 ****
+   * Don't know how to get the actual name, thus use the provided name.
+   */
+      char_u *
+! gui_mch_get_fontname(font, name)
+!     GuiFont font;
+!     char_u  *name;
+  {
+      if (name == NULL)
+  	return NULL;
+--- 3075,3081 ----
+   * Don't know how to get the actual name, thus use the provided name.
+   */
+      char_u *
+! gui_mch_get_fontname(GuiFont font, char_u *name)
+  {
+      if (name == NULL)
+  	return NULL;
+*** ../vim-7.4.1207/src/gui_w32.c	2016-01-29 23:20:35.305308204 +0100
+--- src/gui_w32.c	2016-01-30 16:42:40.456294076 +0100
+***************
+*** 2246,2252 ****
+   * Get IM status.  When IM is on, return not 0.  Else return 0.
+   */
+      int
+! im_get_status()
+  {
+      int		status = 0;
+      HIMC	hImc;
+--- 2246,2252 ----
+   * Get IM status.  When IM is on, return not 0.  Else return 0.
+   */
+      int
+! im_get_status(void)
+  {
+      int		status = 0;
+      HIMC	hImc;
+***************
+*** 4525,4534 ****
+  } signicon_t;
+  
+      void
+! gui_mch_drawsign(row, col, typenr)
+!     int		row;
+!     int		col;
+!     int		typenr;
+  {
+      signicon_t *sign;
+      int x, y, w, h;
+--- 4525,4531 ----
+  } signicon_t;
+  
+      void
+! gui_mch_drawsign(int row, int col, int typenr)
+  {
+      signicon_t *sign;
+      int x, y, w, h;
+***************
+*** 4605,4612 ****
+  }
+  
+      void *
+! gui_mch_register_sign(signfile)
+!     char_u	*signfile;
+  {
+      signicon_t	sign, *psign;
+      char_u	*ext;
+--- 4602,4608 ----
+  }
+  
+      void *
+! gui_mch_register_sign(char_u *signfile)
+  {
+      signicon_t	sign, *psign;
+      char_u	*ext;
+***************
+*** 4661,4668 ****
+  }
+  
+      void
+! gui_mch_destroy_sign(sign)
+!     void *sign;
+  {
+      if (sign)
+      {
+--- 4657,4663 ----
+  }
+  
+      void
+! gui_mch_destroy_sign(void *sign)
+  {
+      if (sign)
+      {
+***************
+*** 4766,4775 ****
+  }
+  
+      static void
+! make_tooltip(beval, text, pt)
+!     BalloonEval *beval;
+!     char *text;
+!     POINT pt;
+  {
+      TOOLINFO	*pti;
+      int		ToolInfoSize;
+--- 4761,4767 ----
+  }
+  
+      static void
+! make_tooltip(BalloonEval *beval, char *text, POINT pt)
+  {
+      TOOLINFO	*pti;
+      int		ToolInfoSize;
+***************
+*** 4833,4851 ****
+  }
+  
+      static void
+! delete_tooltip(beval)
+!     BalloonEval	*beval;
+  {
+      PostMessage(beval->balloon, WM_CLOSE, 0, 0);
+  }
+  
+  /*ARGSUSED*/
+      static VOID CALLBACK
+! BevalTimerProc(hwnd, uMsg, idEvent, dwTime)
+!     HWND    hwnd;
+!     UINT    uMsg;
+!     UINT_PTR    idEvent;
+!     DWORD   dwTime;
+  {
+      POINT	pt;
+      RECT	rect;
+--- 4825,4842 ----
+  }
+  
+      static void
+! delete_tooltip(BalloonEval *beval)
+  {
+      PostMessage(beval->balloon, WM_CLOSE, 0, 0);
+  }
+  
+  /*ARGSUSED*/
+      static VOID CALLBACK
+! BevalTimerProc(
+!     HWND    hwnd,
+!     UINT    uMsg,
+!     UINT_PTR    idEvent,
+!     DWORD   dwTime)
+  {
+      POINT	pt;
+      RECT	rect;
+***************
+*** 4883,4890 ****
+  
+  /*ARGSUSED*/
+      void
+! gui_mch_disable_beval_area(beval)
+!     BalloonEval	*beval;
+  {
+      // TRACE0("gui_mch_disable_beval_area {{{");
+      KillTimer(s_textArea, BevalTimerId);
+--- 4874,4880 ----
+  
+  /*ARGSUSED*/
+      void
+! gui_mch_disable_beval_area(BalloonEval *beval)
+  {
+      // TRACE0("gui_mch_disable_beval_area {{{");
+      KillTimer(s_textArea, BevalTimerId);
+***************
+*** 4893,4900 ****
+  
+  /*ARGSUSED*/
+      void
+! gui_mch_enable_beval_area(beval)
+!     BalloonEval	*beval;
+  {
+      // TRACE0("gui_mch_enable_beval_area |||");
+      if (beval == NULL)
+--- 4883,4889 ----
+  
+  /*ARGSUSED*/
+      void
+! gui_mch_enable_beval_area(BalloonEval *beval)
+  {
+      // TRACE0("gui_mch_enable_beval_area |||");
+      if (beval == NULL)
+***************
+*** 4905,4913 ****
+  }
+  
+      void
+! gui_mch_post_balloon(beval, mesg)
+!     BalloonEval	*beval;
+!     char_u	*mesg;
+  {
+      POINT   pt;
+      // TRACE0("gui_mch_post_balloon {{{");
+--- 4894,4900 ----
+  }
+  
+      void
+! gui_mch_post_balloon(BalloonEval *beval, char_u *mesg)
+  {
+      POINT   pt;
+      // TRACE0("gui_mch_post_balloon {{{");
+***************
+*** 4928,4938 ****
+  
+  /*ARGSUSED*/
+      BalloonEval *
+! gui_mch_create_beval_area(target, mesg, mesgCB, clientData)
+!     void	*target;	/* ignored, always use s_textArea */
+!     char_u	*mesg;
+!     void	(*mesgCB)(BalloonEval *, int);
+!     void	*clientData;
+  {
+      /* partially stolen from gui_beval.c */
+      BalloonEval	*beval;
+--- 4915,4925 ----
+  
+  /*ARGSUSED*/
+      BalloonEval *
+! gui_mch_create_beval_area(
+!     void	*target,	/* ignored, always use s_textArea */
+!     char_u	*mesg,
+!     void	(*mesgCB)(BalloonEval *, int),
+!     void	*clientData)
+  {
+      /* partially stolen from gui_beval.c */
+      BalloonEval	*beval;
+***************
+*** 5010,5017 ****
+  }
+  
+      void
+! gui_mch_destroy_beval_area(beval)
+!     BalloonEval	*beval;
+  {
+      vim_free(beval);
+  }
+--- 4997,5003 ----
+  }
+  
+      void
+! gui_mch_destroy_beval_area(BalloonEval *beval)
+  {
+      vim_free(beval);
+  }
+*** ../vim-7.4.1207/src/gui_w48.c	2016-01-29 22:13:26.051781481 +0100
+--- src/gui_w48.c	2016-01-30 16:43:16.027923770 +0100
+***************
+*** 1144,1150 ****
+   * Set the colors to their default values.
+   */
+      void
+! gui_mch_def_colors()
+  {
+      gui.norm_pixel = GetSysColor(COLOR_WINDOWTEXT);
+      gui.back_pixel = GetSysColor(COLOR_WINDOW);
+--- 1144,1150 ----
+   * Set the colors to their default values.
+   */
+      void
+! gui_mch_def_colors(void)
+  {
+      gui.norm_pixel = GetSysColor(COLOR_WINDOWTEXT);
+      gui.back_pixel = GetSysColor(COLOR_WINDOW);
+***************
+*** 1390,1398 ****
+   */
+  /*ARGSUSED*/
+      char_u *
+! gui_mch_get_fontname(font, name)
+!     GuiFont font;
+!     char_u  *name;
+  {
+      if (name == NULL)
+  	return NULL;
+--- 1390,1396 ----
+   */
+  /*ARGSUSED*/
+      char_u *
+! gui_mch_get_fontname(GuiFont font, char_u *name)
+  {
+      if (name == NULL)
+  	return NULL;
+***************
+*** 2623,2630 ****
+   * Set the current tab to "nr".  First tab is 1.
+   */
+      void
+! gui_mch_set_curtab(nr)
+!     int		nr;
+  {
+      if (s_tabhwnd == NULL)
+  	return;
+--- 2621,2627 ----
+   * Set the current tab to "nr".  First tab is 1.
+   */
+      void
+! gui_mch_set_curtab(int nr)
+  {
+      if (s_tabhwnd == NULL)
+  	return;
+***************
+*** 3258,3264 ****
+   * Handler of gui.wide_font (p_guifontwide) changed notification.
+   */
+      void
+! gui_mch_wide_font_changed()
+  {
+  # ifndef MSWIN16_FASTTEXT
+      LOGFONT lf;
+--- 3255,3261 ----
+   * Handler of gui.wide_font (p_guifontwide) changed notification.
+   */
+      void
+! gui_mch_wide_font_changed(void)
+  {
+  # ifndef MSWIN16_FASTTEXT
+      LOGFONT lf;
+***************
+*** 3385,3391 ****
+   * Return TRUE if the GUI window is maximized, filling the whole screen.
+   */
+      int
+! gui_mch_maximized()
+  {
+      WINDOWPLACEMENT wp;
+  
+--- 3382,3388 ----
+   * Return TRUE if the GUI window is maximized, filling the whole screen.
+   */
+      int
+! gui_mch_maximized(void)
+  {
+      WINDOWPLACEMENT wp;
+  
+***************
+*** 3403,3409 ****
+   * new Rows and Columns.  This is like resizing the window.
+   */
+      void
+! gui_mch_newfont()
+  {
+      RECT	rect;
+  
+--- 3400,3406 ----
+   * new Rows and Columns.  This is like resizing the window.
+   */
+      void
+! gui_mch_newfont(void)
+  {
+      RECT	rect;
+  
+*** ../vim-7.4.1207/src/gui_x11.c	2016-01-29 22:36:41.221047732 +0100
+--- src/gui_x11.c	2016-01-30 16:46:56.149632475 +0100
+***************
+*** 571,589 ****
+   */
+  
+      static void
+! gui_x11_timer_cb(timed_out, interval_id)
+!     XtPointer	    timed_out;
+!     XtIntervalId    *interval_id UNUSED;
+  {
+      *((int *)timed_out) = TRUE;
+  }
+  
+      static void
+! gui_x11_visibility_cb(w, dud, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	dud UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      if (event->type != VisibilityNotify)
+  	return;
+--- 571,589 ----
+   */
+  
+      static void
+! gui_x11_timer_cb(
+!     XtPointer	    timed_out,
+!     XtIntervalId    *interval_id UNUSED)
+  {
+      *((int *)timed_out) = TRUE;
+  }
+  
+      static void
+! gui_x11_visibility_cb(
+!     Widget	w UNUSED,
+!     XtPointer	dud UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      if (event->type != VisibilityNotify)
+  	return;
+***************
+*** 602,612 ****
+  }
+  
+      static void
+! gui_x11_expose_cb(w, dud, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	dud UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      XExposeEvent	*gevent;
+      int			new_x;
+--- 602,612 ----
+  }
+  
+      static void
+! gui_x11_expose_cb(
+!     Widget	w UNUSED,
+!     XtPointer	dud UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      XExposeEvent	*gevent;
+      int			new_x;
+***************
+*** 678,688 ****
+  #endif
+  
+      static void
+! gui_x11_resize_window_cb(w, dud, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	dud UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      static int lastWidth, lastHeight;
+  
+--- 678,688 ----
+  #endif
+  
+      static void
+! gui_x11_resize_window_cb(
+!     Widget	w UNUSED,
+!     XtPointer	dud UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      static int lastWidth, lastHeight;
+  
+***************
+*** 724,754 ****
+  }
+  
+      static void
+! gui_x11_focus_change_cb(w, data, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	data UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      gui_focus_change(event->type == FocusIn);
+  }
+  
+      static void
+! gui_x11_enter_cb(w, data, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	data UNUSED;
+!     XEvent	*event UNUSED;
+!     Boolean	*dum UNUSED;
+  {
+      gui_focus_change(TRUE);
+  }
+  
+      static void
+! gui_x11_leave_cb(w, data, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	data UNUSED;
+!     XEvent	*event UNUSED;
+!     Boolean	*dum UNUSED;
+  {
+      gui_focus_change(FALSE);
+  }
+--- 724,754 ----
+  }
+  
+      static void
+! gui_x11_focus_change_cb(
+!     Widget	w UNUSED,
+!     XtPointer	data UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      gui_focus_change(event->type == FocusIn);
+  }
+  
+      static void
+! gui_x11_enter_cb(
+!     Widget	w UNUSED,
+!     XtPointer	data UNUSED,
+!     XEvent	*event UNUSED,
+!     Boolean	*dum UNUSED)
+  {
+      gui_focus_change(TRUE);
+  }
+  
+      static void
+! gui_x11_leave_cb(
+!     Widget	w UNUSED,
+!     XtPointer	data UNUSED,
+!     XEvent	*event UNUSED,
+!     Boolean	*dum UNUSED)
+  {
+      gui_focus_change(FALSE);
+  }
+***************
+*** 760,770 ****
+  #endif
+  
+      void
+! gui_x11_key_hit_cb(w, dud, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	dud UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      XKeyPressedEvent	*ev_press;
+  #ifdef FEAT_XIM
+--- 760,770 ----
+  #endif
+  
+      void
+! gui_x11_key_hit_cb(
+!     Widget	w UNUSED,
+!     XtPointer	dud UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      XKeyPressedEvent	*ev_press;
+  #ifdef FEAT_XIM
+***************
+*** 1071,1081 ****
+  }
+  
+      static void
+! gui_x11_mouse_cb(w, dud, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	dud UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      static XtIntervalId timer = (XtIntervalId)0;
+      static int	timed_out = TRUE;
+--- 1071,1081 ----
+  }
+  
+      static void
+! gui_x11_mouse_cb(
+!     Widget	w UNUSED,
+!     XtPointer	dud UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      static XtIntervalId timer = (XtIntervalId)0;
+      static int	timed_out = TRUE;
+***************
+*** 1166,1175 ****
+  #ifdef FEAT_SNIFF
+  /* ARGSUSED */
+      static void
+! gui_x11_sniff_request_cb(closure, source, id)
+!     XtPointer	closure UNUSED;
+!     int		*source UNUSED;
+!     XtInputId	*id UNUSED;
+  {
+      static char_u bytes[3] = {CSI, (int)KS_EXTRA, (int)KE_SNIFF};
+  
+--- 1166,1175 ----
+  #ifdef FEAT_SNIFF
+  /* ARGSUSED */
+      static void
+! gui_x11_sniff_request_cb(
+!     XtPointer	closure UNUSED,
+!     int		*source UNUSED,
+!     XtInputId	*id UNUSED)
+  {
+      static char_u bytes[3] = {CSI, (int)KS_EXTRA, (int)KE_SNIFF};
+  
+***************
+*** 1187,1195 ****
+   * when vim is started, whether or not the GUI has been started.
+   */
+      void
+! gui_mch_prepare(argc, argv)
+!     int	    *argc;
+!     char    **argv;
+  {
+      int	    arg;
+      int	    i;
+--- 1187,1193 ----
+   * when vim is started, whether or not the GUI has been started.
+   */
+      void
+! gui_mch_prepare(int *argc, char **argv)
+  {
+      int	    arg;
+      int	    i;
+***************
+*** 1285,1291 ****
+   * Return OK or FAIL.
+   */
+      int
+! gui_mch_init_check()
+  {
+  #ifdef FEAT_XIM
+      XtSetLanguageProc(NULL, NULL, NULL);
+--- 1283,1289 ----
+   * Return OK or FAIL.
+   */
+      int
+! gui_mch_init_check(void)
+  {
+  #ifdef FEAT_XIM
+      XtSetLanguageProc(NULL, NULL, NULL);
+***************
+*** 1315,1324 ****
+  static void local_xsmp_handle_requests(XtPointer c, int *s, XtInputId *i);
+  
+      static void
+! local_xsmp_handle_requests(c, s, i)
+!     XtPointer	c UNUSED;
+!     int		*s UNUSED;
+!     XtInputId	*i UNUSED;
+  {
+      if (xsmp_handle_requests() == FAIL)
+  	XtRemoveInput(_xsmp_xtinputid);
+--- 1313,1322 ----
+  static void local_xsmp_handle_requests(XtPointer c, int *s, XtInputId *i);
+  
+      static void
+! local_xsmp_handle_requests(
+!     XtPointer	c UNUSED,
+!     int		*s UNUSED,
+!     XtInputId	*i UNUSED)
+  {
+      if (xsmp_handle_requests() == FAIL)
+  	XtRemoveInput(_xsmp_xtinputid);
+***************
+*** 1331,1337 ****
+   * Returns OK for success, FAIL when the GUI can't be started.
+   */
+      int
+! gui_mch_init()
+  {
+      XtGCMask	gc_mask;
+      XGCValues	gc_vals;
+--- 1329,1335 ----
+   * Returns OK for success, FAIL when the GUI can't be started.
+   */
+      int
+! gui_mch_init(void)
+  {
+      XtGCMask	gc_mask;
+      XGCValues	gc_vals;
+***************
+*** 1575,1581 ****
+   * Called when starting the GUI fails after calling gui_mch_init().
+   */
+      void
+! gui_mch_uninit()
+  {
+      gui_x11_destroy_widgets();
+      XtCloseDisplay(gui.dpy);
+--- 1573,1579 ----
+   * Called when starting the GUI fails after calling gui_mch_init().
+   */
+      void
+! gui_mch_uninit(void)
+  {
+      gui_x11_destroy_widgets();
+      XtCloseDisplay(gui.dpy);
+***************
+*** 1589,1595 ****
+   * Called when the foreground or background color has been changed.
+   */
+      void
+! gui_mch_new_colors()
+  {
+      long_u	gc_mask;
+      XGCValues	gc_vals;
+--- 1587,1593 ----
+   * Called when the foreground or background color has been changed.
+   */
+      void
+! gui_mch_new_colors(void)
+  {
+      long_u	gc_mask;
+      XGCValues	gc_vals;
+***************
+*** 1619,1625 ****
+   * Open the GUI window which was created by a call to gui_mch_init().
+   */
+      int
+! gui_mch_open()
+  {
+      /* Actually open the window */
+      XtRealizeWidget(vimShell);
+--- 1617,1623 ----
+   * Open the GUI window which was created by a call to gui_mch_init().
+   */
+      int
+! gui_mch_open(void)
+  {
+      /* Actually open the window */
+      XtRealizeWidget(vimShell);
+***************
+*** 1700,1706 ****
+   * Convert the tooltip fontset name to an XFontSet.
+   */
+      void
+! gui_init_tooltip_font()
+  {
+      XrmValue from, to;
+  
+--- 1698,1704 ----
+   * Convert the tooltip fontset name to an XFontSet.
+   */
+      void
+! gui_init_tooltip_font(void)
+  {
+      XrmValue from, to;
+  
+***************
+*** 1719,1725 ****
+  #if defined(FEAT_MENU) || defined(PROTO)
+  /* Convert the menu font/fontset name to an XFontStruct/XFontset */
+      void
+! gui_init_menu_font()
+  {
+      XrmValue from, to;
+  
+--- 1717,1723 ----
+  #if defined(FEAT_MENU) || defined(PROTO)
+  /* Convert the menu font/fontset name to an XFontStruct/XFontset */
+      void
+! gui_init_menu_font(void)
+  {
+      XrmValue from, to;
+  
+***************
+*** 1748,1755 ****
+  #endif
+  
+      void
+! gui_mch_exit(rc)
+!     int		rc UNUSED;
+  {
+  #if 0
+      /* Lesstif gives an error message here, and so does Solaris.  The man page
+--- 1746,1752 ----
+  #endif
+  
+      void
+! gui_mch_exit(int rc UNUSED)
+  {
+  #if 0
+      /* Lesstif gives an error message here, and so does Solaris.  The man page
+***************
+*** 1764,1771 ****
+   * Get the position of the top left corner of the window.
+   */
+      int
+! gui_mch_get_winpos(x, y)
+!     int		*x, *y;
+  {
+      Dimension	xpos, ypos;
+  
+--- 1761,1767 ----
+   * Get the position of the top left corner of the window.
+   */
+      int
+! gui_mch_get_winpos(int *x, *y)
+  {
+      Dimension	xpos, ypos;
+  
+***************
+*** 1783,1790 ****
+   * coordinates.
+   */
+      void
+! gui_mch_set_winpos(x, y)
+!     int		x, y;
+  {
+      XtVaSetValues(vimShell,
+  	XtNx,	x,
+--- 1779,1785 ----
+   * coordinates.
+   */
+      void
+! gui_mch_set_winpos(int x, y)
+  {
+      XtVaSetValues(vimShell,
+  	XtNx,	x,
+***************
+*** 1793,1807 ****
+  }
+  
+      void
+! gui_mch_set_shellsize(width, height, min_width, min_height,
+! 		    base_width, base_height, direction)
+!     int		width;
+!     int		height;
+!     int		min_width;
+!     int		min_height;
+!     int		base_width;
+!     int		base_height;
+!     int		direction UNUSED;
+  {
+  #ifdef FEAT_XIM
+      height += xim_get_status_area_height(),
+--- 1788,1801 ----
+  }
+  
+      void
+! gui_mch_set_shellsize(
+!     int		width,
+!     int		height,
+!     int		min_width,
+!     int		min_height,
+!     int		base_width,
+!     int		base_height,
+!     int		direction UNUSED)
+  {
+  #ifdef FEAT_XIM
+      height += xim_get_status_area_height(),
+***************
+*** 1825,1833 ****
+   * Is there no way in X to find out how wide the borders really are?
+   */
+      void
+! gui_mch_get_screen_dimensions(screen_w, screen_h)
+!     int	    *screen_w;
+!     int	    *screen_h;
+  {
+      *screen_w = DisplayWidth(gui.dpy, DefaultScreen(gui.dpy)) - 10;
+      *screen_h = DisplayHeight(gui.dpy, DefaultScreen(gui.dpy)) - p_ghr;
+--- 1819,1827 ----
+   * Is there no way in X to find out how wide the borders really are?
+   */
+      void
+! gui_mch_get_screen_dimensions(
+!     int	    *screen_w,
+!     int	    *screen_h)
+  {
+      *screen_w = DisplayWidth(gui.dpy, DefaultScreen(gui.dpy)) - 10;
+      *screen_h = DisplayHeight(gui.dpy, DefaultScreen(gui.dpy)) - p_ghr;
+***************
+*** 1840,1848 ****
+   * Return FAIL if the font could not be loaded, OK otherwise.
+   */
+      int
+! gui_mch_init_font(font_name, do_fontset)
+!     char_u	*font_name;
+!     int		do_fontset UNUSED;
+  {
+      XFontStruct	*font = NULL;
+  
+--- 1834,1842 ----
+   * Return FAIL if the font could not be loaded, OK otherwise.
+   */
+      int
+! gui_mch_init_font(
+!     char_u	*font_name,
+!     int		do_fontset UNUSED)
+  {
+      XFontStruct	*font = NULL;
+  
+***************
+*** 1970,1978 ****
+   * Get a font structure for highlighting.
+   */
+      GuiFont
+! gui_mch_get_font(name, giveErrorIfMissing)
+!     char_u	*name;
+!     int		giveErrorIfMissing;
+  {
+      XFontStruct	*font;
+  
+--- 1964,1970 ----
+   * Get a font structure for highlighting.
+   */
+      GuiFont
+! gui_mch_get_font(char_u *name, int giveErrorIfMissing)
+  {
+      XFontStruct	*font;
+  
+***************
+*** 2021,2029 ****
+   * Don't know how to get the actual name, thus use the provided name.
+   */
+      char_u *
+! gui_mch_get_fontname(font, name)
+!     GuiFont font UNUSED;
+!     char_u  *name;
+  {
+      if (name == NULL)
+  	return NULL;
+--- 2013,2019 ----
+   * Don't know how to get the actual name, thus use the provided name.
+   */
+      char_u *
+! gui_mch_get_fontname(GuiFont font UNUSED, char_u *name)
+  {
+      if (name == NULL)
+  	return NULL;
+***************
+*** 2035,2041 ****
+   * Adjust gui.char_height (after 'linespace' was changed).
+   */
+      int
+! gui_mch_adjust_charheight()
+  {
+  #ifdef FEAT_XFONTSET
+      if (gui.fontset != NOFONTSET)
+--- 2025,2031 ----
+   * Adjust gui.char_height (after 'linespace' was changed).
+   */
+      int
+! gui_mch_adjust_charheight(void)
+  {
+  #ifdef FEAT_XFONTSET
+      if (gui.fontset != NOFONTSET)
+***************
+*** 2059,2066 ****
+   * Set the current text font.
+   */
+      void
+! gui_mch_set_font(font)
+!     GuiFont	font;
+  {
+      static Font	prev_font = (Font)-1;
+      Font	fid = ((XFontStruct *)font)->fid;
+--- 2049,2055 ----
+   * Set the current text font.
+   */
+      void
+! gui_mch_set_font(GuiFont font)
+  {
+      static Font	prev_font = (Font)-1;
+      Font	fid = ((XFontStruct *)font)->fid;
+***************
+*** 2083,2090 ****
+   * Adjust the ascent, in case it's different.
+   */
+      void
+! gui_mch_set_fontset(fontset)
+!     GuiFontset	fontset;
+  {
+      current_fontset = (XFontSet)fontset;
+      gui.char_ascent = fontset_ascent(current_fontset) + p_linespace / 2;
+--- 2072,2078 ----
+   * Adjust the ascent, in case it's different.
+   */
+      void
+! gui_mch_set_fontset(GuiFontset fontset)
+  {
+      current_fontset = (XFontSet)fontset;
+      gui.char_ascent = fontset_ascent(current_fontset) + p_linespace / 2;
+***************
+*** 2095,2102 ****
+   * If a font is not going to be used, free its structure.
+   */
+      void
+! gui_mch_free_font(font)
+!     GuiFont	font;
+  {
+      if (font != NOFONT)
+  	XFreeFont(gui.dpy, (XFontStruct *)font);
+--- 2083,2089 ----
+   * If a font is not going to be used, free its structure.
+   */
+      void
+! gui_mch_free_font(GuiFont font)
+  {
+      if (font != NOFONT)
+  	XFreeFont(gui.dpy, (XFontStruct *)font);
+***************
+*** 2107,2114 ****
+   * If a fontset is not going to be used, free its structure.
+   */
+      void
+! gui_mch_free_fontset(fontset)
+!     GuiFontset	fontset;
+  {
+      if (fontset != NOFONTSET)
+  	XFreeFontSet(gui.dpy, (XFontSet)fontset);
+--- 2094,2100 ----
+   * If a fontset is not going to be used, free its structure.
+   */
+      void
+! gui_mch_free_fontset(GuiFontset fontset)
+  {
+      if (fontset != NOFONTSET)
+  	XFreeFontSet(gui.dpy, (XFontSet)fontset);
+***************
+*** 2119,2128 ****
+   * Return a reference to the fontset, or NOFONTSET when failing.
+   */
+      GuiFontset
+! gui_mch_get_fontset(name, giveErrorIfMissing, fixed_width)
+!     char_u	*name;
+!     int		giveErrorIfMissing;
+!     int		fixed_width;
+  {
+      XFontSet	fontset;
+      char	**missing, *def_str;
+--- 2105,2114 ----
+   * Return a reference to the fontset, or NOFONTSET when failing.
+   */
+      GuiFontset
+! gui_mch_get_fontset(
+!     char_u	*name,
+!     int		giveErrorIfMissing,
+!     int		fixed_width)
+  {
+      XFontSet	fontset;
+      char	**missing, *def_str;
+***************
+*** 2165,2172 ****
+   * Check if fontset "fs" is fixed width.
+   */
+      static int
+! check_fontset_sanity(fs)
+!     XFontSet fs;
+  {
+      XFontStruct	**xfs;
+      char	**font_name;
+--- 2151,2157 ----
+   * Check if fontset "fs" is fixed width.
+   */
+      static int
+! check_fontset_sanity(XFontSet fs)
+  {
+      XFontStruct	**xfs;
+      char	**font_name;
+***************
+*** 2216,2230 ****
+  }
+  
+      static int
+! fontset_width(fs)
+!     XFontSet fs;
+  {
+!     return XmbTextEscapement(fs, "Vim", 3) / 3;
+  }
+  
+      int
+! fontset_height(fs)
+!     XFontSet fs;
+  {
+      XFontSetExtents *extents;
+  
+--- 2201,2214 ----
+  }
+  
+      static int
+! fontset_width(XFontSet fs)
+  {
+!  return XmbTextEscapement(fs, "Vim", 3) / 3;
+  }
+  
+      int
+! fontset_height(
+!     XFontSet fs)
+  {
+      XFontSetExtents *extents;
+  
+***************
+*** 2239,2246 ****
+   * characters in all fonts of the fontset.
+   */
+      int
+! fontset_height2(fs)
+!     XFontSet fs;
+  {
+      XFontSetExtents *extents;
+  
+--- 2223,2229 ----
+   * characters in all fonts of the fontset.
+   */
+      int
+! fontset_height2(XFontSet fs)
+  {
+      XFontSetExtents *extents;
+  
+***************
+*** 2262,2269 ****
+  */
+  
+      static int
+! fontset_ascent(fs)
+!     XFontSet fs;
+  {
+      XFontSetExtents *extents;
+  
+--- 2245,2251 ----
+  */
+  
+      static int
+! fontset_ascent(XFontSet fs)
+  {
+      XFontSetExtents *extents;
+  
+***************
+*** 2278,2285 ****
+   * Return INVALCOLOR for error.
+   */
+      guicolor_T
+! gui_mch_get_color(reqname)
+!     char_u *reqname;
+  {
+      int		i;
+      char_u	*name = reqname;
+--- 2260,2266 ----
+   * Return INVALCOLOR for error.
+   */
+      guicolor_T
+! gui_mch_get_color(char_u *reqname)
+  {
+      int		i;
+      char_u	*name = reqname;
+***************
+*** 2382,2390 ****
+   * Return FAIL if not able to find or allocate a color.
+   */
+      static int
+! find_closest_color(colormap, colorPtr)
+!     Colormap	colormap;
+!     XColor	*colorPtr;
+  {
+      double	tmp, distance, closestDistance;
+      int		i, closest, numFound, cmap_size;
+--- 2363,2369 ----
+   * Return FAIL if not able to find or allocate a color.
+   */
+      static int
+! find_closest_color(Colormap colormap, XColor *colorPtr)
+  {
+      double	tmp, distance, closestDistance;
+      int		i, closest, numFound, cmap_size;
+***************
+*** 2452,2459 ****
+   * Set the current text foreground color.
+   */
+      void
+! gui_mch_set_fg_color(color)
+!     guicolor_T	color;
+  {
+      if (color != prev_fg_color)
+      {
+--- 2431,2437 ----
+   * Set the current text foreground color.
+   */
+      void
+! gui_mch_set_fg_color(guicolor_T color)
+  {
+      if (color != prev_fg_color)
+      {
+***************
+*** 2466,2473 ****
+   * Set the current text background color.
+   */
+      void
+! gui_mch_set_bg_color(color)
+!     guicolor_T	color;
+  {
+      if (color != prev_bg_color)
+      {
+--- 2444,2450 ----
+   * Set the current text background color.
+   */
+      void
+! gui_mch_set_bg_color(guicolor_T color)
+  {
+      if (color != prev_bg_color)
+      {
+***************
+*** 2480,2487 ****
+   * Set the current text special color.
+   */
+      void
+! gui_mch_set_sp_color(color)
+!     guicolor_T	color;
+  {
+      prev_sp_color = color;
+  }
+--- 2457,2463 ----
+   * Set the current text special color.
+   */
+      void
+! gui_mch_set_sp_color(guicolor_T color)
+  {
+      prev_sp_color = color;
+  }
+***************
+*** 2490,2496 ****
+   * create a mouse pointer that is blank
+   */
+      static Cursor
+! gui_x11_create_blank_mouse()
+  {
+      Pixmap blank_pixmap = XCreatePixmap(gui.dpy, gui.wid, 1, 1, 1);
+      GC gc = XCreateGC(gui.dpy, blank_pixmap, (unsigned long)0, (XGCValues*)0);
+--- 2466,2472 ----
+   * create a mouse pointer that is blank
+   */
+      static Cursor
+! gui_x11_create_blank_mouse(void)
+  {
+      Pixmap blank_pixmap = XCreatePixmap(gui.dpy, gui.wid, 1, 1, 1);
+      GC gc = XCreateGC(gui.dpy, blank_pixmap, (unsigned long)0, (XGCValues*)0);
+***************
+*** 2504,2513 ****
+   * Draw a curled line at the bottom of the character cell.
+   */
+      static void
+! draw_curl(row, col, cells)
+!     int row;
+!     int col;
+!     int cells;
+  {
+      int			i;
+      int			offset;
+--- 2480,2486 ----
+   * Draw a curled line at the bottom of the character cell.
+   */
+      static void
+! draw_curl(int row, int col, int cells)
+  {
+      int			i;
+      int			offset;
+***************
+*** 2524,2535 ****
+  }
+  
+      void
+! gui_mch_draw_string(row, col, s, len, flags)
+!     int		row;
+!     int		col;
+!     char_u	*s;
+!     int		len;
+!     int		flags;
+  {
+      int			cells = len;
+  #ifdef FEAT_MBYTE
+--- 2497,2508 ----
+  }
+  
+      void
+! gui_mch_draw_string(
+!     int		row,
+!     int		col,
+!     char_u	*s,
+!     int		len,
+!     int		flags)
+  {
+      int			cells = len;
+  #ifdef FEAT_MBYTE
+***************
+*** 2691,2698 ****
+   * Return OK if the key with the termcap name "name" is supported.
+   */
+      int
+! gui_mch_haskey(name)
+!     char_u  *name;
+  {
+      int i;
+  
+--- 2664,2670 ----
+   * Return OK if the key with the termcap name "name" is supported.
+   */
+      int
+! gui_mch_haskey(char_u *name)
+  {
+      int i;
+  
+***************
+*** 2707,2715 ****
+   * Return the text window-id and display.  Only required for X-based GUI's
+   */
+      int
+! gui_get_x11_windis(win, dis)
+!     Window  *win;
+!     Display **dis;
+  {
+      *win = XtWindow(vimShell);
+      *dis = gui.dpy;
+--- 2679,2685 ----
+   * Return the text window-id and display.  Only required for X-based GUI's
+   */
+      int
+! gui_get_x11_windis(Window *win, Display **dis)
+  {
+      *win = XtWindow(vimShell);
+      *dis = gui.dpy;
+***************
+*** 2717,2730 ****
+  }
+  
+      void
+! gui_mch_beep()
+  {
+      XBell(gui.dpy, 0);
+  }
+  
+      void
+! gui_mch_flash(msec)
+!     int		msec;
+  {
+      /* Do a visual beep by reversing the foreground and background colors */
+      XFillRectangle(gui.dpy, gui.wid, gui.invert_gc, 0, 0,
+--- 2687,2699 ----
+  }
+  
+      void
+! gui_mch_beep(void)
+  {
+      XBell(gui.dpy, 0);
+  }
+  
+      void
+! gui_mch_flash(int msec)
+  {
+      /* Do a visual beep by reversing the foreground and background colors */
+      XFillRectangle(gui.dpy, gui.wid, gui.invert_gc, 0, 0,
+***************
+*** 2741,2751 ****
+   * Invert a rectangle from row r, column c, for nr rows and nc columns.
+   */
+      void
+! gui_mch_invert_rectangle(r, c, nr, nc)
+!     int	    r;
+!     int	    c;
+!     int	    nr;
+!     int	    nc;
+  {
+      XFillRectangle(gui.dpy, gui.wid, gui.invert_gc,
+  	FILL_X(c), FILL_Y(r), (nc) * gui.char_width, (nr) * gui.char_height);
+--- 2710,2720 ----
+   * Invert a rectangle from row r, column c, for nr rows and nc columns.
+   */
+      void
+! gui_mch_invert_rectangle(
+!     int	    r,
+!     int	    c,
+!     int	    nr,
+!     int	    nc)
+  {
+      XFillRectangle(gui.dpy, gui.wid, gui.invert_gc,
+  	FILL_X(c), FILL_Y(r), (nc) * gui.char_width, (nr) * gui.char_height);
+***************
+*** 2755,2761 ****
+   * Iconify the GUI window.
+   */
+      void
+! gui_mch_iconify()
+  {
+      XIconifyWindow(gui.dpy, XtWindow(vimShell), DefaultScreen(gui.dpy));
+  }
+--- 2724,2730 ----
+   * Iconify the GUI window.
+   */
+      void
+! gui_mch_iconify(void)
+  {
+      XIconifyWindow(gui.dpy, XtWindow(vimShell), DefaultScreen(gui.dpy));
+  }
+***************
+*** 2765,2771 ****
+   * Bring the Vim window to the foreground.
+   */
+      void
+! gui_mch_set_foreground()
+  {
+      XMapRaised(gui.dpy, XtWindow(vimShell));
+  }
+--- 2734,2740 ----
+   * Bring the Vim window to the foreground.
+   */
+      void
+! gui_mch_set_foreground(void)
+  {
+      XMapRaised(gui.dpy, XtWindow(vimShell));
+  }
+***************
+*** 2775,2782 ****
+   * Draw a cursor without focus.
+   */
+      void
+! gui_mch_draw_hollow_cursor(color)
+!     guicolor_T color;
+  {
+      int		w = 1;
+  
+--- 2744,2750 ----
+   * Draw a cursor without focus.
+   */
+      void
+! gui_mch_draw_hollow_cursor(guicolor_T color)
+  {
+      int		w = 1;
+  
+***************
+*** 2794,2803 ****
+   * color "color".
+   */
+      void
+! gui_mch_draw_part_cursor(w, h, color)
+!     int		w;
+!     int		h;
+!     guicolor_T	color;
+  {
+      gui_mch_set_fg_color(color);
+  
+--- 2762,2768 ----
+   * color "color".
+   */
+      void
+! gui_mch_draw_part_cursor(int w, int h, guicolor_T color)
+  {
+      gui_mch_set_fg_color(color);
+  
+***************
+*** 2818,2824 ****
+   * immediately.
+   */
+      void
+! gui_mch_update()
+  {
+      XtInputMask mask, desired;
+  
+--- 2783,2789 ----
+   * immediately.
+   */
+      void
+! gui_mch_update(void)
+  {
+      XtInputMask mask, desired;
+  
+***************
+*** 2843,2850 ****
+   * or FAIL otherwise.
+   */
+      int
+! gui_mch_wait_for_chars(wtime)
+!     long    wtime;
+  {
+      int		    focus;
+  
+--- 2808,2814 ----
+   * or FAIL otherwise.
+   */
+      int
+! gui_mch_wait_for_chars(long wtime)
+  {
+      int		    focus;
+  
+***************
+*** 2930,2936 ****
+  
+  /* Flush any output to the screen */
+      void
+! gui_mch_flush()
+  {
+      XFlush(gui.dpy);
+  }
+--- 2894,2900 ----
+  
+  /* Flush any output to the screen */
+      void
+! gui_mch_flush(void)
+  {
+      XFlush(gui.dpy);
+  }
+***************
+*** 2940,2950 ****
+   * (row2, col2) inclusive.
+   */
+      void
+! gui_mch_clear_block(row1, col1, row2, col2)
+!     int		row1;
+!     int		col1;
+!     int		row2;
+!     int		col2;
+  {
+      int		x;
+  
+--- 2904,2914 ----
+   * (row2, col2) inclusive.
+   */
+      void
+! gui_mch_clear_block(
+!     int		row1,
+!     int		col1,
+!     int		row2,
+!     int		col2)
+  {
+      int		x;
+  
+***************
+*** 2958,2964 ****
+  }
+  
+      void
+! gui_mch_clear_all()
+  {
+      XClearArea(gui.dpy, gui.wid, 0, 0, 0, 0, False);
+  }
+--- 2922,2928 ----
+  }
+  
+      void
+! gui_mch_clear_all(void)
+  {
+      XClearArea(gui.dpy, gui.wid, 0, 0, 0, 0, False);
+  }
+***************
+*** 2968,2976 ****
+   * text further down within the scroll region.
+   */
+      void
+! gui_mch_delete_lines(row, num_lines)
+!     int	    row;
+!     int	    num_lines;
+  {
+      if (gui.visibility == VisibilityFullyObscured)
+  	return;	    /* Can't see the window */
+--- 2932,2938 ----
+   * text further down within the scroll region.
+   */
+      void
+! gui_mch_delete_lines(int row, int num_lines)
+  {
+      if (gui.visibility == VisibilityFullyObscured)
+  	return;	    /* Can't see the window */
+***************
+*** 2995,3003 ****
+   * following text within the scroll region.
+   */
+      void
+! gui_mch_insert_lines(row, num_lines)
+!     int	    row;
+!     int	    num_lines;
+  {
+      if (gui.visibility == VisibilityFullyObscured)
+  	return;	    /* Can't see the window */
+--- 2957,2963 ----
+   * following text within the scroll region.
+   */
+      void
+! gui_mch_insert_lines(int row, int num_lines)
+  {
+      if (gui.visibility == VisibilityFullyObscured)
+  	return;	    /* Can't see the window */
+***************
+*** 3020,3026 ****
+   * Update the region revealed by scrolling up/down.
+   */
+      static void
+! gui_x11_check_copy_area()
+  {
+      XEvent		    event;
+      XGraphicsExposeEvent    *gevent;
+--- 2980,2986 ----
+   * Update the region revealed by scrolling up/down.
+   */
+      static void
+! gui_x11_check_copy_area(void)
+  {
+      XEvent		    event;
+      XGraphicsExposeEvent    *gevent;
+***************
+*** 3052,3080 ****
+   */
+  
+      void
+! clip_mch_lose_selection(cbd)
+!     VimClipboard	*cbd;
+  {
+      clip_x11_lose_selection(vimShell, cbd);
+  }
+  
+      int
+! clip_mch_own_selection(cbd)
+!     VimClipboard	*cbd;
+  {
+      return clip_x11_own_selection(vimShell, cbd);
+  }
+  
+      void
+! clip_mch_request_selection(cbd)
+!     VimClipboard	*cbd;
+  {
+!     clip_x11_request_selection(vimShell, gui.dpy, cbd);
+  }
+  
+      void
+! clip_mch_set_selection(cbd)
+!     VimClipboard	*cbd;
+  {
+      clip_x11_set_selection(cbd);
+  }
+--- 3012,3037 ----
+   */
+  
+      void
+! clip_mch_lose_selection(VimClipboard *cbd)
+  {
+      clip_x11_lose_selection(vimShell, cbd);
+  }
+  
+      int
+! clip_mch_own_selection(VimClipboard *cbd)
+  {
+      return clip_x11_own_selection(vimShell, cbd);
+  }
+  
+      void
+! clip_mch_request_selection(VimClipboard *cbd)
+  {
+!  clip_x11_request_selection(vimShell, gui.dpy, cbd);
+  }
+  
+      void
+! clip_mch_set_selection(
+!     VimClipboard	*cbd)
+  {
+      clip_x11_set_selection(cbd);
+  }
+***************
+*** 3088,3096 ****
+   * Make a menu either grey or not grey.
+   */
+      void
+! gui_mch_menu_grey(menu, grey)
+!     vimmenu_T	*menu;
+!     int		grey;
+  {
+      if (menu->id != (Widget)0)
+      {
+--- 3045,3051 ----
+   * Make a menu either grey or not grey.
+   */
+      void
+! gui_mch_menu_grey(vimmenu_T *menu, int grey)
+  {
+      if (menu->id != (Widget)0)
+      {
+***************
+*** 3110,3118 ****
+   * Make menu item hidden or not hidden
+   */
+      void
+! gui_mch_menu_hidden(menu, hidden)
+!     vimmenu_T	*menu;
+!     int		hidden;
+  {
+      if (menu->id != (Widget)0)
+      {
+--- 3065,3071 ----
+   * Make menu item hidden or not hidden
+   */
+      void
+! gui_mch_menu_hidden(vimmenu_T *menu, int hidden)
+  {
+      if (menu->id != (Widget)0)
+      {
+***************
+*** 3127,3142 ****
+   * This is called after setting all the menus to grey/hidden or not.
+   */
+      void
+! gui_mch_draw_menubar()
+  {
+      /* Nothing to do in X */
+  }
+  
+      void
+! gui_x11_menu_cb(w, client_data, call_data)
+!     Widget	w UNUSED;
+!     XtPointer	client_data;
+!     XtPointer	call_data UNUSED;
+  {
+      gui_menu_cb((vimmenu_T *)client_data);
+  }
+--- 3080,3095 ----
+   * This is called after setting all the menus to grey/hidden or not.
+   */
+      void
+! gui_mch_draw_menubar(void)
+  {
+      /* Nothing to do in X */
+  }
+  
+      void
+! gui_x11_menu_cb(
+!     Widget	w UNUSED,
+!     XtPointer	client_data,
+!     XtPointer	call_data UNUSED)
+  {
+      gui_menu_cb((vimmenu_T *)client_data);
+  }
+***************
+*** 3150,3160 ****
+   * Should put up a requester!
+   */
+      static void
+! gui_x11_wm_protocol_handler(w, client_data, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	client_data UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      /*
+       * Only deal with Client messages.
+--- 3103,3113 ----
+   * Should put up a requester!
+   */
+      static void
+! gui_x11_wm_protocol_handler(
+!     Widget	w UNUSED,
+!     XtPointer	client_data UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      /*
+       * Only deal with Client messages.
+***************
+*** 3192,3202 ****
+   * Function called when property changed. Check for incoming commands
+   */
+      static void
+! gui_x11_send_event_handler(w, client_data, event, dum)
+!     Widget	w UNUSED;
+!     XtPointer	client_data UNUSED;
+!     XEvent	*event;
+!     Boolean	*dum UNUSED;
+  {
+      XPropertyEvent *e = (XPropertyEvent *) event;
+  
+--- 3145,3155 ----
+   * Function called when property changed. Check for incoming commands
+   */
+      static void
+! gui_x11_send_event_handler(
+!     Widget	w UNUSED,
+!     XtPointer	client_data UNUSED,
+!     XEvent	*event,
+!     Boolean	*dum UNUSED)
+  {
+      XPropertyEvent *e = (XPropertyEvent *) event;
+  
+***************
+*** 3228,3235 ****
+  static XtIntervalId	blink_timer = (XtIntervalId)0;
+  
+      void
+! gui_mch_set_blinking(waittime, on, off)
+!     long    waittime, on, off;
+  {
+      blink_waittime = waittime;
+      blink_ontime = on;
+--- 3181,3187 ----
+  static XtIntervalId	blink_timer = (XtIntervalId)0;
+  
+      void
+! gui_mch_set_blinking(long waittime, on, off)
+  {
+      blink_waittime = waittime;
+      blink_ontime = on;
+***************
+*** 3240,3246 ****
+   * Stop the cursor blinking.  Show the cursor if it wasn't shown.
+   */
+      void
+! gui_mch_stop_blink()
+  {
+      if (blink_timer != (XtIntervalId)0)
+      {
+--- 3192,3198 ----
+   * Stop the cursor blinking.  Show the cursor if it wasn't shown.
+   */
+      void
+! gui_mch_stop_blink(void)
+  {
+      if (blink_timer != (XtIntervalId)0)
+      {
+***************
+*** 3257,3263 ****
+   * waiting time and shows the cursor.
+   */
+      void
+! gui_mch_start_blink()
+  {
+      if (blink_timer != (XtIntervalId)0)
+  	XtRemoveTimeOut(blink_timer);
+--- 3209,3215 ----
+   * waiting time and shows the cursor.
+   */
+      void
+! gui_mch_start_blink(void)
+  {
+      if (blink_timer != (XtIntervalId)0)
+  	XtRemoveTimeOut(blink_timer);
+***************
+*** 3272,3280 ****
+  }
+  
+      static void
+! gui_x11_blink_cb(timed_out, interval_id)
+!     XtPointer	    timed_out UNUSED;
+!     XtIntervalId    *interval_id UNUSED;
+  {
+      if (blink_state == BLINK_ON)
+      {
+--- 3224,3232 ----
+  }
+  
+      static void
+! gui_x11_blink_cb(
+!     XtPointer	    timed_out UNUSED,
+!     XtIntervalId    *interval_id UNUSED)
+  {
+      if (blink_state == BLINK_ON)
+      {
+***************
+*** 3296,3303 ****
+   * Return the RGB value of a pixel as a long.
+   */
+      long_u
+! gui_mch_get_rgb(pixel)
+!     guicolor_T	pixel;
+  {
+      XColor	xc;
+      Colormap	colormap;
+--- 3248,3254 ----
+   * Return the RGB value of a pixel as a long.
+   */
+      long_u
+! gui_mch_get_rgb(guicolor_T pixel)
+  {
+      XColor	xc;
+      Colormap	colormap;
+***************
+*** 3314,3322 ****
+   * Add the callback functions.
+   */
+      void
+! gui_x11_callbacks(textArea, vimForm)
+!     Widget textArea;
+!     Widget vimForm;
+  {
+      XtAddEventHandler(textArea, VisibilityChangeMask, FALSE,
+  	gui_x11_visibility_cb, (XtPointer)0);
+--- 3265,3271 ----
+   * Add the callback functions.
+   */
+      void
+! gui_x11_callbacks(Widget textArea, Widget vimForm)
+  {
+      XtAddEventHandler(textArea, VisibilityChangeMask, FALSE,
+  	gui_x11_visibility_cb, (XtPointer)0);
+***************
+*** 3379,3387 ****
+  }
+  
+      void
+! gui_mch_setmouse(x, y)
+!     int		x;
+!     int		y;
+  {
+      if (gui.wid)
+  	XWarpPointer(gui.dpy, (Window)0, gui.wid, 0, 0, 0, 0, x, y);
+--- 3328,3334 ----
+  }
+  
+      void
+! gui_mch_setmouse(int x, int y)
+  {
+      if (gui.wid)
+  	XWarpPointer(gui.dpy, (Window)0, gui.wid, 0, 0, 0, 0, x, y);
+***************
+*** 3389,3395 ****
+  
+  #if (defined(FEAT_GUI_MOTIF) && defined(FEAT_MENU)) || defined(PROTO)
+      XButtonPressedEvent *
+! gui_x11_get_last_mouse_event()
+  {
+      return &last_mouse_event;
+  }
+--- 3336,3342 ----
+  
+  #if (defined(FEAT_GUI_MOTIF) && defined(FEAT_MENU)) || defined(PROTO)
+      XButtonPressedEvent *
+! gui_x11_get_last_mouse_event(void)
+  {
+      return &last_mouse_event;
+  }
+***************
+*** 3402,3411 ****
+  # define SIGN_WIDTH (gui.char_width * 2)
+  
+      void
+! gui_mch_drawsign(row, col, typenr)
+!     int		row;
+!     int		col;
+!     int		typenr;
+  {
+      XImage	*sign;
+  
+--- 3349,3355 ----
+  # define SIGN_WIDTH (gui.char_width * 2)
+  
+      void
+! gui_mch_drawsign(int row, int col, int typenr)
+  {
+      XImage	*sign;
+  
+***************
+*** 3421,3428 ****
+  }
+  
+      void *
+! gui_mch_register_sign(signfile)
+!     char_u	    *signfile;
+  {
+      XpmAttributes   attrs;
+      XImage	    *sign = NULL;
+--- 3365,3371 ----
+  }
+  
+      void *
+! gui_mch_register_sign(char_u *signfile)
+  {
+      XpmAttributes   attrs;
+      XImage	    *sign = NULL;
+***************
+*** 3462,3469 ****
+  }
+  
+      void
+! gui_mch_destroy_sign(sign)
+!     void *sign;
+  {
+      XDestroyImage((XImage*)sign);
+  }
+--- 3405,3411 ----
+  }
+  
+      void
+! gui_mch_destroy_sign(void *sign)
+  {
+      XDestroyImage((XImage*)sign);
+  }
+***************
+*** 3480,3487 ****
+   * Use the blank mouse pointer or not.
+   */
+      void
+! gui_mch_mousehide(hide)
+!     int		hide;	/* TRUE = use blank ptr, FALSE = use parent ptr */
+  {
+      if (gui.pointer_hidden != hide)
+      {
+--- 3422,3429 ----
+   * Use the blank mouse pointer or not.
+   */
+      void
+! gui_mch_mousehide(
+!     int		hide)	/* TRUE = use blank ptr, FALSE = use parent ptr */
+  {
+      if (gui.pointer_hidden != hide)
+      {
+***************
+*** 3523,3530 ****
+  };
+  
+      void
+! mch_set_mouse_shape(shape)
+!     int	shape;
+  {
+      int	    id;
+  
+--- 3465,3471 ----
+  };
+  
+      void
+! mch_set_mouse_shape(int shape)
+  {
+      int	    id;
+  
+***************
+*** 3560,3567 ****
+   * passing a normal menu item here.  Can't explain that, but better avoid it.
+   */
+      void
+! gui_mch_menu_set_tip(menu)
+!     vimmenu_T	*menu;
+  {
+      if (menu->id != NULL && menu->parent != NULL
+  				       && menu_is_toolbar(menu->parent->name))
+--- 3501,3507 ----
+   * passing a normal menu item here.  Can't explain that, but better avoid it.
+   */
+      void
+! gui_mch_menu_set_tip(vimmenu_T *menu)
+  {
+      if (menu->id != NULL && menu->parent != NULL
+  				       && menu_is_toolbar(menu->parent->name))
+*** ../vim-7.4.1207/src/hangulin.c	2016-01-29 22:36:41.221047732 +0100
+--- src/hangulin.c	2016-01-30 16:48:18.524775104 +0100
+***************
+*** 96,104 ****
+   */
+  
+      static int
+! comfcon3(v, c)
+!     int	v;
+!     int c;
+  {
+      if (v == 2 && c == 2)
+  	return 3;
+--- 96,102 ----
+   */
+  
+      static int
+! comfcon3(int v, int c)
+  {
+      if (v == 2 && c == 2)
+  	return 3;
+***************
+*** 118,126 ****
+   */
+  
+      static int
+! comvow3(v, c)
+!     int v;
+!     int c;
+  {
+      switch (v)
+      {
+--- 116,122 ----
+   */
+  
+      static int
+! comvow3(int v, int c)
+  {
+      switch (v)
+      {
+***************
+*** 159,167 ****
+   */
+  
+      static int
+! comcon3(k, c)
+!     int k;
+!     int c;
+  {
+      switch (k)
+      {
+--- 155,161 ----
+   */
+  
+      static int
+! comcon3(int k, int c)
+  {
+      switch (k)
+      {
+***************
+*** 217,224 ****
+  /**********************************************************************/
+  
+      static int
+! kind_table_for_2(c)
+!     int c;
+  {
+      static char_u table[] =
+      {
+--- 211,217 ----
+  /**********************************************************************/
+  
+      static int
+! kind_table_for_2(int c)
+  {
+      static char_u table[] =
+      {
+***************
+*** 241,248 ****
+   * °á°ú: ÃÊ¼ºÀÌ ¾Æ´Ï¸é 0 (If it is not initial sound, return 0).
+   */
+      static int
+! fcon(c)
+!     int c;
+  {
+      static char_u table[] =
+      {
+--- 234,240 ----
+   * °á°ú: ÃÊ¼ºÀÌ ¾Æ´Ï¸é 0 (If it is not initial sound, return 0).
+   */
+      static int
+! fcon(int c)
+  {
+      static char_u table[] =
+      {
+***************
+*** 266,273 ****
+   * °á°ú: Áß¼ºÀÌ ¾Æ´Ï¸é 0 (If it is not medial vowel, return 0).
+   */
+      static int
+! vow(c)
+!     int c;
+  {
+      static char_u table[] =
+      {
+--- 258,264 ----
+   * °á°ú: Áß¼ºÀÌ ¾Æ´Ï¸é 0 (If it is not medial vowel, return 0).
+   */
+      static int
+! vow(int c)
+  {
+      static char_u table[] =
+      {
+***************
+*** 289,296 ****
+   * °á°ú: ¹ÞÄ§ÀÌ ¾Æ´Ï¸é 0 (If not prop, return 0)
+   */
+      static int
+! lcon(c)
+!     int c;
+  {
+      static char_u table[] =
+      {
+--- 280,286 ----
+   * °á°ú: ¹ÞÄ§ÀÌ ¾Æ´Ï¸é 0 (If not prop, return 0)
+   */
+      static int
+! lcon(int c)
+  {
+      static char_u table[] =
+      {
+***************
+*** 312,320 ****
+   */
+  
+      static int
+! comcon2(k, c)
+!     int k;
+!     int c;
+  {
+      switch (k)
+      {
+--- 302,308 ----
+   */
+  
+      static int
+! comcon2(int k, int c)
+  {
+      switch (k)
+      {
+***************
+*** 369,377 ****
+   */
+  
+      static int
+! comvow2(v, c)
+!     int v;
+!     int c;
+  {
+      switch (v)
+      {
+--- 357,363 ----
+   */
+  
+      static int
+! comvow2(int v, int c)
+  {
+      switch (v)
+      {
+***************
+*** 408,434 ****
+  }
+  
+      int
+! hangul_input_state_get()
+  {
+      return hangul_input_state;
+  }
+  
+      void
+! hangul_input_state_set(state)
+!     int state;
+  {
+      hangul_input_state = state;
+      hangul_input_clear();
+  }
+  
+      int
+! im_get_status()
+  {
+      return hangul_input_state_get();
+  }
+  
+      void
+! hangul_input_state_toggle()
+  {
+      if (hangul_input_state_get())
+      {
+--- 394,419 ----
+  }
+  
+      int
+! hangul_input_state_get(void)
+  {
+      return hangul_input_state;
+  }
+  
+      void
+! hangul_input_state_set(int state)
+  {
+      hangul_input_state = state;
+      hangul_input_clear();
+  }
+  
+      int
+! im_get_status(void)
+  {
+      return hangul_input_state_get();
+  }
+  
+      void
+! hangul_input_state_toggle(void)
+  {
+      if (hangul_input_state_get())
+      {
+***************
+*** 452,460 ****
+  }
+  
+      static int
+! hangul_automata2(buf, c)
+!     char_u  *buf;
+!     int_u   *c;
+  {
+      int t,t2;
+  
+--- 437,443 ----
+  }
+  
+      static int
+! hangul_automata2(char_u *buf, int_u *c)
+  {
+      int t,t2;
+  
+***************
+*** 614,622 ****
+  }
+  
+      static int
+! hangul_automata3(buf, c)
+!     char_u  *buf;
+!     int_u   *c;
+  {
+      int t, t2;
+  
+--- 597,603 ----
+  }
+  
+      static int
+! hangul_automata3(char_u *buf, int_u *c)
+  {
+      int t, t2;
+  
+***************
+*** 725,731 ****
+  }
+  
+      void
+! hangul_keyboard_set()
+  {
+      int	    keyboard;
+      char    *s;
+--- 706,712 ----
+  }
+  
+      void
+! hangul_keyboard_set(void)
+  {
+      int	    keyboard;
+      char    *s;
+***************
+*** 746,754 ****
+  }
+  
+      int
+! hangul_input_process(s, len)
+!     char_u  *s;
+!     int	    len;
+  {
+      int n;
+      unsigned int c;
+--- 727,733 ----
+  }
+  
+      int
+! hangul_input_process(char_u *s, int len)
+  {
+      int n;
+      unsigned int c;
+***************
+*** 831,837 ****
+  }
+  
+      void
+! hangul_input_clear()
+  {
+      sp = 0;
+      f = F_NULL;
+--- 810,816 ----
+  }
+  
+      void
+! hangul_input_clear(void)
+  {
+      sp = 0;
+      f = F_NULL;
+***************
+*** 1503,1513 ****
+  };
+  
+      static void
+! convert_ks_to_3(src, fp, mp, lp)
+!     const char_u    *src;
+!     int		    *fp;
+!     int		    *mp;
+!     int		    *lp;
+  {
+      int h = *src;
+      int low = *(src + 1);
+--- 1482,1492 ----
+  };
+  
+      static void
+! convert_ks_to_3(
+!     const char_u    *src,
+!     int		    *fp,
+!     int		    *mp,
+!     int		    *lp)
+  {
+      int h = *src;
+      int low = *(src + 1);
+***************
+*** 1539,1549 ****
+  }
+  
+      static int
+! convert_3_to_ks(fv, mv, lv, des)
+!     int	    fv;
+!     int	    mv;
+!     int	    lv;
+!     char_u  *des;
+  {
+      char_u key[3];
+      register int hi, lo, mi = 0, result, found;
+--- 1518,1528 ----
+  }
+  
+      static int
+! convert_3_to_ks(
+!     int	    fv,
+!     int	    mv,
+!     int	    lv,
+!     char_u  *des)
+  {
+      char_u key[3];
+      register int hi, lo, mi = 0, result, found;
+***************
+*** 1621,1629 ****
+  }
+  
+      char_u *
+! hangul_string_convert(buf, p_len)
+!     char_u  *buf;
+!     int	    *p_len;
+  {
+      char_u *tmpbuf = NULL;
+      vimconv_T vc;
+--- 1600,1606 ----
+  }
+  
+      char_u *
+! hangul_string_convert(char_u *buf, int *p_len)
+  {
+      char_u *tmpbuf = NULL;
+      vimconv_T vc;
+***************
+*** 1642,1649 ****
+  }
+  
+      char_u *
+! hangul_composing_buffer_get(p_len)
+!     int	    *p_len;
+  {
+      char_u *tmpbuf = NULL;
+  
+--- 1619,1625 ----
+  }
+  
+      char_u *
+! hangul_composing_buffer_get(int *p_len)
+  {
+      char_u *tmpbuf = NULL;
+  
+*** ../vim-7.4.1207/src/hardcopy.c	2016-01-29 22:36:41.225047690 +0100
+--- src/hardcopy.c	2016-01-30 16:51:29.206790644 +0100
+***************
+*** 157,163 ****
+   * Returns an error message or NULL;
+   */
+      char_u *
+! parse_printoptions()
+  {
+      return parse_list_options(p_popt, printer_opts, OPT_PRINT_NUM_OPTIONS);
+  }
+--- 157,163 ----
+   * Returns an error message or NULL;
+   */
+      char_u *
+! parse_printoptions(void)
+  {
+      return parse_list_options(p_popt, printer_opts, OPT_PRINT_NUM_OPTIONS);
+  }
+***************
+*** 168,174 ****
+   * Returns an error message or NULL;
+   */
+      char_u *
+! parse_printmbfont()
+  {
+      return parse_list_options(p_pmfn, mbfont_opts, OPT_MBFONT_NUM_OPTIONS);
+  }
+--- 168,174 ----
+   * Returns an error message or NULL;
+   */
+      char_u *
+! parse_printmbfont(void)
+  {
+      return parse_list_options(p_pmfn, mbfont_opts, OPT_MBFONT_NUM_OPTIONS);
+  }
+***************
+*** 184,193 ****
+   * Only used for the printer at the moment...
+   */
+      static char_u *
+! parse_list_options(option_str, table, table_size)
+!     char_u		*option_str;
+!     option_table_T	*table;
+!     int			table_size;
+  {
+      char_u	*stringp;
+      char_u	*colonp;
+--- 184,193 ----
+   * Only used for the printer at the moment...
+   */
+      static char_u *
+! parse_list_options(
+!     char_u		*option_str,
+!     option_table_T	*table,
+!     int			table_size)
+  {
+      char_u	*stringp;
+      char_u	*colonp;
+***************
+*** 250,257 ****
+   * up well on white paper, so reduce their brightness.
+   */
+      static long_u
+! darken_rgb(rgb)
+!     long_u	rgb;
+  {
+      return	((rgb >> 17) << 16)
+  	    +	(((rgb & 0xff00) >> 9) << 8)
+--- 250,256 ----
+   * up well on white paper, so reduce their brightness.
+   */
+      static long_u
+! darken_rgb(long_u rgb)
+  {
+      return	((rgb >> 17) << 16)
+  	    +	(((rgb & 0xff00) >> 9) << 8)
+***************
+*** 259,266 ****
+  }
+  
+      static long_u
+! prt_get_term_color(colorindex)
+!     int	    colorindex;
+  {
+      /* TODO: Should check for xterm with 88 or 256 colors. */
+      if (t_colors > 8)
+--- 258,264 ----
+  }
+  
+      static long_u
+! prt_get_term_color(int colorindex)
+  {
+      /* TODO: Should check for xterm with 88 or 256 colors. */
+      if (t_colors > 8)
+***************
+*** 269,278 ****
+  }
+  
+      static void
+! prt_get_attr(hl_id, pattr, modec)
+!     int			hl_id;
+!     prt_text_attr_T	*pattr;
+!     int			modec;
+  {
+      int     colorindex;
+      long_u  fg_color;
+--- 267,276 ----
+  }
+  
+      static void
+! prt_get_attr(
+!     int			hl_id,
+!     prt_text_attr_T	*pattr,
+!     int			modec)
+  {
+      int     colorindex;
+      long_u  fg_color;
+***************
+*** 321,328 ****
+  #endif /* FEAT_SYN_HL */
+  
+      static void
+! prt_set_fg(fg)
+!     long_u fg;
+  {
+      if (fg != curr_fg)
+      {
+--- 319,325 ----
+  #endif /* FEAT_SYN_HL */
+  
+      static void
+! prt_set_fg(long_u fg)
+  {
+      if (fg != curr_fg)
+      {
+***************
+*** 332,339 ****
+  }
+  
+      static void
+! prt_set_bg(bg)
+!     long_u bg;
+  {
+      if (bg != curr_bg)
+      {
+--- 329,335 ----
+  }
+  
+      static void
+! prt_set_bg(long_u bg)
+  {
+      if (bg != curr_bg)
+      {
+***************
+*** 343,352 ****
+  }
+  
+      static void
+! prt_set_font(bold, italic, underline)
+!     int		bold;
+!     int		italic;
+!     int		underline;
+  {
+      if (curr_bold != bold
+  	    || curr_italic != italic
+--- 339,345 ----
+  }
+  
+      static void
+! prt_set_font(int bold, int italic, int underline)
+  {
+      if (curr_bold != bold
+  	    || curr_italic != italic
+***************
+*** 363,372 ****
+   * Print the line number in the left margin.
+   */
+      static void
+! prt_line_number(psettings, page_line, lnum)
+!     prt_settings_T *psettings;
+!     int		page_line;
+!     linenr_T	lnum;
+  {
+      int		i;
+      char_u	tbuf[20];
+--- 356,365 ----
+   * Print the line number in the left margin.
+   */
+      static void
+! prt_line_number(
+!     prt_settings_T *psettings,
+!     int		page_line,
+!     linenr_T	lnum)
+  {
+      int		i;
+      char_u	tbuf[20];
+***************
+*** 400,406 ****
+   * Get the currently effective header height.
+   */
+      int
+! prt_header_height()
+  {
+      if (printer_opts[OPT_PRINT_HEADERHEIGHT].present)
+  	return printer_opts[OPT_PRINT_HEADERHEIGHT].number;
+--- 393,399 ----
+   * Get the currently effective header height.
+   */
+      int
+! prt_header_height(void)
+  {
+      if (printer_opts[OPT_PRINT_HEADERHEIGHT].present)
+  	return printer_opts[OPT_PRINT_HEADERHEIGHT].number;
+***************
+*** 411,417 ****
+   * Return TRUE if using a line number for printing.
+   */
+      int
+! prt_use_number()
+  {
+      return (printer_opts[OPT_PRINT_NUMBER].present
+  	    && TOLOWER_ASC(printer_opts[OPT_PRINT_NUMBER].string[0]) == 'y');
+--- 404,410 ----
+   * Return TRUE if using a line number for printing.
+   */
+      int
+! prt_use_number(void)
+  {
+      return (printer_opts[OPT_PRINT_NUMBER].present
+  	    && TOLOWER_ASC(printer_opts[OPT_PRINT_NUMBER].string[0]) == 'y');
+***************
+*** 422,429 ****
+   * Returns PRT_UNIT_NONE if not recognized.
+   */
+      int
+! prt_get_unit(idx)
+!     int		idx;
+  {
+      int		u = PRT_UNIT_NONE;
+      int		i;
+--- 415,421 ----
+   * Returns PRT_UNIT_NONE if not recognized.
+   */
+      int
+! prt_get_unit(int idx)
+  {
+      int		u = PRT_UNIT_NONE;
+      int		i;
+***************
+*** 443,452 ****
+   * Print the page header.
+   */
+      static void
+! prt_header(psettings, pagenum, lnum)
+!     prt_settings_T  *psettings;
+!     int		pagenum;
+!     linenr_T	lnum UNUSED;
+  {
+      int		width = psettings->chars_per_line;
+      int		page_line;
+--- 435,444 ----
+   * Print the page header.
+   */
+      static void
+! prt_header(
+!     prt_settings_T  *psettings,
+!     int		pagenum,
+!     linenr_T	lnum UNUSED)
+  {
+      int		width = psettings->chars_per_line;
+      int		page_line;
+***************
+*** 549,556 ****
+   * Display a print status message.
+   */
+      static void
+! prt_message(s)
+!     char_u	*s;
+  {
+      screen_fill((int)Rows - 1, (int)Rows, 0, (int)Columns, ' ', ' ', 0);
+      screen_puts(s, (int)Rows - 1, 0, hl_attr(HLF_R));
+--- 541,547 ----
+   * Display a print status message.
+   */
+      static void
+! prt_message(char_u *s)
+  {
+      screen_fill((int)Rows - 1, (int)Rows, 0, (int)Columns, ' ', ' ', 0);
+      screen_puts(s, (int)Rows - 1, 0, hl_attr(HLF_R));
+***************
+*** 558,565 ****
+  }
+  
+      void
+! ex_hardcopy(eap)
+!     exarg_T	*eap;
+  {
+      linenr_T		lnum;
+      int			collated_copies, uncollated_copies;
+--- 549,555 ----
+  }
+  
+      void
+! ex_hardcopy(exarg_T *eap)
+  {
+      linenr_T		lnum;
+      int			collated_copies, uncollated_copies;
+***************
+*** 825,834 ****
+   * Return the next column to print, or zero if the line is finished.
+   */
+      static colnr_T
+! hardcopy_line(psettings, page_line, ppos)
+!     prt_settings_T	*psettings;
+!     int			page_line;
+!     prt_pos_T		*ppos;
+  {
+      colnr_T	col;
+      char_u	*line;
+--- 815,824 ----
+   * Return the next column to print, or zero if the line is finished.
+   */
+      static colnr_T
+! hardcopy_line(
+!     prt_settings_T	*psettings,
+!     int			page_line,
+!     prt_pos_T		*ppos)
+  {
+      colnr_T	col;
+      char_u	*line;
+***************
+*** 1458,1466 ****
+  # endif
+  
+      static void
+! prt_write_file_raw_len(buffer, bytes)
+!     char_u	*buffer;
+!     int		bytes;
+  {
+      if (!prt_file_error
+  	    && fwrite(buffer, sizeof(char_u), bytes, prt_ps_fd)
+--- 1448,1454 ----
+  # endif
+  
+      static void
+! prt_write_file_raw_len(char_u *buffer, int bytes)
+  {
+      if (!prt_file_error
+  	    && fwrite(buffer, sizeof(char_u), bytes, prt_ps_fd)
+***************
+*** 1472,1487 ****
+  }
+  
+      static void
+! prt_write_file(buffer)
+!     char_u	*buffer;
+  {
+      prt_write_file_len(buffer, (int)STRLEN(buffer));
+  }
+  
+      static void
+! prt_write_file_len(buffer, bytes)
+!     char_u	*buffer;
+!     int		bytes;
+  {
+  #ifdef EBCDIC
+      ebcdic2ascii(buffer, bytes);
+--- 1460,1472 ----
+  }
+  
+      static void
+! prt_write_file(char_u *buffer)
+  {
+      prt_write_file_len(buffer, (int)STRLEN(buffer));
+  }
+  
+      static void
+! prt_write_file_len(char_u *buffer, int bytes)
+  {
+  #ifdef EBCDIC
+      ebcdic2ascii(buffer, bytes);
+***************
+*** 1493,1500 ****
+   * Write a string.
+   */
+      static void
+! prt_write_string(s)
+!     char	*s;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer), "%s", s);
+      prt_write_file(prt_line_buffer);
+--- 1478,1484 ----
+   * Write a string.
+   */
+      static void
+! prt_write_string(char *s)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer), "%s", s);
+      prt_write_file(prt_line_buffer);
+***************
+*** 1504,1511 ****
+   * Write an int and a space.
+   */
+      static void
+! prt_write_int(i)
+!     int		i;
+  {
+      sprintf((char *)prt_line_buffer, "%d ", i);
+      prt_write_file(prt_line_buffer);
+--- 1488,1494 ----
+   * Write an int and a space.
+   */
+      static void
+! prt_write_int(int i)
+  {
+      sprintf((char *)prt_line_buffer, "%d ", i);
+      prt_write_file(prt_line_buffer);
+***************
+*** 1515,1522 ****
+   * Write a boolean and a space.
+   */
+      static void
+! prt_write_boolean(b)
+!     int		b;
+  {
+      sprintf((char *)prt_line_buffer, "%s ", (b ? "T" : "F"));
+      prt_write_file(prt_line_buffer);
+--- 1498,1504 ----
+   * Write a boolean and a space.
+   */
+      static void
+! prt_write_boolean(int b)
+  {
+      sprintf((char *)prt_line_buffer, "%s ", (b ? "T" : "F"));
+      prt_write_file(prt_line_buffer);
+***************
+*** 1526,1536 ****
+   * Write PostScript to re-encode and define the font.
+   */
+      static void
+! prt_def_font(new_name, encoding, height, font)
+!     char	*new_name;
+!     char	*encoding;
+!     int		height;
+!     char	*font;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  			  "/_%s /VIM-%s /%s ref\n", new_name, encoding, font);
+--- 1508,1518 ----
+   * Write PostScript to re-encode and define the font.
+   */
+      static void
+! prt_def_font(
+!     char	*new_name,
+!     char	*encoding,
+!     int		height,
+!     char	*font)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  			  "/_%s /VIM-%s /%s ref\n", new_name, encoding, font);
+***************
+*** 1551,1560 ****
+   * Write a line to define the CID font.
+   */
+      static void
+! prt_def_cidfont(new_name, height, cidfont)
+!     char	*new_name;
+!     int		height;
+!     char	*cidfont;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  	      "/_%s /%s[/%s] vim_composefont\n", new_name, prt_cmap, cidfont);
+--- 1533,1539 ----
+   * Write a line to define the CID font.
+   */
+      static void
+! prt_def_cidfont(char *new_name, int height, char *cidfont)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  	      "/_%s /%s[/%s] vim_composefont\n", new_name, prt_cmap, cidfont);
+***************
+*** 1568,1576 ****
+   * Write a line to define a duplicate of a CID font
+   */
+      static void
+! prt_dup_cidfont(original_name, new_name)
+!     char	*original_name;
+!     char	*new_name;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  				       "/%s %s d\n", new_name, original_name);
+--- 1547,1553 ----
+   * Write a line to define a duplicate of a CID font
+   */
+      static void
+! prt_dup_cidfont(char *original_name, char *new_name)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  				       "/%s %s d\n", new_name, original_name);
+***************
+*** 1584,1594 ****
+   * is also rounded based on the precision + 1'th fractional digit.
+   */
+      static void
+! prt_real_bits(real, precision, pinteger, pfraction)
+!     double      real;
+!     int		precision;
+!     int		*pinteger;
+!     int		*pfraction;
+  {
+      int     i;
+      int     integer;
+--- 1561,1571 ----
+   * is also rounded based on the precision + 1'th fractional digit.
+   */
+      static void
+! prt_real_bits(
+!     double      real,
+!     int		precision,
+!     int		*pinteger,
+!     int		*pfraction)
+  {
+      int     i;
+      int     integer;
+***************
+*** 1611,1619 ****
+   * what decimal point character to use, but PS always requires a '.'.
+   */
+      static void
+! prt_write_real(val, prec)
+!     double	val;
+!     int		prec;
+  {
+      int     integer;
+      int     fraction;
+--- 1588,1594 ----
+   * what decimal point character to use, but PS always requires a '.'.
+   */
+      static void
+! prt_write_real(double val, int prec)
+  {
+      int     integer;
+      int     fraction;
+***************
+*** 1643,1652 ****
+   * Write a line to define a numeric variable.
+   */
+      static void
+! prt_def_var(name, value, prec)
+!     char	*name;
+!     double	value;
+!     int		prec;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  								"/%s ", name);
+--- 1618,1624 ----
+   * Write a line to define a numeric variable.
+   */
+      static void
+! prt_def_var(char *name, double value, int prec)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  								"/%s ", name);
+***************
+*** 1660,1666 ****
+  #define PRT_PS_FONT_TO_USER(scale, size)    ((size) * ((scale)/1000.0))
+  
+      static void
+! prt_flush_buffer()
+  {
+      if (prt_ps_buffer.ga_len > 0)
+      {
+--- 1632,1638 ----
+  #define PRT_PS_FONT_TO_USER(scale, size)    ((size) * ((scale)/1000.0))
+  
+      static void
+! prt_flush_buffer(void)
+  {
+      if (prt_ps_buffer.ga_len > 0)
+      {
+***************
+*** 1742,1750 ****
+  
+  
+      static void
+! prt_resource_name(filename, cookie)
+!     char_u  *filename;
+!     void    *cookie;
+  {
+      char_u *resource_filename = cookie;
+  
+--- 1714,1720 ----
+  
+  
+      static void
+! prt_resource_name(char_u *filename, void *cookie)
+  {
+      char_u *resource_filename = cookie;
+  
+***************
+*** 1755,1763 ****
+  }
+  
+      static int
+! prt_find_resource(name, resource)
+!     char	*name;
+!     struct prt_ps_resource_S *resource;
+  {
+      char_u	*buffer;
+      int		retval;
+--- 1725,1731 ----
+  }
+  
+      static int
+! prt_find_resource(char *name, struct prt_ps_resource_S *resource)
+  {
+      char_u	*buffer;
+      int		retval;
+***************
+*** 1798,1804 ****
+  static struct prt_resfile_buffer_S prt_resfile;
+  
+      static int
+! prt_resfile_next_line()
+  {
+      int     idx;
+  
+--- 1766,1772 ----
+  static struct prt_resfile_buffer_S prt_resfile;
+  
+      static int
+! prt_resfile_next_line(void)
+  {
+      int     idx;
+  
+***************
+*** 1824,1833 ****
+  }
+  
+      static int
+! prt_resfile_strncmp(offset, string, len)
+!     int     offset;
+!     char    *string;
+!     int     len;
+  {
+      /* Force not equal if string is longer than remainder of line */
+      if (len > (prt_resfile.line_end - (prt_resfile.line_start + offset)))
+--- 1792,1798 ----
+  }
+  
+      static int
+! prt_resfile_strncmp(int offset, char *string, int len)
+  {
+      /* Force not equal if string is longer than remainder of line */
+      if (len > (prt_resfile.line_end - (prt_resfile.line_start + offset)))
+***************
+*** 1838,1845 ****
+  }
+  
+      static int
+! prt_resfile_skip_nonws(offset)
+!     int     offset;
+  {
+      int     idx;
+  
+--- 1803,1809 ----
+  }
+  
+      static int
+! prt_resfile_skip_nonws(int offset)
+  {
+      int     idx;
+  
+***************
+*** 1854,1861 ****
+  }
+  
+      static int
+! prt_resfile_skip_ws(offset)
+!     int     offset;
+  {
+      int     idx;
+  
+--- 1818,1824 ----
+  }
+  
+      static int
+! prt_resfile_skip_ws(int offset)
+  {
+      int     idx;
+  
+***************
+*** 1872,1879 ****
+  /* prt_next_dsc() - returns detail on next DSC comment line found.  Returns true
+   * if a DSC comment is found, else false */
+      static int
+! prt_next_dsc(p_dsc_line)
+!     struct prt_dsc_line_S *p_dsc_line;
+  {
+      int     comment;
+      int     offset;
+--- 1835,1841 ----
+  /* prt_next_dsc() - returns detail on next DSC comment line found.  Returns true
+   * if a DSC comment is found, else false */
+      static int
+! prt_next_dsc(struct prt_dsc_line_S *p_dsc_line)
+  {
+      int     comment;
+      int     offset;
+***************
+*** 1922,1929 ****
+   * PS resource file so the file details can be added to the DSC header comments.
+   */
+      static int
+! prt_open_resource(resource)
+!     struct prt_ps_resource_S *resource;
+  {
+      int		offset;
+      int		seen_all;
+--- 1884,1890 ----
+   * PS resource file so the file details can be added to the DSC header comments.
+   */
+      static int
+! prt_open_resource(struct prt_ps_resource_S *resource)
+  {
+      int		offset;
+      int		seen_all;
+***************
+*** 2048,2056 ****
+  }
+  
+      static int
+! prt_check_resource(resource, version)
+!     struct prt_ps_resource_S *resource;
+!     char_u  *version;
+  {
+      /* Version number m.n should match, the revision number does not matter */
+      if (STRNCMP(resource->version, version, STRLEN(version)))
+--- 2009,2015 ----
+  }
+  
+      static int
+! prt_check_resource(struct prt_ps_resource_S *resource, char_u *version)
+  {
+      /* Version number m.n should match, the revision number does not matter */
+      if (STRNCMP(resource->version, version, STRLEN(version)))
+***************
+*** 2065,2078 ****
+  }
+  
+      static void
+! prt_dsc_start()
+  {
+      prt_write_string("%!PS-Adobe-3.0\n");
+  }
+  
+      static void
+! prt_dsc_noarg(comment)
+!     char	*comment;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  							 "%%%%%s\n", comment);
+--- 2024,2036 ----
+  }
+  
+      static void
+! prt_dsc_start(void)
+  {
+      prt_write_string("%!PS-Adobe-3.0\n");
+  }
+  
+      static void
+! prt_dsc_noarg(char *comment)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  							 "%%%%%s\n", comment);
+***************
+*** 2080,2088 ****
+  }
+  
+      static void
+! prt_dsc_textline(comment, text)
+!     char	*comment;
+!     char	*text;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  					       "%%%%%s: %s\n", comment, text);
+--- 2038,2044 ----
+  }
+  
+      static void
+! prt_dsc_textline(char *comment, char *text)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  					       "%%%%%s: %s\n", comment, text);
+***************
+*** 2090,2098 ****
+  }
+  
+      static void
+! prt_dsc_text(comment, text)
+!     char	*comment;
+!     char	*text;
+  {
+      /* TODO - should scan 'text' for any chars needing escaping! */
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+--- 2046,2052 ----
+  }
+  
+      static void
+! prt_dsc_text(char *comment, char *text)
+  {
+      /* TODO - should scan 'text' for any chars needing escaping! */
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+***************
+*** 2103,2112 ****
+  #define prt_dsc_atend(c)	prt_dsc_text((c), "atend")
+  
+      static void
+! prt_dsc_ints(comment, count, ints)
+!     char	*comment;
+!     int		count;
+!     int		*ints;
+  {
+      int		i;
+  
+--- 2057,2063 ----
+  #define prt_dsc_atend(c)	prt_dsc_text((c), "atend")
+  
+      static void
+! prt_dsc_ints(char *comment, int count, int *ints)
+  {
+      int		i;
+  
+***************
+*** 2124,2133 ****
+  }
+  
+      static void
+! prt_dsc_resources(comment, type, string)
+!     char	*comment;	/* if NULL add to previous */
+!     char	*type;
+!     char	*string;
+  {
+      if (comment != NULL)
+  	vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+--- 2075,2084 ----
+  }
+  
+      static void
+! prt_dsc_resources(
+!     char	*comment,	/* if NULL add to previous */
+!     char	*type,
+!     char	*string)
+  {
+      if (comment != NULL)
+  	vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+***************
+*** 2143,2151 ****
+  }
+  
+      static void
+! prt_dsc_font_resource(resource, ps_font)
+!     char	*resource;
+!     struct prt_ps_font_S *ps_font;
+  {
+      int     i;
+  
+--- 2094,2100 ----
+  }
+  
+      static void
+! prt_dsc_font_resource(char *resource, struct prt_ps_font_S *ps_font)
+  {
+      int     i;
+  
+***************
+*** 2157,2168 ****
+  }
+  
+      static void
+! prt_dsc_requirements(duplex, tumble, collate, color, num_copies)
+!     int		duplex;
+!     int		tumble;
+!     int		collate;
+!     int		color;
+!     int		num_copies;
+  {
+      /* Only output the comment if we need to.
+       * Note: tumble is ignored if we are not duplexing
+--- 2106,2117 ----
+  }
+  
+      static void
+! prt_dsc_requirements(
+!     int		duplex,
+!     int		tumble,
+!     int		collate,
+!     int		color,
+!     int		num_copies)
+  {
+      /* Only output the comment if we need to.
+       * Note: tumble is ignored if we are not duplexing
+***************
+*** 2195,2207 ****
+  }
+  
+      static void
+! prt_dsc_docmedia(paper_name, width, height, weight, colour, type)
+!     char	*paper_name;
+!     double	width;
+!     double	height;
+!     double	weight;
+!     char	*colour;
+!     char	*type;
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  					"%%%%DocumentMedia: %s ", paper_name);
+--- 2144,2156 ----
+  }
+  
+      static void
+! prt_dsc_docmedia(
+!     char	*paper_name,
+!     double	width,
+!     double	height,
+!     double	weight,
+!     char	*colour,
+!     char	*type)
+  {
+      vim_snprintf((char *)prt_line_buffer, sizeof(prt_line_buffer),
+  					"%%%%DocumentMedia: %s ", paper_name);
+***************
+*** 2222,2228 ****
+  }
+  
+      void
+! mch_print_cleanup()
+  {
+  #ifdef FEAT_MBYTE
+      if (prt_out_mbyte)
+--- 2171,2177 ----
+  }
+  
+      void
+! mch_print_cleanup(void)
+  {
+  #ifdef FEAT_MBYTE
+      if (prt_out_mbyte)
+***************
+*** 2261,2270 ****
+  }
+  
+      static float
+! to_device_units(idx, physsize, def_number)
+!     int		idx;
+!     double	physsize;
+!     int		def_number;
+  {
+      float	ret;
+      int		u;
+--- 2210,2216 ----
+  }
+  
+      static float
+! to_device_units(int idx, double physsize, int def_number)
+  {
+      float	ret;
+      int		u;
+***************
+*** 2303,2315 ****
+   * Calculate margins for given width and height from printoptions settings.
+   */
+      static void
+! prt_page_margins(width, height, left, right, top, bottom)
+!     double	width;
+!     double	height;
+!     double	*left;
+!     double	*right;
+!     double	*top;
+!     double	*bottom;
+  {
+      *left   = to_device_units(OPT_PRINT_LEFT, width, 10);
+      *right  = width - to_device_units(OPT_PRINT_RIGHT, width, 5);
+--- 2249,2261 ----
+   * Calculate margins for given width and height from printoptions settings.
+   */
+      static void
+! prt_page_margins(
+!     double	width,
+!     double	height,
+!     double	*left,
+!     double	*right,
+!     double	*top,
+!     double	*bottom)
+  {
+      *left   = to_device_units(OPT_PRINT_LEFT, width, 10);
+      *right  = width - to_device_units(OPT_PRINT_RIGHT, width, 5);
+***************
+*** 2318,2325 ****
+  }
+  
+      static void
+! prt_font_metrics(font_scale)
+!     int		font_scale;
+  {
+      prt_line_height = (float)font_scale;
+      prt_char_width = (float)PRT_PS_FONT_TO_USER(font_scale, prt_ps_font->wx);
+--- 2264,2270 ----
+  }
+  
+      static void
+! prt_font_metrics(int font_scale)
+  {
+      prt_line_height = (float)font_scale;
+      prt_char_width = (float)PRT_PS_FONT_TO_USER(font_scale, prt_ps_font->wx);
+***************
+*** 2327,2333 ****
+  
+  
+      static int
+! prt_get_cpl()
+  {
+      if (prt_use_number())
+      {
+--- 2272,2278 ----
+  
+  
+      static int
+! prt_get_cpl(void)
+  {
+      if (prt_use_number())
+      {
+***************
+*** 2349,2358 ****
+  
+  #ifdef FEAT_MBYTE
+      static int
+! prt_build_cid_fontname(font, name, name_len)
+!     int     font;
+!     char_u  *name;
+!     int     name_len;
+  {
+      char    *fontname;
+  
+--- 2294,2300 ----
+  
+  #ifdef FEAT_MBYTE
+      static int
+! prt_build_cid_fontname(int font, char_u *name, int name_len)
+  {
+      char    *fontname;
+  
+***************
+*** 2370,2376 ****
+   * Get number of lines of text that fit on a page (excluding the header).
+   */
+      static int
+! prt_get_lpp()
+  {
+      int lpp;
+  
+--- 2312,2318 ----
+   * Get number of lines of text that fit on a page (excluding the header).
+   */
+      static int
+! prt_get_lpp(void)
+  {
+      int lpp;
+  
+***************
+*** 2402,2411 ****
+  
+  #ifdef FEAT_MBYTE
+      static int
+! prt_match_encoding(p_encoding, p_cmap, pp_mbenc)
+!     char			*p_encoding;
+!     struct prt_ps_mbfont_S	*p_cmap;
+!     struct prt_ps_encoding_S	**pp_mbenc;
+  {
+      int				mbenc;
+      int				enc_len;
+--- 2344,2353 ----
+  
+  #ifdef FEAT_MBYTE
+      static int
+! prt_match_encoding(
+!     char			*p_encoding,
+!     struct prt_ps_mbfont_S	*p_cmap,
+!     struct prt_ps_encoding_S	**pp_mbenc)
+  {
+      int				mbenc;
+      int				enc_len;
+***************
+*** 2428,2437 ****
+  }
+  
+      static int
+! prt_match_charset(p_charset, p_cmap, pp_mbchar)
+!     char		    *p_charset;
+!     struct prt_ps_mbfont_S  *p_cmap;
+!     struct prt_ps_charset_S **pp_mbchar;
+  {
+      int			    mbchar;
+      int			    char_len;
+--- 2370,2379 ----
+  }
+  
+      static int
+! prt_match_charset(
+!     char		    *p_charset,
+!     struct prt_ps_mbfont_S  *p_cmap,
+!     struct prt_ps_charset_S **pp_mbchar)
+  {
+      int			    mbchar;
+      int			    char_len;
+***************
+*** 2456,2465 ****
+  #endif
+  
+      int
+! mch_print_init(psettings, jobname, forceit)
+!     prt_settings_T *psettings;
+!     char_u	*jobname;
+!     int		forceit UNUSED;
+  {
+      int		i;
+      char	*paper_name;
+--- 2398,2407 ----
+  #endif
+  
+      int
+! mch_print_init(
+!     prt_settings_T *psettings,
+!     char_u	*jobname,
+!     int		forceit UNUSED)
+  {
+      int		i;
+      char	*paper_name;
+***************
+*** 2805,2812 ****
+  }
+  
+      static int
+! prt_add_resource(resource)
+!     struct prt_ps_resource_S *resource;
+  {
+      FILE*	fd_resource;
+      char_u	resource_buffer[512];
+--- 2747,2753 ----
+  }
+  
+      static int
+! prt_add_resource(struct prt_ps_resource_S *resource)
+  {
+      FILE*	fd_resource;
+      char_u	resource_buffer[512];
+***************
+*** 2853,2860 ****
+  }
+  
+      int
+! mch_print_begin(psettings)
+!     prt_settings_T *psettings;
+  {
+      time_t	now;
+      int		bbox[4];
+--- 2794,2800 ----
+  }
+  
+      int
+! mch_print_begin(prt_settings_T *psettings)
+  {
+      time_t	now;
+      int		bbox[4];
+***************
+*** 3295,3302 ****
+  }
+  
+      void
+! mch_print_end(psettings)
+!     prt_settings_T *psettings;
+  {
+      prt_dsc_noarg("Trailer");
+  
+--- 3235,3241 ----
+  }
+  
+      void
+! mch_print_end(prt_settings_T *psettings)
+  {
+      prt_dsc_noarg("Trailer");
+  
+***************
+*** 3333,3339 ****
+  }
+  
+      int
+! mch_print_end_page()
+  {
+      prt_flush_buffer();
+  
+--- 3272,3278 ----
+  }
+  
+      int
+! mch_print_end_page(void)
+  {
+      prt_flush_buffer();
+  
+***************
+*** 3345,3352 ****
+  }
+  
+      int
+! mch_print_begin_page(str)
+!     char_u	*str UNUSED;
+  {
+      int		page_num[2];
+  
+--- 3284,3290 ----
+  }
+  
+      int
+! mch_print_begin_page(char_u *str UNUSED)
+  {
+      int		page_num[2];
+  
+***************
+*** 3387,3393 ****
+  }
+  
+      int
+! mch_print_blank_page()
+  {
+      return (mch_print_begin_page(NULL) ? (mch_print_end_page()) : FALSE);
+  }
+--- 3325,3331 ----
+  }
+  
+      int
+! mch_print_blank_page(void)
+  {
+      return (mch_print_begin_page(NULL) ? (mch_print_end_page()) : FALSE);
+  }
+***************
+*** 3396,3404 ****
+  static float prt_pos_y = 0;
+  
+      void
+! mch_print_start_line(margin, page_line)
+!     int		margin;
+!     int		page_line;
+  {
+      prt_pos_x = prt_left_margin;
+      if (margin)
+--- 3334,3340 ----
+  static float prt_pos_y = 0;
+  
+      void
+! mch_print_start_line(int margin, int page_line)
+  {
+      prt_pos_x = prt_left_margin;
+      if (margin)
+***************
+*** 3415,3423 ****
+  }
+  
+      int
+! mch_print_text_out(p, len)
+!     char_u	*p;
+!     int		len UNUSED;
+  {
+      int		need_break;
+      char_u	ch;
+--- 3351,3357 ----
+  }
+  
+      int
+! mch_print_text_out(char_u *p, int len UNUSED)
+  {
+      int		need_break;
+      char_u	ch;
+***************
+*** 3638,3647 ****
+  }
+  
+      void
+! mch_print_set_font(iBold, iItalic, iUnderline)
+!     int		iBold;
+!     int		iItalic;
+!     int		iUnderline;
+  {
+      int		font = 0;
+  
+--- 3572,3578 ----
+  }
+  
+      void
+! mch_print_set_font(int iBold, int iItalic, int iUnderline)
+  {
+      int		font = 0;
+  
+***************
+*** 3665,3672 ****
+  }
+  
+      void
+! mch_print_set_bg(bgcol)
+!     long_u	bgcol;
+  {
+      prt_bgcol = (int)bgcol;
+      prt_attribute_change = TRUE;
+--- 3596,3602 ----
+  }
+  
+      void
+! mch_print_set_bg(long_u bgcol)
+  {
+      prt_bgcol = (int)bgcol;
+      prt_attribute_change = TRUE;
+***************
+*** 3674,3681 ****
+  }
+  
+      void
+! mch_print_set_fg(fgcol)
+!     long_u	fgcol;
+  {
+      if (fgcol != (long_u)prt_fgcol)
+      {
+--- 3604,3610 ----
+  }
+  
+      void
+! mch_print_set_fg(long_u fgcol)
+  {
+      if (fgcol != (long_u)prt_fgcol)
+      {
+*** ../vim-7.4.1207/src/hashtab.c	2016-01-29 22:36:41.225047690 +0100
+--- src/hashtab.c	2016-01-30 16:52:25.762202110 +0100
+***************
+*** 49,55 ****
+   * Returns NULL when out of memory.
+   */
+      hashtab_T *
+! hash_create()
+  {
+      hashtab_T *ht;
+  
+--- 49,55 ----
+   * Returns NULL when out of memory.
+   */
+      hashtab_T *
+! hash_create(void)
+  {
+      hashtab_T *ht;
+  
+***************
+*** 64,71 ****
+   * Initialize an empty hash table.
+   */
+      void
+! hash_init(ht)
+!     hashtab_T *ht;
+  {
+      /* This zeroes all "ht_" entries and all the "hi_key" in "ht_smallarray". */
+      vim_memset(ht, 0, sizeof(hashtab_T));
+--- 64,70 ----
+   * Initialize an empty hash table.
+   */
+      void
+! hash_init(hashtab_T *ht)
+  {
+      /* This zeroes all "ht_" entries and all the "hi_key" in "ht_smallarray". */
+      vim_memset(ht, 0, sizeof(hashtab_T));
+***************
+*** 78,85 ****
+   * If "ht" is not freed then you should call hash_init() next!
+   */
+      void
+! hash_clear(ht)
+!     hashtab_T *ht;
+  {
+      if (ht->ht_array != ht->ht_smallarray)
+  	vim_free(ht->ht_array);
+--- 77,83 ----
+   * If "ht" is not freed then you should call hash_init() next!
+   */
+      void
+! hash_clear(hashtab_T *ht)
+  {
+      if (ht->ht_array != ht->ht_smallarray)
+  	vim_free(ht->ht_array);
+***************
+*** 91,99 ****
+   * memory to the location of the key (it's always positive).
+   */
+      void
+! hash_clear_all(ht, off)
+!     hashtab_T	*ht;
+!     int		off;
+  {
+      long	todo;
+      hashitem_T	*hi;
+--- 89,95 ----
+   * memory to the location of the key (it's always positive).
+   */
+      void
+! hash_clear_all(hashtab_T *ht, int off)
+  {
+      long	todo;
+      hashitem_T	*hi;
+***************
+*** 119,127 ****
+   * (adding, setting or removing an item)!
+   */
+      hashitem_T *
+! hash_find(ht, key)
+!     hashtab_T	*ht;
+!     char_u	*key;
+  {
+      return hash_lookup(ht, key, hash_hash(key));
+  }
+--- 115,121 ----
+   * (adding, setting or removing an item)!
+   */
+      hashitem_T *
+! hash_find(hashtab_T *ht, char_u *key)
+  {
+      return hash_lookup(ht, key, hash_hash(key));
+  }
+***************
+*** 130,139 ****
+   * Like hash_find(), but caller computes "hash".
+   */
+      hashitem_T *
+! hash_lookup(ht, key, hash)
+!     hashtab_T	*ht;
+!     char_u	*key;
+!     hash_T	hash;
+  {
+      hash_T	perturb;
+      hashitem_T	*freeitem;
+--- 124,130 ----
+   * Like hash_find(), but caller computes "hash".
+   */
+      hashitem_T *
+! hash_lookup(hashtab_T *ht, char_u *key, hash_T hash)
+  {
+      hash_T	perturb;
+      hashitem_T	*freeitem;
+***************
+*** 195,201 ****
+   * Called when exiting.
+   */
+      void
+! hash_debug_results()
+  {
+  #ifdef HT_DEBUG
+      fprintf(stderr, "\r\n\r\n\r\n\r\n");
+--- 186,192 ----
+   * Called when exiting.
+   */
+      void
+! hash_debug_results(void)
+  {
+  #ifdef HT_DEBUG
+      fprintf(stderr, "\r\n\r\n\r\n\r\n");
+***************
+*** 211,219 ****
+   * Returns FAIL when out of memory or the key is already present.
+   */
+      int
+! hash_add(ht, key)
+!     hashtab_T	*ht;
+!     char_u	*key;
+  {
+      hash_T	hash = hash_hash(key);
+      hashitem_T	*hi;
+--- 202,208 ----
+   * Returns FAIL when out of memory or the key is already present.
+   */
+      int
+! hash_add(hashtab_T *ht, char_u *key)
+  {
+      hash_T	hash = hash_hash(key);
+      hashitem_T	*hi;
+***************
+*** 234,244 ****
+   * Returns OK or FAIL (out of memory).
+   */
+      int
+! hash_add_item(ht, hi, key, hash)
+!     hashtab_T	*ht;
+!     hashitem_T	*hi;
+!     char_u	*key;
+!     hash_T	hash;
+  {
+      /* If resizing failed before and it fails again we can't add an item. */
+      if (ht->ht_error && hash_may_resize(ht, 0) == FAIL)
+--- 223,233 ----
+   * Returns OK or FAIL (out of memory).
+   */
+      int
+! hash_add_item(
+!     hashtab_T	*ht,
+!     hashitem_T	*hi,
+!     char_u	*key,
+!     hash_T	hash)
+  {
+      /* If resizing failed before and it fails again we can't add an item. */
+      if (ht->ht_error && hash_may_resize(ht, 0) == FAIL)
+***************
+*** 265,273 ****
+   * "hi" is invalid after this!
+   */
+      void
+! hash_set(hi, key)
+!     hashitem_T	*hi;
+!     char_u	*key;
+  {
+      hi->hi_key = key;
+  }
+--- 254,260 ----
+   * "hi" is invalid after this!
+   */
+      void
+! hash_set(hashitem_T *hi, char_u *key)
+  {
+      hi->hi_key = key;
+  }
+***************
+*** 279,287 ****
+   * The caller must take care of freeing the item itself.
+   */
+      void
+! hash_remove(ht, hi)
+!     hashtab_T	*ht;
+!     hashitem_T	*hi;
+  {
+      --ht->ht_used;
+      hi->hi_key = HI_KEY_REMOVED;
+--- 266,272 ----
+   * The caller must take care of freeing the item itself.
+   */
+      void
+! hash_remove(hashtab_T *ht, hashitem_T *hi)
+  {
+      --ht->ht_used;
+      hi->hi_key = HI_KEY_REMOVED;
+***************
+*** 294,301 ****
+   * Must call hash_unlock() later.
+   */
+      void
+! hash_lock(ht)
+!     hashtab_T	*ht;
+  {
+      ++ht->ht_locked;
+  }
+--- 279,285 ----
+   * Must call hash_unlock() later.
+   */
+      void
+! hash_lock(hashtab_T *ht)
+  {
+      ++ht->ht_locked;
+  }
+***************
+*** 307,315 ****
+   * Must call hash_unlock() later.
+   */
+      void
+! hash_lock_size(ht, size)
+!     hashtab_T	*ht;
+!     int		size;
+  {
+      (void)hash_may_resize(ht, size);
+      ++ht->ht_locked;
+--- 291,297 ----
+   * Must call hash_unlock() later.
+   */
+      void
+! hash_lock_size(hashtab_T *ht, int size)
+  {
+      (void)hash_may_resize(ht, size);
+      ++ht->ht_locked;
+***************
+*** 322,329 ****
+   * This must balance a call to hash_lock().
+   */
+      void
+! hash_unlock(ht)
+!     hashtab_T	*ht;
+  {
+      --ht->ht_locked;
+      (void)hash_may_resize(ht, 0);
+--- 304,310 ----
+   * This must balance a call to hash_lock().
+   */
+      void
+! hash_unlock(hashtab_T *ht)
+  {
+      --ht->ht_locked;
+      (void)hash_may_resize(ht, 0);
+***************
+*** 335,343 ****
+   * Returns OK or FAIL (out of memory).
+   */
+      static int
+! hash_may_resize(ht, minitems)
+!     hashtab_T	*ht;
+!     int		minitems;		/* minimal number of items */
+  {
+      hashitem_T	temparray[HT_INIT_SIZE];
+      hashitem_T	*oldarray, *newarray;
+--- 316,324 ----
+   * Returns OK or FAIL (out of memory).
+   */
+      static int
+! hash_may_resize(
+!     hashtab_T	*ht,
+!     int		minitems)		/* minimal number of items */
+  {
+      hashitem_T	temparray[HT_INIT_SIZE];
+      hashitem_T	*oldarray, *newarray;
+***************
+*** 481,488 ****
+   * lower the percentage the better.
+   */
+      hash_T
+! hash_hash(key)
+!     char_u	*key;
+  {
+      hash_T	hash;
+      char_u	*p;
+--- 462,468 ----
+   * lower the percentage the better.
+   */
+      hash_T
+! hash_hash(char_u *key)
+  {
+      hash_T	hash;
+      char_u	*p;
+*** ../vim-7.4.1207/src/if_cscope.c	2016-01-29 22:36:41.225047690 +0100
+--- src/if_cscope.c	2016-01-30 17:06:31.249412358 +0100
+***************
+*** 83,90 ****
+  };
+  
+      static void
+! cs_usage_msg(x)
+!     csid_e x;
+  {
+      (void)EMSG2(_("E560: Usage: cs[cope] %s"), cs_cmds[(int)x].usage);
+  }
+--- 83,89 ----
+  };
+  
+      static void
+! cs_usage_msg(csid_e x)
+  {
+      (void)EMSG2(_("E560: Usage: cs[cope] %s"), cs_cmds[(int)x].usage);
+  }
+***************
+*** 104,112 ****
+   * expansion.
+   */
+      char_u *
+! get_cscope_name(xp, idx)
+!     expand_T	*xp UNUSED;
+!     int		idx;
+  {
+      int		current_idx;
+      int		i;
+--- 103,109 ----
+   * expansion.
+   */
+      char_u *
+! get_cscope_name(expand_T *xp UNUSED, int idx)
+  {
+      int		current_idx;
+      int		i;
+***************
+*** 167,176 ****
+   * Handle command line completion for :cscope command.
+   */
+      void
+! set_context_in_cscope_cmd(xp, arg, cmdidx)
+!     expand_T	*xp;
+!     char_u	*arg;
+!     cmdidx_T	cmdidx;
+  {
+      char_u	*p;
+  
+--- 164,173 ----
+   * Handle command line completion for :cscope command.
+   */
+      void
+! set_context_in_cscope_cmd(
+!     expand_T	*xp,
+!     char_u	*arg,
+!     cmdidx_T	cmdidx)
+  {
+      char_u	*p;
+  
+***************
+*** 210,218 ****
+   * command function.
+   */
+      static void
+! do_cscope_general(eap, make_split)
+!     exarg_T	*eap;
+!     int		make_split; /* whether to split window */
+  {
+      cscmd_T *cmdp;
+  
+--- 207,215 ----
+   * command function.
+   */
+      static void
+! do_cscope_general(
+!     exarg_T	*eap,
+!     int		make_split) /* whether to split window */
+  {
+      cscmd_T *cmdp;
+  
+***************
+*** 248,255 ****
+   * PUBLIC: do_cscope
+   */
+      void
+! do_cscope(eap)
+!     exarg_T *eap;
+  {
+      do_cscope_general(eap, FALSE);
+  }
+--- 245,251 ----
+   * PUBLIC: do_cscope
+   */
+      void
+! do_cscope(exarg_T *eap)
+  {
+      do_cscope_general(eap, FALSE);
+  }
+***************
+*** 260,267 ****
+   * same as do_cscope, but splits window, too.
+   */
+      void
+! do_scscope(eap)
+!     exarg_T *eap;
+  {
+      do_cscope_general(eap, TRUE);
+  }
+--- 256,262 ----
+   * same as do_cscope, but splits window, too.
+   */
+      void
+! do_scscope(exarg_T *eap)
+  {
+      do_cscope_general(eap, TRUE);
+  }
+***************
+*** 271,278 ****
+   *
+   */
+      void
+! do_cstag(eap)
+!     exarg_T *eap;
+  {
+      int ret = FALSE;
+  
+--- 266,272 ----
+   *
+   */
+      void
+! do_cstag(exarg_T *eap)
+  {
+      int ret = FALSE;
+  
+***************
+*** 354,362 ****
+   * returns TRUE if eof, FALSE otherwise
+   */
+      int
+! cs_fgets(buf, size)
+!     char_u	*buf;
+!     int		size;
+  {
+      char *p;
+  
+--- 348,354 ----
+   * returns TRUE if eof, FALSE otherwise
+   */
+      int
+! cs_fgets(char_u *buf, int size)
+  {
+      char *p;
+  
+***************
+*** 374,380 ****
+   * called only from do_tag(), when popping the tag stack
+   */
+      void
+! cs_free_tags()
+  {
+      cs_manage_matches(NULL, NULL, -1, Free);
+  }
+--- 366,372 ----
+   * called only from do_tag(), when popping the tag stack
+   */
+      void
+! cs_free_tags(void)
+  {
+      cs_manage_matches(NULL, NULL, -1, Free);
+  }
+***************
+*** 386,392 ****
+   * called from do_tag()
+   */
+      void
+! cs_print_tags()
+  {
+      cs_manage_matches(NULL, NULL, -1, Print);
+  }
+--- 378,384 ----
+   * called from do_tag()
+   */
+      void
+! cs_print_tags(void)
+  {
+      cs_manage_matches(NULL, NULL, -1, Print);
+  }
+***************
+*** 421,430 ****
+   */
+  #if defined(FEAT_EVAL) || defined(PROTO)
+      int
+! cs_connection(num, dbpath, ppath)
+!     int num;
+!     char_u *dbpath;
+!     char_u *ppath;
+  {
+      int i;
+  
+--- 413,419 ----
+   */
+  #if defined(FEAT_EVAL) || defined(PROTO)
+      int
+! cs_connection(int num, char_u *dbpath, char_u *ppath)
+  {
+      int i;
+  
+***************
+*** 486,493 ****
+   * MAXPATHL 256
+   */
+      static int
+! cs_add(eap)
+!     exarg_T *eap UNUSED;
+  {
+      char *fname, *ppath, *flags = NULL;
+  
+--- 475,481 ----
+   * MAXPATHL 256
+   */
+      static int
+! cs_add(exarg_T *eap UNUSED)
+  {
+      char *fname, *ppath, *flags = NULL;
+  
+***************
+*** 503,510 ****
+  }
+  
+      static void
+! cs_stat_emsg(fname)
+!     char *fname;
+  {
+      char *stat_emsg = _("E563: stat(%s) error: %d");
+      char *buf = (char *)alloc((unsigned)strlen(stat_emsg) + MAXPATHL + 10);
+--- 491,497 ----
+  }
+  
+      static void
+! cs_stat_emsg(char *fname)
+  {
+      char *stat_emsg = _("E563: stat(%s) error: %d");
+      char *buf = (char *)alloc((unsigned)strlen(stat_emsg) + MAXPATHL + 10);
+***************
+*** 528,537 ****
+   * routine uses a number of goto statements.
+   */
+      static int
+! cs_add_common(arg1, arg2, flags)
+!     char *arg1;	    /* filename - may contain environment variables */
+!     char *arg2;	    /* prepend path - may contain environment variables */
+!     char *flags;
+  {
+      struct stat statbuf;
+      int		ret;
+--- 515,524 ----
+   * routine uses a number of goto statements.
+   */
+      static int
+! cs_add_common(
+!     char *arg1,	    /* filename - may contain environment variables */
+!     char *arg2,	    /* prepend path - may contain environment variables */
+!     char *flags)
+  {
+      struct stat statbuf;
+      int		ret;
+***************
+*** 665,678 ****
+  
+  
+      static int
+! cs_check_for_connections()
+  {
+      return (cs_cnt_connections() > 0);
+  } /* cs_check_for_connections */
+  
+  
+      static int
+! cs_check_for_tags()
+  {
+      return (p_tags[0] != NUL && curbuf->b_p_tags != NULL);
+  } /* cs_check_for_tags */
+--- 652,665 ----
+  
+  
+      static int
+! cs_check_for_connections(void)
+  {
+      return (cs_cnt_connections() > 0);
+  } /* cs_check_for_connections */
+  
+  
+      static int
+! cs_check_for_tags(void)
+  {
+      return (p_tags[0] != NUL && curbuf->b_p_tags != NULL);
+  } /* cs_check_for_tags */
+***************
+*** 684,690 ****
+   * count the number of cscope connections
+   */
+      static int
+! cs_cnt_connections()
+  {
+      short i;
+      short cnt = 0;
+--- 671,677 ----
+   * count the number of cscope connections
+   */
+      static int
+! cs_cnt_connections(void)
+  {
+      short i;
+      short cnt = 0;
+***************
+*** 698,705 ****
+  } /* cs_cnt_connections */
+  
+      static void
+! cs_reading_emsg(idx)
+!     int idx;	/* connection index */
+  {
+      EMSGN(_("E262: error reading cscope connection %ld"), idx);
+  }
+--- 685,692 ----
+  } /* cs_cnt_connections */
+  
+      static void
+! cs_reading_emsg(
+!     int idx)	/* connection index */
+  {
+      EMSGN(_("E262: error reading cscope connection %ld"), idx);
+  }
+***************
+*** 711,718 ****
+   * count the number of matches for a given cscope connection.
+   */
+      static int
+! cs_cnt_matches(idx)
+!     int idx;
+  {
+      char *stok;
+      char *buf;
+--- 698,704 ----
+   * count the number of matches for a given cscope connection.
+   */
+      static int
+! cs_cnt_matches(int idx)
+  {
+      char *stok;
+      char *buf;
+***************
+*** 773,781 ****
+   * Creates the actual cscope command query from what the user entered.
+   */
+      static char *
+! cs_create_cmd(csoption, pattern)
+!     char *csoption;
+!     char *pattern;
+  {
+      char *cmd;
+      short search;
+--- 759,765 ----
+   * Creates the actual cscope command query from what the user entered.
+   */
+      static char *
+! cs_create_cmd(char *csoption, char *pattern)
+  {
+      char *cmd;
+      short search;
+***************
+*** 836,843 ****
+   * the BSD license notice?
+   */
+      static int
+! cs_create_connection(i)
+!     int i;
+  {
+  #ifdef UNIX
+      int		to_cs[2], from_cs[2];
+--- 820,826 ----
+   * the BSD license notice?
+   */
+      static int
+! cs_create_connection(int i)
+  {
+  #ifdef UNIX
+      int		to_cs[2], from_cs[2];
+***************
+*** 1082,1089 ****
+   * returns TRUE if we jump to a tag or abort, FALSE if not.
+   */
+      static int
+! cs_find(eap)
+!     exarg_T *eap;
+  {
+      char *opt, *pat;
+      int i;
+--- 1065,1071 ----
+   * returns TRUE if we jump to a tag or abort, FALSE if not.
+   */
+      static int
+! cs_find(exarg_T *eap)
+  {
+      char *opt, *pat;
+      int i;
+***************
+*** 1126,1138 ****
+   * common code for cscope find, shared by cs_find() and do_cstag()
+   */
+      static int
+! cs_find_common(opt, pat, forceit, verbose, use_ll, cmdline)
+!     char *opt;
+!     char *pat;
+!     int forceit;
+!     int verbose;
+!     int	use_ll UNUSED;
+!     char_u *cmdline UNUSED;
+  {
+      int i;
+      char *cmd;
+--- 1108,1120 ----
+   * common code for cscope find, shared by cs_find() and do_cstag()
+   */
+      static int
+! cs_find_common(
+!     char *opt,
+!     char *pat,
+!     int forceit,
+!     int verbose,
+!     int	use_ll UNUSED,
+!     char_u *cmdline UNUSED)
+  {
+      int i;
+      char *cmd;
+***************
+*** 1344,1351 ****
+   * print help
+   */
+      static int
+! cs_help(eap)
+!     exarg_T *eap UNUSED;
+  {
+      cscmd_T *cmdp = cs_cmds;
+  
+--- 1326,1332 ----
+   * print help
+   */
+      static int
+! cs_help(exarg_T *eap UNUSED)
+  {
+      cscmd_T *cmdp = cs_cmds;
+  
+***************
+*** 1382,1389 ****
+  
+  
+      static void
+! clear_csinfo(i)
+!     int	    i;
+  {
+      csinfo[i].fname  = NULL;
+      csinfo[i].ppath  = NULL;
+--- 1363,1369 ----
+  
+  
+      static void
+! clear_csinfo(int i)
+  {
+      csinfo[i].fname  = NULL;
+      csinfo[i].ppath  = NULL;
+***************
+*** 1408,1414 ****
+  static char *GetWin32Error(void);
+  
+      static char *
+! GetWin32Error()
+  {
+      char *msg = NULL;
+      FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM,
+--- 1388,1394 ----
+  static char *GetWin32Error(void);
+  
+      static char *
+! GetWin32Error(void)
+  {
+      char *msg = NULL;
+      FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM,
+***************
+*** 1430,1440 ****
+   * insert a new cscope database filename into the filelist
+   */
+      static int
+! cs_insert_filelist(fname, ppath, flags, sb)
+!     char *fname;
+!     char *ppath;
+!     char *flags;
+!     struct stat *sb UNUSED;
+  {
+      short	i, j;
+  #ifndef UNIX
+--- 1410,1420 ----
+   * insert a new cscope database filename into the filelist
+   */
+      static int
+! cs_insert_filelist(
+!     char *fname,
+!     char *ppath,
+!     char *flags,
+!     struct stat *sb UNUSED)
+  {
+      short	i, j;
+  #ifndef UNIX
+***************
+*** 1577,1584 ****
+   * find cscope command in command table
+   */
+      static cscmd_T *
+! cs_lookup_cmd(eap)
+!     exarg_T *eap;
+  {
+      cscmd_T *cmdp;
+      char *stok;
+--- 1557,1563 ----
+   * find cscope command in command table
+   */
+      static cscmd_T *
+! cs_lookup_cmd(exarg_T *eap)
+  {
+      cscmd_T *cmdp;
+      char *stok;
+***************
+*** 1609,1616 ****
+   * nuke em
+   */
+      static int
+! cs_kill(eap)
+!     exarg_T *eap UNUSED;
+  {
+      char *stok;
+      short i;
+--- 1588,1594 ----
+   * nuke em
+   */
+      static int
+! cs_kill(exarg_T *eap UNUSED)
+  {
+      char *stok;
+      short i;
+***************
+*** 1667,1675 ****
+   * Actually kills a specific cscope connection.
+   */
+      static void
+! cs_kill_execute(i, cname)
+!     int i;	    /* cscope table index */
+!     char *cname;    /* cscope database name */
+  {
+      if (p_csverbose)
+      {
+--- 1645,1653 ----
+   * Actually kills a specific cscope connection.
+   */
+      static void
+! cs_kill_execute(
+!     int i,	    /* cscope table index */
+!     char *cname)    /* cscope database name */
+  {
+      if (p_csverbose)
+      {
+***************
+*** 1702,1712 ****
+   * characters to comply with ctags formatting.
+   */
+      static char *
+! cs_make_vim_style_matches(fname, slno, search, tagstr)
+!     char *fname;
+!     char *slno;
+!     char *search;
+!     char *tagstr;
+  {
+      /* vim style is ctags:
+       *
+--- 1680,1690 ----
+   * characters to comply with ctags formatting.
+   */
+      static char *
+! cs_make_vim_style_matches(
+!     char *fname,
+!     char *slno,
+!     char *search,
+!     char *tagstr)
+  {
+      /* vim style is ctags:
+       *
+***************
+*** 1762,1772 ****
+   * Print: prints the tags
+   */
+      static char *
+! cs_manage_matches(matches, contexts, totmatches, cmd)
+!     char **matches;
+!     char **contexts;
+!     int totmatches;
+!     mcmd_e cmd;
+  {
+      static char **mp = NULL;
+      static char **cp = NULL;
+--- 1740,1750 ----
+   * Print: prints the tags
+   */
+      static char *
+! cs_manage_matches(
+!     char **matches,
+!     char **contexts,
+!     int totmatches,
+!     mcmd_e cmd)
+  {
+      static char **mp = NULL;
+      static char **cp = NULL;
+***************
+*** 1829,1841 ****
+   * parse cscope output
+   */
+      static char *
+! cs_parse_results(cnumber, buf, bufsize, context, linenumber, search)
+!     int cnumber;
+!     char *buf;
+!     int bufsize;
+!     char **context;
+!     char **linenumber;
+!     char **search;
+  {
+      int ch;
+      char *p;
+--- 1807,1819 ----
+   * parse cscope output
+   */
+      static char *
+! cs_parse_results(
+!     int cnumber,
+!     char *buf,
+!     int bufsize,
+!     char **context,
+!     char **linenumber,
+!     char **search)
+  {
+      int ch;
+      char *p;
+***************
+*** 1892,1900 ****
+   * write cscope find results to file
+   */
+      static void
+! cs_file_results(f, nummatches_a)
+!     FILE *f;
+!     int *nummatches_a;
+  {
+      int i, j;
+      char *buf;
+--- 1870,1876 ----
+   * write cscope find results to file
+   */
+      static void
+! cs_file_results(FILE *f, int *nummatches_a)
+  {
+      int i, j;
+      char *buf;
+***************
+*** 1951,1963 ****
+   * When there are no matches sets "*matches_p" to NULL.
+   */
+      static void
+! cs_fill_results(tagstr, totmatches, nummatches_a, matches_p, cntxts_p, matched)
+!     char *tagstr;
+!     int totmatches;
+!     int *nummatches_a;
+!     char ***matches_p;
+!     char ***cntxts_p;
+!     int *matched;
+  {
+      int i, j;
+      char *buf;
+--- 1927,1939 ----
+   * When there are no matches sets "*matches_p" to NULL.
+   */
+      static void
+! cs_fill_results(
+!     char *tagstr,
+!     int totmatches,
+!     int *nummatches_a,
+!     char ***matches_p,
+!     char ***cntxts_p,
+!     int *matched)
+  {
+      int i, j;
+      char *buf;
+***************
+*** 2031,2038 ****
+  
+  /* get the requested path components */
+      static char *
+! cs_pathcomponents(path)
+!     char	*path;
+  {
+      int		i;
+      char	*s;
+--- 2007,2013 ----
+  
+  /* get the requested path components */
+      static char *
+! cs_pathcomponents(char *path)
+  {
+      int		i;
+      char	*s;
+***************
+*** 2063,2072 ****
+   * called from cs_manage_matches()
+   */
+      static void
+! cs_print_tags_priv(matches, cntxts, num_matches)
+!     char **matches;
+!     char **cntxts;
+!     int num_matches;
+  {
+      char	*buf = NULL;
+      char	*t_buf;
+--- 2038,2044 ----
+   * called from cs_manage_matches()
+   */
+      static void
+! cs_print_tags_priv(char **matches, char **cntxts, int num_matches)
+  {
+      char	*buf = NULL;
+      char	*t_buf;
+***************
+*** 2212,2219 ****
+   * read a cscope prompt (basically, skip over the ">> ")
+   */
+      static int
+! cs_read_prompt(i)
+!     int i;
+  {
+      int		ch;
+      char	*buf = NULL; /* buffer for possible error message from cscope */
+--- 2184,2190 ----
+   * read a cscope prompt (basically, skip over the ">> ")
+   */
+      static int
+! cs_read_prompt(int i)
+  {
+      int		ch;
+      char	*buf = NULL; /* buffer for possible error message from cscope */
+***************
+*** 2312,2320 ****
+   * or not to free the filename.  Called by cs_kill and cs_reset.
+   */
+      static void
+! cs_release_csp(i, freefnpp)
+!     int i;
+!     int freefnpp;
+  {
+      /*
+       * Trying to exit normally (not sure whether it is fit to UNIX cscope
+--- 2283,2289 ----
+   * or not to free the filename.  Called by cs_kill and cs_reset.
+   */
+      static void
+! cs_release_csp(int i, int freefnpp)
+  {
+      /*
+       * Trying to exit normally (not sure whether it is fit to UNIX cscope
+***************
+*** 2441,2448 ****
+   * calls cs_kill on all cscope connections then reinits
+   */
+      static int
+! cs_reset(eap)
+!     exarg_T *eap UNUSED;
+  {
+      char	**dblist = NULL, **pplist = NULL, **fllist = NULL;
+      int	i;
+--- 2410,2416 ----
+   * calls cs_kill on all cscope connections then reinits
+   */
+      static int
+! cs_reset(exarg_T *eap UNUSED)
+  {
+      char	**dblist = NULL, **pplist = NULL, **fllist = NULL;
+      int	i;
+***************
+*** 2514,2522 ****
+   * Contrast this with my development system (Digital Unix), which does.
+   */
+      static char *
+! cs_resolve_file(i, name)
+!     int  i;
+!     char *name;
+  {
+      char	*fullname;
+      int		len;
+--- 2482,2488 ----
+   * Contrast this with my development system (Digital Unix), which does.
+   */
+      static char *
+! cs_resolve_file(int i, char *name)
+  {
+      char	*fullname;
+      int		len;
+***************
+*** 2580,2587 ****
+   * show all cscope connections
+   */
+      static int
+! cs_show(eap)
+!     exarg_T *eap UNUSED;
+  {
+      short i;
+      if (cs_cnt_connections() == 0)
+--- 2546,2552 ----
+   * show all cscope connections
+   */
+      static int
+! cs_show(exarg_T *eap UNUSED)
+  {
+      short i;
+      if (cs_cnt_connections() == 0)
+***************
+*** 2616,2622 ****
+   * Only called when VIM exits to quit any cscope sessions.
+   */
+      void
+! cs_end()
+  {
+      int i;
+  
+--- 2581,2587 ----
+   * Only called when VIM exits to quit any cscope sessions.
+   */
+      void
+! cs_end(void)
+  {
+      int i;
+  
+*** ../vim-7.4.1207/src/if_mzsch.c	2016-01-30 13:28:23.925007165 +0100
+--- src/if_mzsch.c	2016-01-30 17:07:38.860709621 +0100
+***************
+*** 3749,3755 ****
+  }
+  
+      static void
+! make_modules()
+  {
+      int		    i;
+      Scheme_Env	    *mod = NULL;
+--- 3749,3755 ----
+  }
+  
+      static void
+! make_modules(void)
+  {
+      int		    i;
+      Scheme_Env	    *mod = NULL;
+*** ../vim-7.4.1207/src/if_perlsfio.c	2010-05-15 13:04:07.000000000 +0200
+--- src/if_perlsfio.c	2016-01-30 17:08:05.992427626 +0100
+***************
+*** 25,35 ****
+  #define NIL(type)	((type)0)
+  
+      static int
+! sfvimwrite(f, buf, n, disc)
+!     Sfio_t	    *f;		/* stream involved */
+!     char	    *buf;	/* buffer to read from */
+!     int		    n;		/* number of bytes to write */
+!     Sfdisc_t	    *disc;	/* discipline */
+  {
+      char_u *str;
+  
+--- 25,35 ----
+  #define NIL(type)	((type)0)
+  
+      static int
+! sfvimwrite(
+!     Sfio_t	    *f,		/* stream involved */
+!     char	    *buf,	/* buffer to read from */
+!     int		    n,		/* number of bytes to write */
+!     Sfdisc_t	    *disc)	/* discipline */
+  {
+      char_u *str;
+  
+***************
+*** 47,53 ****
+   *  Create Vim discipline
+   */
+      Sfdisc_t *
+! sfdcnewvim()
+  {
+      Sfdisc_t	*disc;
+  
+--- 47,53 ----
+   *  Create Vim discipline
+   */
+      Sfdisc_t *
+! sfdcnewvim(void)
+  {
+      Sfdisc_t	*disc;
+  
+*** ../vim-7.4.1207/src/if_python.c	2016-01-09 14:57:10.504884946 +0100
+--- src/if_python.c	2016-01-30 17:08:28.524193440 +0100
+***************
+*** 861,867 ****
+  #endif
+  
+      void
+! python_end()
+  {
+      static int recurse = 0;
+  
+--- 861,867 ----
+  #endif
+  
+      void
+! python_end(void)
+  {
+      static int recurse = 0;
+  
+***************
+*** 899,905 ****
+  
+  #if (defined(DYNAMIC_PYTHON) && defined(FEAT_PYTHON3)) || defined(PROTO)
+      int
+! python_loaded()
+  {
+      return (hinstPython != 0);
+  }
+--- 899,905 ----
+  
+  #if (defined(DYNAMIC_PYTHON) && defined(FEAT_PYTHON3)) || defined(PROTO)
+      int
+! python_loaded(void)
+  {
+      return (hinstPython != 0);
+  }
+*** ../vim-7.4.1207/src/if_python3.c	2016-01-29 22:36:41.225047690 +0100
+--- src/if_python3.c	2016-01-30 17:08:47.807993017 +0100
+***************
+*** 695,701 ****
+  static void get_py3_exceptions(void);
+  
+      static void
+! get_py3_exceptions()
+  {
+      PyObject *exmod = PyImport_ImportModule("builtins");
+      PyObject *exdict = PyModule_GetDict(exmod);
+--- 695,701 ----
+  static void get_py3_exceptions(void);
+  
+      static void
+! get_py3_exceptions(void)
+  {
+      PyObject *exmod = PyImport_ImportModule("builtins");
+      PyObject *exdict = PyModule_GetDict(exmod);
+***************
+*** 800,806 ****
+   */
+  
+      void
+! python3_end()
+  {
+      static int recurse = 0;
+  
+--- 800,806 ----
+   */
+  
+      void
+! python3_end(void)
+  {
+      static int recurse = 0;
+  
+***************
+*** 830,836 ****
+  
+  #if (defined(DYNAMIC_PYTHON3) && defined(DYNAMIC_PYTHON) && defined(FEAT_PYTHON) && defined(UNIX)) || defined(PROTO)
+      int
+! python3_loaded()
+  {
+      return (hinstPy3 != 0);
+  }
+--- 830,836 ----
+  
+  #if (defined(DYNAMIC_PYTHON3) && defined(DYNAMIC_PYTHON) && defined(FEAT_PYTHON) && defined(UNIX)) || defined(PROTO)
+      int
+! python3_loaded(void)
+  {
+      return (hinstPy3 != 0);
+  }
+*** ../vim-7.4.1207/src/if_ruby.c	2016-01-23 19:45:48.622931332 +0100
+--- src/if_ruby.c	2016-01-30 17:09:28.183573380 +0100
+***************
+*** 625,631 ****
+   * Free ruby.dll
+   */
+      static void
+! end_dynamic_ruby()
+  {
+      if (hinstRuby)
+      {
+--- 625,631 ----
+   * Free ruby.dll
+   */
+      static void
+! end_dynamic_ruby(void)
+  {
+      if (hinstRuby)
+      {
+***************
+*** 674,688 ****
+   * else FALSE.
+   */
+      int
+! ruby_enabled(verbose)
+!     int		verbose;
+  {
+      return ruby_runtime_link_init((char *)p_rubydll, verbose) == OK;
+  }
+  #endif /* defined(DYNAMIC_RUBY) || defined(PROTO) */
+  
+      void
+! ruby_end()
+  {
+  #ifdef DYNAMIC_RUBY
+      end_dynamic_ruby();
+--- 674,687 ----
+   * else FALSE.
+   */
+      int
+! ruby_enabled(int verbose)
+  {
+      return ruby_runtime_link_init((char *)p_rubydll, verbose) == OK;
+  }
+  #endif /* defined(DYNAMIC_RUBY) || defined(PROTO) */
+  
+      void
+! ruby_end(void)
+  {
+  #ifdef DYNAMIC_RUBY
+      end_dynamic_ruby();
+***************
+*** 1115,1126 ****
+      return buf;
+  }
+  
+! static VALUE buffer_s_current()
+  {
+      return buffer_new(curbuf);
+  }
+  
+! static VALUE buffer_s_count()
+  {
+      buf_T *b;
+      int n = 0;
+--- 1114,1125 ----
+      return buf;
+  }
+  
+! static VALUE buffer_s_current(void)
+  {
+      return buffer_new(curbuf);
+  }
+  
+! static VALUE buffer_s_count(void)
+  {
+      buf_T *b;
+      int n = 0;
+***************
+*** 1357,1363 ****
+      return win;
+  }
+  
+! static VALUE window_s_current()
+  {
+      return window_new(curwin);
+  }
+--- 1356,1362 ----
+      return win;
+  }
+  
+! static VALUE window_s_current(void)
+  {
+      return window_new(curwin);
+  }
+***************
+*** 1366,1372 ****
+   * Added line manipulation functions
+   *    SegPhault - 03/07/05
+   */
+! static VALUE line_s_current()
+  {
+      return get_buffer_line(curbuf, curwin->w_cursor.lnum);
+  }
+--- 1365,1371 ----
+   * Added line manipulation functions
+   *    SegPhault - 03/07/05
+   */
+! static VALUE line_s_current(void)
+  {
+      return get_buffer_line(curbuf, curwin->w_cursor.lnum);
+  }
+***************
+*** 1376,1389 ****
+      return set_buffer_line(curbuf, curwin->w_cursor.lnum, str);
+  }
+  
+! static VALUE current_line_number()
+  {
+      return INT2FIX((int)curwin->w_cursor.lnum);
+  }
+  
+  
+  
+! static VALUE window_s_count()
+  {
+  #ifdef FEAT_WINDOWS
+      win_T	*w;
+--- 1375,1388 ----
+      return set_buffer_line(curbuf, curwin->w_cursor.lnum, str);
+  }
+  
+! static VALUE current_line_number(void)
+  {
+      return INT2FIX((int)curwin->w_cursor.lnum);
+  }
+  
+  
+  
+! static VALUE window_s_count(void)
+  {
+  #ifdef FEAT_WINDOWS
+      win_T	*w;
+*** ../vim-7.4.1207/src/if_sniff.c	2016-01-29 22:36:41.225047690 +0100
+--- src/if_sniff.c	2016-01-30 17:10:30.790922692 +0100
+***************
+*** 404,410 ****
+   * to process the waiting sniff requests
+   */
+      void
+! ProcessSniffRequests()
+  {
+      static char buf[MAX_REQUEST_LEN];
+      int len;
+--- 404,410 ----
+   * to process the waiting sniff requests
+   */
+      void
+! ProcessSniffRequests(void)
+  {
+      static char buf[MAX_REQUEST_LEN];
+      int len;
+***************
+*** 433,440 ****
+  }
+  
+      static struct sn_cmd *
+! find_sniff_cmd(cmd)
+!     char *cmd;
+  {
+      struct sn_cmd *sniff_cmd = NULL;
+      int i;
+--- 433,439 ----
+  }
+  
+      static struct sn_cmd *
+! find_sniff_cmd(char *cmd)
+  {
+      struct sn_cmd *sniff_cmd = NULL;
+      int i;
+***************
+*** 463,472 ****
+  }
+  
+      static int
+! add_sniff_cmd(cmd, def, msg)
+!     char *cmd;
+!     char *def;
+!     char *msg;
+  {
+      int rc = 0;
+      if (def != NULL && def[0] != NUL && find_sniff_cmd(cmd) == NULL)
+--- 462,468 ----
+  }
+  
+      static int
+! add_sniff_cmd(char *cmd, char *def, char *msg)
+  {
+      int rc = 0;
+      if (def != NULL && def[0] != NUL && find_sniff_cmd(cmd) == NULL)
+***************
+*** 526,533 ****
+   * Handle ":sniff" command
+   */
+      void
+! ex_sniff(eap)
+!     exarg_T	*eap;
+  {
+      char_u	*arg = eap->arg;
+      char_u *symbol = NULL;
+--- 522,528 ----
+   * Handle ":sniff" command
+   */
+      void
+! ex_sniff(exarg_T *eap)
+  {
+      char_u	*arg = eap->arg;
+      char_u *symbol = NULL;
+***************
+*** 593,599 ****
+  
+  
+      static void
+! sniff_connect()
+  {
+      if (sniff_connected)
+  	return;
+--- 588,594 ----
+  
+  
+      static void
+! sniff_connect(void)
+  {
+      if (sniff_connected)
+  	return;
+***************
+*** 609,616 ****
+  }
+  
+      void
+! sniff_disconnect(immediately)
+!     int immediately;
+  {
+      if (!sniff_connected)
+  	return;
+--- 604,610 ----
+  }
+  
+      void
+! sniff_disconnect(int immediately)
+  {
+      if (!sniff_connected)
+  	return;
+***************
+*** 674,680 ****
+   * Connect to Sniff: returns 1 on error
+   */
+      static int
+! ConnectToSniffEmacs()
+  {
+  #ifdef WIN32		/* Windows Version of the Code */
+      HANDLE ToSniffEmacs[2], FromSniffEmacs[2];
+--- 668,674 ----
+   * Connect to Sniff: returns 1 on error
+   */
+      static int
+! ConnectToSniffEmacs(void)
+  {
+  #ifdef WIN32		/* Windows Version of the Code */
+      HANDLE ToSniffEmacs[2], FromSniffEmacs[2];
+***************
+*** 773,780 ****
+   * Handle one request from SNiFF+
+   */
+      static void
+! HandleSniffRequest(buffer)
+!     char *buffer;
+  {
+      char VICommand[MAX_REQUEST_LEN];
+      char command;
+--- 767,773 ----
+   * Handle one request from SNiFF+
+   */
+      static void
+! HandleSniffRequest(char *buffer)
+  {
+      char VICommand[MAX_REQUEST_LEN];
+      char command;
+***************
+*** 942,951 ****
+   *	   <0 on error
+   */
+      static int
+! get_request(fd, buf, maxlen)
+!     int		fd;
+!     char	*buf;
+!     int		maxlen;
+  {
+      static char	inbuf[1024];
+      static int	pos = 0, bytes = 0;
+--- 935,941 ----
+   *	   <0 on error
+   */
+      static int
+! get_request(int fd, char *buf, int maxlen)
+  {
+      static char	inbuf[1024];
+      static int	pos = 0, bytes = 0;
+***************
+*** 997,1005 ****
+  
+  
+      static void
+! SendRequest(command, symbol)
+!     struct sn_cmd *command;
+!     char *symbol;
+  {
+      int		cmd_type = command->cmd_type;
+      static char cmdstr[MAX_REQUEST_LEN];
+--- 987,993 ----
+  
+  
+      static void
+! SendRequest(struct sn_cmd *command, char *symbol)
+  {
+      int		cmd_type = command->cmd_type;
+      static char cmdstr[MAX_REQUEST_LEN];
+***************
+*** 1074,1081 ****
+  
+  
+      static void
+! WriteToSniff(str)
+!     char *str;
+  {
+      int bytes;
+  #ifdef WIN32
+--- 1062,1068 ----
+  
+  
+      static void
+! WriteToSniff(char *str)
+  {
+      int bytes;
+  #ifdef WIN32
+***************
+*** 1097,1120 ****
+  /*-------- vim helping functions --------------------------------*/
+  
+      static void
+! vi_msg(str)
+!     char *str;
+  {
+      if (str != NULL && *str != NUL)
+  	MSG((char_u *)str);
+  }
+  
+      static void
+! vi_error_msg(str)
+!     char *str;
+  {
+      if (str != NULL && *str != NUL)
+  	EMSG((char_u *)str);
+  }
+  
+      static void
+! vi_open_file(fname)
+!     char *fname;
+  {
+      ++no_wait_return;
+      do_ecmd(0, (char_u *)fname, NULL, NULL, ECMD_ONE, ECMD_HIDE+ECMD_OLDBUF,
+--- 1084,1104 ----
+  /*-------- vim helping functions --------------------------------*/
+  
+      static void
+! vi_msg(char *str)
+  {
+      if (str != NULL && *str != NUL)
+  	MSG((char_u *)str);
+  }
+  
+      static void
+! vi_error_msg(char *str)
+  {
+      if (str != NULL && *str != NUL)
+  	EMSG((char_u *)str);
+  }
+  
+      static void
+! vi_open_file(char *fname)
+  {
+      ++no_wait_return;
+      do_ecmd(0, (char_u *)fname, NULL, NULL, ECMD_ONE, ECMD_HIDE+ECMD_OLDBUF,
+***************
+*** 1124,1131 ****
+  }
+  
+      static buf_T *
+! vi_find_buffer(fname)
+!     char *fname;
+  {			    /* derived from buflist_findname() [buffer.c] */
+      buf_T	*buf;
+  
+--- 1108,1114 ----
+  }
+  
+      static buf_T *
+! vi_find_buffer(char *fname)
+  {			    /* derived from buflist_findname() [buffer.c] */
+      buf_T	*buf;
+  
+***************
+*** 1137,1143 ****
+  
+  
+      static char *
+! vi_symbol_under_cursor()
+  {
+      int		len;
+      char	*symbolp;
+--- 1120,1126 ----
+  
+  
+      static char *
+! vi_symbol_under_cursor(void)
+  {
+      int		len;
+      char	*symbolp;
+***************
+*** 1156,1169 ****
+  
+  
+      static char *
+! vi_buffer_name()
+  {
+      return (char *)curbuf->b_sfname;
+  }
+  
+      static void
+! vi_exec_cmd(vicmd)
+!     char *vicmd;
+  {
+      do_cmdline_cmd((char_u *)vicmd);  /* [ex_docmd.c] */
+  }
+--- 1139,1151 ----
+  
+  
+      static char *
+! vi_buffer_name(void)
+  {
+      return (char *)curbuf->b_sfname;
+  }
+  
+      static void
+! vi_exec_cmd(char *vicmd)
+  {
+      do_cmdline_cmd((char_u *)vicmd);  /* [ex_docmd.c] */
+  }
+***************
+*** 1173,1180 ****
+   * derived from cursor_pos_info() [buffer.c]
+   */
+      static void
+! vi_set_cursor_pos(char_pos)
+!     long char_pos;
+  {
+      linenr_T	lnum;
+      long	char_count = 1;  /* first position = 1 */
+--- 1155,1161 ----
+   * derived from cursor_pos_info() [buffer.c]
+   */
+      static void
+! vi_set_cursor_pos(long char_pos)
+  {
+      linenr_T	lnum;
+      long	char_count = 1;  /* first position = 1 */
+***************
+*** 1200,1206 ****
+  }
+  
+      static long
+! vi_cursor_pos()
+  {
+      linenr_T	lnum;
+      long	char_count=1;  /* sniff starts with pos 1 */
+--- 1181,1187 ----
+  }
+  
+      static long
+! vi_cursor_pos(void)
+  {
+      linenr_T	lnum;
+      long	char_count=1;  /* sniff starts with pos 1 */
+*** ../vim-7.4.1207/src/if_tcl.c	2016-01-27 11:07:43.548848276 +0100
+--- src/if_tcl.c	2016-01-30 17:17:49.302369600 +0100
+***************
+*** 237,244 ****
+  #endif
+  
+      void
+! vim_tcl_init(arg)
+!     char	*arg;
+  {
+  #ifndef DYNAMIC_TCL
+      Tcl_FindExecutable(arg);
+--- 237,243 ----
+  #endif
+  
+      void
+! vim_tcl_init(char *arg)
+  {
+  #ifndef DYNAMIC_TCL
+      Tcl_FindExecutable(arg);
+***************
+*** 255,262 ****
+   * Return TRUE if the TCL interface can be used.
+   */
+      int
+! tcl_enabled(verbose)
+!     int		verbose;
+  {
+      if (!stubs_initialized && find_executable_arg != NULL
+  	    && tcl_runtime_link_init((char *)p_tcldll, verbose) == OK)
+--- 254,260 ----
+   * Return TRUE if the TCL interface can be used.
+   */
+      int
+! tcl_enabled(int verbose)
+  {
+      if (!stubs_initialized && find_executable_arg != NULL
+  	    && tcl_runtime_link_init((char *)p_tcldll, verbose) == OK)
+***************
+*** 280,286 ****
+  #endif
+  
+      void
+! tcl_end()
+  {
+  #ifdef DYNAMIC_TCL
+      if (hTclLib)
+--- 278,284 ----
+  #endif
+  
+      void
+! tcl_end(void)
+  {
+  #ifdef DYNAMIC_TCL
+      if (hTclLib)
+***************
+*** 310,320 ****
+   * useless for this routine to return the exit code via Tcl_SetResult().
+   */
+      static int
+! exitcmd(dummy, interp, objc, objv)
+!     ClientData dummy UNUSED;
+!     Tcl_Interp *interp;
+!     int objc;
+!     Tcl_Obj *CONST objv[];
+  {
+      int value = 0;
+  
+--- 308,318 ----
+   * useless for this routine to return the exit code via Tcl_SetResult().
+   */
+      static int
+! exitcmd(
+!     ClientData dummy UNUSED,
+!     Tcl_Interp *interp,
+!     int objc,
+!     Tcl_Obj *CONST objv[])
+  {
+      int value = 0;
+  
+***************
+*** 339,349 ****
+   *  "::vim::beep" - what Vi[m] does best :-)
+   */
+      static int
+! beepcmd(dummy, interp, objc, objv)
+!     ClientData dummy UNUSED;
+!     Tcl_Interp *interp;
+!     int objc;
+!     Tcl_Obj *CONST objv[];
+  {
+      if (objc != 1)
+      {
+--- 337,347 ----
+   *  "::vim::beep" - what Vi[m] does best :-)
+   */
+      static int
+! beepcmd(
+!     ClientData dummy UNUSED,
+!     Tcl_Interp *interp,
+!     int objc,
+!     Tcl_Obj *CONST objv[])
+  {
+      if (objc != 1)
+      {
+***************
+*** 361,371 ****
+   *  "::vim::buffer new" - create a new buffer (not implemented)
+   */
+      static int
+! buffercmd(dummy, interp, objc, objv)
+!     ClientData dummy UNUSED;
+!     Tcl_Interp *interp;
+!     int objc;
+!     Tcl_Obj *CONST objv[];
+  {
+      char	*name;
+      buf_T	*buf;
+--- 359,369 ----
+   *  "::vim::buffer new" - create a new buffer (not implemented)
+   */
+      static int
+! buffercmd(
+!     ClientData dummy UNUSED,
+!     Tcl_Interp *interp,
+!     int objc,
+!     Tcl_Obj *CONST objv[])
+  {
+      char	*name;
+      buf_T	*buf;
+***************
+*** 457,467 ****
+   * "::vim::window list" - create list of window commands.
+   */
+      static int
+! windowcmd(dummy, interp, objc, objv)
+!     ClientData	dummy UNUSED;
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+  {
+      char	*what, *string;
+      win_T	*win;
+--- 455,465 ----
+   * "::vim::window list" - create list of window commands.
+   */
+      static int
+! windowcmd(
+!     ClientData	dummy UNUSED,
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[])
+  {
+      char	*what, *string;
+      win_T	*win;
+***************
+*** 498,508 ****
+   * This function implements the buffer commands.
+   */
+      static int
+! bufselfcmd(ref, interp, objc, objv)
+!     ClientData	ref;
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+  {
+      int		opt, err, idx, flags;
+      int		val1, val2, n, i;
+--- 496,506 ----
+   * This function implements the buffer commands.
+   */
+      static int
+! bufselfcmd(
+!     ClientData	ref,
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[])
+  {
+      int		opt, err, idx, flags;
+      int		val1, val2, n, i;
+***************
+*** 937,947 ****
+   * This function implements the window commands.
+   */
+      static int
+! winselfcmd(ref, interp, objc, objv)
+!     ClientData	ref;
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+  {
+      int		err, idx, flags;
+      int		val1, val2;
+--- 935,945 ----
+   * This function implements the window commands.
+   */
+      static int
+! winselfcmd(
+!     ClientData	ref,
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[])
+  {
+      int		err, idx, flags;
+      int		val1, val2;
+***************
+*** 1111,1121 ****
+  
+  
+      static int
+! commandcmd(dummy, interp, objc, objv)
+!     ClientData	dummy UNUSED;
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+  {
+      int		err;
+  
+--- 1109,1119 ----
+  
+  
+      static int
+! commandcmd(
+!     ClientData	dummy UNUSED,
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[])
+  {
+      int		err;
+  
+***************
+*** 1125,1135 ****
+  }
+  
+      static int
+! optioncmd(dummy, interp, objc, objv)
+!     ClientData	dummy UNUSED;
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+  {
+      int		err;
+  
+--- 1123,1133 ----
+  }
+  
+      static int
+! optioncmd(
+!     ClientData	dummy UNUSED,
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[])
+  {
+      int		err;
+  
+***************
+*** 1139,1149 ****
+  }
+  
+      static int
+! exprcmd(dummy, interp, objc, objv)
+!     ClientData	dummy UNUSED;
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+  {
+      return tclvimexpr(interp, objc, objv, 1);
+  }
+--- 1137,1147 ----
+  }
+  
+      static int
+! exprcmd(
+!     ClientData	dummy UNUSED,
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[])
+  {
+      return tclvimexpr(interp, objc, objv, 1);
+  }
+***************
+*** 1156,1166 ****
+   * Get a line number from 'obj' and convert it to vim's range.
+   */
+      static int
+! tclgetlinenum(interp, obj, valueP, buf)
+!     Tcl_Interp	*interp;
+!     Tcl_Obj	*obj;
+!     int		*valueP;
+!     buf_T	*buf;
+  {
+      int err, i;
+  
+--- 1154,1164 ----
+   * Get a line number from 'obj' and convert it to vim's range.
+   */
+      static int
+! tclgetlinenum(
+!     Tcl_Interp	*interp,
+!     Tcl_Obj	*obj,
+!     int		*valueP,
+!     buf_T	*buf)
+  {
+      int err, i;
+  
+***************
+*** 1209,1216 ****
+   * Find the first window in the window list that displays the buffer.
+   */
+      static win_T *
+! tclfindwin(buf)
+!     buf_T *buf;
+  {
+      win_T *win;
+  
+--- 1207,1213 ----
+   * Find the first window in the window list that displays the buffer.
+   */
+      static win_T *
+! tclfindwin(buf_T *buf)
+  {
+      win_T *win;
+  
+***************
+*** 1226,1236 ****
+   * Do-it-all function for "::vim::command", "$buf command" and "$win command".
+   */
+      static int
+! tcldoexcommand(interp, objc, objv, objn)
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+!     int		objn;
+  {
+      tcl_info	saveinfo;
+      int		err, flag, nobjs;
+--- 1223,1233 ----
+   * Do-it-all function for "::vim::command", "$buf command" and "$win command".
+   */
+      static int
+! tcldoexcommand(
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[],
+!     int		objn)
+  {
+      tcl_info	saveinfo;
+      int		err, flag, nobjs;
+***************
+*** 1284,1294 ****
+   * Do-it-all function for "::vim::option", "$buf option" and "$win option".
+   */
+      static int
+! tclsetoption(interp, objc, objv, objn)
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+!     int		objn;
+  {
+      int		err, nobjs, idx;
+      char_u	*option;
+--- 1281,1291 ----
+   * Do-it-all function for "::vim::option", "$buf option" and "$win option".
+   */
+      static int
+! tclsetoption(
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[],
+!     int		objn)
+  {
+      int		err, nobjs, idx;
+      char_u	*option;
+***************
+*** 1365,1375 ****
+   * Do-it-all function for "::vim::expr", "$buf expr" and "$win expr".
+   */
+      static int
+! tclvimexpr(interp, objc, objv, objn)
+!     Tcl_Interp	*interp;
+!     int		objc;
+!     Tcl_Obj	*CONST objv[];
+!     int		objn;
+  {
+  #ifdef FEAT_EVAL
+      char	*expr, *str;
+--- 1362,1372 ----
+   * Do-it-all function for "::vim::expr", "$buf expr" and "$win expr".
+   */
+      static int
+! tclvimexpr(
+!     Tcl_Interp	*interp,
+!     int		objc,
+!     Tcl_Obj	*CONST objv[],
+!     int		objn)
+  {
+  #ifdef FEAT_EVAL
+      char	*expr, *str;
+***************
+*** 1402,1409 ****
+   * Check for internal vim errors.
+   */
+      static int
+! vimerror(interp)
+!     Tcl_Interp *interp;
+  {
+      if (got_int)
+      {
+--- 1399,1405 ----
+   * Check for internal vim errors.
+   */
+      static int
+! vimerror(Tcl_Interp *interp)
+  {
+      if (got_int)
+      {
+***************
+*** 1427,1434 ****
+   *   tclsetdelcmd() - add Tcl callback command to a vim object
+   */
+      static void
+! delref(cref)
+!     ClientData cref;
+  {
+      struct ref *ref = (struct ref *)cref;
+  
+--- 1423,1429 ----
+   *   tclsetdelcmd() - add Tcl callback command to a vim object
+   */
+      static void
+! delref(ClientData cref)
+  {
+      struct ref *ref = (struct ref *)cref;
+  
+***************
+*** 1441,1453 ****
+  }
+  
+      static char *
+! tclgetref(interp, refstartP, prefix, vimobj, proc)
+!     Tcl_Interp	*interp;
+!     void	**refstartP;	/* ptr to w_tcl_ref/b_tcl-ref member of
+  				   win_T/buf_T struct */
+!     char	*prefix;	/* "win" or "buf" */
+!     void	*vimobj;	/* win_T* or buf_T* */
+!     Tcl_ObjCmdProc *proc;	/* winselfcmd or bufselfcmd */
+  {
+      struct ref *ref, *unused = NULL;
+      static char name[VARNAME_SIZE];
+--- 1436,1448 ----
+  }
+  
+      static char *
+! tclgetref(
+!     Tcl_Interp	*interp,
+!     void	**refstartP,	/* ptr to w_tcl_ref/b_tcl-ref member of
+  				   win_T/buf_T struct */
+!     char	*prefix,	/* "win" or "buf" */
+!     void	*vimobj,	/* win_T* or buf_T* */
+!     Tcl_ObjCmdProc *proc)	/* winselfcmd or bufselfcmd */
+  {
+      struct ref *ref, *unused = NULL;
+      static char name[VARNAME_SIZE];
+***************
+*** 1501,1527 ****
+  }
+  
+      static char *
+! tclgetwindow(interp, win)
+!     Tcl_Interp	*interp;
+!     win_T	*win;
+  {
+      return tclgetref(interp, &(win->w_tcl_ref), "win", (void *)win, winselfcmd);
+  }
+  
+      static char *
+! tclgetbuffer(interp, buf)
+!     Tcl_Interp	*interp;
+!     buf_T	*buf;
+  {
+      return tclgetref(interp, &(buf->b_tcl_ref), "buf", (void *)buf, bufselfcmd);
+  }
+  
+      static int
+! tclsetdelcmd(interp, reflist, vimobj, delcmd)
+!     Tcl_Interp	*interp;
+!     struct ref	*reflist;
+!     void	*vimobj;
+!     Tcl_Obj	*delcmd;
+  {
+      if (reflist == &refsdeleted)
+      {
+--- 1496,1518 ----
+  }
+  
+      static char *
+! tclgetwindow(Tcl_Interp *interp, win_T *win)
+  {
+      return tclgetref(interp, &(win->w_tcl_ref), "win", (void *)win, winselfcmd);
+  }
+  
+      static char *
+! tclgetbuffer(Tcl_Interp *interp, buf_T *buf)
+  {
+      return tclgetref(interp, &(buf->b_tcl_ref), "buf", (void *)buf, bufselfcmd);
+  }
+  
+      static int
+! tclsetdelcmd(
+!     Tcl_Interp	*interp,
+!     struct ref	*reflist,
+!     void	*vimobj,
+!     Tcl_Obj	*delcmd)
+  {
+      if (reflist == &refsdeleted)
+      {
+***************
+*** 1555,1563 ****
+  ********************************************/
+  
+      static int
+! tcl_channel_close(instance, interp)
+!     ClientData	instance;
+!     Tcl_Interp	*interp UNUSED;
+  {
+      int		err = 0;
+  
+--- 1546,1552 ----
+  ********************************************/
+  
+      static int
+! tcl_channel_close(ClientData instance, Tcl_Interp *interp UNUSED)
+  {
+      int		err = 0;
+  
+***************
+*** 1572,1582 ****
+  }
+  
+      static int
+! tcl_channel_input(instance, buf, bufsiz, errptr)
+!     ClientData	instance UNUSED;
+!     char	*buf UNUSED;
+!     int		bufsiz UNUSED;
+!     int		*errptr;
+  {
+  
+      /* input is currently not supported */
+--- 1561,1571 ----
+  }
+  
+      static int
+! tcl_channel_input(
+!     ClientData	instance UNUSED,
+!     char	*buf UNUSED,
+!     int		bufsiz UNUSED,
+!     int		*errptr)
+  {
+  
+      /* input is currently not supported */
+***************
+*** 1588,1598 ****
+  }
+  
+      static int
+! tcl_channel_output(instance, buf, bufsiz, errptr)
+!     ClientData	instance;
+!     char	*buf;
+!     int		bufsiz;
+!     int		*errptr;
+  {
+      char_u	*str;
+      int		result;
+--- 1577,1587 ----
+  }
+  
+      static int
+! tcl_channel_output(
+!     ClientData	instance,
+!     const char	*buf,
+!     int		bufsiz,
+!     int		*errptr)
+  {
+      char_u	*str;
+      int		result;
+***************
+*** 1628,1645 ****
+  }
+  
+      static void
+! tcl_channel_watch(instance, mask)
+!     ClientData	instance UNUSED;
+!     int		mask UNUSED;
+  {
+      Tcl_SetErrno(EINVAL);
+  }
+  
+      static int
+! tcl_channel_gethandle(instance, direction, handleptr)
+!     ClientData	instance UNUSED;
+!     int		direction UNUSED;
+!     ClientData	*handleptr UNUSED;
+  {
+      Tcl_SetErrno(EINVAL);
+      return EINVAL;
+--- 1617,1632 ----
+  }
+  
+      static void
+! tcl_channel_watch(ClientData instance UNUSED, int mask UNUSED)
+  {
+      Tcl_SetErrno(EINVAL);
+  }
+  
+      static int
+! tcl_channel_gethandle(
+!     ClientData	instance UNUSED,
+!     int		direction UNUSED,
+!     ClientData	*handleptr UNUSED)
+  {
+      Tcl_SetErrno(EINVAL);
+      return EINVAL;
+***************
+*** 1682,1688 ****
+   **********************************/
+  
+      static void
+! tclupdatevars()
+  {
+      char varname[VARNAME_SIZE];	/* must be writeable */
+      char *name;
+--- 1669,1675 ----
+   **********************************/
+  
+      static void
+! tclupdatevars(void)
+  {
+      char varname[VARNAME_SIZE];	/* must be writeable */
+      char *name;
+***************
+*** 1710,1717 ****
+  
+  
+      static int
+! tclinit(eap)
+!     exarg_T *eap;
+  {
+      char varname[VARNAME_SIZE];	/* Tcl_LinkVar requires writeable varname */
+      char *name;
+--- 1697,1703 ----
+  
+  
+      static int
+! tclinit(exarg_T *eap)
+  {
+      char varname[VARNAME_SIZE];	/* Tcl_LinkVar requires writeable varname */
+      char *name;
+***************
+*** 1820,1827 ****
+  }
+  
+      static void
+! tclerrmsg(text)
+!     char *text;
+  {
+      char *next;
+  
+--- 1806,1812 ----
+  }
+  
+      static void
+! tclerrmsg(char *text)
+  {
+      char *next;
+  
+***************
+*** 1836,1843 ****
+  }
+  
+      static void
+! tclmsg(text)
+!     char *text;
+  {
+      char *next;
+  
+--- 1821,1827 ----
+  }
+  
+      static void
+! tclmsg(char *text)
+  {
+      char *next;
+  
+***************
+*** 1852,1858 ****
+  }
+  
+      static void
+! tcldelthisinterp()
+  {
+      if (!Tcl_InterpDeleted(tclinfo.interp))
+  	Tcl_DeleteInterp(tclinfo.interp);
+--- 1836,1842 ----
+  }
+  
+      static void
+! tcldelthisinterp(void)
+  {
+      if (!Tcl_InterpDeleted(tclinfo.interp))
+  	Tcl_DeleteInterp(tclinfo.interp);
+***************
+*** 1874,1881 ****
+  }
+  
+      static int
+! tclexit(error)
+!     int error;
+  {
+      int newerr = OK;
+  
+--- 1858,1864 ----
+  }
+  
+      static int
+! tclexit(int error)
+  {
+      int newerr = OK;
+  
+***************
+*** 1923,1930 ****
+   * ":tcl"
+   */
+      void
+! ex_tcl(eap)
+!     exarg_T *eap;
+  {
+      char_u	*script;
+      int		err;
+--- 1906,1912 ----
+   * ":tcl"
+   */
+      void
+! ex_tcl(exarg_T *eap)
+  {
+      char_u	*script;
+      int		err;
+***************
+*** 1950,1957 ****
+   * ":tclfile"
+   */
+      void
+! ex_tclfile(eap)
+!     exarg_T *eap;
+  {
+      char *file = (char *)eap->arg;
+      int err;
+--- 1932,1938 ----
+   * ":tclfile"
+   */
+      void
+! ex_tclfile(exarg_T *eap)
+  {
+      char *file = (char *)eap->arg;
+      int err;
+***************
+*** 1969,1976 ****
+   * ":tcldo"
+   */
+      void
+! ex_tcldo(eap)
+!     exarg_T *eap;
+  {
+      char	*script, *line;
+      int		err, rs, re, lnum;
+--- 1950,1956 ----
+   * ":tcldo"
+   */
+      void
+! ex_tcldo(exarg_T *eap)
+  {
+      char	*script, *line;
+      int		err, rs, re, lnum;
+***************
+*** 2045,2052 ****
+  }
+  
+      static void
+! tcldelallrefs(ref)
+!     struct ref *ref;
+  {
+      struct ref	*next;
+      int		err;
+--- 2025,2031 ----
+  }
+  
+      static void
+! tcldelallrefs(struct ref *ref)
+  {
+      struct ref	*next;
+      int		err;
+***************
+*** 2083,2090 ****
+  }
+  
+      void
+! tcl_buffer_free(buf)
+!     buf_T *buf;
+  {
+      struct ref *reflist;
+  
+--- 2062,2068 ----
+  }
+  
+      void
+! tcl_buffer_free(buf_T *buf)
+  {
+      struct ref *reflist;
+  
+***************
+*** 2104,2111 ****
+  
+  #if defined(FEAT_WINDOWS) || defined(PROTO)
+      void
+! tcl_window_free(win)
+!     win_T *win;
+  {
+      struct ref *reflist;
+  
+--- 2082,2088 ----
+  
+  #if defined(FEAT_WINDOWS) || defined(PROTO)
+      void
+! tcl_window_free(win_T *win)
+  {
+      struct ref *reflist;
+  
+*** ../vim-7.4.1207/src/if_xcmdsrv.c	2016-01-29 22:36:41.225047690 +0100
+--- src/if_xcmdsrv.c	2016-01-30 17:13:20.861156527 +0100
+***************
+*** 214,222 ****
+   * Returns FAIL or OK.
+   */
+      int
+! serverRegisterName(dpy, name)
+!     Display	*dpy;		/* display to register with */
+!     char_u	*name;		/* the name that will be used as a base */
+  {
+      int		i;
+      int		res;
+--- 214,222 ----
+   * Returns FAIL or OK.
+   */
+      int
+! serverRegisterName(
+!     Display	*dpy,		/* display to register with */
+!     char_u	*name)		/* the name that will be used as a base */
+  {
+      int		i;
+      int		res;
+***************
+*** 252,260 ****
+  }
+  
+      static int
+! DoRegisterName(dpy, name)
+!     Display	*dpy;
+!     char_u	*name;
+  {
+      Window	w;
+      XErrorHandler old_handler;
+--- 252,258 ----
+  }
+  
+      static int
+! DoRegisterName(Display *dpy, char_u *name)
+  {
+      Window	w;
+      XErrorHandler old_handler;
+***************
+*** 332,340 ****
+   * Change any registered window ID.
+   */
+      void
+! serverChangeRegisteredWindow(dpy, newwin)
+!     Display	*dpy;		/* Display to register with */
+!     Window	newwin;		/* Re-register to this ID */
+  {
+      char_u	propInfo[MAX_NAME_LENGTH + 20];
+  
+--- 330,338 ----
+   * Change any registered window ID.
+   */
+      void
+! serverChangeRegisteredWindow(
+!     Display	*dpy,		/* Display to register with */
+!     Window	newwin)		/* Re-register to this ID */
+  {
+      char_u	propInfo[MAX_NAME_LENGTH + 20];
+  
+***************
+*** 368,382 ****
+   * Returns 0 for OK, negative for an error.
+   */
+      int
+! serverSendToVim(dpy, name, cmd,  result, server, asExpr, localLoop, silent)
+!     Display	*dpy;			/* Where to send. */
+!     char_u	*name;			/* Where to send. */
+!     char_u	*cmd;			/* What to send. */
+!     char_u	**result;		/* Result of eval'ed expression */
+!     Window	*server;		/* Actual ID of receiving app */
+!     Bool	asExpr;			/* Interpret as keystrokes or expr ? */
+!     Bool	localLoop;		/* Throw away everything but result */
+!     int		silent;			/* don't complain about no server */
+  {
+      Window	    w;
+      char_u	    *property;
+--- 366,380 ----
+   * Returns 0 for OK, negative for an error.
+   */
+      int
+! serverSendToVim(
+!     Display	*dpy,			/* Where to send. */
+!     char_u	*name,			/* Where to send. */
+!     char_u	*cmd,			/* What to send. */
+!     char_u	**result,		/* Result of eval'ed expression */
+!     Window	*server,		/* Actual ID of receiving app */
+!     Bool	asExpr,			/* Interpret as keystrokes or expr ? */
+!     Bool	localLoop,		/* Throw away everything but result */
+!     int		silent)			/* don't complain about no server */
+  {
+      Window	    w;
+      char_u	    *property;
+***************
+*** 535,542 ****
+  }
+  
+      static int
+! WaitForPend(p)
+!     void    *p;
+  {
+      PendingCommand *pending = (PendingCommand *) p;
+      return pending->result != NULL;
+--- 533,539 ----
+  }
+  
+      static int
+! WaitForPend(void *p)
+  {
+      PendingCommand *pending = (PendingCommand *) p;
+      return pending->result != NULL;
+***************
+*** 546,554 ****
+   * Return TRUE if window "w" exists and has a "Vim" property on it.
+   */
+      static int
+! WindowValid(dpy, w)
+!     Display     *dpy;
+!     Window	w;
+  {
+      XErrorHandler   old_handler;
+      Atom	    *plist;
+--- 543,549 ----
+   * Return TRUE if window "w" exists and has a "Vim" property on it.
+   */
+      static int
+! WindowValid(Display *dpy, Window w)
+  {
+      XErrorHandler   old_handler;
+      Atom	    *plist;
+***************
+*** 577,589 ****
+   * Enter a loop processing X events & polling chars until we see a result
+   */
+      static void
+! ServerWait(dpy, w, endCond, endData, localLoop, seconds)
+!     Display	*dpy;
+!     Window	w;
+!     EndCond	endCond;
+!     void	*endData;
+!     int		localLoop;
+!     int		seconds;
+  {
+      time_t	    start;
+      time_t	    now;
+--- 572,584 ----
+   * Enter a loop processing X events & polling chars until we see a result
+   */
+      static void
+! ServerWait(
+!     Display	*dpy,
+!     Window	w,
+!     EndCond	endCond,
+!     void	*endData,
+!     int		localLoop,
+!     int		seconds)
+  {
+      time_t	    start;
+      time_t	    now;
+***************
+*** 649,656 ****
+   * Returns a newline separated list in allocated memory or NULL.
+   */
+      char_u *
+! serverGetVimNames(dpy)
+!     Display	*dpy;
+  {
+      char_u	*regProp;
+      char_u	*entry;
+--- 644,650 ----
+   * Returns a newline separated list in allocated memory or NULL.
+   */
+      char_u *
+! serverGetVimNames(Display *dpy)
+  {
+      char_u	*regProp;
+      char_u	*entry;
+***************
+*** 704,712 ****
+   */
+  
+      static struct ServerReply *
+! ServerReplyFind(w, op)
+!     Window  w;
+!     enum ServerReplyOp op;
+  {
+      struct ServerReply *p;
+      struct ServerReply e;
+--- 698,704 ----
+   */
+  
+      static struct ServerReply *
+! ServerReplyFind(Window w, enum ServerReplyOp op)
+  {
+      struct ServerReply *p;
+      struct ServerReply e;
+***************
+*** 748,755 ****
+   * Issue an error if the id is invalid.
+   */
+      Window
+! serverStrToWin(str)
+!     char_u  *str;
+  {
+      unsigned  id = None;
+  
+--- 740,746 ----
+   * Issue an error if the id is invalid.
+   */
+      Window
+! serverStrToWin(char_u *str)
+  {
+      unsigned  id = None;
+  
+***************
+*** 765,773 ****
+   * Return -1 if the window is invalid.
+   */
+      int
+! serverSendReply(name, str)
+!     char_u	*name;
+!     char_u	*str;
+  {
+      char_u	*property;
+      int		length;
+--- 756,762 ----
+   * Return -1 if the window is invalid.
+   */
+      int
+! serverSendReply(char_u *name, char_u *str)
+  {
+      char_u	*property;
+      int		length;
+***************
+*** 807,814 ****
+  }
+  
+      static int
+! WaitForReply(p)
+!     void    *p;
+  {
+      Window  *w = (Window *) p;
+      return ServerReplyFind(*w, SROP_Find) != NULL;
+--- 796,802 ----
+  }
+  
+      static int
+! WaitForReply(void *p)
+  {
+      Window  *w = (Window *) p;
+      return ServerReplyFind(*w, SROP_Find) != NULL;
+***************
+*** 820,830 ****
+   * Return -1 if the window becomes invalid while waiting.
+   */
+      int
+! serverReadReply(dpy, win, str, localLoop)
+!     Display	*dpy;
+!     Window	win;
+!     char_u	**str;
+!     int		localLoop;
+  {
+      int		len;
+      char_u	*s;
+--- 808,818 ----
+   * Return -1 if the window becomes invalid while waiting.
+   */
+      int
+! serverReadReply(
+!     Display	*dpy,
+!     Window	win,
+!     char_u	**str,
+!     int		localLoop)
+  {
+      int		len;
+      char_u	*s;
+***************
+*** 858,867 ****
+   * Return TRUE and a non-malloc'ed string if there is.  Else return FALSE.
+   */
+      int
+! serverPeekReply(dpy, win, str)
+!     Display *dpy;
+!     Window win;
+!     char_u **str;
+  {
+      struct ServerReply *p;
+  
+--- 846,852 ----
+   * Return TRUE and a non-malloc'ed string if there is.  Else return FALSE.
+   */
+      int
+! serverPeekReply(Display *dpy, Window win, char_u **str)
+  {
+      struct ServerReply *p;
+  
+***************
+*** 882,889 ****
+   * results.
+   */
+      static int
+! SendInit(dpy)
+!     Display *dpy;
+  {
+      XErrorHandler old_handler;
+  
+--- 867,873 ----
+   * results.
+   */
+      static int
+! SendInit(Display *dpy)
+  {
+      XErrorHandler old_handler;
+  
+***************
+*** 939,949 ****
+   *	removed from the registry property.
+   */
+      static Window
+! LookupName(dpy, name, delete, loose)
+!     Display	*dpy;	    /* Display whose registry to check. */
+!     char_u	*name;	    /* Name of a server. */
+!     int		delete;	    /* If non-zero, delete info about name. */
+!     char_u	**loose;    /* Do another search matching -999 if not found
+  			       Return result here if a match is found */
+  {
+      char_u	*regProp, *entry;
+--- 923,933 ----
+   *	removed from the registry property.
+   */
+      static Window
+! LookupName(
+!     Display	*dpy,	    /* Display whose registry to check. */
+!     char_u	*name,	    /* Name of a server. */
+!     int		delete,	    /* If non-zero, delete info about name. */
+!     char_u	**loose)    /* Do another search matching -999 if not found
+  			       Return result here if a match is found */
+  {
+      char_u	*regProp, *entry;
+***************
+*** 1033,1041 ****
+   * 3. The window will mistakenly be regarded valid because of own commWindow
+   */
+      static void
+! DeleteAnyLingerer(dpy, win)
+!     Display	*dpy;	/* Display whose registry to check. */
+!     Window	win;	/* Window to remove */
+  {
+      char_u	*regProp, *entry = NULL;
+      char_u	*p;
+--- 1017,1025 ----
+   * 3. The window will mistakenly be regarded valid because of own commWindow
+   */
+      static void
+! DeleteAnyLingerer(
+!     Display	*dpy,	/* Display whose registry to check. */
+!     Window	win)	/* Window to remove */
+  {
+      char_u	*regProp, *entry = NULL;
+      char_u	*p;
+***************
+*** 1095,1105 ****
+   * Return OK when successful.
+   */
+      static int
+! GetRegProp(dpy, regPropp, numItemsp, domsg)
+!     Display	*dpy;
+!     char_u	**regPropp;
+!     long_u	*numItemsp;
+!     int		domsg;		/* When TRUE give error message. */
+  {
+      int		result, actualFormat;
+      long_u	bytesAfter;
+--- 1079,1089 ----
+   * Return OK when successful.
+   */
+      static int
+! GetRegProp(
+!     Display	*dpy,
+!     char_u	**regPropp,
+!     long_u	*numItemsp,
+!     int		domsg)		/* When TRUE give error message. */
+  {
+      int		result, actualFormat;
+      long_u	bytesAfter;
+***************
+*** 1152,1161 ****
+   * response.
+   */
+      void
+! serverEventProc(dpy, eventPtr, immediate)
+!     Display	*dpy;
+!     XEvent	*eventPtr;	/* Information about event. */
+!     int		immediate;	/* Run event immediately. Should mostly be 0. */
+  {
+      char_u	*propInfo;
+      int		result, actualFormat;
+--- 1136,1145 ----
+   * response.
+   */
+      void
+! serverEventProc(
+!     Display	*dpy,
+!     XEvent	*eventPtr,	/* Information about event. */
+!     int		immediate)	/* Run event immediately. Should mostly be 0. */
+  {
+      char_u	*propInfo;
+      int		result, actualFormat;
+***************
+*** 1197,1205 ****
+   * vim is idle.
+   */
+      static void
+! save_in_queue(propInfo, len)
+!     char_u	*propInfo;
+!     long_u	len;
+  {
+      x_queue_T *node;
+  
+--- 1181,1187 ----
+   * vim is idle.
+   */
+      static void
+! save_in_queue(char_u *propInfo, long_u len)
+  {
+      x_queue_T *node;
+  
+***************
+*** 1226,1232 ****
+   * Parses queued clientserver messages.
+   */
+      void
+! server_parse_messages()
+  {
+      x_queue_T	*node;
+  
+--- 1208,1214 ----
+   * Parses queued clientserver messages.
+   */
+      void
+! server_parse_messages(void)
+  {
+      x_queue_T	*node;
+  
+***************
+*** 1247,1253 ****
+   * int the queue.
+   */
+      int
+! server_waiting()
+  {
+      return head.next != NULL && head.next != &head;
+  }
+--- 1229,1235 ----
+   * int the queue.
+   */
+      int
+! server_waiting(void)
+  {
+      return head.next != NULL && head.next != &head;
+  }
+***************
+*** 1258,1267 ****
+   * "propInfo" will be freed.
+   */
+      static void
+! server_parse_message(dpy, propInfo, numItems)
+!     Display	*dpy;
+!     char_u	*propInfo; /* A string containing 0 or more X commands */
+!     long_u	numItems;  /* The size of propInfo in bytes. */
+  {
+      char_u	*p;
+      int		code;
+--- 1240,1249 ----
+   * "propInfo" will be freed.
+   */
+      static void
+! server_parse_message(
+!     Display	*dpy,
+!     char_u	*propInfo, /* A string containing 0 or more X commands */
+!     long_u	numItems)  /* The size of propInfo in bytes. */
+  {
+      char_u	*p;
+      int		code;
+***************
+*** 1539,1550 ****
+   * Return: 0 for OK, -1 for error
+   */
+      static int
+! AppendPropCarefully(dpy, window, property, value, length)
+!     Display	*dpy;		/* Display on which to operate. */
+!     Window	window;		/* Window whose property is to be modified. */
+!     Atom	property;	/* Name of property. */
+!     char_u	*value;		/* Characters  to append to property. */
+!     int		length;		/* How much to append */
+  {
+      XErrorHandler old_handler;
+  
+--- 1521,1532 ----
+   * Return: 0 for OK, -1 for error
+   */
+      static int
+! AppendPropCarefully(
+!     Display	*dpy,		/* Display on which to operate. */
+!     Window	window,		/* Window whose property is to be modified. */
+!     Atom	property,	/* Name of property. */
+!     char_u	*value,		/* Characters  to append to property. */
+!     int		length)		/* How much to append */
+  {
+      XErrorHandler old_handler;
+  
+***************
+*** 1562,1570 ****
+   * Another X Error handler, just used to check for errors.
+   */
+      static int
+! x_error_check(dpy, error_event)
+!     Display	*dpy UNUSED;
+!     XErrorEvent	*error_event UNUSED;
+  {
+      got_x_error = TRUE;
+      return 0;
+--- 1544,1550 ----
+   * Another X Error handler, just used to check for errors.
+   */
+      static int
+! x_error_check(Display *dpy UNUSED, XErrorEvent *error_event UNUSED)
+  {
+      got_x_error = TRUE;
+      return 0;
+***************
+*** 1575,1582 ****
+   * Actually just checks if the name ends in a digit.
+   */
+      static int
+! IsSerialName(str)
+!     char_u	*str;
+  {
+      int len = STRLEN(str);
+  
+--- 1555,1561 ----
+   * Actually just checks if the name ends in a digit.
+   */
+      static int
+! IsSerialName(char_u *str)
+  {
+      int len = STRLEN(str);
+  
+*** ../vim-7.4.1207/src/integration.c	2010-12-17 20:07:12.000000000 +0100
+--- src/integration.c	2016-01-30 17:14:00.612743832 +0100
+***************
+*** 620,627 ****
+     if you want to do things differently if the editor is started standalone
+     or in WorkShop mode. For example, in standalone mode you may not want to
+     add a footer/message area or a sign gutter. */
+! int
+! workshop_invoked()
+  {
+  	static int result = -1;
+  	if (result == -1) {
+--- 620,627 ----
+     if you want to do things differently if the editor is started standalone
+     or in WorkShop mode. For example, in standalone mode you may not want to
+     add a footer/message area or a sign gutter. */
+! 	int
+! workshop_invoked(void)
+  {
+  	static int result = -1;
+  	if (result == -1) {
+***************
+*** 735,741 ****
+  	dummy = write(sd, buf, strlen(buf));
+  }
+  
+! void	workshop_disconnect()
+  {
+  	/* Probably need to send some message here */
+  
+--- 735,741 ----
+  	dummy = write(sd, buf, strlen(buf));
+  }
+  
+! void	workshop_disconnect(void)
+  {
+  	/* Probably need to send some message here */
+  
+*** ../vim-7.4.1207/src/version.c	2016-01-30 16:39:20.438376481 +0100
+--- src/version.c	2016-01-30 16:41:14.617187718 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1208,
+  /**/
+
+-- 
+From "know your smileys":
+ ;-0	Can't find shift key
+ ,-9	Kann Umschalttaste nicht finden
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

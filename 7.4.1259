@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1259
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1259
+Problem:    No test for what patch 7.3.414 fixed.
+Solution:   Add a test. (Elias Diem)
+Files:      src/testdir/test_increment.vim
+
+
+*** ../vim-7.4.1258/src/testdir/test_increment.vim	2016-01-12 22:20:53.034213670 +0100
+--- src/testdir/test_increment.vim	2016-02-04 21:50:31.733003475 +0100
+***************
+*** 708,711 ****
+--- 708,730 ----
+    call assert_equal([0, 1, 2, 0], getpos('.'))
+  endfunc
+  
++ " Test what patch 7.3.414 fixed. Ctrl-A on "000" drops the leading zeros.
++ func Test_normal_increment_01()
++   call setline(1, "000")
++   exec "norm! gg0\<C-A>"
++   call assert_equal("001", getline(1))
++ 
++   call setline(1, "000")
++   exec "norm! gg$\<C-A>"
++   call assert_equal("001", getline(1))
++ 
++   call setline(1, "001")
++   exec "norm! gg0\<C-A>"
++   call assert_equal("002", getline(1))
++ 
++   call setline(1, "001")
++   exec "norm! gg$\<C-A>"
++   call assert_equal("002", getline(1))
++ endfunc
++ 
+  " vim: tabstop=2 shiftwidth=2 expandtab
+*** ../vim-7.4.1258/src/version.c	2016-02-04 21:03:29.594326375 +0100
+--- src/version.c	2016-02-04 21:52:17.224035731 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1259,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+138. You develop a liking for cold coffee.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

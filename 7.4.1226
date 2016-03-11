@@ -1,0 +1,99 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1226
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1226
+Problem:    GRESOURCE_HDR is unused.
+Solution:   Remove it. (Kazunobu Kuriyama)
+Files:      src/configure.in, src/auto/configure, src/config.mk.in
+
+
+*** ../vim-7.4.1225/src/configure.in	2016-01-31 14:36:53.415217216 +0100
+--- src/configure.in	2016-01-31 17:54:01.304169964 +0100
+***************
+*** 2619,2625 ****
+        else
+  	AC_MSG_RESULT([usable.])
+          AC_DEFINE(USE_GRESOURCE)
+-         GRESOURCE_HDR="auto/gui_gtk_gresources.h"
+          GRESOURCE_SRC="auto/gui_gtk_gresources.c"
+          GRESOURCE_OBJ="objects/gui_gtk_gresources.o"
+        fi
+--- 2619,2624 ----
+***************
+*** 2631,2637 ****
+    fi
+  fi
+  AC_SUBST(GLIB_COMPILE_RESOURCES)
+- AC_SUBST(GRESOURCE_HDR)
+  AC_SUBST(GRESOURCE_SRC)
+  AC_SUBST(GRESOURCE_OBJ)
+  
+--- 2630,2635 ----
+*** ../vim-7.4.1225/src/auto/configure	2016-01-31 14:36:53.419217174 +0100
+--- src/auto/configure	2016-01-31 17:54:06.792113379 +0100
+***************
+*** 638,644 ****
+  MOTIF_LIBNAME
+  GRESOURCE_OBJ
+  GRESOURCE_SRC
+- GRESOURCE_HDR
+  GLIB_COMPILE_RESOURCES
+  GNOME_INCLUDEDIR
+  GNOME_LIBDIR
+--- 638,643 ----
+***************
+*** 9107,9113 ****
+  $as_echo "usable." >&6; }
+          $as_echo "#define USE_GRESOURCE 1" >>confdefs.h
+  
+-         GRESOURCE_HDR="auto/gui_gtk_gresources.h"
+          GRESOURCE_SRC="auto/gui_gtk_gresources.c"
+          GRESOURCE_OBJ="objects/gui_gtk_gresources.o"
+        fi
+--- 9106,9111 ----
+***************
+*** 9123,9129 ****
+  
+  
+  
+- 
+  
+  
+  if test -z "$SKIP_MOTIF"; then
+--- 9121,9126 ----
+*** ../vim-7.4.1225/src/config.mk.in	2016-01-24 20:36:18.870082307 +0100
+--- src/config.mk.in	2016-01-31 17:54:01.304169964 +0100
+***************
+*** 161,167 ****
+  GTK_LIBNAME	= @GTK_LIBNAME@
+  
+  GLIB_COMPILE_RESOURCES = @GLIB_COMPILE_RESOURCES@
+- GRESOURCE_HDR = @GRESOURCE_HDR@
+  GRESOURCE_SRC = @GRESOURCE_SRC@
+  GRESOURCE_OBJ = @GRESOURCE_OBJ@
+  
+--- 161,166 ----
+*** ../vim-7.4.1225/src/version.c	2016-01-31 17:30:47.422544414 +0100
+--- src/version.c	2016-01-31 17:55:35.655197035 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1226,
+  /**/
+
+-- 
+From "know your smileys":
+ :-D	Big smile
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,62 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1233
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1233
+Problem:    Channel command may cause a crash.
+Solution:   Check for NULL argument. (Damien)
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1232/src/channel.c	2016-02-01 21:38:13.319011999 +0100
+--- src/channel.c	2016-02-01 21:45:51.622222616 +0100
+***************
+*** 629,634 ****
+--- 629,636 ----
+  	return;
+      }
+      arg = arg2->vval.v_string;
++     if (arg == NULL)
++ 	arg = (char_u *)"";
+  
+      if (STRCMP(cmd, "ex") == 0)
+      {
+***************
+*** 647,653 ****
+      {
+  	exarg_T ea;
+  
+! 	ea.forceit = arg != NULL && *arg != NUL;
+  	ex_redraw(&ea);
+  	showruler(FALSE);
+  	setcursor();
+--- 649,655 ----
+      {
+  	exarg_T ea;
+  
+! 	ea.forceit = *arg != NUL;
+  	ex_redraw(&ea);
+  	showruler(FALSE);
+  	setcursor();
+*** ../vim-7.4.1232/src/version.c	2016-02-01 21:40:10.997782016 +0100
+--- src/version.c	2016-02-01 21:46:30.765813653 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1233,
+  /**/
+
+-- 
+Common sense is what tells you that the world is flat.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

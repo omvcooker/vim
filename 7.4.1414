@@ -1,0 +1,142 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1414
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1414
+Problem:    Appveyor only builds one feature set.
+Solution:   Build a combination of features and GUI/console. (Christian
+            Brabandt)
+Files:      appveyor.yml, src/appveyor.bat
+
+
+*** ../vim-7.4.1413/appveyor.yml	2015-12-29 13:59:25.493672385 +0100
+--- appveyor.yml	2016-02-24 20:51:17.764384938 +0100
+***************
+*** 1,6 ****
+  version: "{build}"
+  
+! skip_tags: true
+  
+  before_build:
+    - '"C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64 /release'
+--- 1,16 ----
+  version: "{build}"
+  
+! environment:
+!   matrix:
+!     - FEATURE: HUGE
+!     - FEATURE: NORMAL
+! # disabled
+! #    - FEATURE: TINY
+! #    - FEATURE: SMALL
+! #    - FEATURE: BIG
+! 
+! matrix:
+!   fast_finish: true
+  
+  before_build:
+    - '"C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64 /release'
+***************
+*** 9,20 ****
+    - reg copy HKLM\SOFTWARE\Python\PythonCore\2.7 HKLM\SOFTWARE\Python\PythonCore\2.7-32 /s /reg:64
+  
+  build_script:
+!   - cd src
+!   - sed -e "s/\$(LINKARGS2)/\$(LINKARGS2) | sed -e 's#.*\\\\r.*##'/" Make_mvc.mak > Make_mvc2.mak
+!   - nmake -f Make_mvc2.mak CPU=AMD64 GUI=yes IME=yes MBYTE=yes ICONV=yes DEBUG=no PYTHON_VER=27 DYNAMIC_PYTHON=yes PYTHON=C:\Python27-x64 PYTHON3_VER=34 DYNAMIC_PYTHON3=yes PYTHON3=C:\Python34-x64
+!   - .\gvim -u NONE -c "redir @a | ver | 0put a | wq!" ver.txt
+!   - type ver.txt
+  
+  test_script:
+!   - cd testdir
+    - nmake -f Make_dos.mak VIMPROG=..\gvim
+--- 19,32 ----
+    - reg copy HKLM\SOFTWARE\Python\PythonCore\2.7 HKLM\SOFTWARE\Python\PythonCore\2.7-32 /s /reg:64
+  
+  build_script:
+!   - src/appveyor.bat
+  
+  test_script:
+!   - cd src/testdir
+!     # Testing with MSVC gvim
+    - nmake -f Make_dos.mak VIMPROG=..\gvim
++   - nmake -f Make_dos.mak clean
++     # Testing with MingW console version
++   - nmake -f Make_dos.mak VIMPROG=..\vim
++ 
++ # vim: sw=2 sts=2 et ts=2 sr
+*** ../vim-7.4.1413/src/appveyor.bat	2016-02-24 21:01:34.353974930 +0100
+--- src/appveyor.bat	2016-02-24 21:01:04.498285614 +0100
+***************
+*** 0 ****
+--- 1,46 ----
++ @echo off
++ :: Batch file for building/testing Vim on AppVeyor
++ 
++ setlocal ENABLEDELAYEDEXPANSION
++ cd %APPVEYOR_BUILD_FOLDER%
++ 
++ cd src
++ echo "Building MinGW 32bit console version"
++ set PATH=c:\msys64\mingw32\bin;%PATH%
++ mingw32-make.exe -f Make_ming.mak GUI=no OPTIMIZE=speed IME=yes MBYTE=yes ICONV=yes DEBUG=no FEATURES=%FEATURE% || exit 1
++ :: Save vim.exe before Make clean, moved back below.
++ copy vim.exe testdir
++ mingw32-make.exe -f Make_ming.mak clean
++ 
++ :: Build Mingw huge version with python and channel support, or
++ :: with specified features without python.
++ echo "Building MinGW 32bit GUI version"
++ if "%FEATURE%" == "HUGE" (
++     mingw32-make.exe -f Make_ming.mak OPTIMIZE=speed CHANNEL=yes GUI=yes IME=yes MBYTE=yes ICONV=yes DEBUG=no PYTHON_VER=27 DYNAMIC_PYTHON=yes PYTHON=C:\Python27 PYTHON3_VER=34 DYNAMIC_PYTHON3=yes PYTHON3=C:\Python34 FEATURES=%FEATURE% || exit 1
++ ) ELSE (
++     mingw32-make.exe -f Make_ming.mak OPTIMIZE=speed GUI=yes IME=yes MBYTE=yes ICONV=yes DEBUG=no FEATURES=%FEATURE% || exit 1
++ )
++ .\gvim -u NONE -c "redir @a | ver |0put a | wq" ver_ming.txt
++ 
++ echo "Building MSVC 64bit console Version"
++ sed -e "s/\$(LINKARGS2)/\$(LINKARGS2) | sed -e 's#.*\\\\r.*##'/" Make_mvc.mak > Make_mvc2.mak
++ nmake -f Make_mvc2.mak CPU=AMD64 OLE=no GUI=no IME=yes MBYTE=yes ICONV=yes DEBUG=no FEATURES=%FEATURE% || exit 1
++ nmake -f Make_mvc2.mak clean
++ 
++ :: build MSVC huge version with python and channel support
++ :: GUI needs to be last, so that testing works
++ echo "Building MSVC 64bit GUI Version"
++ if "%FEATURE%" == "HUGE" (
++     nmake -f Make_mvc2.mak DIRECTX=yes CPU=AMD64 CHANNEL=yes OLE=no GUI=yes IME=yes MBYTE=yes ICONV=yes DEBUG=no PYTHON_VER=27 DYNAMIC_PYTHON=yes PYTHON=C:\Python27-x64 PYTHON3_VER=34 DYNAMIC_PYTHON3=yes PYTHON3=C:\Python34-x64 FEATURES=%FEATURE% || exit 1
++ ) ELSE (
++     nmake -f Make_mvc2.mak CPU=AMD64 OLE=no GUI=yes IME=yes MBYTE=yes ICONV=yes DEBUG=no FEATURES=%FEATURE% || exit 1
++ )
++ .\gvim -u NONE -c "redir @a | ver |0put a | wq" ver_msvc.txt
++ 
++ :: Restore vim.exe, tests will run with this.
++ move /Y testdir\vim.exe .
++ echo "version output MinGW"
++ type ver_ming.txt
++ echo "version output MVC"
++ type ver_msvc.txt
++ cd ..
+*** ../vim-7.4.1413/src/version.c	2016-02-24 20:42:58.081568892 +0100
+--- src/version.c	2016-02-24 20:52:22.799709494 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1414,
+  /**/
+
+-- 
+An indication you must be a manager:
+You believe you never have any problems in your life, just
+"issues" and "improvement opportunities".
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,262 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1106
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1106
+Problem:    The nsis script can't be used from the appveyor build.
+Solution:   Add "ifndef" to allow for variables to be set from the command
+            line. Remove duplicate SetCompressor command. Support using other
+            gettext binaries. (Ken Takata)  Update build instructions to use
+            libintl-8.dll.
+Files:      Makefile, nsis/gvim.nsi, src/os_win32.c, src/proto/os_win32.pro,
+            src/main.c, src/os_w32exe.c
+
+
+*** ../vim-7.4.1105/Makefile	2016-01-02 15:44:13.695431093 +0100
+--- Makefile	2016-01-16 17:59:32.117023080 +0100
+***************
+*** 131,136 ****
+--- 131,139 ----
+  #
+  # MS-Windows:
+  # - Run make on Unix to update the ".mo" files.
++ # - Get libintl-8.dll and libiconv-2.dll. E.g. from
++ #   https://mlocati.github.io/gettext-iconv-windows/ .
++ #   Put them in the top directory, "make dosrt" uses them.
+  # - > make dossrc
+  #   > make dosrt
+  #   Unpack dist/vim##rt.zip and dist/vim##src.zip on an MS-Windows PC.
+***************
+*** 493,499 ****
+  		cp $$i dist/vim/$(VIMRTDIR)/lang/$$n/LC_MESSAGES/vim.mo; \
+  	      fi \
+  	    done
+! 	cp libintl.dll dist/vim/$(VIMRTDIR)/
+  
+  
+  # Used before uploading.  Don't delete the AAPDIR/sign files!
+--- 496,503 ----
+  		cp $$i dist/vim/$(VIMRTDIR)/lang/$$n/LC_MESSAGES/vim.mo; \
+  	      fi \
+  	    done
+! 	cp libintl-8.dll dist/vim/$(VIMRTDIR)/
+! 	cp libiconv-2.dll dist/vim/$(VIMRTDIR)/
+  
+  
+  # Used before uploading.  Don't delete the AAPDIR/sign files!
+*** ../vim-7.4.1105/nsis/gvim.nsi	2016-01-02 15:44:13.695431093 +0100
+--- nsis/gvim.nsi	2016-01-16 17:53:51.192687178 +0100
+***************
+*** 6,18 ****
+  # because uninstall deletes most files in $0.
+  
+  # Location of gvim_ole.exe, vimw32.exe, GvimExt/*, etc.
+! !define VIMSRC "..\src"
+  
+  # Location of runtime files
+! !define VIMRT ".."
+  
+  # Location of extra tools: diff.exe
+! !define VIMTOOLS ..\..
+  
+  # Comment the next line if you don't have UPX.
+  # Get it at http://upx.sourceforge.net
+--- 6,24 ----
+  # because uninstall deletes most files in $0.
+  
+  # Location of gvim_ole.exe, vimw32.exe, GvimExt/*, etc.
+! !ifndef VIMSRC
+!   !define VIMSRC "..\src"
+! !endif
+  
+  # Location of runtime files
+! !ifndef VIMRT
+!   !define VIMRT ".."
+! !endif
+  
+  # Location of extra tools: diff.exe
+! !ifndef VIMTOOLS
+!   !define VIMTOOLS ..\..
+! !endif
+  
+  # Comment the next line if you don't have UPX.
+  # Get it at http://upx.sourceforge.net
+***************
+*** 32,40 ****
+  Name "Vim ${VER_MAJOR}.${VER_MINOR}"
+  OutFile gvim${VER_MAJOR}${VER_MINOR}.exe
+  CRCCheck force
+! SetCompressor lzma
+  SetDatablockOptimize on
+  RequestExecutionLevel highest
+  
+  ComponentText "This will install Vim ${VER_MAJOR}.${VER_MINOR} on your computer."
+  DirText "Choose a directory to install Vim (should contain 'vim')"
+--- 38,47 ----
+  Name "Vim ${VER_MAJOR}.${VER_MINOR}"
+  OutFile gvim${VER_MAJOR}${VER_MINOR}.exe
+  CRCCheck force
+! SetCompressor /SOLID lzma
+  SetDatablockOptimize on
+  RequestExecutionLevel highest
++ XPStyle on
+  
+  ComponentText "This will install Vim ${VER_MAJOR}.${VER_MINOR} on your computer."
+  DirText "Choose a directory to install Vim (should contain 'vim')"
+***************
+*** 55,63 ****
+    !packhdr temp.dat "upx --best --compress-icons=1 temp.dat"
+  !endif
+  
+- SetCompressor /SOLID lzma
+- XPStyle on
+- 
+  # This adds '\vim' to the user choice automagically.  The actual value is
+  # obtained below with ReadINIStr.
+  InstallDir "$PROGRAMFILES\Vim"
+--- 62,67 ----
+***************
+*** 355,361 ****
+  		File ${VIMRT}\keymap\README.txt
+  		File ${VIMRT}\keymap\*.vim
+  		SetOutPath $0
+! 		File ${VIMRT}\libintl.dll
+  	SectionEnd
+  !endif
+  
+--- 359,367 ----
+  		File ${VIMRT}\keymap\README.txt
+  		File ${VIMRT}\keymap\*.vim
+  		SetOutPath $0
+! 		File ${VIMRT}\libintl-8.dll
+! 		File ${VIMRT}\libiconv-2.dll
+! 		File /nonfatal ${VIMRT}\libwinpthread-1.dll
+  	SectionEnd
+  !endif
+  
+*** ../vim-7.4.1105/src/os_win32.c	2016-01-02 21:11:47.111238151 +0100
+--- src/os_win32.c	2016-01-16 17:56:47.998786846 +0100
+***************
+*** 463,468 ****
+--- 463,469 ----
+  #if defined(DYNAMIC_GETTEXT) || defined(PROTO)
+  # ifndef GETTEXT_DLL
+  #  define GETTEXT_DLL "libintl.dll"
++ #  define GETTEXT_DLL_ALT "libintl-8.dll"
+  # endif
+  /* Dummy functions */
+  static char *null_libintl_gettext(const char *);
+***************
+*** 479,485 ****
+  				       = null_libintl_bind_textdomain_codeset;
+  
+      int
+! dyn_libintl_init(char *libname)
+  {
+      int i;
+      static struct
+--- 480,486 ----
+  				       = null_libintl_bind_textdomain_codeset;
+  
+      int
+! dyn_libintl_init()
+  {
+      int i;
+      static struct
+***************
+*** 498,504 ****
+      if (hLibintlDLL)
+  	return 1;
+      /* Load gettext library (libintl.dll) */
+!     hLibintlDLL = vimLoadLib(libname != NULL ? libname : GETTEXT_DLL);
+      if (!hLibintlDLL)
+      {
+  	if (p_verbose > 0)
+--- 499,507 ----
+      if (hLibintlDLL)
+  	return 1;
+      /* Load gettext library (libintl.dll) */
+!     hLibintlDLL = vimLoadLib(GETTEXT_DLL);
+!     if (!hLibintlDLL)
+! 	hLibintlDLL = vimLoadLib(GETTEXT_DLL_ALT);
+      if (!hLibintlDLL)
+      {
+  	if (p_verbose > 0)
+*** ../vim-7.4.1105/src/proto/os_win32.pro	2016-01-02 21:11:47.111238151 +0100
+--- src/proto/os_win32.pro	2016-01-16 17:57:12.562522849 +0100
+***************
+*** 1,6 ****
+  /* os_win32.c */
+  HINSTANCE vimLoadLib __ARGS((char *name));
+! int dyn_libintl_init __ARGS((char *libname));
+  void dyn_libintl_end __ARGS((void));
+  void PlatformId __ARGS((void));
+  int mch_windows95 __ARGS((void));
+--- 1,6 ----
+  /* os_win32.c */
+  HINSTANCE vimLoadLib __ARGS((char *name));
+! int dyn_libintl_init __ARGS((void));
+  void dyn_libintl_end __ARGS((void));
+  void PlatformId __ARGS((void));
+  int mch_windows95 __ARGS((void));
+*** ../vim-7.4.1105/src/main.c	2016-01-15 21:23:15.670977827 +0100
+--- src/main.c	2016-01-16 17:57:20.702435367 +0100
+***************
+*** 1580,1586 ****
+  
+  #  ifdef DYNAMIC_GETTEXT
+  	/* Initialize the gettext library */
+! 	dyn_libintl_init(NULL);
+  #  endif
+  	/* expand_env() doesn't work yet, because chartab[] is not initialized
+  	 * yet, call vim_getenv() directly */
+--- 1580,1586 ----
+  
+  #  ifdef DYNAMIC_GETTEXT
+  	/* Initialize the gettext library */
+! 	dyn_libintl_init();
+  #  endif
+  	/* expand_env() doesn't work yet, because chartab[] is not initialized
+  	 * yet, call vim_getenv() directly */
+*** ../vim-7.4.1105/src/os_w32exe.c	2010-05-15 13:04:07.000000000 +0200
+--- src/os_w32exe.c	2016-01-16 17:57:30.262332624 +0100
+***************
+*** 69,75 ****
+  
+  #ifdef DYNAMIC_GETTEXT
+      /* Initialize gettext library */
+!     dyn_libintl_init(NULL);
+  #endif
+  
+  #ifdef VIMDLL
+--- 69,75 ----
+  
+  #ifdef DYNAMIC_GETTEXT
+      /* Initialize gettext library */
+!     dyn_libintl_init();
+  #endif
+  
+  #ifdef VIMDLL
+*** ../vim-7.4.1105/src/version.c	2016-01-16 16:49:22.682187006 +0100
+--- src/version.c	2016-01-16 18:03:34.874414518 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1106,
+  /**/
+
+-- 
+Never under any circumstances take a sleeping pill
+and a laxative on the same night.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

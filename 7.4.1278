@@ -1,0 +1,255 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1278
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1278
+Problem:    When jsonencode() fails it still returns something.
+Solution:   Return an empty string on failure.
+Files:      src/json.c, src/channel.c, src/testdir/test_json.vim,
+            src/testdir/test_channel.vim, src/testdir/test_channel.py
+
+
+*** ../vim-7.4.1277/src/json.c	2016-02-06 18:42:01.647993424 +0100
+--- src/json.c	2016-02-07 16:28:58.598382166 +0100
+***************
+*** 21,26 ****
+--- 21,28 ----
+  
+  /*
+   * Encode "val" into a JSON format string.
++  * The result is in allocated memory.
++  * The result is empty when encoding fails.
+   */
+      char_u *
+  json_encode(typval_T *val)
+***************
+*** 29,40 ****
+  
+      /* Store bytes in the growarray. */
+      ga_init2(&ga, 1, 4000);
+!     json_encode_item(&ga, val, get_copyID(), TRUE);
+      return ga.ga_data;
+  }
+  
+  /*
+!  * Encode ["nr", "val"] into a JSON format string.
+   * Returns NULL when out of memory.
+   */
+      char_u *
+--- 31,46 ----
+  
+      /* Store bytes in the growarray. */
+      ga_init2(&ga, 1, 4000);
+!     if (json_encode_item(&ga, val, get_copyID(), TRUE) == FAIL)
+!     {
+! 	vim_free(ga.ga_data);
+! 	return vim_strsave((char_u *)"");
+!     }
+      return ga.ga_data;
+  }
+  
+  /*
+!  * Encode ["nr", "val"] into a JSON format string in allocated memory.
+   * Returns NULL when out of memory.
+   */
+      char_u *
+***************
+*** 136,143 ****
+--- 142,152 ----
+  		case VVAL_FALSE: ga_concat(gap, (char_u *)"false"); break;
+  		case VVAL_TRUE: ga_concat(gap, (char_u *)"true"); break;
+  		case VVAL_NONE: if (!allow_none)
++ 				{
+  				    /* TODO: better error */
+  				    EMSG(_(e_invarg));
++ 				    return FAIL;
++ 				}
+  				break;
+  		case VVAL_NULL: ga_concat(gap, (char_u *)"null"); break;
+  	    }
+***************
+*** 155,160 ****
+--- 164,170 ----
+  	    break;
+  
+  	case VAR_FUNC:
++ 	case VAR_JOB:
+  	    /* no JSON equivalent TODO: better error */
+  	    EMSG(_(e_invarg));
+  	    return FAIL;
+***************
+*** 226,239 ****
+  	    }
+  	    break;
+  
+- #ifdef FEAT_FLOAT
+  	case VAR_FLOAT:
+  	    vim_snprintf((char *)numbuf, NUMBUFLEN, "%g", val->vval.v_float);
+  	    ga_concat(gap, numbuf);
+  	    break;
+  #endif
+! 	default: EMSG2(_(e_intern2), "json_encode_item()"); break;
+! 		 return FAIL;
+      }
+      return OK;
+  }
+--- 236,250 ----
+  	    }
+  	    break;
+  
+  	case VAR_FLOAT:
++ #ifdef FEAT_FLOAT
+  	    vim_snprintf((char *)numbuf, NUMBUFLEN, "%g", val->vval.v_float);
+  	    ga_concat(gap, numbuf);
+  	    break;
+  #endif
+! 	case VAR_UNKNOWN:
+! 	    EMSG2(_(e_intern2), "json_encode_item()"); break;
+! 	    return FAIL;
+      }
+      return OK;
+  }
+*** ../vim-7.4.1277/src/channel.c	2016-02-07 15:13:56.081193256 +0100
+--- src/channel.c	2016-02-07 16:47:38.494808347 +0100
+***************
+*** 853,876 ****
+  	{
+  	    typval_T	*tv;
+  	    typval_T	err_tv;
+! 	    char_u	*json;
+  
+  	    /* Don't pollute the display with errors. */
+  	    ++emsg_skip;
+  	    tv = eval_expr(arg, NULL);
+- 	    --emsg_skip;
+  	    if (is_eval)
+  	    {
+! 		if (tv == NULL)
+  		{
+  		    err_tv.v_type = VAR_STRING;
+  		    err_tv.vval.v_string = (char_u *)"ERROR";
+  		    tv = &err_tv;
+  		}
+- 		json = json_encode_nr_expr(arg3->vval.v_number, tv);
+- 		channel_send(idx, json, "eval");
+- 		vim_free(json);
+  	    }
+  	    if (tv != &err_tv)
+  		free_tv(tv);
+  	}
+--- 853,883 ----
+  	{
+  	    typval_T	*tv;
+  	    typval_T	err_tv;
+! 	    char_u	*json = NULL;
+  
+  	    /* Don't pollute the display with errors. */
+  	    ++emsg_skip;
+  	    tv = eval_expr(arg, NULL);
+  	    if (is_eval)
+  	    {
+! 		if (tv != NULL)
+! 		    json = json_encode_nr_expr(arg3->vval.v_number, tv);
+! 		if (tv == NULL || (json != NULL && *json == NUL))
+  		{
++ 		    /* If evaluation failed or the result can't be encoded
++ 		     * then return the string "ERROR". */
+  		    err_tv.v_type = VAR_STRING;
+  		    err_tv.vval.v_string = (char_u *)"ERROR";
+  		    tv = &err_tv;
++ 		    json = json_encode_nr_expr(arg3->vval.v_number, tv);
++ 		}
++ 		if (json != NULL)
++ 		{
++ 		    channel_send(idx, json, "eval");
++ 		    vim_free(json);
+  		}
+  	    }
++ 	    --emsg_skip;
+  	    if (tv != &err_tv)
+  		free_tv(tv);
+  	}
+*** ../vim-7.4.1277/src/testdir/test_json.vim	2016-02-06 18:42:01.647993424 +0100
+--- src/testdir/test_json.vim	2016-02-07 16:40:25.747281312 +0100
+***************
+*** 75,80 ****
+--- 75,83 ----
+    call assert_fails('echo jsonencode(function("tr"))', 'E474:')
+    call assert_fails('echo jsonencode([function("tr")])', 'E474:')
+    call assert_fails('echo jsonencode({"key":v:none})', 'E474:')
++ 
++   silent! let res = jsonencode(function("tr"))
++   call assert_equal("", res)
+  endfunc
+  
+  func Test_decode()
+*** ../vim-7.4.1277/src/testdir/test_channel.vim	2016-02-07 14:26:12.183053965 +0100
+--- src/testdir/test_channel.vim	2016-02-07 16:44:54.184506982 +0100
+***************
+*** 118,127 ****
+    sleep 10m
+    call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send a bad eval request. There will be no response.
+    call assert_equal('ok', ch_sendexpr(handle, 'eval-bad'))
+    sleep 10m
+!   call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send an expr request
+    call assert_equal('ok', ch_sendexpr(handle, 'an expr'))
+--- 118,132 ----
+    sleep 10m
+    call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
++   " Send an eval request that works but can't be encoded.
++   call assert_equal('ok', ch_sendexpr(handle, 'eval-error'))
++   sleep 10m
++   call assert_equal([-3, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
++ 
+    " Send a bad eval request. There will be no response.
+    call assert_equal('ok', ch_sendexpr(handle, 'eval-bad'))
+    sleep 10m
+!   call assert_equal([-3, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send an expr request
+    call assert_equal('ok', ch_sendexpr(handle, 'an expr'))
+*** ../vim-7.4.1277/src/testdir/test_channel.py	2016-02-05 23:09:07.381093948 +0100
+--- src/testdir/test_channel.py	2016-02-07 16:49:06.701896324 +0100
+***************
+*** 93,98 ****
+--- 93,105 ----
+                          print("sending: {}".format(cmd))
+                          self.request.sendall(cmd.encode('utf-8'))
+                          response = "ok"
++                     elif decoded[1] == 'eval-error':
++                         # Send an eval request that works but the result can't
++                         # be encoded.
++                         cmd = '["eval","function(\\"tr\\")", -3]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = "ok"
+                      elif decoded[1] == 'eval-bad':
+                          # Send an eval request missing the third argument.
+                          cmd = '["eval","xxx"]'
+*** ../vim-7.4.1277/src/version.c	2016-02-07 15:56:55.930329022 +0100
+--- src/version.c	2016-02-07 16:29:37.593978740 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1278,
+  /**/
+
+-- 
+Apathy Error: Don't bother striking any key.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

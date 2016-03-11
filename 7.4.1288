@@ -1,0 +1,130 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1288
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1288
+Problem:    ch_sendexpr() does not use JS encoding.
+Solution:   Use the encoding that fits the channel mode.  Refuse using
+            ch_sendexpr() on a raw channel.
+Files:      src/channel.c, src/proto/channel.pro, src/eval.c
+
+
+*** ../vim-7.4.1287/src/channel.c	2016-02-07 21:28:53.639058183 +0100
+--- src/channel.c	2016-02-07 21:52:52.819952217 +0100
+***************
+*** 1514,1517 ****
+--- 1514,1530 ----
+      }
+      return abort;
+  }
++ 
++ /*
++  * Return the mode of channel "idx".
++  * If "idx" is invalid returns MODE_JSON.
++  */
++     ch_mode_T
++ channel_get_mode(int idx)
++ {
++     if (idx < 0 || idx >= channel_count)
++ 	return MODE_JSON;
++     return channels[idx].ch_mode;
++ }
++ 
+  #endif /* FEAT_CHANNEL */
+*** ../vim-7.4.1287/src/proto/channel.pro	2016-02-07 19:16:24.234303776 +0100
+--- src/proto/channel.pro	2016-02-07 21:53:42.703428843 +0100
+***************
+*** 24,27 ****
+--- 24,28 ----
+  int channel_select_check(int ret_in, void *rfds_in);
+  int channel_parse_messages(void);
+  int set_ref_in_channel(int copyID);
++ ch_mode_T channel_get_mode(int idx);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1287/src/eval.c	2016-02-07 21:19:24.141042332 +0100
+--- src/eval.c	2016-02-07 21:56:33.941632307 +0100
+***************
+*** 9924,9930 ****
+--- 9924,9933 ----
+  
+      ch_idx = get_channel_arg(&argvars[0]);
+      if (ch_idx < 0)
++     {
++ 	EMSG(_(e_invarg));
+  	return -1;
++     }
+  
+      if (argvars[2].v_type != VAR_UNKNOWN)
+      {
+***************
+*** 9952,9964 ****
+      typval_T	*listtv;
+      int		ch_idx;
+      int		id;
+  
+      /* return an empty string by default */
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = NULL;
+  
+      id = channel_get_id();
+!     text = json_encode_nr_expr(id, &argvars[1], 0);
+      if (text == NULL)
+  	return;
+  
+--- 9955,9983 ----
+      typval_T	*listtv;
+      int		ch_idx;
+      int		id;
++     ch_mode_T	ch_mode;
+  
+      /* return an empty string by default */
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = NULL;
+  
++     ch_idx = get_channel_arg(&argvars[0]);
++     if (ch_idx < 0)
++     {
++ 	EMSG(_(e_invarg));
++ 	return;
++     }
++ 
++     ch_mode = channel_get_mode(ch_idx);
++     if (ch_mode == MODE_RAW)
++     {
++ 	EMSG(_("E912: cannot use ch_sendexpr() with a raw channel"));
++ 	return;
++     }
++ 
+      id = channel_get_id();
+!     text = json_encode_nr_expr(id, &argvars[1],
+! 					    ch_mode == MODE_JS ? JSON_JS : 0);
+      if (text == NULL)
+  	return;
+  
+*** ../vim-7.4.1287/src/version.c	2016-02-07 21:44:45.397066865 +0100
+--- src/version.c	2016-02-07 21:51:19.524931095 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1288,
+  /**/
+
+-- 
+If Microsoft would build a car...
+... Occasionally your car would die on the freeway for no
+reason. You would have to pull over to the side of the road,
+close all of the car windows, shut it off, restart it, and
+reopen the windows before you could continue. For some reason
+you would simply accept this.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

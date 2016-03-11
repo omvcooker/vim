@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1521
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1521 (after 7.4.1516)
+Problem:    File permission test fails on MS-Windows.
+Solution:   Expect a different permission.
+Files:      src/testdir/test_file_perm.vim
+
+
+*** ../vim-7.4.1520/src/testdir/test_file_perm.vim	2016-03-08 17:08:38.562223096 +0100
+--- src/testdir/test_file_perm.vim	2016-03-08 19:12:25.037273188 +0100
+***************
+*** 8,14 ****
+    call assert_true(len(getfperm('Xtest')) == 9)
+  
+    call assert_equal(1, setfperm('Xtest', 'rwx------'))
+!   call assert_equal('rwx------', getfperm('Xtest'))
+  
+    call assert_equal(1, setfperm('Xtest', 'r--r--r--'))
+    call assert_equal('r--r--r--', getfperm('Xtest'))
+--- 8,18 ----
+    call assert_true(len(getfperm('Xtest')) == 9)
+  
+    call assert_equal(1, setfperm('Xtest', 'rwx------'))
+!   if has('win32')
+!     call assert_equal('rw-rw-rw-', getfperm('Xtest'))
+!   else
+!     call assert_equal('rwx------', getfperm('Xtest'))
+!   endif
+  
+    call assert_equal(1, setfperm('Xtest', 'r--r--r--'))
+    call assert_equal('r--r--r--', getfperm('Xtest'))
+*** ../vim-7.4.1520/src/version.c	2016-03-08 19:07:18.312455917 +0100
+--- src/version.c	2016-03-08 19:19:10.873062004 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1521,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+16. You step out of your room and realize that your parents have moved and
+    you don't have a clue when it happened.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

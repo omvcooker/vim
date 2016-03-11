@@ -1,0 +1,320 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1058
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1058
+Problem:    It is not possible to test code that is only reached when memory
+            allocation fails.
+Solution:   Add the alloc_fail() function.  Try it out with :vimgrep.
+Files:      runtime/doc/eval.txt, src/globals.h, src/eval.c, src/quickfix.c,
+            src/misc2.c, src/proto/misc2.pro, src/testdir/test_quickfix.vim
+
+
+*** ../vim-7.4.1057/runtime/doc/eval.txt	2016-01-03 22:47:52.975427461 +0100
+--- runtime/doc/eval.txt	2016-01-07 20:26:24.039732967 +0100
+***************
+*** 1735,1740 ****
+--- 1739,1746 ----
+  abs( {expr})			Float or Number  absolute value of {expr}
+  acos( {expr})			Float	arc cosine of {expr}
+  add( {list}, {item})		List	append {item} to |List| {list}
++ alloc_fail( {countdown}, {when}, {repeat})
++ 				nothing	make memory allocation fail
+  and( {expr}, {expr})		Number  bitwise AND
+  append( {lnum}, {string})	Number	append {string} below line {lnum}
+  append( {lnum}, {list})		Number	append lines {list} below line {lnum}
+***************
+*** 2114,2119 ****
+--- 2120,2132 ----
+  		Use |insert()| to add an item at another position.
+  
+  
++ alloc_fail({id}, {countdown}, {repeat})			*alloc_fail()*
++ 		This is for testing: If the memory allocation with {id} is
++ 		called, then decrement {countdown}, and when it reaches zero
++ 		let memory allocation fail {repeat} times.  When {repeat} is
++ 		smaller than one it fails one time.
++ 
++ 
+  and({expr}, {expr})					*and()*
+  		Bitwise AND on the two arguments.  The arguments are converted
+  		to a number.  A List, Dict or Float argument causes an error.
+*** ../vim-7.4.1057/src/globals.h	2015-12-31 19:06:56.032082082 +0100
+--- src/globals.h	2016-01-07 20:29:00.102032021 +0100
+***************
+*** 1619,1624 ****
+--- 1619,1633 ----
+  EXTERN int ignored;
+  EXTERN char *ignoredp;
+  
++ #ifdef FEAT_EVAL
++ /* set by alloc_fail(): ID */
++ EXTERN int  alloc_fail_id INIT(= 0);
++ /* set by alloc_fail(), when zero alloc() returns NULL */
++ EXTERN int  alloc_fail_countdown INIT(= -1);
++ /* set by alloc_fail(), number of times alloc() returns NULL */
++ EXTERN int  alloc_fail_repeat INIT(= 0);
++ #endif
++ 
+  /*
+   * Optional Farsi support.  Include it here, so EXTERN and INIT are defined.
+   */
+*** ../vim-7.4.1057/src/eval.c	2016-01-04 22:05:08.854156424 +0100
+--- src/eval.c	2016-01-07 20:43:41.384432662 +0100
+***************
+*** 467,472 ****
+--- 467,473 ----
+  static void f_acos __ARGS((typval_T *argvars, typval_T *rettv));
+  #endif
+  static void f_add __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_alloc_fail __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_and __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_append __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_argc __ARGS((typval_T *argvars, typval_T *rettv));
+***************
+*** 8071,8076 ****
+--- 8072,8078 ----
+      {"acos",		1, 1, f_acos},	/* WJMc */
+  #endif
+      {"add",		2, 2, f_add},
++     {"alloc_fail",	3, 3, f_alloc_fail},
+      {"and",		2, 2, f_and},
+      {"append",		2, 2, f_append},
+      {"argc",		0, 0, f_argc},
+***************
+*** 8984,8989 ****
+--- 8986,9013 ----
+  }
+  
+  /*
++  * "alloc_fail(id, countdown, repeat)" function
++  */
++     static void
++ f_alloc_fail(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv UNUSED;
++ {
++     if (argvars[0].v_type != VAR_NUMBER
++ 	    || argvars[0].vval.v_number <= 0
++ 	    || argvars[1].v_type != VAR_NUMBER
++ 	    || argvars[1].vval.v_number < 0
++ 	    || argvars[2].v_type != VAR_NUMBER)
++ 	EMSG(_(e_invarg));
++     else
++     {
++ 	alloc_fail_id = argvars[0].vval.v_number;
++ 	alloc_fail_countdown = argvars[1].vval.v_number;
++ 	alloc_fail_repeat = argvars[2].vval.v_number;
++     }
++ }
++ 
++ /*
+   * "and(expr, expr)" function
+   */
+      static void
+*** ../vim-7.4.1057/src/quickfix.c	2015-12-31 21:19:26.694097975 +0100
+--- src/quickfix.c	2016-01-07 20:54:44.417218525 +0100
+***************
+*** 253,261 ****
+  			{'s', ".\\+"}
+  		    };
+  
+!     namebuf = alloc(CMDBUFFSIZE + 1);
+!     errmsg = alloc(CMDBUFFSIZE + 1);
+!     pattern = alloc(CMDBUFFSIZE + 1);
+      if (namebuf == NULL || errmsg == NULL || pattern == NULL)
+  	goto qf_init_end;
+  
+--- 253,261 ----
+  			{'s', ".\\+"}
+  		    };
+  
+!     namebuf = alloc_id(CMDBUFFSIZE + 1, 3);
+!     errmsg = alloc_id(CMDBUFFSIZE + 1, 4);
+!     pattern = alloc_id(CMDBUFFSIZE + 1, 5);
+      if (namebuf == NULL || errmsg == NULL || pattern == NULL)
+  	goto qf_init_end;
+  
+***************
+*** 3465,3472 ****
+  	goto theend;
+      }
+  
+!     dirname_start = alloc(MAXPATHL);
+!     dirname_now = alloc(MAXPATHL);
+      if (dirname_start == NULL || dirname_now == NULL)
+  	goto theend;
+  
+--- 3465,3472 ----
+  	goto theend;
+      }
+  
+!     dirname_start = alloc_id(MAXPATHL, 1);
+!     dirname_now = alloc_id(MAXPATHL, 2);
+      if (dirname_start == NULL || dirname_now == NULL)
+  	goto theend;
+  
+*** ../vim-7.4.1057/src/misc2.c	2016-01-02 17:54:04.419793309 +0100
+--- src/misc2.c	2016-01-07 21:23:09.950668451 +0100
+***************
+*** 797,802 ****
+--- 797,817 ----
+  
+  #endif /* MEM_PROFILE */
+  
++ #ifdef FEAT_EVAL
++     static int
++ alloc_does_fail()
++ {
++     if (alloc_fail_countdown == 0)
++     {
++ 	if (--alloc_fail_repeat <= 0)
++ 	    alloc_fail_id = 0;
++ 	return TRUE;
++     }
++     --alloc_fail_countdown;
++     return FALSE;
++ }
++ #endif
++ 
+  /*
+   * Some memory is reserved for error messages and for being able to
+   * call mf_release_all(), which needs some memory for mf_trans_add().
+***************
+*** 821,826 ****
+--- 836,857 ----
+  }
+  
+  /*
++  * alloc() with an ID for alloc_fail().
++  * LAST_ID_USED: 5
++  */
++     char_u *
++ alloc_id(size, id)
++     unsigned	size;
++     int		id;
++ {
++ #ifdef FEAT_EVAL
++     if (alloc_fail_id == id && alloc_does_fail())
++ 	return NULL;
++ #endif
++     return (lalloc((long_u)size, TRUE));
++ }
++ 
++ /*
+   * Allocate memory and set all bytes to zero.
+   */
+      char_u *
+***************
+*** 968,973 ****
+--- 999,1021 ----
+      return p;
+  }
+  
++ /*
++  * lalloc() with an ID for alloc_fail().
++  * See LAST_ID_USED above.
++  */
++     char_u *
++ lalloc_id(size, message, id)
++     long_u	size;
++     int		message;
++     int		id;
++ {
++ #ifdef FEAT_EVAL
++     if (alloc_fail_id == id && alloc_does_fail())
++ 	return NULL;
++ #endif
++     return (lalloc((long_u)size, message));
++ }
++ 
+  #if defined(MEM_PROFILE) || defined(PROTO)
+  /*
+   * realloc() with memory profiling.
+*** ../vim-7.4.1057/src/proto/misc2.pro	2015-09-15 14:12:01.386632480 +0200
+--- src/proto/misc2.pro	2016-01-07 20:58:54.134504974 +0100
+***************
+*** 20,29 ****
+--- 20,31 ----
+  int leftcol_changed __ARGS((void));
+  void vim_mem_profile_dump __ARGS((void));
+  char_u *alloc __ARGS((unsigned size));
++ char_u *alloc_id __ARGS((unsigned size, int id));
+  char_u *alloc_clear __ARGS((unsigned size));
+  char_u *alloc_check __ARGS((unsigned size));
+  char_u *lalloc_clear __ARGS((long_u size, int message));
+  char_u *lalloc __ARGS((long_u size, int message));
++ char_u *lalloc_id __ARGS((long_u size, int message, int id));
+  void *mem_realloc __ARGS((void *ptr, size_t size));
+  void do_outofmem_msg __ARGS((long_u size));
+  void free_all_mem __ARGS((void));
+*** ../vim-7.4.1057/src/testdir/test_quickfix.vim	2016-01-05 21:58:30.844951501 +0100
+--- src/testdir/test_quickfix.vim	2016-01-07 20:53:55.837746442 +0100
+***************
+*** 273,275 ****
+--- 273,314 ----
+    call XbufferTests('l')
+  endfunction
+  
++ function Test_nomem()
++   call alloc_fail(1, 0, 0)
++   try
++     vimgrep vim runtest.vim
++   catch
++     call assert_true(v:exception =~ 'E342')
++   endtry
++ 
++   call alloc_fail(2, 0, 0)
++   try
++     vimgrep vim runtest.vim
++   catch
++     call assert_true(v:exception =~ 'E342')
++   endtry
++ 
++   call alloc_fail(3, 0, 0)
++   try
++     cfile runtest.vim
++   catch
++     call assert_true(v:exception =~ 'E342')
++   endtry
++ 
++   call alloc_fail(4, 0, 0)
++   try
++     cfile runtest.vim
++   catch
++     call assert_true(v:exception =~ 'E342')
++   endtry
++ 
++   call alloc_fail(5, 0, 0)
++   try
++     cfile runtest.vim
++   catch
++     call assert_true(v:exception =~ 'E342')
++   endtry
++ 
++ endfunc
++ 
++ 
+*** ../vim-7.4.1057/src/version.c	2016-01-07 16:51:59.607421927 +0100
+--- src/version.c	2016-01-07 19:04:24.677384223 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1058,
+  /**/
+
+-- 
+Females are strictly forbidden to appear unshaven in public.
+		[real standing law in New Mexico, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

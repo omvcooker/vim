@@ -1,0 +1,124 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1026
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1026
+Problem:    When using MingW the tests do not clean up all files.  E.g. test
+            17 leaves Xdir1 behind. (Michael Soyka)
+Solution:   Also delete directories, like Make_dos.mak.  Delete files after
+            directories to reduce warnings.
+Files:      src/testdir/Make_ming.mak, src/testdir/Make_dos.mak
+
+
+*** ../vim-7.4.1025/src/testdir/Make_ming.mak	2015-12-28 22:24:37.388781777 +0100
+--- src/testdir/Make_ming.mak	2016-01-02 15:57:30.662893179 +0100
+***************
+*** 10,21 ****
+--- 10,23 ----
+  
+  ifneq (sh.exe, $(SHELL))
+  DEL = rm -f
++ DELDIR = rm -rf
+  MV = mv
+  CP = cp
+  CAT = cat
+  DIRSLASH = /
+  else
+  DEL = del
++ DELDIR = rd /s /q
+  MV = rename
+  CP = copy
+  CAT = type
+***************
+*** 76,81 ****
+--- 78,85 ----
+  	-$(DEL) mbyte.vim
+  	-$(DEL) mzscheme.vim
+  	-$(DEL) lua.vim
++ 	-$(DELDIR) Xdir1
++ 	-$(DELDIR) Xfind
+  	-$(DEL) X*
+  	-$(DEL) viminfo
+  
+***************
+*** 85,90 ****
+--- 89,96 ----
+  	diff test.out $*.ok
+  	-$(DEL) $*.out
+  	$(MV) test.out $*.out
++ 	-$(DELDIR) Xdir1
++ 	-$(DELDIR) Xfind
+  	-$(DEL) X*
+  	-$(DEL) test.ok
+  	-$(DEL) viminfo
+*** ../vim-7.4.1025/src/testdir/Make_dos.mak	2015-12-30 17:17:06.212558316 +0100
+--- src/testdir/Make_dos.mak	2016-01-02 15:58:14.442423882 +0100
+***************
+*** 51,60 ****
+  	$(VIMPROG) -u dos.vim -U NONE --noplugin -s dotest.in $(*B).in
+  	-@if exist test.out MOVE /y test.out $(DOSTMP)\$(*B).out
+  	-@if exist $(*B).in.bak move /y $(*B).in.bak $(*B).in
+- 	-@del X*
+  	-@if exist test.ok del test.ok
+  	-@if exist Xdir1 rd /s /q Xdir1
+  	-@if exist Xfind rd /s /q Xfind
+  	-@if exist viminfo del viminfo
+  	$(VIMPROG) -u dos.vim --noplugin "+set ff=unix|f test.out|wq" \
+  		$(DOSTMP)\$(*B).out
+--- 51,60 ----
+  	$(VIMPROG) -u dos.vim -U NONE --noplugin -s dotest.in $(*B).in
+  	-@if exist test.out MOVE /y test.out $(DOSTMP)\$(*B).out
+  	-@if exist $(*B).in.bak move /y $(*B).in.bak $(*B).in
+  	-@if exist test.ok del test.ok
+  	-@if exist Xdir1 rd /s /q Xdir1
+  	-@if exist Xfind rd /s /q Xfind
++ 	-@del X*
+  	-@if exist viminfo del viminfo
+  	$(VIMPROG) -u dos.vim --noplugin "+set ff=unix|f test.out|wq" \
+  		$(DOSTMP)\$(*B).out
+***************
+*** 87,95 ****
+  	-if exist mbyte.vim del mbyte.vim
+  	-if exist mzscheme.vim del mzscheme.vim
+  	-if exist lua.vim del lua.vim
+- 	-del X*
+  	-if exist Xdir1 rd /s /q Xdir1
+  	-if exist Xfind rd /s /q Xfind
+  	-if exist viminfo del viminfo
+  	-if exist test.log del test.log
+  	-if exist messages del messages
+--- 87,95 ----
+  	-if exist mbyte.vim del mbyte.vim
+  	-if exist mzscheme.vim del mzscheme.vim
+  	-if exist lua.vim del lua.vim
+  	-if exist Xdir1 rd /s /q Xdir1
+  	-if exist Xfind rd /s /q Xfind
++ 	-del X*
+  	-if exist viminfo del viminfo
+  	-if exist test.log del test.log
+  	-if exist messages del messages
+*** ../vim-7.4.1025/src/version.c	2016-01-02 15:44:13.699431050 +0100
+--- src/version.c	2016-01-02 15:54:12.733014636 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1026,
+  /**/
+
+-- 
+       [Autumn changed into Winter ... Winter changed into Spring ...  Spring
+       changed back into Autumn and Autumn gave Winter and Spring a miss and
+       went straight on into Summer ...  Until one day ...]
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

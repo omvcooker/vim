@@ -1,0 +1,46 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1362
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1362 (after 7.4.1356)
+Problem:    Using unitinialized value.
+Solution:   Initialize jo_set.
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1361/src/eval.c	2016-02-19 22:38:11.853310733 +0100
+--- src/eval.c	2016-02-19 23:28:23.433628541 +0100
+***************
+*** 9886,9891 ****
+--- 9886,9892 ----
+      int		todo;
+      hashitem_T	*hi;
+  
++     opt->jo_set = 0;
+      if (tv->v_type == VAR_UNKNOWN)
+  	return OK;
+      if (tv->v_type != VAR_DICT)
+*** ../vim-7.4.1361/src/version.c	2016-02-19 23:23:08.756935131 +0100
+--- src/version.c	2016-02-19 23:30:40.060192764 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1362,
+  /**/
+
+-- 
+Apologies for taking up the bandwidth with the apology.  Anything else I
+can apologise for ...... er no can't think of anything, sorry about that.
+		Andy Hunt (Member of British Olympic Apology Squad)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

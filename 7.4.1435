@@ -1,0 +1,906 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1435
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1435
+Problem:    It is confusing that ch_sendexpr() and ch_sendraw() wait for a
+            response.
+Solution:   Add ch_evalexpr() and ch_evalraw().
+Files:      src/eval.c, src/channel.c, runtime/doc/channel.txt,
+            runtime/doc/eval.txt, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1434/src/eval.c	2016-02-27 18:13:05.228593194 +0100
+--- src/eval.c	2016-02-27 19:11:13.324085103 +0100
+***************
+*** 507,512 ****
+--- 507,514 ----
+  #endif
+  #ifdef FEAT_CHANNEL
+  static void f_ch_close(typval_T *argvars, typval_T *rettv);
++ static void f_ch_evalexpr(typval_T *argvars, typval_T *rettv);
++ static void f_ch_evalraw(typval_T *argvars, typval_T *rettv);
+  # ifdef FEAT_JOB
+  static void f_ch_getjob(typval_T *argvars, typval_T *rettv);
+  # endif
+***************
+*** 8201,8206 ****
+--- 8203,8210 ----
+  #endif
+  #ifdef FEAT_CHANNEL
+      {"ch_close",	1, 1, f_ch_close},
++     {"ch_evalexpr",	2, 3, f_ch_evalexpr},
++     {"ch_evalraw",	2, 3, f_ch_evalraw},
+  # ifdef FEAT_JOB
+      {"ch_getjob",	1, 1, f_ch_getjob},
+  # endif
+***************
+*** 10485,10491 ****
+   * Otherwise returns NULL.
+   */
+      static channel_T *
+! send_common(typval_T *argvars, char_u *text, int id, char *fun, int *part_read)
+  {
+      channel_T	*channel;
+      jobopt_T	opt;
+--- 10489,10501 ----
+   * Otherwise returns NULL.
+   */
+      static channel_T *
+! send_common(
+! 	typval_T *argvars,
+! 	char_u *text,
+! 	int id,
+! 	int eval,
+! 	char *fun,
+! 	int *part_read)
+  {
+      channel_T	*channel;
+      jobopt_T	opt;
+***************
+*** 10502,10510 ****
+  	return NULL;
+  
+      /* Set the callback. An empty callback means no callback and not reading
+!      * the response. */
+      if (opt.jo_callback != NULL && *opt.jo_callback != NUL)
+  	channel_set_req_callback(channel, part_send, opt.jo_callback, id);
+  
+      if (channel_send(channel, part_send, text, fun) == OK
+  						   && opt.jo_callback == NULL)
+--- 10512,10528 ----
+  	return NULL;
+  
+      /* Set the callback. An empty callback means no callback and not reading
+!      * the response. With "ch_evalexpr()" and "ch_evalraw()" a callback is not
+!      * allowed. */
+      if (opt.jo_callback != NULL && *opt.jo_callback != NUL)
++     {
++ 	if (eval)
++ 	{
++ 	    EMSG2(_("E917: Cannot use a callback with %s()"), fun);
++ 	    return NULL;
++ 	}
+  	channel_set_req_callback(channel, part_send, opt.jo_callback, id);
++     }
+  
+      if (channel_send(channel, part_send, text, fun) == OK
+  						   && opt.jo_callback == NULL)
+***************
+*** 10513,10522 ****
+  }
+  
+  /*
+!  * "ch_sendexpr()" function
+   */
+      static void
+! f_ch_sendexpr(typval_T *argvars, typval_T *rettv)
+  {
+      char_u	*text;
+      typval_T	*listtv;
+--- 10531,10540 ----
+  }
+  
+  /*
+!  * common for "ch_evalexpr()" and "ch_sendexpr()"
+   */
+      static void
+! ch_expr_common(typval_T *argvars, typval_T *rettv, int eval)
+  {
+      char_u	*text;
+      typval_T	*listtv;
+***************
+*** 10539,10545 ****
+      ch_mode = channel_get_mode(channel, part_send);
+      if (ch_mode == MODE_RAW || ch_mode == MODE_NL)
+      {
+! 	EMSG(_("E912: cannot use ch_sendexpr() with a raw or nl channel"));
+  	return;
+      }
+  
+--- 10557,10563 ----
+      ch_mode = channel_get_mode(channel, part_send);
+      if (ch_mode == MODE_RAW || ch_mode == MODE_NL)
+      {
+! 	EMSG(_("E912: cannot use ch_evalexpr()/ch_sendexpr() with a raw or nl channel"));
+  	return;
+      }
+  
+***************
+*** 10549,10557 ****
+      if (text == NULL)
+  	return;
+  
+!     channel = send_common(argvars, text, id, "sendexpr", &part_read);
+      vim_free(text);
+!     if (channel != NULL)
+      {
+  	/* TODO: timeout from options */
+  	timeout = channel_get_timeout(channel, part_read);
+--- 10567,10576 ----
+      if (text == NULL)
+  	return;
+  
+!     channel = send_common(argvars, text, id, eval,
+! 			    eval ? "ch_evalexpr" : "ch_sendexpr", &part_read);
+      vim_free(text);
+!     if (channel != NULL && eval)
+      {
+  	/* TODO: timeout from options */
+  	timeout = channel_get_timeout(channel, part_read);
+***************
+*** 10570,10579 ****
+  }
+  
+  /*
+!  * "ch_sendraw()" function
+   */
+      static void
+! f_ch_sendraw(typval_T *argvars, typval_T *rettv)
+  {
+      char_u	buf[NUMBUFLEN];
+      char_u	*text;
+--- 10589,10616 ----
+  }
+  
+  /*
+!  * "ch_evalexpr()" function
+   */
+      static void
+! f_ch_evalexpr(typval_T *argvars, typval_T *rettv)
+! {
+!     ch_expr_common(argvars, rettv, TRUE);
+! }
+! 
+! /*
+!  * "ch_sendexpr()" function
+!  */
+!     static void
+! f_ch_sendexpr(typval_T *argvars, typval_T *rettv)
+! {
+!     ch_expr_common(argvars, rettv, FALSE);
+! }
+! 
+! /*
+!  * common for "ch_evalraw()" and "ch_sendraw()"
+!  */
+!     static void
+! ch_raw_common(typval_T *argvars, typval_T *rettv, int eval)
+  {
+      char_u	buf[NUMBUFLEN];
+      char_u	*text;
+***************
+*** 10586,10593 ****
+      rettv->vval.v_string = NULL;
+  
+      text = get_tv_string_buf(&argvars[1], buf);
+!     channel = send_common(argvars, text, 0, "sendraw", &part_read);
+!     if (channel != NULL)
+      {
+  	/* TODO: timeout from options */
+  	timeout = channel_get_timeout(channel, part_read);
+--- 10623,10631 ----
+      rettv->vval.v_string = NULL;
+  
+      text = get_tv_string_buf(&argvars[1], buf);
+!     channel = send_common(argvars, text, 0, eval,
+! 			      eval ? "ch_evalraw" : "ch_sendraw", &part_read);
+!     if (channel != NULL && eval)
+      {
+  	/* TODO: timeout from options */
+  	timeout = channel_get_timeout(channel, part_read);
+***************
+*** 10596,10601 ****
+--- 10634,10657 ----
+  }
+  
+  /*
++  * "ch_evalraw()" function
++  */
++     static void
++ f_ch_evalraw(typval_T *argvars, typval_T *rettv)
++ {
++     ch_raw_common(argvars, rettv, TRUE);
++ }
++ 
++ /*
++  * "ch_sendraw()" function
++  */
++     static void
++ f_ch_sendraw(typval_T *argvars, typval_T *rettv)
++ {
++     ch_raw_common(argvars, rettv, FALSE);
++ }
++ 
++ /*
+   * "ch_setoptions()" function
+   */
+      static void
+*** ../vim-7.4.1434/runtime/doc/channel.txt	2016-02-27 14:44:21.335585337 +0100
+--- runtime/doc/channel.txt	2016-02-27 18:47:56.226693411 +0100
+***************
+*** 74,80 ****
+  	=== socket opened === ~
+  
+  You can now send a message to the server: >
+! 	echo ch_sendexpr(channel, 'hello!')
+  
+  The message is received in T1 and a response is sent back to Vim.
+  You can see the raw messages in T1.  What Vim sends is:
+--- 74,80 ----
+  	=== socket opened === ~
+  
+  You can now send a message to the server: >
+! 	echo ch_evalexpr(channel, 'hello!')
+  
+  The message is received in T1 and a response is sent back to Vim.
+  You can see the raw messages in T1.  What Vim sends is:
+***************
+*** 101,107 ****
+  when opening the channel: >
+  	call ch_close(channel)
+  	let channel = ch_open('localhost:8765', {'callback': "MyHandler"})
+! 	call ch_sendexpr(channel, 'hello!', {'callback': 0})
+  
+  ==============================================================================
+  3. Opening a channel					*channel-open*
+--- 101,107 ----
+  when opening the channel: >
+  	call ch_close(channel)
+  	let channel = ch_open('localhost:8765', {'callback': "MyHandler"})
+! 	call ch_sendexpr(channel, 'hello!')
+  
+  ==============================================================================
+  3. Opening a channel					*channel-open*
+***************
+*** 171,177 ****
+  		msec at least.
+  
+  "timeout"	The time to wait for a request when blocking, E.g. when using
+! 		ch_sendexpr().  In milliseconds.  The default is 2000 (2
+  		seconds).
+  						*out-timeout* *err-timeout*
+  "out-timeout"	Timeout for stdout.  Only when using pipes.
+--- 171,177 ----
+  		msec at least.
+  
+  "timeout"	The time to wait for a request when blocking, E.g. when using
+! 		ch_evalexpr().  In milliseconds.  The default is 2000 (2
+  		seconds).
+  						*out-timeout* *err-timeout*
+  "out-timeout"	Timeout for stdout.  Only when using pipes.
+***************
+*** 214,220 ****
+  4. Using a JSON or JS channel					*channel-use*
+  
+  If mode is JSON then a message can be sent synchronously like this: >
+!     let response = ch_sendexpr(channel, {expr})
+  This awaits a response from the other side.
+  
+  When mode is JS this works the same, except that the messages use
+--- 214,220 ----
+  4. Using a JSON or JS channel					*channel-use*
+  
+  If mode is JSON then a message can be sent synchronously like this: >
+!     let response = ch_evalexpr(channel, {expr})
+  This awaits a response from the other side.
+  
+  When mode is JS this works the same, except that the messages use
+***************
+*** 222,228 ****
+  
+  To send a message, without handling a response or letting the channel callback
+  handle the response: >
+!     call ch_sendexpr(channel, {expr}, {'callback': 0})
+  
+  To send a message and letting the response handled by a specific function,
+  asynchronously: >
+--- 222,228 ----
+  
+  To send a message, without handling a response or letting the channel callback
+  handle the response: >
+!     call ch_sendexpr(channel, {expr})
+  
+  To send a message and letting the response handled by a specific function,
+  asynchronously: >
+***************
+*** 263,270 ****
+  if still possible.  The channel will then be inactive. For a JSON and JS mode
+  channel quotes are used around DETACH, otherwise there are no quotes.
+  
+! It is also possible to use ch_sendraw() on a JSON or JS channel.  The caller
+! is then completely responsible for correct encoding and decoding.
+  
+  ==============================================================================
+  5. Channel commands					*channel-commands*
+--- 263,271 ----
+  if still possible.  The channel will then be inactive. For a JSON and JS mode
+  channel quotes are used around DETACH, otherwise there are no quotes.
+  
+! It is also possible to use ch_sendraw() and ch_evalraw() on a JSON or JS
+! channel.  The caller is then completely responsible for correct encoding and
+! decoding.
+  
+  ==============================================================================
+  5. Channel commands					*channel-commands*
+***************
+*** 363,369 ****
+  6. Using a RAW or NL channel				*channel-raw*
+  
+  If mode is RAW or NL then a message can be send like this: >
+!     let response = ch_sendraw(channel, {string})
+  
+  The {string} is sent as-is.  The response will be what can be read from the
+  channel right away.  Since Vim doesn't know how to recognize the end of the
+--- 364,370 ----
+  6. Using a RAW or NL channel				*channel-raw*
+  
+  If mode is RAW or NL then a message can be send like this: >
+!     let response = ch_evalraw(channel, {string})
+  
+  The {string} is sent as-is.  The response will be what can be read from the
+  channel right away.  Since Vim doesn't know how to recognize the end of the
+***************
+*** 377,394 ****
+  If no NL was read before the channel timeout an empty string is returned.
+  
+  To send a message, without expecting a response: >
+!     call ch_sendraw(channel, {string}, 0)
+  The process can send back a response, the channel handler will be called with
+  it.
+  
+  To send a message and letting the response handled by a specific function,
+  asynchronously: >
+!     call ch_sendraw(channel, {string}, {callback})
+  
+  This {string} can also be JSON, use |json_encode()| to create it and
+  |json_decode()| to handle a received JSON message.
+  
+! It is not possible to use |ch_sendexpr()| on a raw channel.
+  
+  ==============================================================================
+  7. More channel functions				*channel-more*
+--- 378,395 ----
+  If no NL was read before the channel timeout an empty string is returned.
+  
+  To send a message, without expecting a response: >
+!     call ch_sendraw(channel, {string})
+  The process can send back a response, the channel handler will be called with
+  it.
+  
+  To send a message and letting the response handled by a specific function,
+  asynchronously: >
+!     call ch_sendraw(channel, {string}, {'callback': 'MyHandler'})
+  
+  This {string} can also be JSON, use |json_encode()| to create it and
+  |json_decode()| to handle a received JSON message.
+  
+! It is not possible to use |ch_evalexpr()| or |ch_sendexpr()| on a raw channel.
+  
+  ==============================================================================
+  7. More channel functions				*channel-more*
+***************
+*** 447,454 ****
+  "callback" option: >
+      let job = job_start(command, {"callback": "MyHandler"}) 
+  
+! You can send a message to the command with ch_sendraw().  If the channel is in
+! JSON or JS mode you can use ch_sendexpr().
+  
+  There are several options you can use, see |job-options|.
+  For example, to start a job and write its output in buffer "dummy": >
+--- 448,455 ----
+  "callback" option: >
+      let job = job_start(command, {"callback": "MyHandler"}) 
+  
+! You can send a message to the command with ch_evalraw().  If the channel is in
+! JSON or JS mode you can use ch_evalexpr().
+  
+  There are several options you can use, see |job-options|.
+  For example, to start a job and write its output in buffer "dummy": >
+*** ../vim-7.4.1434/runtime/doc/eval.txt	2016-02-27 16:33:02.347527987 +0100
+--- runtime/doc/eval.txt	2016-02-27 19:06:34.898994097 +0100
+***************
+*** 1808,1813 ****
+--- 1818,1827 ----
+  				any	call {func} with arguments {arglist}
+  ceil( {expr})			Float	round {expr} up
+  ch_close( {channel})		none	close {channel}
++ ch_evalexpr( {channel}, {expr} [, {options}])
++ 				any	evaluate {expr} on JSON {channel}
++ ch_evalraw( {channel}, {string} [, {options}])
++ 				any	evaluate {string} on raw {channel}
+  ch_getjob( {channel})		Job	get the Job of {channel}
+  ch_log( {msg} [, {channel}])	none	write {msg} in the channel log file
+  ch_logfile( {fname} [, {mode}])	none	start logging channel activity
+***************
+*** 2678,2683 ****
+--- 2696,2726 ----
+  		Close {channel}.  See |channel-close|.
+  		{only available when compiled with the |+channel| feature}
+  
++ ch_evalexpr({channel}, {expr} [, {options}])			*ch_evalexpr()*
++ 		Send {expr} over {channel}.  The {expr} is encoded
++ 		according to the type of channel.  The function cannot be used
++ 		with a raw channel.  See |channel-use|.  *E912*
++ 								*E917*
++ 		{options} must be a Dictionary.  It must not have a "callback"
++ 		entry.
++ 
++ 		ch_evalexpr() waits for a response and returns the decoded
++ 		expression.  When there is an error or timeout it returns an
++ 		empty string.
++ 
++ 		{only available when compiled with the |+channel| feature}
++ 
++ ch_evalraw({channel}, {string} [, {options}])		*ch_evalraw()*
++ 		Send {string} over {channel}.
++ 		Works like |ch_evalexpr()|, but does not encode the request or
++ 		decode the response.  The caller is responsible for the
++ 		correct contents.  Also does not add a newline for a channel
++ 		in NL mode, the caller must do that.  The NL in the response
++ 		is removed.
++ 		See |channel-use|.
++ 
++ 		{only available when compiled with the |+channel| feature}
++ 
+  ch_getjob({channel})						*ch_getjob()*
+  		Get the Job associated with {channel}.
+  		If there is no job calling |job_status()| on the returned Job
+***************
+*** 2755,2770 ****
+  		according to the type of channel.  The function cannot be used
+  		with a raw channel.  See |channel-use|.  *E912*
+  
+! 		{options} must be a Dictionary.
+! 		When "callback" is a Funcref or the name of a function,
+! 		ch_sendexpr() returns immediately.  The callback is invoked
+! 		when the response is received.  See |channel-callback|.
+! 
+! 		Without "callback" ch_sendexpr() waits for a response and
+! 		returns the decoded expression.  When there is an error or
+! 		timeout it returns an empty string.
+! 
+! 		When "callback" is zero no response is expected.
+  
+  		{only available when compiled with the |+channel| feature}
+  
+--- 2798,2808 ----
+  		according to the type of channel.  The function cannot be used
+  		with a raw channel.  See |channel-use|.  *E912*
+  
+! 		{options} must be a Dictionary.  The "callback" item is a
+! 		Funcref or the name of a function it is invoked when the
+! 		response is received.  See |channel-callback|.
+! 		Without "callback" the channel handler is invoked, otherwise
+! 		any received message is dropped.
+  
+  		{only available when compiled with the |+channel| feature}
+  
+*** ../vim-7.4.1434/src/testdir/test_channel.vim	2016-02-23 19:33:57.429544837 +0100
+--- src/testdir/test_channel.vim	2016-02-27 19:10:17.152672010 +0100
+***************
+*** 110,126 ****
+    endif
+  
+    " Simple string request and reply.
+!   call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+  
+    " Request that triggers sending two ex commands.  These will usually be
+    " handled before getting the response, but it's not guaranteed, thus wait a
+    " tiny bit for the commands to get executed.
+!   call assert_equal('ok', ch_sendexpr(handle, 'make change'))
+    sleep 10m
+    call assert_equal('added1', getline(line('$') - 1))
+    call assert_equal('added2', getline('$'))
+  
+!   call assert_equal('ok', ch_sendexpr(handle, 'do normal'))
+    sleep 10m
+    call assert_equal('added more', getline('$'))
+  
+--- 110,126 ----
+    endif
+  
+    " Simple string request and reply.
+!   call assert_equal('got it', ch_evalexpr(handle, 'hello!'))
+  
+    " Request that triggers sending two ex commands.  These will usually be
+    " handled before getting the response, but it's not guaranteed, thus wait a
+    " tiny bit for the commands to get executed.
+!   call assert_equal('ok', ch_evalexpr(handle, 'make change'))
+    sleep 10m
+    call assert_equal('added1', getline(line('$') - 1))
+    call assert_equal('added2', getline('$'))
+  
+!   call assert_equal('ok', ch_evalexpr(handle, 'do normal'))
+    sleep 10m
+    call assert_equal('added more', getline('$'))
+  
+***************
+*** 154,190 ****
+    call ch_setoptions(handle, {'callback': ''})
+  
+    " Send an eval request that works.
+!   call assert_equal('ok', ch_sendexpr(handle, 'eval-works'))
+    sleep 10m
+!   call assert_equal([-1, 'foo123'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send an eval request that fails.
+!   call assert_equal('ok', ch_sendexpr(handle, 'eval-fails'))
+    sleep 10m
+!   call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send an eval request that works but can't be encoded.
+!   call assert_equal('ok', ch_sendexpr(handle, 'eval-error'))
+    sleep 10m
+!   call assert_equal([-3, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send a bad eval request. There will be no response.
+!   call assert_equal('ok', ch_sendexpr(handle, 'eval-bad'))
+    sleep 10m
+!   call assert_equal([-3, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
+  
+    " Send an expr request
+!   call assert_equal('ok', ch_sendexpr(handle, 'an expr'))
+    sleep 10m
+    call assert_equal('one', getline(line('$') - 2))
+    call assert_equal('two', getline(line('$') - 1))
+    call assert_equal('three', getline('$'))
+  
+    " Request a redraw, we don't check for the effect.
+!   call assert_equal('ok', ch_sendexpr(handle, 'redraw'))
+!   call assert_equal('ok', ch_sendexpr(handle, 'redraw!'))
+  
+!   call assert_equal('ok', ch_sendexpr(handle, 'empty-request'))
+  
+    " Reading while there is nothing available.
+    call assert_equal(v:none, ch_read(handle, {'timeout': 0}))
+--- 154,190 ----
+    call ch_setoptions(handle, {'callback': ''})
+  
+    " Send an eval request that works.
+!   call assert_equal('ok', ch_evalexpr(handle, 'eval-works'))
+    sleep 10m
+!   call assert_equal([-1, 'foo123'], ch_evalexpr(handle, 'eval-result'))
+  
+    " Send an eval request that fails.
+!   call assert_equal('ok', ch_evalexpr(handle, 'eval-fails'))
+    sleep 10m
+!   call assert_equal([-2, 'ERROR'], ch_evalexpr(handle, 'eval-result'))
+  
+    " Send an eval request that works but can't be encoded.
+!   call assert_equal('ok', ch_evalexpr(handle, 'eval-error'))
+    sleep 10m
+!   call assert_equal([-3, 'ERROR'], ch_evalexpr(handle, 'eval-result'))
+  
+    " Send a bad eval request. There will be no response.
+!   call assert_equal('ok', ch_evalexpr(handle, 'eval-bad'))
+    sleep 10m
+!   call assert_equal([-3, 'ERROR'], ch_evalexpr(handle, 'eval-result'))
+  
+    " Send an expr request
+!   call assert_equal('ok', ch_evalexpr(handle, 'an expr'))
+    sleep 10m
+    call assert_equal('one', getline(line('$') - 2))
+    call assert_equal('two', getline(line('$') - 1))
+    call assert_equal('three', getline('$'))
+  
+    " Request a redraw, we don't check for the effect.
+!   call assert_equal('ok', ch_evalexpr(handle, 'redraw'))
+!   call assert_equal('ok', ch_evalexpr(handle, 'redraw!'))
+  
+!   call assert_equal('ok', ch_evalexpr(handle, 'empty-request'))
+  
+    " Reading while there is nothing available.
+    call assert_equal(v:none, ch_read(handle, {'timeout': 0}))
+***************
+*** 195,208 ****
+    call assert_true(reltimefloat(elapsed) < 0.6)
+  
+    " Send without waiting for a response, then wait for a response.
+!   call ch_sendexpr(handle, 'wait a bit',  {'callback': 0})
+    let resp = ch_read(handle)
+    call assert_equal(type([]), type(resp))
+    call assert_equal(type(11), type(resp[0]))
+    call assert_equal('waited', resp[1])
+  
+    " make the server quit, can't check if this works, should not hang.
+!   call ch_sendexpr(handle, '!quit!', {'callback': 0})
+  endfunc
+  
+  func Test_communicate()
+--- 195,208 ----
+    call assert_true(reltimefloat(elapsed) < 0.6)
+  
+    " Send without waiting for a response, then wait for a response.
+!   call ch_sendexpr(handle, 'wait a bit')
+    let resp = ch_read(handle)
+    call assert_equal(type([]), type(resp))
+    call assert_equal(type(11), type(resp[0]))
+    call assert_equal('waited', resp[1])
+  
+    " make the server quit, can't check if this works, should not hang.
+!   call ch_sendexpr(handle, '!quit!')
+  endfunc
+  
+  func Test_communicate()
+***************
+*** 218,235 ****
+      return
+    endif
+  
+!   call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+  
+    let newhandle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(newhandle) == "fail"
+      call assert_false(1, "Can't open second channel")
+      return
+    endif
+!   call assert_equal('got it', ch_sendexpr(newhandle, 'hello!'))
+!   call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+  
+    call ch_close(handle)
+!   call assert_equal('got it', ch_sendexpr(newhandle, 'hello!'))
+  
+    call ch_close(newhandle)
+  endfunc
+--- 218,235 ----
+      return
+    endif
+  
+!   call assert_equal('got it', ch_evalexpr(handle, 'hello!'))
+  
+    let newhandle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(newhandle) == "fail"
+      call assert_false(1, "Can't open second channel")
+      return
+    endif
+!   call assert_equal('got it', ch_evalexpr(newhandle, 'hello!'))
+!   call assert_equal('got it', ch_evalexpr(handle, 'hello!'))
+  
+    call ch_close(handle)
+!   call assert_equal('got it', ch_evalexpr(newhandle, 'hello!'))
+  
+    call ch_close(newhandle)
+  endfunc
+***************
+*** 247,253 ****
+      return
+    endif
+  
+!   call ch_sendexpr(handle, '!crash!')
+  
+    sleep 10m
+  endfunc
+--- 247,253 ----
+      return
+    endif
+  
+!   call ch_evalexpr(handle, '!crash!')
+  
+    sleep 10m
+  endfunc
+***************
+*** 271,282 ****
+    endif
+  
+    " Test that it works while waiting on a numbered message.
+!   call assert_equal('ok', ch_sendexpr(handle, 'call me'))
+    sleep 10m
+    call assert_equal('we called you', s:reply)
+  
+    " Test that it works while not waiting on a numbered message.
+!   call ch_sendexpr(handle, 'call me again', {'callback': 0})
+    sleep 10m
+    call assert_equal('we did call you', s:reply)
+  endfunc
+--- 271,282 ----
+    endif
+  
+    " Test that it works while waiting on a numbered message.
+!   call assert_equal('ok', ch_evalexpr(handle, 'call me'))
+    sleep 10m
+    call assert_equal('we called you', s:reply)
+  
+    " Test that it works while not waiting on a numbered message.
+!   call ch_sendexpr(handle, 'call me again')
+    sleep 10m
+    call assert_equal('we did call you', s:reply)
+  endfunc
+***************
+*** 334,348 ****
+    call assert_equal("run", job_status(job))
+    try
+      let handle = job_getchannel(job)
+!     call ch_sendraw(handle, "echo something\n", {'callback': 0})
+      let msg = ch_readraw(handle)
+      call assert_equal("something\n", substitute(msg, "\r", "", 'g'))
+  
+!     call ch_sendraw(handle, "double this\n", {'callback': 0})
+      let msg = ch_readraw(handle)
+      call assert_equal("this\nAND this\n", substitute(msg, "\r", "", 'g'))
+  
+!     let reply = ch_sendraw(handle, "quit\n")
+      call assert_equal("Goodbye!\n", substitute(reply, "\r", "", 'g'))
+    finally
+      call job_stop(job)
+--- 334,348 ----
+    call assert_equal("run", job_status(job))
+    try
+      let handle = job_getchannel(job)
+!     call ch_sendraw(handle, "echo something\n")
+      let msg = ch_readraw(handle)
+      call assert_equal("something\n", substitute(msg, "\r", "", 'g'))
+  
+!     call ch_sendraw(handle, "double this\n")
+      let msg = ch_readraw(handle)
+      call assert_equal("this\nAND this\n", substitute(msg, "\r", "", 'g'))
+  
+!     let reply = ch_evalraw(handle, "quit\n")
+      call assert_equal("Goodbye!\n", substitute(reply, "\r", "", 'g'))
+    finally
+      call job_stop(job)
+***************
+*** 358,377 ****
+    call assert_equal("run", job_status(job))
+    try
+      let handle = job_getchannel(job)
+!     call ch_sendraw(handle, "echo something\n", {'callback': 0})
+      call assert_equal("something", ch_readraw(handle))
+  
+!     call ch_sendraw(handle, "double this\n", {'callback': 0})
+      call assert_equal("this", ch_readraw(handle))
+      call assert_equal("AND this", ch_readraw(handle))
+  
+!     let reply = ch_sendraw(handle, "quit\n")
+      call assert_equal("Goodbye!", reply)
+    finally
+      call job_stop(job)
+    endtry
+  endfunc
+  
+  """"""""""
+  
+  let s:unletResponse = ''
+--- 358,405 ----
+    call assert_equal("run", job_status(job))
+    try
+      let handle = job_getchannel(job)
+!     call ch_sendraw(handle, "echo something\n")
+      call assert_equal("something", ch_readraw(handle))
+  
+!     call ch_sendraw(handle, "double this\n")
+      call assert_equal("this", ch_readraw(handle))
+      call assert_equal("AND this", ch_readraw(handle))
+  
+!     let reply = ch_evalraw(handle, "quit\n")
+      call assert_equal("Goodbye!", reply)
+    finally
+      call job_stop(job)
+    endtry
+  endfunc
+  
++ func Test_pipe_to_buffer()
++   if !has('job')
++     return
++   endif
++   call ch_log('Test_pipe_to_buffer()')
++   let job = job_start(s:python . " test_channel_pipe.py",
++ 	\ {'out-io': 'buffer', 'out-name': 'pipe-output'})
++   call assert_equal("run", job_status(job))
++   try
++     let handle = job_getchannel(job)
++     call ch_sendraw(handle, "echo line one\n")
++     call ch_sendraw(handle, "echo line two\n")
++     call ch_sendraw(handle, "double this\n")
++     call ch_sendraw(handle, "quit\n")
++     sp pipe-output
++     for i in range(100)
++       sleep 10m
++       if line('$') >= 6
++ 	break
++       endif
++     endfor
++     call assert_equal(['Reading from channel output...', 'line one', 'line two', 'this', 'AND this', 'Goodbye!'], getline(1, '$'))
++     bwipe!
++   finally
++     call job_stop(job)
++   endtry
++ endfunc
++ 
+  """"""""""
+  
+  let s:unletResponse = ''
+***************
+*** 434,440 ****
+      call assert_false(1, "Can't open channel")
+      return
+    endif
+!   call assert_equal('got it', ch_sendexpr(channel, 'hello!'))
+    call ch_close(channel)
+  endfunc
+  
+--- 462,468 ----
+      call assert_false(1, "Can't open channel")
+      return
+    endif
+!   call assert_equal('got it', ch_evalexpr(channel, 'hello!'))
+    call ch_close(channel)
+  endfunc
+  
+***************
+*** 457,463 ****
+      return
+    endif
+  
+!   call assert_equal('ok', ch_sendexpr(handle, 'call-func'))
+    sleep 20m
+    call assert_equal([1, 2, 3], s:call_ret)
+  endfunc
+--- 485,491 ----
+      return
+    endif
+  
+!   call assert_equal('ok', ch_evalexpr(handle, 'call-func'))
+    sleep 20m
+    call assert_equal([1, 2, 3], s:call_ret)
+  endfunc
+***************
+*** 507,513 ****
+    endif
+    call ch_setoptions(handle, {'close-cb': 'MyCloseCb'})
+  
+!   call assert_equal('', ch_sendexpr(handle, 'close me'))
+    sleep 20m
+    call assert_equal('closed', s:ch_close_ret)
+  endfunc
+--- 535,541 ----
+    endif
+    call ch_setoptions(handle, {'close-cb': 'MyCloseCb'})
+  
+!   call assert_equal('', ch_evalexpr(handle, 'close me'))
+    sleep 20m
+    call assert_equal('closed', s:ch_close_ret)
+  endfunc
+*** ../vim-7.4.1434/src/version.c	2016-02-27 18:41:23.170807246 +0100
+--- src/version.c	2016-02-27 18:49:08.541936982 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1435,
+  /**/
+
+-- 
+My Go, this amn keyboar oesn't have a .
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

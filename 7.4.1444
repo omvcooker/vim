@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1444
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1444
+Problem:    Can't build with JSON but without multi-byte.
+Solution:   Fix pointer name.
+Files:      src/json.c
+
+
+*** ../vim-7.4.1443/src/json.c	2016-02-27 21:27:16.550519087 +0100
+--- src/json.c	2016-02-27 22:57:07.029799206 +0100
+***************
+*** 101,107 ****
+  	    /* always use utf-8 encoding, ignore 'encoding' */
+  	    c = utf_ptr2char(res);
+  #else
+! 	    c = (int)*(p);
+  #endif
+  
+  	    switch (c)
+--- 101,107 ----
+  	    /* always use utf-8 encoding, ignore 'encoding' */
+  	    c = utf_ptr2char(res);
+  #else
+! 	    c = *res;
+  #endif
+  
+  	    switch (c)
+***************
+*** 142,148 ****
+  #ifdef FEAT_MBYTE
+  	    res += utf_ptr2len(res);
+  #else
+! 	    ++p;
+  #endif
+  	}
+  	ga_append(gap, '"');
+--- 142,148 ----
+  #ifdef FEAT_MBYTE
+  	    res += utf_ptr2len(res);
+  #else
+! 	    ++res;
+  #endif
+  	}
+  	ga_append(gap, '"');
+*** ../vim-7.4.1443/src/version.c	2016-02-27 22:08:11.888700023 +0100
+--- src/version.c	2016-02-27 22:56:23.498258089 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1444,
+  /**/
+
+-- 
+   Another bucket of what can only be described as human ordure hits ARTHUR.
+ARTHUR: ... Right!  (to the KNIGHTS) That settles it!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,295 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1096
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1096
+Problem:    Need several lines to verify a command produces an error.
+Solution:   Add assert_fails(). (suggested by Nikolay Pavlov)
+            Make the quickfix alloc test actually work.
+Files:      src/testdir/test_quickfix.vim, src/eval.c, runtime/doc/eval.txt,
+            src/misc2.c, src/alloc.h
+
+
+*** ../vim-7.4.1095/src/testdir/test_quickfix.vim	2016-01-09 22:28:13.343790730 +0100
+--- src/testdir/test_quickfix.vim	2016-01-15 20:26:45.548048021 +0100
+***************
+*** 279,317 ****
+  
+  function Test_nomem()
+    call alloc_fail(GetAllocId('qf_dirname_start'), 0, 0)
+!   try
+!     vimgrep vim runtest.vim
+!   catch
+!     call assert_true(v:exception =~ 'E342')
+!   endtry
+  
+    call alloc_fail(GetAllocId('qf_dirname_now'), 0, 0)
+!   try
+!     vimgrep vim runtest.vim
+!   catch
+!     call assert_true(v:exception =~ 'E342')
+!   endtry
+  
+    call alloc_fail(GetAllocId('qf_namebuf'), 0, 0)
+!   try
+!     cfile runtest.vim
+!   catch
+!     call assert_true(v:exception =~ 'E342')
+!   endtry
+  
+    call alloc_fail(GetAllocId('qf_errmsg'), 0, 0)
+!   try
+!     cfile runtest.vim
+!   catch
+!     call assert_true(v:exception =~ 'E342')
+!   endtry
+  
+    call alloc_fail(GetAllocId('qf_pattern'), 0, 0)
+!   try
+!     cfile runtest.vim
+!   catch
+!     call assert_true(v:exception =~ 'E342')
+!   endtry
+  
+  endfunc
+  
+--- 279,297 ----
+  
+  function Test_nomem()
+    call alloc_fail(GetAllocId('qf_dirname_start'), 0, 0)
+!   call assert_fails('vimgrep vim runtest.vim', 'E342:')
+  
+    call alloc_fail(GetAllocId('qf_dirname_now'), 0, 0)
+!   call assert_fails('vimgrep vim runtest.vim', 'E342:')
+  
+    call alloc_fail(GetAllocId('qf_namebuf'), 0, 0)
+!   call assert_fails('cfile runtest.vim', 'E342:')
+  
+    call alloc_fail(GetAllocId('qf_errmsg'), 0, 0)
+!   call assert_fails('cfile runtest.vim', 'E342:')
+  
+    call alloc_fail(GetAllocId('qf_pattern'), 0, 0)
+!   call assert_fails('cfile runtest.vim', 'E342:')
+  
+  endfunc
+  
+*** ../vim-7.4.1095/src/eval.c	2016-01-15 15:37:16.979521224 +0100
+--- src/eval.c	2016-01-15 20:43:49.008857762 +0100
+***************
+*** 476,481 ****
+--- 476,482 ----
+  static void f_argv __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_assert_equal __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_assert_exception __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_assert_fails __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_assert_false __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_assert_true __ARGS((typval_T *argvars, typval_T *rettv));
+  #ifdef FEAT_FLOAT
+***************
+*** 8090,8095 ****
+--- 8091,8097 ----
+  #endif
+      {"assert_equal",	2, 3, f_assert_equal},
+      {"assert_exception", 1, 2, f_assert_exception},
++     {"assert_fails",	1, 2, f_assert_fails},
+      {"assert_false",	1, 2, f_assert_false},
+      {"assert_true",	1, 2, f_assert_true},
+  #ifdef FEAT_FLOAT
+***************
+*** 9009,9016 ****
+--- 9011,9021 ----
+      else
+      {
+  	alloc_fail_id = argvars[0].vval.v_number;
++ 	if (alloc_fail_id >= aid_last)
++ 	    EMSG(_(e_invarg));
+  	alloc_fail_countdown = argvars[1].vval.v_number;
+  	alloc_fail_repeat = argvars[2].vval.v_number;
++ 	did_outofmem_msg = FALSE;
+      }
+  }
+  
+***************
+*** 9301,9306 ****
+--- 9306,9356 ----
+  }
+  
+  /*
++  * "assert_fails(cmd [, error])" function
++  */
++     static void
++ f_assert_fails(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv UNUSED;
++ {
++     char_u	*cmd = get_tv_string_chk(&argvars[0]);
++     garray_T	ga;
++ 
++     called_emsg = FALSE;
++     suppress_errthrow = TRUE;
++     emsg_silent = TRUE;
++     do_cmdline_cmd(cmd);
++     if (!called_emsg)
++     {
++ 	prepare_assert_error(&ga);
++ 	ga_concat(&ga, (char_u *)"command did not fail: ");
++ 	ga_concat(&ga, cmd);
++ 	assert_error(&ga);
++ 	ga_clear(&ga);
++     }
++     else if (argvars[1].v_type != VAR_UNKNOWN)
++     {
++ 	char_u	buf[NUMBUFLEN];
++ 	char	*error = (char *)get_tv_string_buf_chk(&argvars[1], buf);
++ 
++ 	if (strstr((char *)vimvars[VV_ERRMSG].vv_str, error) == NULL)
++ 	{
++ 	    prepare_assert_error(&ga);
++ 	    fill_assert_error(&ga, &argvars[2], NULL, &argvars[1],
++ 						&vimvars[VV_ERRMSG].vv_tv);
++ 	    assert_error(&ga);
++ 	    ga_clear(&ga);
++ 	}
++     }
++ 
++     called_emsg = FALSE;
++     suppress_errthrow = FALSE;
++     emsg_silent = FALSE;
++     emsg_on_display = FALSE;
++     set_vim_var_string(VV_ERRMSG, NULL, 0);
++ }
++ 
++ /*
+   * Common for assert_true() and assert_false().
+   */
+      static void
+*** ../vim-7.4.1095/runtime/doc/eval.txt	2016-01-15 15:29:04.920806005 +0100
+--- runtime/doc/eval.txt	2016-01-15 18:56:39.222678188 +0100
+***************
+*** 1748,1753 ****
+--- 1752,1758 ----
+  argv( )				List	the argument list
+  assert_equal( {exp}, {act} [, {msg}]) none  assert {exp} equals {act}
+  assert_exception({error} [, {msg}])   none  assert {error} is in v:exception
++ assert_fails( {cmd} [, {error}])      none  assert {cmd} fails
+  assert_false( {actual} [, {msg}])     none  assert {actual} is false
+  assert_true( {actual} [, {msg}])      none  assert {actual} is true
+  asin( {expr})			Float	arc sine of {expr}
+***************
+*** 2203,2208 ****
+--- 2208,2218 ----
+  			  call assert_exception('E492:')
+  			endtry
+  
++ assert_fails({cmd} [, {error}])					*assert_fails()*
++ 		Run {cmd} and add an error message to |v:errors| if it does
++ 		NOT produce an error.
++ 		When {error} is given it must match |v:errmsg|.
++ 
+  assert_false({actual} [, {msg}])				*assert_false()*
+  		When {actual} is not false an error message is added to
+  		|v:errors|, like with |assert_equal()|.
+*** ../vim-7.4.1095/src/misc2.c	2016-01-09 22:28:13.335790817 +0100
+--- src/misc2.c	2016-01-15 19:49:55.440088237 +0100
+***************
+*** 798,810 ****
+  #endif /* MEM_PROFILE */
+  
+  #ifdef FEAT_EVAL
+      static int
+! alloc_does_fail()
+  {
+      if (alloc_fail_countdown == 0)
+      {
+  	if (--alloc_fail_repeat <= 0)
+  	    alloc_fail_id = 0;
+  	return TRUE;
+      }
+      --alloc_fail_countdown;
+--- 798,814 ----
+  #endif /* MEM_PROFILE */
+  
+  #ifdef FEAT_EVAL
++ static int alloc_does_fail __ARGS((long_u size));
++ 
+      static int
+! alloc_does_fail(size)
+!     long_u size;
+  {
+      if (alloc_fail_countdown == 0)
+      {
+  	if (--alloc_fail_repeat <= 0)
+  	    alloc_fail_id = 0;
++ 	do_outofmem_msg(size);
+  	return TRUE;
+      }
+      --alloc_fail_countdown;
+***************
+*** 844,850 ****
+      alloc_id_T	id UNUSED;
+  {
+  #ifdef FEAT_EVAL
+!     if (alloc_fail_id == id && alloc_does_fail())
+  	return NULL;
+  #endif
+      return (lalloc((long_u)size, TRUE));
+--- 848,854 ----
+      alloc_id_T	id UNUSED;
+  {
+  #ifdef FEAT_EVAL
+!     if (alloc_fail_id == id && alloc_does_fail((long_u)size))
+  	return NULL;
+  #endif
+      return (lalloc((long_u)size, TRUE));
+***************
+*** 1008,1014 ****
+      alloc_id_T	id UNUSED;
+  {
+  #ifdef FEAT_EVAL
+!     if (alloc_fail_id == id && alloc_does_fail())
+  	return NULL;
+  #endif
+      return (lalloc((long_u)size, message));
+--- 1012,1018 ----
+      alloc_id_T	id UNUSED;
+  {
+  #ifdef FEAT_EVAL
+!     if (alloc_fail_id == id && alloc_does_fail(size))
+  	return NULL;
+  #endif
+      return (lalloc((long_u)size, message));
+*** ../vim-7.4.1095/src/alloc.h	2016-01-09 22:28:13.339790774 +0100
+--- src/alloc.h	2016-01-15 20:27:11.903761031 +0100
+***************
+*** 17,20 ****
+--- 17,21 ----
+  	aid_qf_namebuf,
+  	aid_qf_errmsg,
+  	aid_qf_pattern,
++ 	aid_last,
+  } alloc_id_T;
+*** ../vim-7.4.1095/src/version.c	2016-01-15 18:03:26.873250829 +0100
+--- src/version.c	2016-01-15 20:44:47.300221163 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1096,
+  /**/
+
+-- 
+BLACK KNIGHT: The Black Knight always triumphs. Have at you!
+   ARTHUR takes his last leg off.  The BLACK KNIGHT's body lands upright.
+BLACK KNIGHT: All right, we'll call it a draw.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

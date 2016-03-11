@@ -1,0 +1,71 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1010
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1010
+Problem:    Some developers are unhappy while running tests.
+Solution:   Add a test and some color.
+Files:      src/ex_cmds.c, src/testdir/test_assert.vim
+
+
+*** ../vim-7.4.1009/src/ex_cmds.c	2015-12-31 19:53:16.262087808 +0100
+--- src/ex_cmds.c	2015-12-31 20:46:08.319780416 +0100
+***************
+*** 7767,7773 ****
+  	    msg_putchar('\n');
+  	else
+  	    for (n = *p++; n > 0; --n)
+! 		msg_putchar(*p);
+      msg_clr_eos();
+  }
+  
+--- 7767,7776 ----
+  	    msg_putchar('\n');
+  	else
+  	    for (n = *p++; n > 0; --n)
+! 		if (*p == 'o' || *p == '$')
+! 		    msg_putchar_attr(*p, hl_attr(HLF_L));
+! 		else
+! 		    msg_putchar(*p);
+      msg_clr_eos();
+  }
+  
+*** ../vim-7.4.1009/src/testdir/test_assert.vim	2015-11-30 21:37:23.596219585 +0100
+--- src/testdir/test_assert.vim	2015-12-31 19:33:00.391205719 +0100
+***************
+*** 17,19 ****
+--- 17,24 ----
+    let l = [1, 2, 3]
+    call assert_equal([1, 2, 3], l)
+  endfunc
++ 
++ func Test_user_is_happy()
++   smile
++   sleep 300m
++ endfunc
+*** ../vim-7.4.1009/src/version.c	2015-12-31 19:53:16.266087765 +0100
+--- src/version.c	2015-12-31 20:41:50.894569561 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1010,
+  /**/
+
+-- 
+GUEST:        He's killed the best man!
+SECOND GUEST: (holding a limp WOMAN) He's killed my auntie.
+FATHER:       No, please!  This is supposed to be a happy occasion!  Let's
+              not bicker and argue about who killed who ...
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

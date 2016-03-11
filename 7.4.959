@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.959
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.959
+Problem:    When setting 'term' the clipboard ownership is lost.
+Solution:   Do not call clip_init(). (James McCoy)
+Files:      src/term.c
+
+
+*** ../vim-7.4.958/src/term.c	2015-11-24 18:15:46.381122073 +0100
+--- src/term.c	2015-12-03 21:13:55.028389836 +0100
+***************
+*** 1880,1893 ****
+  
+  	p = (char_u *)"";
+  #  ifdef FEAT_MOUSE_XTERM
+- #   ifdef FEAT_CLIPBOARD
+- #    ifdef FEAT_GUI
+- 	if (!gui.in_use)
+- #    endif
+- #    ifndef FEAT_CYGWIN_WIN32_CLIPBOARD
+- 	    clip_init(FALSE);
+- #    endif
+- #   endif
+  	if (use_xterm_like_mouse(term))
+  	{
+  	    if (use_xterm_mouse())
+--- 1880,1885 ----
+*** ../vim-7.4.958/src/version.c	2015-12-03 21:02:23.395980863 +0100
+--- src/version.c	2015-12-03 21:15:00.115675705 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     959,
+  /**/
+
+-- 
+A computer program does what you tell it to do, not what you want it to do.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

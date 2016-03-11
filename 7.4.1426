@@ -1,0 +1,782 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1426
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1426
+Problem:    The "out-io" option for jobs is not implemented yet.
+Solution:   Implement the "buffer" value: append job output to a buffer.
+Files:      src/eval.c, src/channel.c, src/structs.h, src/netbeans.c,
+            runtime/doc/channel.txt
+
+
+*** ../vim-7.4.1425/src/eval.c	2016-02-26 11:17:42.611009168 +0100
+--- src/eval.c	2016-02-27 13:58:43.963921744 +0100
+***************
+*** 9976,9981 ****
+--- 9976,10005 ----
+      return OK;
+  }
+  
++     static int
++ handle_io(typval_T *item, int part, jobopt_T *opt)
++ {
++     char_u	*val = get_tv_string(item);
++ 
++     opt->jo_set |= JO_OUT_IO << (part - PART_OUT);
++     if (STRCMP(val, "null") == 0)
++ 	opt->jo_io[part] = JIO_NULL;
++     else if (STRCMP(val, "pipe") == 0)
++ 	opt->jo_io[part] = JIO_PIPE;
++     else if (STRCMP(val, "file") == 0)
++ 	opt->jo_io[part] = JIO_FILE;
++     else if (STRCMP(val, "buffer") == 0)
++ 	opt->jo_io[part] = JIO_BUFFER;
++     else if (STRCMP(val, "out") == 0 && part == PART_ERR)
++ 	opt->jo_io[part] = JIO_OUT;
++     else
++     {
++ 	EMSG2(_(e_invarg2), val);
++ 	return FAIL;
++     }
++     return OK;
++ }
++ 
+      static void
+  clear_job_options(jobopt_T *opt)
+  {
+***************
+*** 9983,9988 ****
+--- 10007,10021 ----
+  }
+  
+  /*
++  * Get the PART_ number from the first character of an option name.
++  */
++     static int
++ part_from_char(int c)
++ {
++     return c == 'i' ? PART_IN : c == 'o' ? PART_OUT: PART_ERR;
++ }
++ 
++ /*
+   * Get the option entries from the dict in "tv", parse them and put the result
+   * in "opt".
+   * Only accept options in "supported".
+***************
+*** 9996,10001 ****
+--- 10029,10035 ----
+      dict_T	*dict;
+      int		todo;
+      hashitem_T	*hi;
++     int		part;
+  
+      opt->jo_set = 0;
+      if (tv->v_type == VAR_UNKNOWN)
+***************
+*** 10046,10051 ****
+--- 10080,10106 ----
+  								      == FAIL)
+  		    return FAIL;
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "in-io") == 0
++ 		    || STRCMP(hi->hi_key, "out-io") == 0
++ 		    || STRCMP(hi->hi_key, "err-io") == 0)
++ 	    {
++ 		if (!(supported & JO_OUT_IO))
++ 		    break;
++ 		if (handle_io(item, part_from_char(*hi->hi_key), opt) == FAIL)
++ 		    return FAIL;
++ 	    }
++ 	    else if (STRCMP(hi->hi_key, "in-name") == 0
++ 		    || STRCMP(hi->hi_key, "out-name") == 0
++ 		    || STRCMP(hi->hi_key, "err-name") == 0)
++ 	    {
++ 		part = part_from_char(*hi->hi_key);
++ 
++ 		if (!(supported & JO_OUT_IO))
++ 		    break;
++ 		opt->jo_set |= JO_OUT_NAME << (part - PART_OUT);
++ 		opt->jo_io_name[part] =
++ 		       get_tv_string_buf_chk(item, opt->jo_io_name_buf[part]);
++ 	    }
+  	    else if (STRCMP(hi->hi_key, "callback") == 0)
+  	    {
+  		if (!(supported & JO_CALLBACK))
+***************
+*** 10178,10183 ****
+--- 10233,10245 ----
+  	return FAIL;
+      }
+  
++     for (part = PART_OUT; part <= PART_IN; ++part)
++ 	if (opt->jo_io[part] == JIO_BUFFER && opt->jo_io_name[part] == NULL)
++ 	{
++ 	    EMSG(_("E915: Missing name for buffer"));
++ 	    return FAIL;
++ 	}
++ 
+      return OK;
+  }
+  #endif
+***************
+*** 10216,10222 ****
+--- 10278,10287 ----
+      channel_T *channel = get_channel_arg(&argvars[0]);
+  
+      if (channel != NULL)
++     {
+  	channel_close(channel, FALSE);
++ 	channel_clear(channel);
++     }
+  }
+  
+  # ifdef FEAT_JOB
+***************
+*** 14948,14954 ****
+      opt.jo_mode = MODE_NL;
+      if (get_job_options(&argvars[1], &opt,
+  	    JO_MODE_ALL + JO_CB_ALL + JO_TIMEOUT_ALL
+! 					+ JO_STOPONEXIT + JO_EXIT_CB) == FAIL)
+  	return;
+      job_set_options(job, &opt);
+  
+--- 15013,15019 ----
+      opt.jo_mode = MODE_NL;
+      if (get_job_options(&argvars[1], &opt,
+  	    JO_MODE_ALL + JO_CB_ALL + JO_TIMEOUT_ALL
+! 			    + JO_STOPONEXIT + JO_EXIT_CB + JO_OUT_IO) == FAIL)
+  	return;
+      job_set_options(job, &opt);
+  
+*** ../vim-7.4.1425/src/channel.c	2016-02-26 11:52:35.585454423 +0100
+--- src/channel.c	2016-02-27 14:34:40.969601258 +0100
+***************
+*** 52,57 ****
+--- 52,61 ----
+  # define fd_close(sd) close(sd)
+  #endif
+  
++ /* Whether a redraw is needed for appending a line to a buffer. */
++ static int channel_need_redraw = FALSE;
++ 
++ 
+  #ifdef WIN32
+      static int
+  fd_read(sock_T fd, char *buf, size_t len)
+***************
+*** 342,347 ****
+--- 346,352 ----
+  channel_free(channel_T *channel)
+  {
+      channel_close(channel, TRUE);
++     channel_clear(channel);
+      if (channel->ch_next != NULL)
+  	channel->ch_next->ch_prev = channel->ch_prev;
+      if (channel->ch_prev == NULL)
+***************
+*** 777,782 ****
+--- 782,816 ----
+  }
+  
+  /*
++  * Find a buffer matching "name" or create a new one.
++  */
++     static buf_T *
++ find_buffer(char_u *name)
++ {
++     buf_T *buf = buflist_findname(name);
++     buf_T *save_curbuf = curbuf;
++ 
++     if (buf == NULL)
++     {
++ 	buf = buflist_new(name, NULL, (linenr_T)0, BLN_LISTED);
++ 	buf_copy_options(buf, BCO_ENTER);
++ #ifdef FEAT_QUICKFIX
++ 	clear_string_option(&buf->b_p_bt);
++ 	buf->b_p_bt = vim_strsave((char_u *)"nofile");
++ 	clear_string_option(&buf->b_p_bh);
++ 	buf->b_p_bh = vim_strsave((char_u *)"hide");
++ #endif
++ 	curbuf = buf;
++ 	ml_open(curbuf);
++ 	ml_replace(1, (char_u *)"Reading from channel output...", TRUE);
++ 	changed_bytes(1, 0);
++ 	curbuf = save_curbuf;
++     }
++ 
++     return buf;
++ }
++ 
++ /*
+   * Set various properties from an "opt" argument.
+   */
+      void
+***************
+*** 839,844 ****
+--- 873,888 ----
+  	else
+  	    *cbp = NULL;
+      }
++ 
++     if ((opt->jo_set & JO_OUT_IO) && opt->jo_io[PART_OUT] == JIO_BUFFER)
++     {
++ 	/* writing output to a buffer. Force mode to NL. */
++ 	channel->ch_part[PART_OUT].ch_mode = MODE_NL;
++ 	channel->ch_part[PART_OUT].ch_buffer =
++ 				       find_buffer(opt->jo_io_name[PART_OUT]);
++ 	ch_logs(channel, "writing to buffer %s",
++ 		      (char *)channel->ch_part[PART_OUT].ch_buffer->b_ffname);
++     }
+  }
+  
+  /*
+***************
+*** 1303,1308 ****
+--- 1347,1353 ----
+      int		seq_nr = -1;
+      ch_mode_T	ch_mode = channel->ch_part[part].ch_mode;
+      char_u	*callback = NULL;
++     buf_T	*buffer = NULL;
+  
+      if (channel->ch_nb_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+***************
+*** 1312,1317 ****
+--- 1357,1363 ----
+  	callback = channel->ch_part[part].ch_callback;
+      else
+  	callback = channel->ch_callback;
++     buffer = channel->ch_part[part].ch_buffer;
+  
+      if (ch_mode == MODE_JSON || ch_mode == MODE_JS)
+      {
+***************
+*** 1361,1368 ****
+      }
+      else
+      {
+! 	/* If there is no callback drop the message. */
+! 	if (callback == NULL)
+  	{
+  	    while ((msg = channel_get(channel, part)) != NULL)
+  		vim_free(msg);
+--- 1407,1414 ----
+      }
+      else
+      {
+! 	/* If there is no callback or buffer drop the message. */
+! 	if (callback == NULL && buffer == NULL)
+  	{
+  	    while ((msg = channel_get(channel, part)) != NULL)
+  		vim_free(msg);
+***************
+*** 1386,1393 ****
+  		    return FALSE; /* incomplete message */
+  	    }
+  	    if (nl[1] == NUL)
+! 		/* get the whole buffer */
+  		msg = channel_get(channel, part);
+  	    else
+  	    {
+  		/* Copy the message into allocated memory and remove it from
+--- 1432,1442 ----
+  		    return FALSE; /* incomplete message */
+  	    }
+  	    if (nl[1] == NUL)
+! 	    {
+! 		/* get the whole buffer, drop the NL */
+  		msg = channel_get(channel, part);
++ 		*nl = NUL;
++ 	    }
+  	    else
+  	    {
+  		/* Copy the message into allocated memory and remove it from
+***************
+*** 1431,1441 ****
+  	if (!done)
+  	    ch_log(channel, "Dropping message without callback");
+      }
+!     else if (callback != NULL)
+      {
+! 	/* invoke the channel callback */
+! 	ch_log(channel, "Invoking channel callback");
+! 	invoke_callback(channel, callback, argv);
+      }
+      else
+  	ch_log(channel, "Dropping message");
+--- 1480,1533 ----
+  	if (!done)
+  	    ch_log(channel, "Dropping message without callback");
+      }
+!     else if (callback != NULL || buffer != NULL)
+      {
+! 	if (buffer != NULL)
+! 	{
+! 	    buf_T	*save_curbuf = curbuf;
+! 	    linenr_T	lnum = buffer->b_ml.ml_line_count;
+! 
+! 	    /* Append to the buffer */
+! 	    ch_logn(channel, "appending line %d to buffer", (int)lnum + 1);
+! 
+! 	    curbuf = buffer;
+! 	    u_sync(TRUE);
+! 	    u_save(lnum, lnum + 1);
+! 
+! 	    ml_append(lnum, msg, 0, FALSE);
+! 	    appended_lines_mark(lnum, 1L);
+! 	    curbuf = save_curbuf;
+! 
+! 	    if (buffer->b_nwindows > 0)
+! 	    {
+! 		win_T	*wp;
+! 		win_T	*save_curwin;
+! 
+! 		FOR_ALL_WINDOWS(wp)
+! 		{
+! 		    if (wp->w_buffer == buffer
+! 			    && wp->w_cursor.lnum == lnum
+! 			    && wp->w_cursor.col == 0)
+! 		    {
+! 			++wp->w_cursor.lnum;
+! 			save_curwin = curwin;
+! 			curwin = wp;
+! 			curbuf = curwin->w_buffer;
+! 			scroll_cursor_bot(0, FALSE);
+! 			curwin = save_curwin;
+! 			curbuf = curwin->w_buffer;
+! 		    }
+! 		}
+! 		redraw_buf_later(buffer, VALID);
+! 		channel_need_redraw = TRUE;
+! 	    }
+! 	}
+! 	if (callback != NULL)
+! 	{
+! 	    /* invoke the channel callback */
+! 	    ch_log(channel, "Invoking channel callback");
+! 	    invoke_callback(channel, callback, argv);
+! 	}
+      }
+      else
+  	ch_log(channel, "Dropping message");
+***************
+*** 1493,1498 ****
+--- 1585,1591 ----
+  /*
+   * Close channel "channel".
+   * Trigger the close callback if "invoke_close_cb" is TRUE.
++  * Does not clear the buffers.
+   */
+      void
+  channel_close(channel_T *channel, int invoke_close_cb)
+***************
+*** 1548,1554 ****
+      }
+  
+      channel->ch_nb_close_cb = NULL;
+-     channel_clear(channel);
+  }
+  
+  /*
+--- 1641,1646 ----
+***************
+*** 2160,2165 ****
+--- 2252,2275 ----
+  # endif /* !WIN32 && HAVE_SELECT */
+  
+  /*
++  * Return TRUE if "channel" has JSON or other typeahead.
++  */
++     static int
++ channel_has_readahead(channel_T *channel, int part)
++ {
++     ch_mode_T	ch_mode = channel->ch_part[part].ch_mode;
++ 
++     if (ch_mode == MODE_JSON || ch_mode == MODE_JS)
++     {
++ 	jsonq_T   *head = &channel->ch_part[part].ch_json_head;
++ 	jsonq_T   *item = head->jq_next;
++ 
++ 	return item != NULL;
++     }
++     return channel_peek(channel, part) != NULL;
++ }
++ 
++ /*
+   * Execute queued up commands.
+   * Invoked from the main loop when it's safe to execute received commands.
+   * Return TRUE when something was done.
+***************
+*** 2172,2177 ****
+--- 2282,2288 ----
+      int		r;
+      int		part = PART_SOCK;
+  
++     ch_log(NULL, "looking for messages on channels");
+      while (channel != NULL)
+      {
+  	if (channel->ch_refcount == 0 && !channel_still_useful(channel))
+***************
+*** 2182,2188 ****
+  	    part = PART_SOCK;
+  	    continue;
+  	}
+! 	if (channel->ch_part[part].ch_fd != INVALID_FD)
+  	{
+  	    /* Increase the refcount, in case the handler causes the channel
+  	     * to be unreferenced or closed. */
+--- 2293,2300 ----
+  	    part = PART_SOCK;
+  	    continue;
+  	}
+! 	if (channel->ch_part[part].ch_fd != INVALID_FD
+! 		|| channel_has_readahead(channel, part))
+  	{
+  	    /* Increase the refcount, in case the handler causes the channel
+  	     * to be unreferenced or closed. */
+***************
+*** 2208,2213 ****
+--- 2320,2335 ----
+  	    part = PART_SOCK;
+  	}
+      }
++ 
++     if (channel_need_redraw && must_redraw)
++     {
++ 	channel_need_redraw = FALSE;
++ 	update_screen(0);
++ 	setcursor();
++ 	cursor_on();
++ 	out_flush();
++     }
++ 
+      return ret;
+  }
+  
+*** ../vim-7.4.1425/src/structs.h	2016-02-26 11:17:42.611009168 +0100
+--- src/structs.h	2016-02-26 21:26:44.144187324 +0100
+***************
+*** 1347,1352 ****
+--- 1347,1353 ----
+  
+      cbq_T	ch_cb_head;	/* dummy node for per-request callbacks */
+      char_u	*ch_callback;	/* call when a msg is not handled */
++     buf_T	*ch_buffer;	/* buffer to read from or write to */
+  } chanpart_T;
+  
+  struct channel_S {
+***************
+*** 1395,1400 ****
+--- 1396,1407 ----
+  #define JO_ID		    0x2000	/* "id" */
+  #define JO_STOPONEXIT	    0x4000	/* "stoponexit" */
+  #define JO_EXIT_CB	    0x8000	/* "exit-cb" */
++ #define JO_OUT_IO	    0x10000	/* "out-io" */
++ #define JO_ERR_IO	    0x20000	/* "err-io" (JO_OUT_IO << 1) */
++ #define JO_IN_IO	    0x40000	/* "in-io" (JO_OUT_IO << 2) */
++ #define JO_OUT_NAME	    0x80000	/* "out-name" */
++ #define JO_ERR_NAME	    0x100000	/* "err-name" (JO_OUT_NAME << 1) */
++ #define JO_IN_NAME	    0x200000	/* "in-name" (JO_OUT_NAME << 2) */
+  #define JO_ALL		    0xffffff
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+***************
+*** 1402,1407 ****
+--- 1409,1422 ----
+      (JO_CALLBACK + JO_OUT_CALLBACK + JO_ERR_CALLBACK + JO_CLOSE_CALLBACK)
+  #define JO_TIMEOUT_ALL	(JO_TIMEOUT + JO_OUT_TIMEOUT + JO_ERR_TIMEOUT)
+  
++ typedef enum {
++     JIO_NULL,
++     JIO_PIPE,
++     JIO_FILE,
++     JIO_BUFFER,
++     JIO_OUT
++ } job_io_T;
++ 
+  /*
+   * Options for job and channel commands.
+   */
+***************
+*** 1413,1418 ****
+--- 1428,1438 ----
+      ch_mode_T	jo_in_mode;
+      ch_mode_T	jo_out_mode;
+      ch_mode_T	jo_err_mode;
++ 
++     job_io_T	jo_io[4];	/* PART_OUT, PART_ERR, PART_IN */
++     char_u	jo_io_name_buf[4][NUMBUFLEN];
++     char_u	*jo_io_name[4];	/* not allocated! */
++ 
+      char_u	*jo_callback;	/* not allocated! */
+      char_u	*jo_out_cb;	/* not allocated! */
+      char_u	*jo_err_cb;	/* not allocated! */
+*** ../vim-7.4.1425/src/netbeans.c	2016-02-24 20:42:58.077568933 +0100
+--- src/netbeans.c	2016-02-27 14:00:13.502997995 +0100
+***************
+*** 99,106 ****
+--- 99,109 ----
+      {
+  	netbeans_send_disconnect();
+  	if (nb_channel != NULL)
++ 	{
+  	    /* Close the socket and remove the input handlers. */
+  	    channel_close(nb_channel, TRUE);
++ 	    channel_clear(nb_channel);
++ 	}
+  	nb_channel = NULL;
+      }
+  
+*** ../vim-7.4.1425/runtime/doc/channel.txt	2016-02-21 20:08:19.546419633 +0100
+--- runtime/doc/channel.txt	2016-02-27 13:59:46.471276881 +0100
+***************
+*** 1,4 ****
+! *channel.txt*      For Vim version 7.4.  Last change: 2016 Feb 20
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *channel.txt*      For Vim version 7.4.  Last change: 2016 Feb 27
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 130,135 ****
+--- 130,137 ----
+  		overwritten.  Therefore set "mode" first and the part specific
+  		mode later.
+  
++ 		Note: when writing to a file or buffer NL mode is always used.
++ 
+  							*channel-callback*
+  "callback"	A function that is called when a message is received that is
+  		not handled otherwise.  It gets two arguments: the channel
+***************
+*** 160,168 ****
+  	func MyCloseHandler(channel)
+  <							*waittime*
+  "waittime"	The time to wait for the connection to be made in
+! 		milliseconds.  The default is zero, don't wait, which is
+! 		useful if the server is supposed to be running already.  A
+! 		negative number waits forever.
+  
+  "timeout"	The time to wait for a request when blocking, E.g. when using
+  		ch_sendexpr().  In milliseconds.  The default is 2000 (2
+--- 162,174 ----
+  	func MyCloseHandler(channel)
+  <							*waittime*
+  "waittime"	The time to wait for the connection to be made in
+! 		milliseconds.  A negative number waits forever.
+! 
+! 		The default is zero, don't wait, which is useful if a local
+! 		server is supposed to be running already.  On Unix Vim
+! 		actually uses a 1 msec timeout, that is required on many
+! 		systems.  Use a larger value for a remote server, e.g.  10
+! 		msec at least.
+  
+  "timeout"	The time to wait for a request when blocking, E.g. when using
+  		ch_sendexpr().  In milliseconds.  The default is 2000 (2
+***************
+*** 194,199 ****
+--- 200,206 ----
+  When a socket is used this will close the socket for both directions.  When
+  pipes are used (stdin/stdout/stderr) they are all closed.  This might not be
+  what you want!  Stopping the job with job_stop() might be better.
++ All readahead is discarded, callbacks will no longer be invoked.
+  
+  When the channel can't be opened you will get an error message.  There is a
+  difference between MS-Windows and Unix: On Unix when the port doesn't exist
+***************
+*** 253,259 ****
+  channel does not have a handler the message is dropped.
+  
+  On read error or ch_close(), when using a socket, the string "DETACH" is sent,
+! if still possible.  The channel will then be inactive.
+  
+  It is also possible to use ch_sendraw() on a JSON or JS channel.  The caller
+  is then completely responsible for correct encoding and decoding.
+--- 260,267 ----
+  channel does not have a handler the message is dropped.
+  
+  On read error or ch_close(), when using a socket, the string "DETACH" is sent,
+! if still possible.  The channel will then be inactive. For a JSON and JS mode
+! channel quotes are used around DETACH, otherwise there are no quotes.
+  
+  It is also possible to use ch_sendraw() on a JSON or JS channel.  The caller
+  is then completely responsible for correct encoding and decoding.
+***************
+*** 322,328 ****
+  	[-2, "last line"] ~
+  The format is:
+  	[{number}, {result}]
+! 							*E915*
+  Here {number} is the same as what was in the request.  Use a negative number
+  to avoid confusion with message that Vim sends.  Use a different number on
+  every request to be able to match the request with the response.
+--- 330,336 ----
+  	[-2, "last line"] ~
+  The format is:
+  	[{number}, {result}]
+! 
+  Here {number} is the same as what was in the request.  Use a negative number
+  to avoid confusion with message that Vim sends.  Use a different number on
+  every request to be able to match the request with the response.
+***************
+*** 392,398 ****
+  	"closed"	The channel was closed.
+  
+  TODO:
+! To objain the job associated with a channel: ch_getjob(channel)
+  
+  To read one message from a channel: >
+  	let output = ch_read(channel)
+--- 400,406 ----
+  	"closed"	The channel was closed.
+  
+  TODO:
+! To obtain the job associated with a channel: ch_getjob(channel)
+  
+  To read one message from a channel: >
+  	let output = ch_read(channel)
+***************
+*** 443,452 ****
+  JSON or JS mode you can use ch_sendexpr().
+  
+  There are several options you can use, see |job-options|.
+  
+  TODO:
+  To run a job and read its output once it is done: >
+- 
+  	let job = job_start({command}, {'exit-cb': 'MyHandler'})
+  	func MyHandler(job, status)
+  	  let channel = job_getchannel()
+--- 451,463 ----
+  JSON or JS mode you can use ch_sendexpr().
+  
+  There are several options you can use, see |job-options|.
++ For example, to start a job and write its output in buffer "dummy": >
++ 	let logjob = job_start("tail -f /tmp/log",
++ 			     \ {'out-io': 'buffer', 'out-name': 'dummy'})
++ 	sbuf dummy
+  
+  TODO:
+  To run a job and read its output once it is done: >
+  	let job = job_start({command}, {'exit-cb': 'MyHandler'})
+  	func MyHandler(job, status)
+  	  let channel = job_getchannel()
+***************
+*** 503,509 ****
+  						*job-err-cb*
+  "err-cb": handler	Callback for when there is something to read on
+  			stderr.
+! TODO:						*job-close-cb*
+  "close-cb": handler	Callback for when the channel is closed.  Same as
+  			"close-cb" on ch_open().
+  						*job-exit-cb*
+--- 514,520 ----
+  						*job-err-cb*
+  "err-cb": handler	Callback for when there is something to read on
+  			stderr.
+! 						*job-close-cb*
+  "close-cb": handler	Callback for when the channel is closed.  Same as
+  			"close-cb" on ch_open().
+  						*job-exit-cb*
+***************
+*** 522,549 ****
+  "term": "open"		Start a terminal and connect the job
+  			stdin/stdout/stderr to it.
+  
+! TODO:						*job-in-io*
+! "in-io": "null"		disconnect stdin
+  "in-io": "pipe"		stdin is connected to the channel (default)
+! "in-io": "file"		stdin reads from a file
+! "in-file": "/path/file"	the file to read from
+  
+! TODO:						*job-out-io*
+! "out-io": "null"	disconnect stdout
+  "out-io": "pipe"	stdout is connected to the channel (default)
+! "out-io": "file"	stdout writes to a file
+! "out-file": "/path/file" the file to write to
+  "out-io": "buffer" 	stdout appends to a buffer
+! "out-buffer": "name" 	buffer to append to
+  
+! TODO:						*job-err-io*
+! "err-io": "out"		same type as stdout (default)
+! "err-io": "null"	disconnect stderr
+! "err-io": "pipe"	stderr is connected to the channel
+! "err-io": "file"	stderr writes to a file
+! "err-file": "/path/file" the file to write to
+! "err-io": "buffer" 	stderr appends to a buffer
+! "err-buffer": "name" 	buffer to append to
+  
+  ==============================================================================
+  11. Controlling a job					*job-control*
+--- 533,576 ----
+  "term": "open"		Start a terminal and connect the job
+  			stdin/stdout/stderr to it.
+  
+! 						*job-in-io*
+! "in-io": "null"		disconnect stdin  TODO
+  "in-io": "pipe"		stdin is connected to the channel (default)
+! "in-io": "file"		stdin reads from a file  TODO
+! "in-io": "buffer"	stdin reads from a buffer  TODO
+! "in-name": "/path/file"	the name of he file or buffer to read from
+! "in-buf": number	the number of the buffer to read from  TODO
+  
+! 						*job-out-io*
+! "out-io": "null"	disconnect stdout  TODO
+  "out-io": "pipe"	stdout is connected to the channel (default)
+! "out-io": "file"	stdout writes to a file  TODO
+  "out-io": "buffer" 	stdout appends to a buffer
+! "out-name": "/path/file" the name of the file or buffer to write to
+! "out-buf": number	the number of the buffer to write to  TODO
+! 
+! 						*job-err-io*
+! "err-io": "out"		same as stdout  TODO
+! "err-io": "null"	disconnect stderr  TODO
+! "err-io": "pipe"	stderr is connected to the channel (default)
+! "err-io": "file"	stderr writes to a file  TODO
+! "err-io": "buffer" 	stderr appends to a buffer  TODO
+! "err-name": "/path/file" the name of the file or buffer to write to
+! "err-buf": number	the number of the buffer to write to  TODO
+! 
+! When the IO mode is "buffer" and there is a callback, the text is appended to
+! the buffer before invoking the callback.
+! 							*E915*
+! The name of the buffer is compared the full name of existing buffers.  If
+! there is a match that buffer is used.  Otherwise a new buffer is created,
+! where 'buftype' is set to "nofile" and 'bufhidden' to "hide".  If you prefer
+! other settings, create the buffer first and pass the buffer number.
+! 
+! When the buffer written to is displayed in a window and the cursor is in the
+! first column of the last line, the cursor will be moved to the newly added
+! line and the window is scrolled up to show the cursor if needed.
+  
+! Undo is synced for every added line.
+  
+  ==============================================================================
+  11. Controlling a job					*job-control*
+*** ../vim-7.4.1425/src/version.c	2016-02-26 19:58:44.039326159 +0100
+--- src/version.c	2016-02-26 23:23:32.502332399 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1426,
+  /**/
+
+-- 
+It is illegal for anyone to give lighted cigars to dogs, cats, and other
+domesticated animal kept as pets.
+		[real standing law in Illinois, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

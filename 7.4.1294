@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1294
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1294
+Problem:    job_stop() only kills the started process.
+Solution:   Send the signal to the process group. (Olaf Dabrunz)
+Files:      src/os_unix.c
+
+
+*** ../vim-7.4.1293/src/os_unix.c	2016-02-07 14:26:12.179054006 +0100
+--- src/os_unix.c	2016-02-09 11:30:06.266140580 +0100
+***************
+*** 3920,3925 ****
+--- 3920,3930 ----
+  }
+  
+  #if defined(FEAT_JOB) || !defined(USE_SYSTEM) || defined(PROTO)
++ /*
++  * Parse "cmd" and put the white-separated parts in "argv".
++  * "argv" is an allocated array with "argc" entries.
++  * Returns FAIL when out of memory.
++  */
+      int
+  mch_parse_cmd(char_u *cmd, int use_shcf, char ***argv, int *argc)
+  {
+***************
+*** 5107,5113 ****
+  	sig = atoi((char *)how);
+      else
+  	return FAIL;
+!     kill(job->jv_pid, sig);
+      return OK;
+  }
+  #endif
+--- 5112,5119 ----
+  	sig = atoi((char *)how);
+      else
+  	return FAIL;
+!     /* TODO: have an option to only kill the process, not the group? */
+!     kill(-job->jv_pid, sig);
+      return OK;
+  }
+  #endif
+*** ../vim-7.4.1293/src/version.c	2016-02-08 23:23:38.137795419 +0100
+--- src/version.c	2016-02-09 11:34:12.011585208 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1294,
+  /**/
+
+-- 
+Some of the well known MS-Windows errors:
+	ESLEEP		Operator fell asleep
+	ENOERR		No error yet
+	EDOLLAR		OS too expensive
+	EWINDOWS	MS-Windows loaded, system in danger
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,1891 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1154
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1154
+Problem:    No support for JSON.
+Solution:   Add jsonencode() and jsondecode().  Also add v:false, v:true,
+            v:null and v:none.
+Files:      src/json.c, src/eval.c, src/proto.h, src/structs.h, src/vim.h,
+            src/if_lua.c, src/if_mzsch.c, src/if_ruby.c, src/if_py_both.h,
+            src/globals.h, src/Makefile, src/Make_bc3.mak, src/Make_bc5.mak,
+            src/Make_cyg_ming.mak, src/Make_dice.mak, src/Make_ivc.mak,
+            src/Make_manx.mak, src/Make_morph.mak, src/Make_mvc.mak,
+            src/Make_sas.mak, src/Make_vms.mms, src/proto/json.pro,
+            src/proto/eval.pro, src/testdir/test_json.vim,
+            src/testdir/test_alot.vim, Filelist, runtime/doc/eval.txt
+
+
+*** ../vim-7.4.1153/src/json.c	2016-01-23 19:32:31.331223590 +0100
+--- src/json.c	2016-01-23 19:17:42.068467887 +0100
+***************
+*** 0 ****
+--- 1,509 ----
++ /* vi:set ts=8 sts=4 sw=4:
++  *
++  * VIM - Vi IMproved	by Bram Moolenaar
++  *
++  * Do ":help uganda"  in Vim to read copying and usage conditions.
++  * Do ":help credits" in Vim to see a list of people who contributed.
++  * See README.txt for an overview of the Vim source code.
++  */
++ 
++ /*
++  * json.c: Encoding and decoding JSON.
++  *
++  * Follows this standard: http://www.ietf.org/rfc/rfc4627.txt
++  */
++ 
++ #include "vim.h"
++ 
++ #if defined(FEAT_EVAL) || defined(PROTO)
++ static void json_decode_item(js_read_T *reader, typval_T *res);
++ 
++ /*
++  * Encode "val" into a JSON format string.
++  */
++     char_u *
++ json_encode(typval_T *val)
++ {
++     garray_T ga;
++ 
++     /* Store bytes in the growarray. */
++     ga_init2(&ga, 1, 4000);
++     json_encode_item(&ga, val, get_copyID());
++     return ga.ga_data;
++ }
++ 
++     static void
++ write_string(garray_T *gap, char_u *str)
++ {
++     char_u	*res = str;
++     char_u	numbuf[NUMBUFLEN];
++ 
++     if (res == NULL)
++ 	ga_concat(gap, (char_u *)"null");
++     else
++     {
++ 	ga_append(gap, '"');
++ 	while (*res != NUL)
++ 	{
++ 	    int c = PTR2CHAR(res);
++ 
++ 	    switch (c)
++ 	    {
++ 		case 0x08:
++ 		    ga_append(gap, '\\'); ga_append(gap, 'b'); break;
++ 		case 0x09:
++ 		    ga_append(gap, '\\'); ga_append(gap, 't'); break;
++ 		case 0x0a:
++ 		    ga_append(gap, '\\'); ga_append(gap, 'n'); break;
++ 		case 0x0c:
++ 		    ga_append(gap, '\\'); ga_append(gap, 'f'); break;
++ 		case 0x0d:
++ 		    ga_append(gap, '\\'); ga_append(gap, 'r'); break;
++ 		case 0x22: /* " */
++ 		case 0x5c: /* \ */
++ 		    ga_append(gap, '\\');
++ 		    ga_append(gap, c);
++ 		    break;
++ 		default:
++ 		    if (c >= 0x20)
++ 		    {
++ 			numbuf[mb_char2bytes(c, numbuf)] = NUL;
++ 			ga_concat(gap, numbuf);
++ 		    }
++ 		    else
++ 		    {
++ 			vim_snprintf((char *)numbuf, NUMBUFLEN,
++ 							 "\\u%04lx", (long)c);
++ 			ga_concat(gap, numbuf);
++ 		    }
++ 	    }
++ 	    mb_cptr_adv(res);
++ 	}
++ 	ga_append(gap, '"');
++     }
++ }
++ 
++     void
++ json_encode_item(garray_T *gap, typval_T *val, int copyID)
++ {
++     char_u	numbuf[NUMBUFLEN];
++     char_u	*res;
++     list_T	*l;
++     dict_T	*d;
++ 
++     switch (val->v_type)
++     {
++ 	case VAR_SPECIAL:
++ 	    switch(val->vval.v_number)
++ 	    {
++ 		case VVAL_FALSE: ga_concat(gap, (char_u *)"false"); break;
++ 		case VVAL_TRUE: ga_concat(gap, (char_u *)"true"); break;
++ 		case VVAL_NONE: break;
++ 		case VVAL_NULL: ga_concat(gap, (char_u *)"null"); break;
++ 	    }
++ 	    break;
++ 
++ 	case VAR_NUMBER:
++ 	    vim_snprintf((char *)numbuf, NUMBUFLEN, "%ld",
++ 						    (long)val->vval.v_number);
++ 	    ga_concat(gap, numbuf);
++ 	    break;
++ 
++ 	case VAR_STRING:
++ 	    res = val->vval.v_string;
++ 	    write_string(gap, res);
++ 	    break;
++ 
++ 	case VAR_FUNC:
++ 	    /* no JSON equivalent, skip */
++ 	    break;
++ 
++ 	case VAR_LIST:
++ 	    l = val->vval.v_list;
++ 	    if (l == NULL)
++ 		ga_concat(gap, (char_u *)"null");
++ 	    else
++ 	    {
++ 		if (l->lv_copyID == copyID)
++ 		    ga_concat(gap, (char_u *)"[]");
++ 		else
++ 		{
++ 		    listitem_T	*li;
++ 
++ 		    l->lv_copyID = copyID;
++ 		    ga_append(gap, '[');
++ 		    for (li = l->lv_first; li != NULL && !got_int; )
++ 		    {
++ 			json_encode_item(gap, &li->li_tv, copyID);
++ 			li = li->li_next;
++ 			if (li != NULL)
++ 			    ga_append(gap, ',');
++ 		    }
++ 		    ga_append(gap, ']');
++ 		}
++ 	    }
++ 	    break;
++ 
++ 	case VAR_DICT:
++ 	    d = val->vval.v_dict;
++ 	    if (d == NULL)
++ 		ga_concat(gap, (char_u *)"null");
++ 	    else
++ 	    {
++ 		if (d->dv_copyID == copyID)
++ 		    ga_concat(gap, (char_u *)"{}");
++ 		else
++ 		{
++ 		    int		first = TRUE;
++ 		    int		todo = (int)d->dv_hashtab.ht_used;
++ 		    hashitem_T	*hi;
++ 
++ 		    d->dv_copyID = copyID;
++ 		    ga_append(gap, '{');
++ 
++ 		    for (hi = d->dv_hashtab.ht_array; todo > 0 && !got_int;
++ 									 ++hi)
++ 			if (!HASHITEM_EMPTY(hi))
++ 			{
++ 			    --todo;
++ 			    if (first)
++ 				first = FALSE;
++ 			    else
++ 				ga_append(gap, ',');
++ 			    write_string(gap, hi->hi_key);
++ 			    ga_append(gap, ':');
++ 			    json_encode_item(gap, &dict_lookup(hi)->di_tv,
++ 								      copyID);
++ 			}
++ 		    ga_append(gap, '}');
++ 		}
++ 	    }
++ 	    break;
++ 
++ #ifdef FEAT_FLOAT
++ 	case VAR_FLOAT:
++ 	    vim_snprintf((char *)numbuf, NUMBUFLEN, "%g", val->vval.v_float);
++ 	    ga_concat(gap, numbuf);
++ 	    break;
++ #endif
++ 	default: EMSG2(_(e_intern2), "json_encode_item()"); break;
++     }
++ }
++ 
++ /*
++  * Skip white space in "reader".
++  */
++     static void
++ json_skip_white(js_read_T *reader)
++ {
++     int c;
++ 
++     while ((c = reader->js_buf[reader->js_used]) == ' '
++ 					   || c == TAB || c == NL || c == CAR)
++ 	++reader->js_used;
++ }
++ 
++ /*
++  * Make sure there are at least enough characters buffered to read a number.
++  */
++     static void
++ json_fill_buffer(js_read_T *reader UNUSED)
++ {
++     /* TODO */
++ }
++ 
++     static void
++ json_decode_array(js_read_T *reader, typval_T *res)
++ {
++     char_u	*p;
++     typval_T	item;
++     listitem_T	*li;
++ 
++     if (rettv_list_alloc(res) == FAIL)
++ 	goto fail;
++     ++reader->js_used; /* consume the '[' */
++ 
++     while (TRUE)
++     {
++ 	json_skip_white(reader);
++ 	p = reader->js_buf + reader->js_used;
++ 	if (*p == NUL)
++ 	    goto fail;
++ 	if (*p == ']')
++ 	{
++ 	    ++reader->js_used; /* consume the ']' */
++ 	    return;
++ 	}
++ 
++ 	if (!reader->js_eof && (int)(reader->js_end - p) < NUMBUFLEN)
++ 	    json_fill_buffer(reader);
++ 
++ 	json_decode_item(reader, &item);
++ 	li = listitem_alloc();
++ 	if (li == NULL)
++ 	    return;
++ 	li->li_tv = item;
++ 	list_append(res->vval.v_list, li);
++ 
++ 	json_skip_white(reader);
++ 	p = reader->js_buf + reader->js_used;
++ 	if (*p == ',')
++ 	    ++reader->js_used;
++ 	else if (*p != ']')
++ 	    goto fail;
++     }
++ fail:
++     res->v_type = VAR_SPECIAL;
++     res->vval.v_number = VVAL_NONE;
++ }
++ 
++     static void
++ json_decode_object(js_read_T *reader, typval_T *res)
++ {
++     char_u	*p;
++     typval_T	tvkey;
++     typval_T	item;
++     dictitem_T	*di;
++     char_u	buf[NUMBUFLEN];
++     char_u	*key;
++ 
++     if (rettv_dict_alloc(res) == FAIL)
++ 	goto fail;
++     ++reader->js_used; /* consume the '{' */
++ 
++     while (TRUE)
++     {
++ 	json_skip_white(reader);
++ 	p = reader->js_buf + reader->js_used;
++ 	if (*p == NUL)
++ 	    goto fail;
++ 	if (*p == '}')
++ 	{
++ 	    ++reader->js_used; /* consume the '}' */
++ 	    return;
++ 	}
++ 
++ 	if (!reader->js_eof && (int)(reader->js_end - p) < NUMBUFLEN)
++ 	    json_fill_buffer(reader);
++ 	json_decode_item(reader, &tvkey);
++ 	key = get_tv_string_buf_chk(&tvkey, buf);
++ 	if (key == NULL || *key == NUL)
++ 	{
++ 	    /* "key" is NULL when get_tv_string_buf_chk() gave an errmsg */
++ 	    if (key != NULL)
++ 		EMSG(_(e_emptykey));
++ 	    clear_tv(&tvkey);
++ 	    goto fail;
++ 	}
++ 
++ 	json_skip_white(reader);
++ 	p = reader->js_buf + reader->js_used;
++ 	if (*p != ':')
++ 	{
++ 	    clear_tv(&tvkey);
++ 	    goto fail;
++ 	}
++ 	++reader->js_used;
++ 	json_skip_white(reader);
++ 
++ 	if (!reader->js_eof && (int)(reader->js_end - p) < NUMBUFLEN)
++ 	    json_fill_buffer(reader);
++ 	json_decode_item(reader, &item);
++ 
++ 	di = dictitem_alloc(key);
++ 	clear_tv(&tvkey);
++ 	if (di == NULL)
++ 	{
++ 	    clear_tv(&item);
++ 	    goto fail;
++ 	}
++ 	di->di_tv = item;
++ 	dict_add(res->vval.v_dict, di);
++ 
++ 	json_skip_white(reader);
++ 	p = reader->js_buf + reader->js_used;
++ 	if (*p == ',')
++ 	    ++reader->js_used;
++ 	else if (*p != '}')
++ 	    goto fail;
++     }
++ fail:
++     res->v_type = VAR_SPECIAL;
++     res->vval.v_number = VVAL_NONE;
++ }
++ 
++     static void
++ json_decode_string(js_read_T *reader, typval_T *res)
++ {
++     garray_T    ga;
++     int		len;
++     char_u	*p = reader->js_buf + reader->js_used + 1;
++     int		c;
++     long	nr;
++     char_u	buf[NUMBUFLEN];
++ 
++     ga_init2(&ga, 1, 200);
++ 
++     /* TODO: fill buffer when needed. */
++     while (*p != NUL && *p != '"')
++     {
++ 	if (*p == '\\')
++ 	{
++ 	    c = -1;
++ 	    switch (p[1])
++ 	    {
++ 		case 'b': c = BS; break;
++ 		case 't': c = TAB; break;
++ 		case 'n': c = NL; break;
++ 		case 'f': c = FF; break;
++ 		case 'r': c = CAR; break;
++ 		case 'u':
++ 		    vim_str2nr(p + 2, NULL, &len,
++ 				     STR2NR_HEX + STR2NR_FORCE, &nr, NULL, 4);
++ 		    p += len + 2;
++ #ifdef FEAT_MBYTE
++ 		    buf[(*mb_char2bytes)((int)nr, buf)] = NUL;
++ 		    ga_concat(&ga, buf);
++ #else
++ 		    ga_append(&ga, nr);
++ #endif
++ 		    break;
++ 		default: c = p[1]; break;
++ 	    }
++ 	    if (c > 0)
++ 	    {
++ 		p += 2;
++ 		ga_append(&ga, c);
++ 	    }
++ 	}
++ 	else
++ 	{
++ 	    len = MB_PTR2LEN(p);
++ 	    if (ga_grow(&ga, len) == OK)
++ 	    {
++ 		mch_memmove((char *)ga.ga_data + ga.ga_len, p, (size_t)len);
++ 		ga.ga_len += len;
++ 	    }
++ 	    p += len;
++ 	}
++ 	if (!reader->js_eof && (int)(reader->js_end - p) < NUMBUFLEN)
++ 	{
++ 	    reader->js_used = (int)(p - reader->js_buf);
++ 	    json_fill_buffer(reader);
++ 	    p = reader->js_buf + reader->js_used;
++ 	}
++     }
++     reader->js_used = (int)(p - reader->js_buf);
++     if (*p == '"')
++     {
++ 	++reader->js_used;
++ 	res->v_type = VAR_STRING;
++ 	res->vval.v_string = vim_strsave(ga.ga_data);
++     }
++     else
++     {
++ 	res->v_type = VAR_SPECIAL;
++ 	res->vval.v_number = VVAL_NONE;
++     }
++     ga_clear(&ga);
++ }
++ 
++ /*
++  * Decode one item and put it in "result".
++  * Must already have skipped white space.
++  */
++     static void
++ json_decode_item(js_read_T *reader, typval_T *res)
++ {
++     char_u	*p = reader->js_buf + reader->js_used;
++ 
++     switch (*p)
++     {
++ 	case '[': /* array */
++ 	    json_decode_array(reader, res);
++ 	    return;
++ 
++ 	case '{': /* object */
++ 	    json_decode_object(reader, res);
++ 	    return;
++ 
++ 	case '"': /* string */
++ 	    json_decode_string(reader, res);
++ 	    return;
++ 
++ 	case ',': /* comma: empty item */
++ 	case NUL: /* empty */
++ 	    res->v_type = VAR_SPECIAL;
++ 	    res->vval.v_number = VVAL_NONE;
++ 	    return;
++ 
++ 	default:
++ 	    if (VIM_ISDIGIT(*p) || *p == '-')
++ 	    {
++ 		int	len;
++ 		char_u  *sp = p;
++ #ifdef FEAT_FLOAT
++ 		if (*sp == '-')
++ 		    ++sp;
++ 		sp = skipdigits(sp);
++ 		if (*sp == '.' || *sp == 'e' || *sp == 'E')
++ 		{
++ 		    res->v_type = VAR_FLOAT;
++ 		    len = string2float(p, &res->vval.v_float);
++ 		}
++ 		else
++ #endif
++ 		{
++ 		    long nr;
++ 
++ 		    res->v_type = VAR_NUMBER;
++ 		    vim_str2nr(reader->js_buf + reader->js_used,
++ 			    NULL, &len, 0, /* what */
++ 			    &nr, NULL, 0);
++ 		    res->vval.v_number = nr;
++ 		}
++ 		reader->js_used += len;
++ 		return;
++ 	    }
++ 	    if (STRNICMP((char *)p, "false", 5) == 0)
++ 	    {
++ 		reader->js_used += 5;
++ 		res->v_type = VAR_SPECIAL;
++ 		res->vval.v_number = VVAL_FALSE;
++ 		return;
++ 	    }
++ 	    if (STRNICMP((char *)p, "true", 4) == 0)
++ 	    {
++ 		reader->js_used += 4;
++ 		res->v_type = VAR_SPECIAL;
++ 		res->vval.v_number = VVAL_TRUE;
++ 		return;
++ 	    }
++ 	    if (STRNICMP((char *)p, "null", 4) == 0)
++ 	    {
++ 		reader->js_used += 4;
++ 		res->v_type = VAR_SPECIAL;
++ 		res->vval.v_number = VVAL_NULL;
++ 		return;
++ 	    }
++ 	    break;
++     }
++ 
++     EMSG(_(e_invarg));
++     res->v_type = VAR_SPECIAL;
++     res->vval.v_number = VVAL_NONE;
++ }
++ 
++ /*
++  * Decode the JSON from "reader" and store the result in "res".
++  */
++     void
++ json_decode(js_read_T *reader, typval_T *res)
++ {
++     json_skip_white(reader);
++     json_decode_item(reader, res);
++     json_skip_white(reader);
++     if (reader->js_buf[reader->js_used] != NUL)
++ 	EMSG(_(e_invarg));
++ }
++ #endif
+*** ../vim-7.4.1153/src/eval.c	2016-01-21 23:34:54.244356654 +0100
+--- src/eval.c	2016-01-23 19:42:48.960799020 +0100
+***************
+*** 99,105 ****
+  static char *e_missbrac = N_("E111: Missing ']'");
+  static char *e_listarg = N_("E686: Argument of %s must be a List");
+  static char *e_listdictarg = N_("E712: Argument of %s must be a List or Dictionary");
+- static char *e_emptykey = N_("E713: Cannot use empty key for Dictionary");
+  static char *e_listreq = N_("E714: List required");
+  static char *e_dictreq = N_("E715: Dictionary required");
+  static char *e_toomanyarg = N_("E118: Too many arguments for function: %s");
+--- 99,104 ----
+***************
+*** 371,376 ****
+--- 370,379 ----
+      {VV_NAME("option_old",	 VAR_STRING), VV_RO},
+      {VV_NAME("option_type",	 VAR_STRING), VV_RO},
+      {VV_NAME("errors",		 VAR_LIST), 0},
++     {VV_NAME("false",		 VAR_SPECIAL), VV_RO},
++     {VV_NAME("true",		 VAR_SPECIAL), VV_RO},
++     {VV_NAME("null",		 VAR_SPECIAL), VV_RO},
++     {VV_NAME("none",		 VAR_SPECIAL), VV_RO},
+  };
+  
+  /* shorthand */
+***************
+*** 428,434 ****
+  static int get_string_tv __ARGS((char_u **arg, typval_T *rettv, int evaluate));
+  static int get_lit_string_tv __ARGS((char_u **arg, typval_T *rettv, int evaluate));
+  static int get_list_tv __ARGS((char_u **arg, typval_T *rettv, int evaluate));
+- static int rettv_list_alloc __ARGS((typval_T *rettv));
+  static long list_len __ARGS((list_T *l));
+  static int list_equal __ARGS((list_T *l1, list_T *l2, int ic, int recursive));
+  static int dict_equal __ARGS((dict_T *d1, dict_T *d2, int ic, int recursive));
+--- 431,436 ----
+***************
+*** 443,449 ****
+  static int list_join_inner __ARGS((garray_T *gap, list_T *l, char_u *sep, int echo_style, int copyID, garray_T *join_gap));
+  static int list_join __ARGS((garray_T *gap, list_T *l, char_u *sep, int echo, int copyID));
+  static int free_unref_items __ARGS((int copyID));
+- static int rettv_dict_alloc __ARGS((typval_T *rettv));
+  static dictitem_T *dictitem_copy __ARGS((dictitem_T *org));
+  static void dictitem_remove __ARGS((dict_T *dict, dictitem_T *item));
+  static dict_T *dict_copy __ARGS((dict_T *orig, int deep, int copyID));
+--- 445,450 ----
+***************
+*** 453,461 ****
+  static char_u *echo_string __ARGS((typval_T *tv, char_u **tofree, char_u *numbuf, int copyID));
+  static char_u *tv2string __ARGS((typval_T *tv, char_u **tofree, char_u *numbuf, int copyID));
+  static char_u *string_quote __ARGS((char_u *str, int function));
+- #ifdef FEAT_FLOAT
+- static int string2float __ARGS((char_u *text, float_T *value));
+- #endif
+  static int get_env_tv __ARGS((char_u **arg, typval_T *rettv, int evaluate));
+  static int find_internal_func __ARGS((char_u *name));
+  static char_u *deref_func_name __ARGS((char_u *name, int *lenp, int no_autoload));
+--- 454,459 ----
+***************
+*** 617,622 ****
+--- 615,622 ----
+  static void f_islocked __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_items __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_join __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_jsondecode __ARGS((typval_T *argvars, typval_T *rettv));
++ static void f_jsonencode __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_keys __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_last_buffer_nr __ARGS((typval_T *argvars, typval_T *rettv));
+  static void f_len __ARGS((typval_T *argvars, typval_T *rettv));
+***************
+*** 816,822 ****
+  static linenr_T get_tv_lnum_buf __ARGS((typval_T *argvars, buf_T *buf));
+  static char_u *get_tv_string __ARGS((typval_T *varp));
+  static char_u *get_tv_string_buf __ARGS((typval_T *varp, char_u *buf));
+- static char_u *get_tv_string_buf_chk __ARGS((typval_T *varp, char_u *buf));
+  static dictitem_T *find_var __ARGS((char_u *name, hashtab_T **htp, int no_autoload));
+  static dictitem_T *find_var_in_ht __ARGS((hashtab_T *ht, int htname, char_u *varname, int no_autoload));
+  static hashtab_T *find_var_ht __ARGS((char_u *name, char_u **varname));
+--- 816,821 ----
+***************
+*** 915,920 ****
+--- 914,925 ----
+      set_vim_var_nr(VV_HLSEARCH, 1L);
+      set_vim_var_dict(VV_COMPLETED_ITEM, dict_alloc());
+      set_vim_var_list(VV_ERRORS, list_alloc());
++ 
++     set_vim_var_nr(VV_FALSE, VVAL_FALSE);
++     set_vim_var_nr(VV_TRUE, VVAL_TRUE);
++     set_vim_var_nr(VV_NONE, VVAL_NONE);
++     set_vim_var_nr(VV_NULL, VVAL_NULL);
++ 
+      set_reg_var(0);  /* default for v:register is not 0 but '"' */
+  
+  #ifdef EBCDIC
+***************
+*** 3080,3092 ****
+      char_u	numbuf[NUMBUFLEN];
+      char_u	*s;
+  
+!     /* Can't do anything with a Funcref or a Dict on the right. */
+!     if (tv2->v_type != VAR_FUNC && tv2->v_type != VAR_DICT)
+      {
+  	switch (tv1->v_type)
+  	{
+  	    case VAR_DICT:
+  	    case VAR_FUNC:
+  		break;
+  
+  	    case VAR_LIST:
+--- 3085,3099 ----
+      char_u	numbuf[NUMBUFLEN];
+      char_u	*s;
+  
+!     /* Can't do anything with a Funcref, Dict, v:true on the right. */
+!     if (tv2->v_type != VAR_FUNC && tv2->v_type != VAR_DICT
+! 						&& tv2->v_type != VAR_SPECIAL)
+      {
+  	switch (tv1->v_type)
+  	{
+  	    case VAR_DICT:
+  	    case VAR_FUNC:
++ 	    case VAR_SPECIAL:
+  		break;
+  
+  	    case VAR_LIST:
+***************
+*** 5390,5395 ****
+--- 5397,5406 ----
+  	return FAIL;
+      }
+  #endif
++     else if (rettv->v_type == VAR_SPECIAL)
++     {
++ 	return FAIL;
++     }
+  
+      init_tv(&var1);
+      init_tv(&var2);
+***************
+*** 5999,6005 ****
+   * Allocate an empty list for a return value.
+   * Returns OK or FAIL.
+   */
+!     static int
+  rettv_list_alloc(rettv)
+      typval_T	*rettv;
+  {
+--- 6010,6016 ----
+   * Allocate an empty list for a return value.
+   * Returns OK or FAIL.
+   */
+!     int
+  rettv_list_alloc(rettv)
+      typval_T	*rettv;
+  {
+***************
+*** 6246,6251 ****
+--- 6257,6265 ----
+  	    s1 = get_tv_string_buf(tv1, buf1);
+  	    s2 = get_tv_string_buf(tv2, buf2);
+  	    return ((ic ? MB_STRICMP(s1, s2) : STRCMP(s1, s2)) == 0);
++ 
++ 	case VAR_SPECIAL:
++ 	    return tv1->vval.v_number == tv2->vval.v_number;
+      }
+  
+      EMSG2(_(e_intern2), "tv_equal()");
+***************
+*** 6838,6843 ****
+--- 6852,6868 ----
+  }
+  
+  /*
++  * Return the next (unique) copy ID.
++  * Used for serializing nested structures.
++  */
++     int
++ get_copyID()
++ {
++     current_copyID += COPYID_INC;
++     return current_copyID;
++ }
++ 
++ /*
+   * Garbage collection for lists and dictionaries.
+   *
+   * We use reference counts to be able to free most items right away when they
+***************
+*** 6883,6890 ****
+  
+      /* We advance by two because we add one for items referenced through
+       * previous_funccal. */
+!     current_copyID += COPYID_INC;
+!     copyID = current_copyID;
+  
+      /*
+       * 1. Go through all accessible variables and mark all lists and dicts
+--- 6908,6914 ----
+  
+      /* We advance by two because we add one for items referenced through
+       * previous_funccal. */
+!     copyID = get_copyID();
+  
+      /*
+       * 1. Go through all accessible variables and mark all lists and dicts
+***************
+*** 7236,7242 ****
+   * Allocate an empty dict for a return value.
+   * Returns OK or FAIL.
+   */
+!     static int
+  rettv_dict_alloc(rettv)
+      typval_T	*rettv;
+  {
+--- 7260,7266 ----
+   * Allocate an empty dict for a return value.
+   * Returns OK or FAIL.
+   */
+!     int
+  rettv_dict_alloc(rettv)
+      typval_T	*rettv;
+  {
+***************
+*** 7891,7896 ****
+--- 7915,7932 ----
+  	    break;
+  #endif
+  
++ 	case VAR_SPECIAL:
++ 	    *tofree = NULL;
++ 	    switch (tv->vval.v_number)
++ 	    {
++ 		case VVAL_FALSE: r = (char_u *)"false"; break;
++ 		case VVAL_TRUE: r = (char_u *)"true"; break;
++ 		case VVAL_NONE: r = (char_u *)"none"; break;
++ 		case VVAL_NULL: r = (char_u *)"null"; break;
++ 		default: EMSG2(_(e_intern2), "echo_string(special)");
++ 	    }
++ 	    break;
++ 
+  	default:
+  	    EMSG2(_(e_intern2), "echo_string()");
+  	    *tofree = NULL;
+***************
+*** 7932,7937 ****
+--- 7968,7974 ----
+  	case VAR_NUMBER:
+  	case VAR_LIST:
+  	case VAR_DICT:
++ 	case VAR_SPECIAL:
+  	    break;
+  	default:
+  	    EMSG2(_(e_intern2), "tv2string()");
+***************
+*** 7985,7998 ****
+      return s;
+  }
+  
+! #ifdef FEAT_FLOAT
+  /*
+   * Convert the string "text" to a floating point number.
+   * This uses strtod().  setlocale(LC_NUMERIC, "C") has been used to make sure
+   * this always uses a decimal point.
+   * Returns the length of the text that was consumed.
+   */
+!     static int
+  string2float(text, value)
+      char_u	*text;
+      float_T	*value;	    /* result stored here */
+--- 8022,8035 ----
+      return s;
+  }
+  
+! #if defined(FEAT_FLOAT) || defined(PROTO)
+  /*
+   * Convert the string "text" to a floating point number.
+   * This uses strtod().  setlocale(LC_NUMERIC, "C") has been used to make sure
+   * this always uses a decimal point.
+   * Returns the length of the text that was consumed.
+   */
+!     int
+  string2float(text, value)
+      char_u	*text;
+      float_T	*value;	    /* result stored here */
+***************
+*** 8237,8242 ****
+--- 8274,8281 ----
+      {"islocked",	1, 1, f_islocked},
+      {"items",		1, 1, f_items},
+      {"join",		1, 2, f_join},
++     {"jsondecode",	1, 1, f_jsondecode},
++     {"jsonencode",	1, 1, f_jsonencode},
+      {"keys",		1, 1, f_keys},
+      {"last_buffer_nr",	0, 0, f_last_buffer_nr},/* obsolete */
+      {"len",		1, 1, f_len},
+***************
+*** 14394,14399 ****
+--- 14433,14466 ----
+  }
+  
+  /*
++  * "jsondecode()" function
++  */
++     static void
++ f_jsondecode(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv;
++ {
++     js_read_T	reader;
++ 
++     reader.js_buf = get_tv_string(&argvars[0]);
++     reader.js_eof = TRUE;
++     reader.js_used = 0;
++     json_decode(&reader, rettv);
++ }
++ 
++ /*
++  * "jsonencode()" function
++  */
++     static void
++ f_jsonencode(argvars, rettv)
++     typval_T	*argvars;
++     typval_T	*rettv;
++ {
++     rettv->v_type = VAR_STRING;
++     rettv->vval.v_string = json_encode(&argvars[0]);
++ }
++ 
++ /*
+   * "keys()" function
+   */
+      static void
+***************
+*** 21558,21563 ****
+--- 21625,21631 ----
+  		varp->vval.v_dict = NULL;
+  		break;
+  	    case VAR_NUMBER:
++ 	    case VAR_SPECIAL:
+  		varp->vval.v_number = 0;
+  		break;
+  #ifdef FEAT_FLOAT
+***************
+*** 21759,21765 ****
+      return get_tv_string_buf_chk(varp, mybuf);
+  }
+  
+!     static char_u *
+  get_tv_string_buf_chk(varp, buf)
+      typval_T	*varp;
+      char_u	*buf;
+--- 21827,21833 ----
+      return get_tv_string_buf_chk(varp, mybuf);
+  }
+  
+!     char_u *
+  get_tv_string_buf_chk(varp, buf)
+      typval_T	*varp;
+      char_u	*buf;
+***************
+*** 22120,22127 ****
+      char_u	*s;
+      char_u	numbuf[NUMBUFLEN];
+  
+!     current_copyID += COPYID_INC;
+!     s = echo_string(&v->di_tv, &tofree, numbuf, current_copyID);
+      list_one_var_a(prefix, v->di_key, v->di_tv.v_type,
+  					 s == NULL ? (char_u *)"" : s, first);
+      vim_free(tofree);
+--- 22188,22194 ----
+      char_u	*s;
+      char_u	numbuf[NUMBUFLEN];
+  
+!     s = echo_string(&v->di_tv, &tofree, numbuf, get_copyID());
+      list_one_var_a(prefix, v->di_key, v->di_tv.v_type,
+  					 s == NULL ? (char_u *)"" : s, first);
+      vim_free(tofree);
+***************
+*** 22435,22440 ****
+--- 22502,22508 ----
+      switch (from->v_type)
+      {
+  	case VAR_NUMBER:
++ 	case VAR_SPECIAL:
+  	    to->vval.v_number = from->vval.v_number;
+  	    break;
+  #ifdef FEAT_FLOAT
+***************
+*** 22609,22616 ****
+  	    }
+  	    else if (eap->cmdidx == CMD_echo)
+  		msg_puts_attr((char_u *)" ", echo_attr);
+! 	    current_copyID += COPYID_INC;
+! 	    p = echo_string(&rettv, &tofree, numbuf, current_copyID);
+  	    if (p != NULL)
+  		for ( ; *p != NUL && !got_int; ++p)
+  		{
+--- 22677,22683 ----
+  	    }
+  	    else if (eap->cmdidx == CMD_echo)
+  		msg_puts_attr((char_u *)" ", echo_attr);
+! 	    p = echo_string(&rettv, &tofree, numbuf, get_copyID());
+  	    if (p != NULL)
+  		for ( ; *p != NUL && !got_int; ++p)
+  		{
+*** ../vim-7.4.1153/src/proto.h	2014-08-10 13:34:59.060785459 +0200
+--- src/proto.h	2016-01-22 20:33:01.384289200 +0100
+***************
+*** 95,100 ****
+--- 95,101 ----
+  # endif
+  # include "hardcopy.pro"
+  # include "hashtab.pro"
++ # include "json.pro"
+  # include "main.pro"
+  # include "mark.pro"
+  # include "memfile.pro"
+*** ../vim-7.4.1153/src/structs.h	2016-01-19 22:28:54.611593027 +0100
+--- src/structs.h	2016-01-23 18:48:44.534435105 +0100
+***************
+*** 1138,1143 ****
+--- 1138,1144 ----
+  #define VAR_LIST    4	/* "v_list" is used */
+  #define VAR_DICT    5	/* "v_dict" is used */
+  #define VAR_FLOAT   6	/* "v_float" is used */
++ #define VAR_SPECIAL 7	/* "v_number" is used */
+  
+  /* Values for "dv_scope". */
+  #define VAR_SCOPE     1	/* a:, v:, s:, etc. scope dictionaries */
+***************
+*** 2682,2684 ****
+--- 2683,2697 ----
+    UINT32_T state[8];
+    char_u   buffer[64];
+  } context_sha256_T;
++ 
++ /*
++  * Structure used for reading in json_decode().
++  */
++ typedef struct
++ {
++     char_u	*js_buf;	/* text to be decoded */
++     char_u	*js_end;	/* NUL in js_buf when js_eof is FALSE */
++     int		js_used;	/* bytes used from js_buf */
++     int		js_eof;		/* when TRUE js_buf is all there is */
++     FILE	*js_fd;		/* file descriptor to read more from */
++ } js_read_T;
+*** ../vim-7.4.1153/src/vim.h	2016-01-20 22:47:57.665335718 +0100
+--- src/vim.h	2016-01-23 19:38:58.939190501 +0100
+***************
+*** 1896,1902 ****
+  #define VV_OPTION_OLD   60
+  #define VV_OPTION_TYPE  61
+  #define VV_ERRORS	62
+! #define VV_LEN		63	/* number of v: vars */
+  
+  #ifdef FEAT_CLIPBOARD
+  
+--- 1896,1912 ----
+  #define VV_OPTION_OLD   60
+  #define VV_OPTION_TYPE  61
+  #define VV_ERRORS	62
+! #define VV_FALSE	63
+! #define VV_TRUE		64
+! #define VV_NULL		65
+! #define VV_NONE		66
+! #define VV_LEN		67	/* number of v: vars */
+! 
+! /* used for v_number in VAR_SPECIAL */
+! #define VVAL_FALSE	0L
+! #define VVAL_TRUE	1L
+! #define VVAL_NONE	2L
+! #define VVAL_NULL	3L
+  
+  #ifdef FEAT_CLIPBOARD
+  
+*** ../vim-7.4.1153/src/if_lua.c	2016-01-09 14:57:10.504884946 +0100
+--- src/if_lua.c	2016-01-23 15:16:47.542331948 +0100
+***************
+*** 499,504 ****
+--- 499,510 ----
+  	case VAR_DICT:
+  	    luaV_pushdict(L, tv->vval.v_dict);
+  	    break;
++ 	case VAR_SPECIAL:
++ 	    if (tv->vval.v_number <= VVAL_TRUE)
++ 		lua_pushinteger(L, (int) tv->vval.v_number);
++ 	    else
++ 		lua_pushnil(L);
++ 	    break;
+  	default:
+  	    lua_pushnil(L);
+      }
+***************
+*** 510,516 ****
+  {
+      switch(lua_type(L, pos)) {
+  	case LUA_TBOOLEAN:
+! 	    tv->v_type = VAR_NUMBER;
+  	    tv->vval.v_number = (varnumber_T) lua_toboolean(L, pos);
+  	    break;
+  	case LUA_TSTRING:
+--- 516,522 ----
+  {
+      switch(lua_type(L, pos)) {
+  	case LUA_TBOOLEAN:
+! 	    tv->v_type = VAR_SPECIAL;
+  	    tv->vval.v_number = (varnumber_T) lua_toboolean(L, pos);
+  	    break;
+  	case LUA_TSTRING:
+*** ../vim-7.4.1153/src/if_mzsch.c	2016-01-16 16:20:23.712823243 +0100
+--- src/if_mzsch.c	2016-01-23 15:19:22.464702083 +0100
+***************
+*** 3084,3089 ****
+--- 3084,3097 ----
+  
+  	MZ_GC_UNREG();
+      }
++     else if (vim_value->v_type == VAR_SPECIAL)
++     {
++ 	if (vim_value->vval.v_number <= VVAL_TRUE)
++ 	    result = scheme_make_integer((long)vim_value->vval.v_number);
++ 	else
++ 	    result = scheme_null;
++ 	MZ_GC_CHECK();
++     }
+      else
+      {
+  	result = scheme_void;
+***************
+*** 3148,3155 ****
+  	copy_tv(found, tv);
+      else if (SCHEME_VOIDP(obj))
+      {
+! 	tv->v_type = VAR_NUMBER;
+! 	tv->vval.v_number = 0;
+      }
+      else if (SCHEME_INTP(obj))
+      {
+--- 3156,3163 ----
+  	copy_tv(found, tv);
+      else if (SCHEME_VOIDP(obj))
+      {
+! 	tv->v_type = VAR_SPECIAL;
+! 	tv->vval.v_number = VVAL_NULL;
+      }
+      else if (SCHEME_INTP(obj))
+      {
+***************
+*** 3158,3164 ****
+      }
+      else if (SCHEME_BOOLP(obj))
+      {
+! 	tv->v_type = VAR_NUMBER;
+  	tv->vval.v_number = SCHEME_TRUEP(obj);
+      }
+  # ifdef FEAT_FLOAT
+--- 3166,3172 ----
+      }
+      else if (SCHEME_BOOLP(obj))
+      {
+! 	tv->v_type = VAR_SPECIAL;
+  	tv->vval.v_number = SCHEME_TRUEP(obj);
+      }
+  # ifdef FEAT_FLOAT
+*** ../vim-7.4.1153/src/if_ruby.c	2016-01-19 13:21:55.829334463 +0100
+--- src/if_ruby.c	2016-01-23 15:22:03.583007468 +0100
+***************
+*** 1032,1037 ****
+--- 1032,1042 ----
+  		}
+  	    }
+  	}
++     }
++     else if (tv->v_type == VAR_SPECIAL)
++     {
++ 	if (tv->vval.v_number <= VVAL_TRUE)
++ 	    result = INT2NUM(tv->vval.v_number);
+      } /* else return Qnil; */
+  
+      return result;
+*** ../vim-7.4.1153/src/if_py_both.h	2016-01-17 22:36:56.017417164 +0100
+--- src/if_py_both.h	2016-01-23 15:26:35.948143016 +0100
+***************
+*** 810,815 ****
+--- 810,834 ----
+  	    }
+  	}
+      }
++     else if (our_tv->v_type == VAR_SPECIAL)
++     {
++ 	if (our_tv->vval.v_number == VVAL_FALSE)
++ 	{
++ 	    ret = Py_False;
++ 	    Py_INCREF(ret);
++ 	}
++ 	else if (our_tv->vval.v_number == VVAL_TRUE)
++ 	{
++ 	    ret = Py_True;
++ 	    Py_INCREF(ret);
++ 	}
++ 	else
++ 	{
++ 	    Py_INCREF(Py_None);
++ 	    ret = Py_None;
++ 	}
++ 	return ret;
++     }
+      else
+      {
+  	Py_INCREF(Py_None);
+*** ../vim-7.4.1153/src/globals.h	2016-01-20 22:47:57.657335800 +0100
+--- src/globals.h	2016-01-23 19:04:37.064586103 +0100
+***************
+*** 1523,1528 ****
+--- 1523,1529 ----
+  #ifdef FEAT_EVAL
+  EXTERN char_u e_readonlyvar[]	INIT(= N_("E46: Cannot change read-only variable \"%s\""));
+  EXTERN char_u e_readonlysbx[]	INIT(= N_("E794: Cannot set variable in the sandbox: \"%s\""));
++ EXTERN char_u e_emptykey[]	INIT(= N_("E713: Cannot use empty key for Dictionary"));
+  #endif
+  #ifdef FEAT_QUICKFIX
+  EXTERN char_u e_readerrf[]	INIT(= N_("E47: Error while reading errorfile"));
+*** ../vim-7.4.1153/src/Makefile	2016-01-19 13:21:55.829334463 +0100
+--- src/Makefile	2016-01-23 19:40:15.862390712 +0100
+***************
+*** 1487,1492 ****
+--- 1487,1493 ----
+  	hashtab.c \
+  	if_cscope.c \
+  	if_xcmdsrv.c \
++ 	json.c \
+  	main.c \
+  	mark.c \
+  	memfile.c \
+***************
+*** 1580,1585 ****
+--- 1581,1587 ----
+  	$(HANGULIN_OBJ) \
+  	objects/if_cscope.o \
+  	objects/if_xcmdsrv.o \
++ 	objects/json.o \
+  	objects/mark.o \
+          objects/memline.o \
+  	objects/menu.o \
+***************
+*** 1654,1659 ****
+--- 1656,1662 ----
+  	if_python.pro \
+  	if_python3.pro \
+  	if_ruby.pro \
++ 	json.pro \
+  	main.pro \
+  	mark.pro \
+  	memfile.pro \
+***************
+*** 1986,1991 ****
+--- 1989,1996 ----
+  	test_expand \
+  	test_hardcopy \
+  	test_increment \
++ 	test_json \
++ 	test_langmap \
+  	test_lispwords \
+  	test_menu \
+  	test_perl \
+***************
+*** 1993,1998 ****
+--- 1998,2004 ----
+  	test_searchpos \
+  	test_set \
+  	test_sort \
++ 	test_syntax \
+  	test_undolevels \
+  	test_unlet \
+  	test_viminfo \
+***************
+*** 2770,2775 ****
+--- 2776,2784 ----
+  objects/integration.o: integration.c
+  	$(CCC) -o $@ integration.c
+  
++ objects/json.o: json.c
++ 	$(CCC) -o $@ json.c
++ 
+  objects/main.o: main.c
+  	$(CCC) -o $@ main.c
+  
+***************
+*** 3060,3065 ****
+--- 3069,3078 ----
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+   globals.h farsi.h arabic.h version.h
++ objects/json.o: json.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
++  gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
++  arabic.h
+  objects/main.o: main.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
+   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
+   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
+***************
+*** 3114,3120 ****
+  objects/os_unix.o: os_unix.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
+   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
+   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
+!  arabic.h if_mzsch.h os_unixx.h
+  objects/pathdef.o: auto/pathdef.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+--- 3127,3133 ----
+  objects/os_unix.o: os_unix.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
+   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
+   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
+!  arabic.h os_unixx.h
+  objects/pathdef.o: auto/pathdef.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+***************
+*** 3179,3185 ****
+  objects/gui_gtk.o: gui_gtk.c gui_gtk_f.h vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+!  globals.h farsi.h arabic.h ../pixmaps/stock_icons.h
+  objects/gui_gtk_f.o: gui_gtk_f.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+--- 3192,3198 ----
+  objects/gui_gtk.o: gui_gtk.c gui_gtk_f.h vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+!  globals.h farsi.h arabic.h
+  objects/gui_gtk_f.o: gui_gtk_f.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+***************
+*** 3245,3252 ****
+  objects/gui_gtk_x11.o: gui_gtk_x11.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+!  globals.h farsi.h arabic.h gui_gtk_f.h ../runtime/vim32x32.xpm \
+!  ../runtime/vim16x16.xpm ../runtime/vim48x48.xpm $(GRESOURCE_HDR)
+  objects/gui_x11.o: gui_x11.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
+   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
+   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
+--- 3258,3265 ----
+  objects/gui_gtk_x11.o: gui_gtk_x11.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+!  globals.h farsi.h arabic.h auto/gui_gtk_gresources.h gui_gtk_f.h \
+!  ../runtime/vim32x32.xpm ../runtime/vim16x16.xpm ../runtime/vim48x48.xpm
+  objects/gui_x11.o: gui_x11.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
+   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
+   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \
+***************
+*** 3278,3284 ****
+  objects/if_mzsch.o: if_mzsch.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+!  globals.h farsi.h arabic.h if_mzsch.h mzscheme_base.c
+  objects/if_perl.o: auto/if_perl.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+--- 3291,3297 ----
+  objects/if_mzsch.o: if_mzsch.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+!  globals.h farsi.h arabic.h if_mzsch.h
+  objects/if_perl.o: auto/if_perl.c vim.h auto/config.h feature.h os_unix.h \
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
+*** ../vim-7.4.1153/src/Make_bc3.mak	2016-01-01 17:56:13.405342815 +0100
+--- src/Make_bc3.mak	2016-01-22 20:33:39.219891292 +0100
+***************
+*** 72,77 ****
+--- 72,78 ----
+  	getchar.obj \
+  	hardcopy.obj \
+  	hashtab.obj \
++ 	json.obj \
+  	main.obj \
+  	mark.obj \
+  	memfile.obj \
+*** ../vim-7.4.1153/src/Make_bc5.mak	2016-01-01 17:56:13.405342815 +0100
+--- src/Make_bc5.mak	2016-01-22 20:34:07.235596694 +0100
+***************
+*** 598,603 ****
+--- 598,604 ----
+  	$(OBJDIR)\getchar.obj \
+  	$(OBJDIR)\hardcopy.obj \
+  	$(OBJDIR)\hashtab.obj \
++ 	$(OBJDIR)\json.obj \
+  	$(OBJDIR)\main.obj \
+  	$(OBJDIR)\mark.obj \
+  	$(OBJDIR)\memfile.obj \
+*** ../vim-7.4.1153/src/Make_cyg_ming.mak	2016-01-21 20:24:30.524467216 +0100
+--- src/Make_cyg_ming.mak	2016-01-22 20:34:34.503309989 +0100
+***************
+*** 601,606 ****
+--- 601,607 ----
+  	$(OUTDIR)/getchar.o \
+  	$(OUTDIR)/hardcopy.o \
+  	$(OUTDIR)/hashtab.o \
++ 	$(OUTDIR)/json.o \
+  	$(OUTDIR)/main.o \
+  	$(OUTDIR)/mark.o \
+  	$(OUTDIR)/memfile.o \
+*** ../vim-7.4.1153/src/Make_dice.mak	2014-08-10 16:31:47.372709213 +0200
+--- src/Make_dice.mak	2016-01-22 20:35:26.646761816 +0100
+***************
+*** 45,50 ****
+--- 45,51 ----
+  	getchar.c \
+  	hardcopy.c \
+  	hashtab.c \
++ 	json.c \
+  	main.c \
+  	mark.c \
+  	memfile.c \
+***************
+*** 93,98 ****
+--- 94,100 ----
+  	o/getchar.o \
+  	o/hardcopy.o \
+  	o/hashtab.o \
++ 	o/json.o \
+  	o/main.o \
+  	o/mark.o \
+  	o/memfile.o \
+***************
+*** 179,184 ****
+--- 181,188 ----
+  
+  o/hashtab.o: hashtab.c	$(SYMS)
+  
++ o/json.o:	json.c  $(SYMS)
++ 
+  o/main.o: main.c $(SYMS)
+  
+  o/mark.o: mark.c	$(SYMS)
+*** ../vim-7.4.1153/src/Make_ivc.mak	2014-08-10 16:31:47.372709213 +0200
+--- src/Make_ivc.mak	2016-01-22 20:36:27.882118188 +0100
+***************
+*** 229,234 ****
+--- 229,235 ----
+  	"$(INTDIR)/getchar.obj" \
+  	"$(INTDIR)/hardcopy.obj" \
+  	"$(INTDIR)/hashtab.obj" \
++ 	"$(INTDIR)/json.obj" \
+  	"$(INTDIR)/main.obj" \
+  	"$(INTDIR)/mark.obj" \
+  	"$(INTDIR)/mbyte.obj" \
+***************
+*** 555,560 ****
+--- 556,565 ----
+  # End Source File
+  # Begin Source File
+  
++ SOURCE=.\json.c
++ # End Source File
++ # Begin Source File
++ 
+  SOURCE=.\main.c
+  # End Source File
+  # Begin Source File
+*** ../vim-7.4.1153/src/Make_manx.mak	2016-01-01 17:56:13.405342815 +0100
+--- src/Make_manx.mak	2016-01-22 20:37:07.693699816 +0100
+***************
+*** 55,60 ****
+--- 55,61 ----
+  	getchar.c \
+  	hardcopy.c \
+  	hashtab.c \
++ 	json.c \
+  	main.c \
+  	mark.c \
+  	memfile.c \
+***************
+*** 105,110 ****
+--- 106,112 ----
+  	obj/getchar.o \
+  	obj/hardcopy.o \
+  	obj/hashtab.o \
++ 	obj/json.o \
+  	obj/main.o \
+  	obj/mark.o \
+  	obj/memfile.o \
+***************
+*** 153,158 ****
+--- 155,161 ----
+  	proto/getchar.pro \
+  	proto/hardcopy.pro \
+  	proto/hashtab.pro \
++ 	proto/json.pro \
+  	proto/main.pro \
+  	proto/mark.pro \
+  	proto/memfile.pro \
+***************
+*** 284,289 ****
+--- 287,295 ----
+  obj/hashtab.o:	hashtab.c
+  	$(CCSYM) $@ hashtab.c
+  
++ obj/json.o:	json.c
++ 	$(CCSYM) $@ json.c
++ 
+  # Don't use $(SYMS) here, because main.c defines EXTERN
+  obj/main.o:	main.c option.h globals.h
+  	$(CCNOSYM) $@ main.c
+*** ../vim-7.4.1153/src/Make_morph.mak	2014-08-10 16:31:47.376709213 +0200
+--- src/Make_morph.mak	2016-01-22 20:37:36.097401362 +0100
+***************
+*** 43,48 ****
+--- 43,49 ----
+  	getchar.c						\
+  	hardcopy.c						\
+  	hashtab.c						\
++ 	json.c							\
+  	main.c							\
+  	mark.c							\
+  	mbyte.c							\
+*** ../vim-7.4.1153/src/Make_mvc.mak	2016-01-21 20:24:30.524467216 +0100
+--- src/Make_mvc.mak	2016-01-22 20:38:21.608923214 +0100
+***************
+*** 536,541 ****
+--- 536,542 ----
+  	$(OUTDIR)\getchar.obj \
+  	$(OUTDIR)\hardcopy.obj \
+  	$(OUTDIR)\hashtab.obj \
++ 	$(OUTDIR)\json.obj \
+  	$(OUTDIR)\main.obj \
+  	$(OUTDIR)\mark.obj \
+  	$(OUTDIR)\mbyte.obj \
+***************
+*** 1202,1207 ****
+--- 1203,1210 ----
+  $(OUTDIR)/if_tcl.obj: $(OUTDIR) if_tcl.c  $(INCL)
+  	$(CC) $(CFLAGS) $(TCL_INC) if_tcl.c
+  
++ $(OUTDIR)/json.obj:	$(OUTDIR) json.c  $(INCL)
++ 
+  $(OUTDIR)/main.obj:	$(OUTDIR) main.c  $(INCL)
+  
+  $(OUTDIR)/mark.obj:	$(OUTDIR) mark.c  $(INCL)
+***************
+*** 1329,1334 ****
+--- 1332,1338 ----
+  	proto/getchar.pro \
+  	proto/hardcopy.pro \
+  	proto/hashtab.pro \
++ 	proto/json.pro \
+  	proto/main.pro \
+  	proto/mark.pro \
+  	proto/memfile.pro \
+*** ../vim-7.4.1153/src/Make_sas.mak	2014-08-10 16:31:47.376709213 +0200
+--- src/Make_sas.mak	2016-01-22 20:39:00.324516517 +0100
+***************
+*** 108,113 ****
+--- 108,114 ----
+  	getchar.c \
+  	hardcopy.c \
+  	hashtab.c \
++ 	json.c \
+  	main.c \
+  	mark.c \
+  	memfile.c \
+***************
+*** 157,162 ****
+--- 158,164 ----
+  	getchar.o \
+  	hardcopy.o \
+  	hashtab.o \
++ 	json.o \
+  	main.o \
+  	mark.o \
+  	memfile.o \
+***************
+*** 206,211 ****
+--- 208,214 ----
+  	proto/getchar.pro \
+  	proto/hardcopy.pro \
+  	proto/hashtab.pro \
++ 	proto/json.pro \
+  	proto/main.pro \
+  	proto/mark.pro \
+  	proto/memfile.pro \
+***************
+*** 328,333 ****
+--- 331,338 ----
+  proto/hardcopy.pro:	hardcopy.c
+  hashtab.o:		hashtab.c
+  proto/hashtab.pro:	hashtab.c
++ json.o:			json.c
++ proto/json.pro:		json.c
+  main.o:			main.c
+  proto/main.pro:		main.c
+  mark.o:			mark.c
+*** ../vim-7.4.1153/src/Make_vms.mms	2014-12-17 14:36:10.367090935 +0100
+--- src/Make_vms.mms	2016-01-22 20:40:07.259813515 +0100
+***************
+*** 2,8 ****
+  # Makefile for Vim on OpenVMS
+  #
+  # Maintainer:   Zoltan Arpadffy <arpadffy@polarhome.com>
+! # Last change:  2014 Aug 10
+  #
+  # This has script been tested on VMS 6.2 to 8.2 on DEC Alpha, VAX and IA64
+  # with MMS and MMK
+--- 2,8 ----
+  # Makefile for Vim on OpenVMS
+  #
+  # Maintainer:   Zoltan Arpadffy <arpadffy@polarhome.com>
+! # Last change:  2016 Jan 22
+  #
+  # This has script been tested on VMS 6.2 to 8.2 on DEC Alpha, VAX and IA64
+  # with MMS and MMK
+***************
+*** 311,317 ****
+  
+  SRC =	blowfish.c buffer.c charset.c crypt.c, crypt_zip.c diff.c digraph.c edit.c eval.c ex_cmds.c ex_cmds2.c \
+  	ex_docmd.c ex_eval.c ex_getln.c if_xcmdsrv.c fileio.c fold.c getchar.c \
+! 	hardcopy.c hashtab.c main.c mark.c menu.c mbyte.c memfile.c memline.c message.c misc1.c \
+  	misc2.c move.c normal.c ops.c option.c popupmnu.c quickfix.c regexp.c search.c sha256.c\
+  	spell.c syntax.c tag.c term.c termlib.c ui.c undo.c version.c screen.c \
+  	window.c os_unix.c os_vms.c pathdef.c \
+--- 311,317 ----
+  
+  SRC =	blowfish.c buffer.c charset.c crypt.c, crypt_zip.c diff.c digraph.c edit.c eval.c ex_cmds.c ex_cmds2.c \
+  	ex_docmd.c ex_eval.c ex_getln.c if_xcmdsrv.c fileio.c fold.c getchar.c \
+! 	hardcopy.c hashtab.c json.c main.c mark.c menu.c mbyte.c memfile.c memline.c message.c misc1.c \
+  	misc2.c move.c normal.c ops.c option.c popupmnu.c quickfix.c regexp.c search.c sha256.c\
+  	spell.c syntax.c tag.c term.c termlib.c ui.c undo.c version.c screen.c \
+  	window.c os_unix.c os_vms.c pathdef.c \
+***************
+*** 320,326 ****
+  
+  OBJ =	blowfish.obj buffer.obj charset.obj crypt.obj, crypt_zip.obj diff.obj digraph.obj edit.obj eval.obj \
+  	ex_cmds.obj ex_cmds2.obj ex_docmd.obj ex_eval.obj ex_getln.obj \
+! 	if_xcmdsrv.obj fileio.obj fold.obj getchar.obj hardcopy.obj hashtab.obj main.obj mark.obj \
+  	menu.obj memfile.obj memline.obj message.obj misc1.obj misc2.obj \
+  	move.obj mbyte.obj normal.obj ops.obj option.obj popupmnu.obj quickfix.obj \
+  	regexp.obj search.obj sha256.obj spell.obj syntax.obj tag.obj term.obj termlib.obj \
+--- 320,326 ----
+  
+  OBJ =	blowfish.obj buffer.obj charset.obj crypt.obj, crypt_zip.obj diff.obj digraph.obj edit.obj eval.obj \
+  	ex_cmds.obj ex_cmds2.obj ex_docmd.obj ex_eval.obj ex_getln.obj \
+! 	if_xcmdsrv.obj fileio.obj fold.obj getchar.obj hardcopy.obj hashtab.obj json.obj main.obj mark.obj \
+  	menu.obj memfile.obj memline.obj message.obj misc1.obj misc2.obj \
+  	move.obj mbyte.obj normal.obj ops.obj option.obj popupmnu.obj quickfix.obj \
+  	regexp.obj search.obj sha256.obj spell.obj syntax.obj tag.obj term.obj termlib.obj \
+***************
+*** 572,577 ****
+--- 572,581 ----
+   ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h [.proto]gui_beval.pro ex_cmds.h proto.h \
+   globals.h farsi.h arabic.h if_mzsch.h 
++ json.obj : json.c vim.h [.auto]config.h feature.h os_unix.h   \
++  ascii.h keymap.h term.h macros.h structs.h regexp.h gui.h gui_beval.h \
++  [.proto]gui_beval.pro option.h ex_cmds.h proto.h globals.h farsi.h \
++  arabic.h version.h
+  main.obj : main.c vim.h [.auto]config.h feature.h os_unix.h   \
+   ascii.h keymap.h term.h macros.h structs.h regexp.h gui.h gui_beval.h \
+   [.proto]gui_beval.pro option.h ex_cmds.h proto.h globals.h farsi.h \
+*** ../vim-7.4.1153/src/proto/json.pro	2016-01-23 19:32:31.439222465 +0100
+--- src/proto/json.pro	2016-01-23 18:11:31.185430495 +0100
+***************
+*** 0 ****
+--- 1,5 ----
++ /* json.c */
++ char_u *json_encode(typval_T *val);
++ void json_encode_item(garray_T *gap, typval_T *val, int copyID);
++ void json_decode(js_read_T *reader, typval_T *res);
++ /* vim: set ft=c : */
+*** ../vim-7.4.1153/src/proto/eval.pro	2016-01-19 13:21:55.833334420 +0100
+--- src/proto/eval.pro	2016-01-23 19:42:51.788769620 +0100
+***************
+*** 46,51 ****
+--- 46,52 ----
+  void del_menutrans_vars(void);
+  char_u *get_user_var_name(expand_T *xp, int idx);
+  list_T *list_alloc(void);
++ int rettv_list_alloc(typval_T *rettv);
+  void list_unref(list_T *l);
+  void list_free(list_T *l, int recurse);
+  listitem_T *listitem_alloc(void);
+***************
+*** 61,71 ****
+--- 62,74 ----
+  int list_insert_tv(list_T *l, typval_T *tv, listitem_T *item);
+  void list_insert(list_T *l, listitem_T *ni, listitem_T *item);
+  void vimlist_remove(list_T *l, listitem_T *item, listitem_T *item2);
++ int get_copyID(void);
+  int garbage_collect(void);
+  int set_ref_in_ht(hashtab_T *ht, int copyID, list_stack_T **list_stack);
+  int set_ref_in_list(list_T *l, int copyID, ht_stack_T **ht_stack);
+  int set_ref_in_item(typval_T *tv, int copyID, ht_stack_T **ht_stack, list_stack_T **list_stack);
+  dict_T *dict_alloc(void);
++ int rettv_dict_alloc(typval_T *rettv);
+  void dict_unref(dict_T *d);
+  void dict_free(dict_T *d, int recurse);
+  dictitem_T *dictitem_alloc(char_u *key);
+***************
+*** 76,81 ****
+--- 79,85 ----
+  dictitem_T *dict_find(dict_T *d, char_u *key, int len);
+  char_u *get_dict_string(dict_T *d, char_u *key, int save);
+  long get_dict_number(dict_T *d, char_u *key);
++ int string2float(char_u *text, float_T *value);
+  char_u *get_function_name(expand_T *xp, int idx);
+  char_u *get_expr_name(expand_T *xp, int idx);
+  int func_call(char_u *name, typval_T *args, dict_T *selfdict, typval_T *rettv);
+***************
+*** 100,105 ****
+--- 104,110 ----
+  void clear_tv(typval_T *varp);
+  long get_tv_number_chk(typval_T *varp, int *denote);
+  char_u *get_tv_string_chk(typval_T *varp);
++ char_u *get_tv_string_buf_chk(typval_T *varp, char_u *buf);
+  char_u *get_var_value(char_u *name);
+  void new_script_vars(scid_T id);
+  void init_var_dict(dict_T *dict, dictitem_T *dict_var, int scope);
+*** ../vim-7.4.1153/src/testdir/test_json.vim	2016-01-23 19:32:31.447222383 +0100
+--- src/testdir/test_json.vim	2016-01-23 19:24:46.212065256 +0100
+***************
+*** 0 ****
+--- 1,91 ----
++ " Test for JSON functions.
++ 
++ let s:json1 = '"str\"in\\g"'
++ let s:var1 = "str\"in\\g"
++ let s:json2 = '"\u0001\u0002\u0003\u0004\u0005\u0006\u0007"'
++ let s:var2 = "\x01\x02\x03\x04\x05\x06\x07"
++ let s:json3 = '"\b\t\n\u000b\f\r\u000e\u000f"'
++ let s:var3 = "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
++ let s:json4 = '"\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017"'
++ let s:var4 = "\x10\x11\x12\x13\x14\x15\x16\x17"
++ let s:json5 = '"\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f"'
++ let s:var5 = "\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
++ 
++ let s:jsonmb = '"s¢cĴgё"'
++ let s:varmb = "s¢cĴgё"
++ let s:jsonnr = '1234'
++ let s:varnr = 1234
++ let s:jsonfl = '12.34'
++ let s:varfl = 12.34
++ 
++ let s:jsonl1 = '[1,"a",3]'
++ let s:varl1 = [1, "a", 3]
++ let s:jsonl2 = '[1,["a",[],"c"],3]'
++ let s:jsonl2s = "  [\r1  ,  [  \"a\"  ,  [  ]  ,  \"c\"  ]  ,  3\<Tab>]\r\n"
++ let s:varl2 = [1, 2, 3]
++ let l2 = ['a', s:varl2, 'c']
++ let s:varl2[1] = l2
++ let s:varl2x = [1, ["a", [], "c"], 3]
++ 
++ let s:jsond1 = '{"a":1,"b":"bee","c":[1,2]}'
++ let s:vard1 = {"a": 1, "b": "bee","c": [1,2]}
++ let s:jsond2 = '{"1":1,"2":{"a":"aa","b":{},"c":"cc"},"3":3}'
++ let s:jsond2s = "  { \"1\" : 1 , \"2\" :\n{ \"a\"\r: \"aa\" , \"b\" : {\<Tab>} , \"c\" : \"cc\" } , \"3\" : 3 }\r\n"
++ let s:vard2 = {"1": 1, "2": 2, "3": 3}
++ let d2 = {"a": "aa", "b": s:vard2, "c": "cc"}
++ let s:vard2["2"] = d2
++ let s:vard2x = {"1": 1, "2": {"a": "aa", "b": {}, "c": "cc"}, "3": 3}
++ 
++ let s:jsonvals = '[true,false,,null]'
++ let s:varvals = [v:true, v:false, v:none, v:null]
++ 
++ func Test_encode()
++   call assert_equal(s:json1, jsonencode(s:var1))
++   call assert_equal(s:json2, jsonencode(s:var2))
++   call assert_equal(s:json3, jsonencode(s:var3))
++   call assert_equal(s:json4, jsonencode(s:var4))
++   call assert_equal(s:json5, jsonencode(s:var5))
++ 
++   if has('multi_byte')
++     call assert_equal(s:jsonmb, jsonencode(s:varmb))
++   endif
++ 
++   call assert_equal(s:jsonnr, jsonencode(s:varnr))
++   if has('float')
++     call assert_equal(s:jsonfl, jsonencode(s:varfl))
++   endif
++ 
++   call assert_equal(s:jsonl1, jsonencode(s:varl1))
++   call assert_equal(s:jsonl2, jsonencode(s:varl2))
++ 
++   call assert_equal(s:jsond1, jsonencode(s:vard1))
++   call assert_equal(s:jsond2, jsonencode(s:vard2))
++ 
++   call assert_equal(s:jsonvals, jsonencode(s:varvals))
++ endfunc
++ 
++ func Test_decode()
++   call assert_equal(s:var1, jsondecode(s:json1))
++   call assert_equal(s:var2, jsondecode(s:json2))
++   call assert_equal(s:var3, jsondecode(s:json3))
++   call assert_equal(s:var4, jsondecode(s:json4))
++   call assert_equal(s:var5, jsondecode(s:json5))
++ 
++   if has('multi_byte')
++     call assert_equal(s:varmb, jsondecode(s:jsonmb))
++   endif
++ 
++   call assert_equal(s:varnr, jsondecode(s:jsonnr))
++   if has('float')
++     call assert_equal(s:varfl, jsondecode(s:jsonfl))
++   endif
++ 
++   call assert_equal(s:varl1, jsondecode(s:jsonl1))
++   call assert_equal(s:varl2x, jsondecode(s:jsonl2))
++   call assert_equal(s:varl2x, jsondecode(s:jsonl2s))
++ 
++   call assert_equal(s:vard1, jsondecode(s:jsond1))
++   call assert_equal(s:vard2x, jsondecode(s:jsond2))
++ 
++   call assert_equal(s:varvals, jsondecode(s:jsonvals))
++ endfunc
+*** ../vim-7.4.1153/src/testdir/test_alot.vim	2016-01-16 21:50:32.582161520 +0100
+--- src/testdir/test_alot.vim	2016-01-22 20:46:04.516063988 +0100
+***************
+*** 5,10 ****
+--- 5,11 ----
+  source test_cursor_func.vim
+  source test_delete.vim
+  source test_expand.vim
++ source test_json.vim
+  source test_lispwords.vim
+  source test_menu.vim
+  source test_searchpos.vim
+*** ../vim-7.4.1153/Filelist	2016-01-16 15:45:09.999436846 +0100
+--- Filelist	2016-01-22 20:40:57.799282821 +0100
+***************
+*** 40,45 ****
+--- 40,46 ----
+  		src/hardcopy.c \
+  		src/hashtab.c \
+  		src/keymap.h \
++ 		src/json.c \
+  		src/macros.h \
+  		src/main.c \
+  		src/mark.c \
+***************
+*** 132,137 ****
+--- 133,139 ----
+  		src/proto/gui_beval.pro \
+  		src/proto/hardcopy.pro \
+  		src/proto/hashtab.pro \
++ 		src/proto/json.pro \
+  		src/proto/main.pro \
+  		src/proto/mark.pro \
+  		src/proto/mbyte.pro \
+*** ../vim-7.4.1153/runtime/doc/eval.txt	2016-01-21 23:32:14.154035915 +0100
+--- runtime/doc/eval.txt	2016-01-23 14:05:58.107086430 +0100
+***************
+*** 1399,1404 ****
+--- 1409,1418 ----
+  	:endtry
+  <		Output: "caught oops".
+  
++ 					*v:false* *false-variable*
++ v:false		A Number with value zero. Used to put "false" in JSON.  See
++ 		|jsonencode()|.
++ 
+  					*v:fcs_reason* *fcs_reason-variable*
+  v:fcs_reason	The reason why the |FileChangedShell| event was triggered.
+  		Can be used in an autocommand to decide what to do and/or what
+***************
+*** 1530,1535 ****
+--- 1546,1559 ----
+  		This is the screen column number, like with |virtcol()|.  The
+  		value is zero when there was no mouse button click.
+  
++ 					*v:none* *none-variable*
++ v:none		An empty String. Used to put an empty item in JSON.  See
++ 		|jsonencode()|.
++ 
++ 					*v:null* *null-variable*
++ v:null		An empty String. Used to put "null" in JSON.  See
++ 		|jsonencode()|.
++ 
+  					*v:oldfiles* *oldfiles-variable*
+  v:oldfiles	List of file names that is loaded from the |viminfo| file on
+  		startup.  These are the files that Vim remembers marks for.
+***************
+*** 1695,1700 ****
+--- 1719,1728 ----
+  	:endtry
+  <		Output: "Exception from test.vim, line 2"
+  
++ 						*v:true* *true-variable*
++ v:true		A Number with value one. Used to put "true" in JSON.  See
++ 		|jsonencode()|.
++ 
+  						*v:val* *val-variable*
+  v:val		Value of the current item of a |List| or |Dictionary|.	Only
+  		valid while evaluating the expression used with |map()| and
+***************
+*** 1901,1906 ****
+--- 1929,1936 ----
+  islocked( {expr})		Number	TRUE if {expr} is locked
+  items( {dict})			List	key-value pairs in {dict}
+  join( {list} [, {sep}])		String	join {list} items into one String
++ jsondecode( {string})		any	decode JSON
++ jsonencode( {expr})		String	encode JSON
+  keys( {dict})			List	keys in {dict}
+  len( {expr})			Number	the length of {expr}
+  libcall( {lib}, {func}, {arg})	String	call {func} in library {lib} with {arg}
+***************
+*** 4145,4150 ****
+--- 4233,4259 ----
+  		converted into a string like with |string()|.
+  		The opposite function is |split()|.
+  
++ jsondecode({string})					*jsondecode()*
++ 		TODO
++ 
++ jsonencode({expr})					*jsonencode()*
++ 		Encodode {expr} as JSON and return this as a string.
++ 		The encoding is specified in:
++ 		http://www.ietf.org/rfc/rfc4627.txt
++ 		Vim values are converted as follows:
++ 		   Number		decimal number
++ 		   Float		floating point number
++ 		   String		in double quotes (possibly null)
++ 		   Funcref		nothing
++ 		   List			as an array (possibly null); when
++ 		   			used recursively: []
++ 		   Dict			as an object (possibly null); when
++ 		   			used recursively: {}
++ 		   v:false		"false"
++ 		   v:true		"true"
++ 		   v:none		nothing
++ 		   v:null		"null"
++ 
+  keys({dict})						*keys()*
+  		Return a |List| with all the keys of {dict}.  The |List| is in
+  		arbitrary order.
+*** ../vim-7.4.1153/src/version.c	2016-01-22 22:44:06.377407641 +0100
+--- src/version.c	2016-01-23 19:25:13.427781898 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1154,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+7. Finish all your sentences with "in accordance with the prophecy".
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

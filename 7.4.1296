@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1296
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1296
+Problem:    Cursor changes column with up motion when the matchparen plugin
+            saves and restores the cursor position. (Martin Kunev)
+Solution:   Make sure curswant is updated before invoking the autocommand.
+Files:      src/edit.c
+
+
+*** ../vim-7.4.1295/src/edit.c	2016-01-30 15:14:02.539448913 +0100
+--- src/edit.c	2016-02-09 21:22:55.437711791 +0100
+***************
+*** 1611,1617 ****
+--- 1611,1622 ----
+  # endif
+  # ifdef FEAT_AUTOCMD
+  	if (has_cursormovedI())
++ 	{
++ 	    /* Make sure curswant is correct, an autocommand may call
++ 	     * getcurpos(). */
++ 	    update_curswant();
+  	    apply_autocmds(EVENT_CURSORMOVEDI, NULL, NULL, FALSE, curbuf);
++ 	}
+  # endif
+  # ifdef FEAT_CONCEAL
+  	if (curwin->w_p_cole > 0)
+*** ../vim-7.4.1295/src/version.c	2016-02-09 20:39:21.684933663 +0100
+--- src/version.c	2016-02-09 21:24:00.701030736 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1296,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+201. When somebody asks you where you are, you tell them in which chat room.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

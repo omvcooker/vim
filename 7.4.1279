@@ -1,0 +1,1672 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1279
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1279
+Problem:    jsonencode() is not producing strict JSON.
+Solution:   Add jsencode() and jsdecode().  Make jsonencode() and jsondecode()
+            strict.
+Files:      src/json.c, src/json_test.c, src/proto/json.pro, src/channel.c,
+            src/proto/channel.pro, src/eval.c, src/vim.h, src/structs.h,
+            runtime/doc/eval.txt, runtime/doc/channel.txt,
+            src/testdir/test_json.vim
+
+
+*** ../vim-7.4.1278/src/json.c	2016-02-07 16:53:08.779395103 +0100
+--- src/json.c	2016-02-07 18:43:33.130797605 +0100
+***************
+*** 16,37 ****
+  #include "vim.h"
+  
+  #if defined(FEAT_EVAL) || defined(PROTO)
+! static int json_encode_item(garray_T *gap, typval_T *val, int copyID, int allow_none);
+! static int json_decode_item(js_read_T *reader, typval_T *res);
+  
+  /*
+   * Encode "val" into a JSON format string.
+   * The result is in allocated memory.
+   * The result is empty when encoding fails.
+   */
+      char_u *
+! json_encode(typval_T *val)
+  {
+      garray_T ga;
+  
+      /* Store bytes in the growarray. */
+      ga_init2(&ga, 1, 4000);
+!     if (json_encode_item(&ga, val, get_copyID(), TRUE) == FAIL)
+      {
+  	vim_free(ga.ga_data);
+  	return vim_strsave((char_u *)"");
+--- 16,38 ----
+  #include "vim.h"
+  
+  #if defined(FEAT_EVAL) || defined(PROTO)
+! static int json_encode_item(garray_T *gap, typval_T *val, int copyID, int options);
+! static int json_decode_item(js_read_T *reader, typval_T *res, int options);
+  
+  /*
+   * Encode "val" into a JSON format string.
+   * The result is in allocated memory.
+   * The result is empty when encoding fails.
++  * "options" can be JSON_JS or zero;
+   */
+      char_u *
+! json_encode(typval_T *val, int options)
+  {
+      garray_T ga;
+  
+      /* Store bytes in the growarray. */
+      ga_init2(&ga, 1, 4000);
+!     if (json_encode_item(&ga, val, get_copyID(), options) == FAIL)
+      {
+  	vim_free(ga.ga_data);
+  	return vim_strsave((char_u *)"");
+***************
+*** 41,50 ****
+  
+  /*
+   * Encode ["nr", "val"] into a JSON format string in allocated memory.
+   * Returns NULL when out of memory.
+   */
+      char_u *
+! json_encode_nr_expr(int nr, typval_T *val)
+  {
+      typval_T	listtv;
+      typval_T	nrtv;
+--- 42,52 ----
+  
+  /*
+   * Encode ["nr", "val"] into a JSON format string in allocated memory.
++  * "options" can be JSON_JS or zero;
+   * Returns NULL when out of memory.
+   */
+      char_u *
+! json_encode_nr_expr(int nr, typval_T *val, int options)
+  {
+      typval_T	listtv;
+      typval_T	nrtv;
+***************
+*** 61,67 ****
+  	return NULL;
+      }
+  
+!     text = json_encode(&listtv);
+      list_unref(listtv.vval.v_list);
+      return text;
+  }
+--- 63,69 ----
+  	return NULL;
+      }
+  
+!     text = json_encode(&listtv, options);
+      list_unref(listtv.vval.v_list);
+      return text;
+  }
+***************
+*** 123,133 ****
+  }
+  
+  /*
+   * Encode "val" into "gap".
+   * Return FAIL or OK.
+   */
+      static int
+! json_encode_item(garray_T *gap, typval_T *val, int copyID, int allow_none)
+  {
+      char_u	numbuf[NUMBUFLEN];
+      char_u	*res;
+--- 125,153 ----
+  }
+  
+  /*
++  * Return TRUE if "key" can be used without quotes.
++  * That is when it starts with a letter and only contains letters, digits and
++  * underscore.
++  */
++     static int
++ is_simple_key(char_u *key)
++ {
++     char_u *p;
++ 
++     if (!ASCII_ISALPHA(*key))
++ 	return FALSE;
++     for (p = key + 1; *p != NUL; ++p)
++ 	if (!ASCII_ISALPHA(*p) && *p != '_' && !vim_isdigit(*p))
++ 	    return FALSE;
++     return TRUE;
++ }
++ 
++ /*
+   * Encode "val" into "gap".
+   * Return FAIL or OK.
+   */
+      static int
+! json_encode_item(garray_T *gap, typval_T *val, int copyID, int options)
+  {
+      char_u	numbuf[NUMBUFLEN];
+      char_u	*res;
+***************
+*** 141,153 ****
+  	    {
+  		case VVAL_FALSE: ga_concat(gap, (char_u *)"false"); break;
+  		case VVAL_TRUE: ga_concat(gap, (char_u *)"true"); break;
+! 		case VVAL_NONE: if (!allow_none)
+! 				{
+! 				    /* TODO: better error */
+! 				    EMSG(_(e_invarg));
+! 				    return FAIL;
+! 				}
+! 				break;
+  		case VVAL_NULL: ga_concat(gap, (char_u *)"null"); break;
+  	    }
+  	    break;
+--- 161,171 ----
+  	    {
+  		case VVAL_FALSE: ga_concat(gap, (char_u *)"false"); break;
+  		case VVAL_TRUE: ga_concat(gap, (char_u *)"true"); break;
+! 		case VVAL_NONE: if ((options & JSON_JS) != 0
+! 					     && (options & JSON_NO_NONE) == 0)
+! 				    /* empty item */
+! 				    break;
+! 				/* FALLTHROUGH */
+  		case VVAL_NULL: ga_concat(gap, (char_u *)"null"); break;
+  	    }
+  	    break;
+***************
+*** 185,193 ****
+  		    ga_append(gap, '[');
+  		    for (li = l->lv_first; li != NULL && !got_int; )
+  		    {
+! 			if (json_encode_item(gap, &li->li_tv, copyID, TRUE)
+! 								      == FAIL)
+  			    return FAIL;
+  			li = li->li_next;
+  			if (li != NULL)
+  			    ga_append(gap, ',');
+--- 203,217 ----
+  		    ga_append(gap, '[');
+  		    for (li = l->lv_first; li != NULL && !got_int; )
+  		    {
+! 			if (json_encode_item(gap, &li->li_tv, copyID,
+! 						   options & JSON_JS) == FAIL)
+  			    return FAIL;
++ 			if ((options & JSON_JS)
++ 				&& li->li_next == NULL
++ 				&& li->li_tv.v_type == VAR_SPECIAL
++ 				&& li->li_tv.vval.v_number == VVAL_NONE)
++ 			    /* add an extra comma if the last item is v:none */
++ 			    ga_append(gap, ',');
+  			li = li->li_next;
+  			if (li != NULL)
+  			    ga_append(gap, ',');
+***************
+*** 224,233 ****
+  				first = FALSE;
+  			    else
+  				ga_append(gap, ',');
+! 			    write_string(gap, hi->hi_key);
+  			    ga_append(gap, ':');
+  			    if (json_encode_item(gap, &dict_lookup(hi)->di_tv,
+! 						       copyID, FALSE) == FAIL)
+  				return FAIL;
+  			}
+  		    ga_append(gap, '}');
+--- 248,261 ----
+  				first = FALSE;
+  			    else
+  				ga_append(gap, ',');
+! 			    if ((options & JSON_JS)
+! 						 && is_simple_key(hi->hi_key))
+! 				ga_concat(gap, hi->hi_key);
+! 			    else
+! 				write_string(gap, hi->hi_key);
+  			    ga_append(gap, ':');
+  			    if (json_encode_item(gap, &dict_lookup(hi)->di_tv,
+! 				      copyID, options | JSON_NO_NONE) == FAIL)
+  				return FAIL;
+  			}
+  		    ga_append(gap, '}');
+***************
+*** 265,271 ****
+  }
+  
+  /*
+!  * Skip white space in "reader".
+   * Also tops up readahead when needed.
+   */
+      static void
+--- 293,300 ----
+  }
+  
+  /*
+!  * Skip white space in "reader".  All characters <= space are considered white
+!  * space.
+   * Also tops up readahead when needed.
+   */
+      static void
+***************
+*** 282,288 ****
+  		reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+  	    continue;
+  	}
+! 	if (c != ' ' && c != TAB && c != NL && c != CAR)
+  	    break;
+  	++reader->js_used;
+      }
+--- 311,317 ----
+  		reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+  	    continue;
+  	}
+! 	if (c == NUL || c > ' ')
+  	    break;
+  	++reader->js_used;
+      }
+***************
+*** 290,296 ****
+  }
+  
+      static int
+! json_decode_array(js_read_T *reader, typval_T *res)
+  {
+      char_u	*p;
+      typval_T	item;
+--- 319,325 ----
+  }
+  
+      static int
+! json_decode_array(js_read_T *reader, typval_T *res, int options)
+  {
+      char_u	*p;
+      typval_T	item;
+***************
+*** 317,323 ****
+  	    break;
+  	}
+  
+! 	ret = json_decode_item(reader, res == NULL ? NULL : &item);
+  	if (ret != OK)
+  	    return ret;
+  	if (res != NULL)
+--- 346,352 ----
+  	    break;
+  	}
+  
+! 	ret = json_decode_item(reader, res == NULL ? NULL : &item, options);
+  	if (ret != OK)
+  	    return ret;
+  	if (res != NULL)
+***************
+*** 347,353 ****
+  }
+  
+      static int
+! json_decode_object(js_read_T *reader, typval_T *res)
+  {
+      char_u	*p;
+      typval_T	tvkey;
+--- 376,382 ----
+  }
+  
+      static int
+! json_decode_object(js_read_T *reader, typval_T *res, int options)
+  {
+      char_u	*p;
+      typval_T	tvkey;
+***************
+*** 377,392 ****
+  	    break;
+  	}
+  
+! 	ret = json_decode_item(reader, res == NULL ? NULL : &tvkey);
+! 	if (ret != OK)
+! 	    return ret;
+! 	if (res != NULL)
+  	{
+! 	    key = get_tv_string_buf_chk(&tvkey, buf);
+! 	    if (key == NULL || *key == NUL)
+  	    {
+! 		clear_tv(&tvkey);
+! 		return FAIL;
+  	    }
+  	}
+  
+--- 406,436 ----
+  	    break;
+  	}
+  
+! 	if ((options & JSON_JS) && reader->js_buf[reader->js_used] != '"')
+! 	{
+! 	    /* accept a key that is not in quotes */
+! 	    key = p = reader->js_buf + reader->js_used;
+! 	    while (*p != NUL && *p != ':' && *p > ' ')
+! 		++p;
+! 	    tvkey.v_type = VAR_STRING;
+! 	    tvkey.vval.v_string = vim_strnsave(key, (int)(p - key));
+! 	    reader->js_used += (int)(p - key);
+! 	    key = tvkey.vval.v_string;
+! 	}
+! 	else
+  	{
+! 	    ret = json_decode_item(reader, res == NULL ? NULL : &tvkey,
+! 								     options);
+! 	    if (ret != OK)
+! 		return ret;
+! 	    if (res != NULL)
+  	    {
+! 		key = get_tv_string_buf_chk(&tvkey, buf);
+! 		if (key == NULL || *key == NUL)
+! 		{
+! 		    clear_tv(&tvkey);
+! 		    return FAIL;
+! 		}
+  	    }
+  	}
+  
+***************
+*** 403,409 ****
+  	++reader->js_used;
+  	json_skip_white(reader);
+  
+! 	ret = json_decode_item(reader, res == NULL ? NULL : &item);
+  	if (ret != OK)
+  	{
+  	    if (res != NULL)
+--- 447,453 ----
+  	++reader->js_used;
+  	json_skip_white(reader);
+  
+! 	ret = json_decode_item(reader, res == NULL ? NULL : &item, options);
+  	if (ret != OK)
+  	{
+  	    if (res != NULL)
+***************
+*** 569,575 ****
+   * Return MAYBE for an incomplete message.
+   */
+      static int
+! json_decode_item(js_read_T *reader, typval_T *res)
+  {
+      char_u	*p;
+      int		len;
+--- 613,619 ----
+   * Return MAYBE for an incomplete message.
+   */
+      static int
+! json_decode_item(js_read_T *reader, typval_T *res, int options)
+  {
+      char_u	*p;
+      int		len;
+***************
+*** 579,593 ****
+      switch (*p)
+      {
+  	case '[': /* array */
+! 	    return json_decode_array(reader, res);
+  
+  	case '{': /* object */
+! 	    return json_decode_object(reader, res);
+  
+  	case '"': /* string */
+  	    return json_decode_string(reader, res);
+  
+  	case ',': /* comma: empty item */
+  	case NUL: /* empty */
+  	    if (res != NULL)
+  	    {
+--- 623,640 ----
+      switch (*p)
+      {
+  	case '[': /* array */
+! 	    return json_decode_array(reader, res, options);
+  
+  	case '{': /* object */
+! 	    return json_decode_object(reader, res, options);
+  
+  	case '"': /* string */
+  	    return json_decode_string(reader, res);
+  
+  	case ',': /* comma: empty item */
++ 	    if ((options & JSON_JS) == 0)
++ 		return FAIL;
++ 	    /* FALLTHROUGH */
+  	case NUL: /* empty */
+  	    if (res != NULL)
+  	    {
+***************
+*** 691,707 ****
+  
+  /*
+   * Decode the JSON from "reader" and store the result in "res".
+   * Return FAIL if not the whole message was consumed.
+   */
+      int
+! json_decode_all(js_read_T *reader, typval_T *res)
+  {
+      int ret;
+  
+!     /* We get the end once, to avoid calling strlen() many times. */
+      reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+      json_skip_white(reader);
+!     ret = json_decode_item(reader, res);
+      if (ret != OK)
+  	return FAIL;
+      json_skip_white(reader);
+--- 738,755 ----
+  
+  /*
+   * Decode the JSON from "reader" and store the result in "res".
++  * "options" can be JSON_JS or zero;
+   * Return FAIL if not the whole message was consumed.
+   */
+      int
+! json_decode_all(js_read_T *reader, typval_T *res, int options)
+  {
+      int ret;
+  
+!     /* We find the end once, to avoid calling strlen() many times. */
+      reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+      json_skip_white(reader);
+!     ret = json_decode_item(reader, res, options);
+      if (ret != OK)
+  	return FAIL;
+      json_skip_white(reader);
+***************
+*** 712,729 ****
+  
+  /*
+   * Decode the JSON from "reader" and store the result in "res".
+   * Return FAIL if the message has a decoding error or the message is
+   * truncated.  Consumes the message anyway.
+   */
+      int
+! json_decode(js_read_T *reader, typval_T *res)
+  {
+      int ret;
+  
+!     /* We get the end once, to avoid calling strlen() many times. */
+      reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+      json_skip_white(reader);
+!     ret = json_decode_item(reader, res);
+      json_skip_white(reader);
+  
+      return ret == OK ? OK : FAIL;
+--- 760,778 ----
+  
+  /*
+   * Decode the JSON from "reader" and store the result in "res".
++  * "options" can be JSON_JS or zero;
+   * Return FAIL if the message has a decoding error or the message is
+   * truncated.  Consumes the message anyway.
+   */
+      int
+! json_decode(js_read_T *reader, typval_T *res, int options)
+  {
+      int ret;
+  
+!     /* We find the end once, to avoid calling strlen() many times. */
+      reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+      json_skip_white(reader);
+!     ret = json_decode_item(reader, res, options);
+      json_skip_white(reader);
+  
+      return ret == OK ? OK : FAIL;
+***************
+*** 731,736 ****
+--- 780,786 ----
+  
+  /*
+   * Decode the JSON from "reader" to find the end of the message.
++  * "options" can be JSON_JS or zero;
+   * Return FAIL if the message has a decoding error.
+   * Return MAYBE if the message is truncated, need to read more.
+   * This only works reliable if the message contains an object, array or
+***************
+*** 738,752 ****
+   * Does not advance the reader.
+   */
+      int
+! json_find_end(js_read_T *reader)
+  {
+      int used_save = reader->js_used;
+      int ret;
+  
+!     /* We get the end once, to avoid calling strlen() many times. */
+      reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+      json_skip_white(reader);
+!     ret = json_decode_item(reader, NULL);
+      reader->js_used = used_save;
+      return ret;
+  }
+--- 788,802 ----
+   * Does not advance the reader.
+   */
+      int
+! json_find_end(js_read_T *reader, int options)
+  {
+      int used_save = reader->js_used;
+      int ret;
+  
+!     /* We find the end once, to avoid calling strlen() many times. */
+      reader->js_end = reader->js_buf + STRLEN(reader->js_buf);
+      json_skip_white(reader);
+!     ret = json_decode_item(reader, NULL, options);
+      reader->js_used = used_save;
+      return ret;
+  }
+*** ../vim-7.4.1278/src/json_test.c	2016-02-02 19:15:33.252127718 +0100
+--- src/json_test.c	2016-02-07 17:51:06.959400557 +0100
+***************
+*** 35,141 ****
+  
+      /* string and incomplete string */
+      reader.js_buf = (char_u *)"\"hello\"";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"  \"hello\" ";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"\"hello";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      /* number and dash (incomplete number) */
+      reader.js_buf = (char_u *)"123";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"-";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      /* false, true and null, also incomplete */
+      reader.js_buf = (char_u *)"false";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"f";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"fa";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"fal";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"fals";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      reader.js_buf = (char_u *)"true";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"t";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"tr";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"tru";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      reader.js_buf = (char_u *)"null";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"n";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"nu";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"nul";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      /* object without white space */
+      reader.js_buf = (char_u *)"{\"a\":123}";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"{\"a\":123";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"{\"a\":";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"{\"a\"";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"{\"a";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"{\"";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"{";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      /* object with white space */
+      reader.js_buf = (char_u *)"  {  \"a\"  :  123  }  ";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"  {  \"a\"  :  123  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  {  \"a\"  :  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  {  \"a\"  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  {  \"a  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  {   ";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      /* array without white space */
+      reader.js_buf = (char_u *)"[\"a\",123]";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"[\"a\",123";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"[\"a\",";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"[\"a\"";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"[\"a";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"[\"";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"[";
+!     assert(json_find_end(&reader) == MAYBE);
+  
+      /* array with white space */
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  123  ]  ";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  123  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  [  \"a\"  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  [  \"a  ";
+!     assert(json_find_end(&reader) == MAYBE);
+      reader.js_buf = (char_u *)"  [  ";
+!     assert(json_find_end(&reader) == MAYBE);
+  }
+  
+      static int
+--- 35,141 ----
+  
+      /* string and incomplete string */
+      reader.js_buf = (char_u *)"\"hello\"";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"  \"hello\" ";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"\"hello";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      /* number and dash (incomplete number) */
+      reader.js_buf = (char_u *)"123";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"-";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      /* false, true and null, also incomplete */
+      reader.js_buf = (char_u *)"false";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"f";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"fa";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"fal";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"fals";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      reader.js_buf = (char_u *)"true";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"t";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"tr";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"tru";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      reader.js_buf = (char_u *)"null";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"n";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"nu";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"nul";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      /* object without white space */
+      reader.js_buf = (char_u *)"{\"a\":123}";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"{\"a\":123";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"{\"a\":";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"{\"a\"";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"{\"a";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"{\"";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"{";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      /* object with white space */
+      reader.js_buf = (char_u *)"  {  \"a\"  :  123  }  ";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"  {  \"a\"  :  123  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  {  \"a\"  :  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  {  \"a\"  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  {  \"a  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  {   ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      /* array without white space */
+      reader.js_buf = (char_u *)"[\"a\",123]";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"[\"a\",123";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"[\"a\",";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"[\"a\"";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"[\"a";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"[\"";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"[";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  
+      /* array with white space */
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  123  ]  ";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  123  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  [  \"a\"  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  [  \"a  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+      reader.js_buf = (char_u *)"  [  ";
+!     assert(json_find_end(&reader, 0) == MAYBE);
+  }
+  
+      static int
+***************
+*** 157,171 ****
+      reader.js_used = 0;
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  123  ";
+      reader.js_cookie =        "  [  \"a\"  ,  123  ]  ";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  ";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"  [  \"a\"  ";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"  [  \"a";
+!     assert(json_find_end(&reader) == OK);
+      reader.js_buf = (char_u *)"  [  ";
+!     assert(json_find_end(&reader) == OK);
+  }
+  
+  /*
+--- 157,171 ----
+      reader.js_used = 0;
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  123  ";
+      reader.js_cookie =        "  [  \"a\"  ,  123  ]  ";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"  [  \"a\"  ,  ";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"  [  \"a\"  ";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"  [  \"a";
+!     assert(json_find_end(&reader, 0) == OK);
+      reader.js_buf = (char_u *)"  [  ";
+!     assert(json_find_end(&reader, 0) == OK);
+  }
+  
+  /*
+*** ../vim-7.4.1278/src/proto/json.pro	2016-02-02 18:19:52.790743971 +0100
+--- src/proto/json.pro	2016-02-07 17:56:55.907785968 +0100
+***************
+*** 1,7 ****
+  /* json.c */
+! char_u *json_encode(typval_T *val);
+! char_u *json_encode_nr_expr(int nr, typval_T *val);
+! int json_decode_all(js_read_T *reader, typval_T *res);
+! int json_decode(js_read_T *reader, typval_T *res);
+! int json_find_end(js_read_T *reader);
+  /* vim: set ft=c : */
+--- 1,7 ----
+  /* json.c */
+! char_u *json_encode(typval_T *val, int options);
+! char_u *json_encode_nr_expr(int nr, typval_T *val, int options);
+! int json_decode_all(js_read_T *reader, typval_T *res, int options);
+! int json_decode(js_read_T *reader, typval_T *res, int options);
+! int json_find_end(js_read_T *reader, int options);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1278/src/channel.c	2016-02-07 16:53:08.779395103 +0100
+--- src/channel.c	2016-02-07 19:00:23.072301348 +0100
+***************
+*** 119,125 ****
+      char_u    *ch_callback;	/* function to call when a msg is not handled */
+      cbq_T     ch_cb_head;	/* dummy node for pre-request callbacks */
+  
+!     int	      ch_json_mode;	/* TRUE for a json channel */
+      jsonq_T   ch_json_head;	/* dummy node, header for circular queue */
+  
+      int       ch_timeout;	/* request timeout in msec */
+--- 119,125 ----
+      char_u    *ch_callback;	/* function to call when a msg is not handled */
+      cbq_T     ch_cb_head;	/* dummy node for pre-request callbacks */
+  
+!     ch_mode_T ch_mode;
+      jsonq_T   ch_json_head;	/* dummy node, header for circular queue */
+  
+      int       ch_timeout;	/* request timeout in msec */
+***************
+*** 526,537 ****
+  }
+  
+  /*
+!  * Set the json mode of channel "idx" to TRUE or FALSE.
+   */
+      void
+! channel_set_json_mode(int idx, int json_mode)
+  {
+!     channels[idx].ch_json_mode = json_mode;
+  }
+  
+  /*
+--- 526,537 ----
+  }
+  
+  /*
+!  * Set the json mode of channel "idx" to "ch_mode".
+   */
+      void
+! channel_set_json_mode(int idx, ch_mode_T ch_mode)
+  {
+!     channels[idx].ch_mode = ch_mode;
+  }
+  
+  /*
+***************
+*** 672,678 ****
+      js_read_T	reader;
+      typval_T	listtv;
+      jsonq_T	*item;
+!     jsonq_T	*head = &channels[ch_idx].ch_json_head;
+      int		ret;
+  
+      if (channel_peek(ch_idx) == NULL)
+--- 672,679 ----
+      js_read_T	reader;
+      typval_T	listtv;
+      jsonq_T	*item;
+!     channel_T	*channel = &channels[ch_idx];
+!     jsonq_T	*head = &channel->ch_json_head;
+      int		ret;
+  
+      if (channel_peek(ch_idx) == NULL)
+***************
+*** 685,691 ****
+      reader.js_fill = NULL;
+      /* reader.js_fill = channel_fill; */
+      reader.js_cookie = &ch_idx;
+!     ret = json_decode(&reader, &listtv);
+      if (ret == OK)
+      {
+  	/* Only accept the response when it is a list with at least two
+--- 686,693 ----
+      reader.js_fill = NULL;
+      /* reader.js_fill = channel_fill; */
+      reader.js_cookie = &ch_idx;
+!     ret = json_decode(&reader, &listtv,
+! 				   channel->ch_mode == MODE_JS ? JSON_JS : 0);
+      if (ret == OK)
+      {
+  	/* Only accept the response when it is a list with at least two
+***************
+*** 854,859 ****
+--- 856,863 ----
+  	    typval_T	*tv;
+  	    typval_T	err_tv;
+  	    char_u	*json = NULL;
++ 	    channel_T	*channel = &channels[idx];
++ 	    int		options = channel->ch_mode == MODE_JS ? JSON_JS : 0;
+  
+  	    /* Don't pollute the display with errors. */
+  	    ++emsg_skip;
+***************
+*** 861,867 ****
+  	    if (is_eval)
+  	    {
+  		if (tv != NULL)
+! 		    json = json_encode_nr_expr(arg3->vval.v_number, tv);
+  		if (tv == NULL || (json != NULL && *json == NUL))
+  		{
+  		    /* If evaluation failed or the result can't be encoded
+--- 865,872 ----
+  	    if (is_eval)
+  	    {
+  		if (tv != NULL)
+! 		    json = json_encode_nr_expr(arg3->vval.v_number, tv,
+! 								     options);
+  		if (tv == NULL || (json != NULL && *json == NUL))
+  		{
+  		    /* If evaluation failed or the result can't be encoded
+***************
+*** 869,875 ****
+  		    err_tv.v_type = VAR_STRING;
+  		    err_tv.vval.v_string = (char_u *)"ERROR";
+  		    tv = &err_tv;
+! 		    json = json_encode_nr_expr(arg3->vval.v_number, tv);
+  		}
+  		if (json != NULL)
+  		{
+--- 874,881 ----
+  		    err_tv.v_type = VAR_STRING;
+  		    err_tv.vval.v_string = (char_u *)"ERROR";
+  		    tv = &err_tv;
+! 		    json = json_encode_nr_expr(arg3->vval.v_number, tv,
+! 								     options);
+  		}
+  		if (json != NULL)
+  		{
+***************
+*** 900,912 ****
+      typval_T	argv[3];
+      int		seq_nr = -1;
+      channel_T	*channel = &channels[idx];
+!     int		json_mode = channel->ch_json_mode;
+  
+      if (channel->ch_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+!     if (json_mode)
+      {
+  	/* Get any json message in the queue. */
+  	if (channel_get_json(idx, -1, &listtv) == FAIL)
+--- 906,918 ----
+      typval_T	argv[3];
+      int		seq_nr = -1;
+      channel_T	*channel = &channels[idx];
+!     ch_mode_T	ch_mode = channel->ch_mode;
+  
+      if (channel->ch_close_cb != NULL)
+  	/* this channel is handled elsewhere (netbeans) */
+  	return FALSE;
+  
+!     if (ch_mode != MODE_RAW)
+      {
+  	/* Get any json message in the queue. */
+  	if (channel_get_json(idx, -1, &listtv) == FAIL)
+*** ../vim-7.4.1278/src/proto/channel.pro	2016-02-05 22:36:09.745738060 +0100
+--- src/proto/channel.pro	2016-02-07 18:57:02.674386386 +0100
+***************
+*** 1,7 ****
+  /* channel.c */
+  void channel_gui_register_all(void);
+  int channel_open(char *hostname, int port_in, int waittime, void (*close_cb)(void));
+! void channel_set_json_mode(int idx, int json_mode);
+  void channel_set_timeout(int idx, int timeout);
+  void channel_set_callback(int idx, char_u *callback);
+  void channel_set_req_callback(int idx, char_u *callback, int id);
+--- 1,7 ----
+  /* channel.c */
+  void channel_gui_register_all(void);
+  int channel_open(char *hostname, int port_in, int waittime, void (*close_cb)(void));
+! void channel_set_json_mode(int idx, ch_mode_T ch_mode);
+  void channel_set_timeout(int idx, int timeout);
+  void channel_set_callback(int idx, char_u *callback);
+  void channel_set_req_callback(int idx, char_u *callback, int id);
+*** ../vim-7.4.1278/src/eval.c	2016-02-07 15:56:55.930329022 +0100
+--- src/eval.c	2016-02-07 18:50:35.690407606 +0100
+***************
+*** 628,633 ****
+--- 628,635 ----
+  static void f_job_status(typval_T *argvars, typval_T *rettv);
+  #endif
+  static void f_join(typval_T *argvars, typval_T *rettv);
++ static void f_jsdecode(typval_T *argvars, typval_T *rettv);
++ static void f_jsencode(typval_T *argvars, typval_T *rettv);
+  static void f_jsondecode(typval_T *argvars, typval_T *rettv);
+  static void f_jsonencode(typval_T *argvars, typval_T *rettv);
+  static void f_keys(typval_T *argvars, typval_T *rettv);
+***************
+*** 8206,8211 ****
+--- 8208,8215 ----
+      {"job_stop",	1, 1, f_job_stop},
+  #endif
+      {"join",		1, 2, f_join},
++     {"jsdecode",	1, 1, f_jsdecode},
++     {"jsencode",	1, 1, f_jsencode},
+      {"jsondecode",	1, 1, f_jsondecode},
+      {"jsonencode",	1, 1, f_jsonencode},
+      {"keys",		1, 1, f_keys},
+***************
+*** 9829,9835 ****
+      int		port;
+      int		waittime = 0;
+      int		timeout = 2000;
+!     int		json_mode = TRUE;
+      int		ch_idx;
+  
+      /* default: fail */
+--- 9833,9839 ----
+      int		port;
+      int		waittime = 0;
+      int		timeout = 2000;
+!     ch_mode_T	ch_mode = MODE_JSON;
+      int		ch_idx;
+  
+      /* default: fail */
+***************
+*** 9868,9875 ****
+  	{
+  	    mode = get_dict_string(dict, (char_u *)"mode", FALSE);
+  	    if (STRCMP(mode, "raw") == 0)
+! 		json_mode = FALSE;
+! 	    else if (STRCMP(mode, "json") != 0)
+  	    {
+  		EMSG2(_(e_invarg2), mode);
+  		return;
+--- 9872,9883 ----
+  	{
+  	    mode = get_dict_string(dict, (char_u *)"mode", FALSE);
+  	    if (STRCMP(mode, "raw") == 0)
+! 		ch_mode = MODE_RAW;
+! 	    else if (STRCMP(mode, "js") == 0)
+! 		ch_mode = MODE_JS;
+! 	    else if (STRCMP(mode, "json") == 0)
+! 		ch_mode = MODE_JSON;
+! 	    else
+  	    {
+  		EMSG2(_(e_invarg2), mode);
+  		return;
+***************
+*** 9891,9897 ****
+      ch_idx = channel_open((char *)address, port, waittime, NULL);
+      if (ch_idx >= 0)
+      {
+! 	channel_set_json_mode(ch_idx, json_mode);
+  	channel_set_timeout(ch_idx, timeout);
+  	if (callback != NULL && *callback != NUL)
+  	    channel_set_callback(ch_idx, callback);
+--- 9899,9905 ----
+      ch_idx = channel_open((char *)address, port, waittime, NULL);
+      if (ch_idx >= 0)
+      {
+! 	channel_set_json_mode(ch_idx, ch_mode);
+  	channel_set_timeout(ch_idx, timeout);
+  	if (callback != NULL && *callback != NUL)
+  	    channel_set_callback(ch_idx, callback);
+***************
+*** 9946,9952 ****
+      rettv->vval.v_string = NULL;
+  
+      id = channel_get_id();
+!     text = json_encode_nr_expr(id, &argvars[1]);
+      if (text == NULL)
+  	return;
+  
+--- 9954,9960 ----
+      rettv->vval.v_string = NULL;
+  
+      id = channel_get_id();
+!     text = json_encode_nr_expr(id, &argvars[1], 0);
+      if (text == NULL)
+  	return;
+  
+***************
+*** 14443,14448 ****
+--- 14451,14481 ----
+  }
+  
+  /*
++  * "jsdecode()" function
++  */
++     static void
++ f_jsdecode(typval_T *argvars, typval_T *rettv)
++ {
++     js_read_T	reader;
++ 
++     reader.js_buf = get_tv_string(&argvars[0]);
++     reader.js_fill = NULL;
++     reader.js_used = 0;
++     if (json_decode_all(&reader, rettv, JSON_JS) != OK)
++ 	EMSG(_(e_invarg));
++ }
++ 
++ /*
++  * "jsencode()" function
++  */
++     static void
++ f_jsencode(typval_T *argvars, typval_T *rettv)
++ {
++     rettv->v_type = VAR_STRING;
++     rettv->vval.v_string = json_encode(&argvars[0], JSON_JS);
++ }
++ 
++ /*
+   * "jsondecode()" function
+   */
+      static void
+***************
+*** 14453,14459 ****
+      reader.js_buf = get_tv_string(&argvars[0]);
+      reader.js_fill = NULL;
+      reader.js_used = 0;
+!     if (json_decode_all(&reader, rettv) != OK)
+  	EMSG(_(e_invarg));
+  }
+  
+--- 14486,14492 ----
+      reader.js_buf = get_tv_string(&argvars[0]);
+      reader.js_fill = NULL;
+      reader.js_used = 0;
+!     if (json_decode_all(&reader, rettv, 0) != OK)
+  	EMSG(_(e_invarg));
+  }
+  
+***************
+*** 14464,14470 ****
+  f_jsonencode(typval_T *argvars, typval_T *rettv)
+  {
+      rettv->v_type = VAR_STRING;
+!     rettv->vval.v_string = json_encode(&argvars[0]);
+  }
+  
+  /*
+--- 14497,14503 ----
+  f_jsonencode(typval_T *argvars, typval_T *rettv)
+  {
+      rettv->v_type = VAR_STRING;
+!     rettv->vval.v_string = json_encode(&argvars[0], 0);
+  }
+  
+  /*
+*** ../vim-7.4.1278/src/vim.h	2016-02-04 22:09:44.692012667 +0100
+--- src/vim.h	2016-02-07 18:58:15.609627507 +0100
+***************
+*** 2317,2322 ****
+--- 2317,2326 ----
+  # define MAX_OPEN_CHANNELS 0
+  #endif
+  
++ /* Options for json_encode() and json_decode. */
++ #define JSON_JS		1   /* use JS instead of JSON */
++ #define JSON_NO_NONE	2   /* v:none item not allowed */
++ 
+  #ifdef FEAT_MZSCHEME
+  /* this is in main.c, cproto can't handle it. */
+  int vim_main2(int argc, char **argv);
+*** ../vim-7.4.1278/src/structs.h	2016-02-07 14:26:12.179054006 +0100
+--- src/structs.h	2016-02-07 18:58:24.205538070 +0100
+***************
+*** 2728,2730 ****
+--- 2728,2738 ----
+      void	*js_cookie;	/* can be used by js_fill */
+  };
+  typedef struct js_reader js_read_T;
++ 
++ /* mode for a channel */
++ typedef enum
++ {
++     MODE_RAW = 0,
++     MODE_JSON,
++     MODE_JS
++ } ch_mode_T;
+*** ../vim-7.4.1278/runtime/doc/eval.txt	2016-02-07 14:26:12.179054006 +0100
+--- runtime/doc/eval.txt	2016-02-07 19:14:50.867274749 +0100
+***************
+*** 1933,1938 ****
+--- 1956,1963 ----
+  job_status({job})		String	get the status of a job
+  job_stop({job} [, {how}])	Number	stop a job
+  join( {list} [, {sep}])		String	join {list} items into one String
++ jsdecode( {string})		any	decode JS style JSON
++ jsencode( {expr})		String	encode JS style JSON
+  jsondecode( {string})		any	decode JSON
+  jsonencode( {expr})		String	encode JSON
+  keys( {dict})			List	keys in {dict}
+***************
+*** 4288,4304 ****
+  		converted into a string like with |string()|.
+  		The opposite function is |split()|.
+  
+  jsondecode({string})					*jsondecode()*
+  		This parses a JSON formatted string and returns the equivalent
+  		in Vim values.  See |jsonencode()| for the relation between
+  		JSON and Vim values.
+  		The decoding is permissive:
+  		- A trailing comma in an array and object is ignored.
+- 		- An empty item in an array, two commas with nothing or white
+- 		  space in between, results in v:none.
+- 		- When an object member name is not a string it is converted
+- 		  to a string.  E.g. the number 123 is used as the string
+- 		  "123".
+  		- More floating point numbers are recognized, e.g. "1." for
+  		  "1.0".
+  		The result must be a valid Vim type:
+--- 4382,4414 ----
+  		converted into a string like with |string()|.
+  		The opposite function is |split()|.
+  
++ jsdecode({string})					*jsdecode()*
++ 		This is similar to |jsondecode()| with these differences:
++ 		- Object key names do not have to be in quotes.
++ 		- Empty items in an array (between two commas) are allowed and
++ 		  result in v:none items.
++ 
++ jsencode({expr})					*jsencode()*
++ 		This is similar to |jsonencode()| with these differences:
++ 		- Object key names are not in quotes.
++ 		- v:none items in an array result in an empty item between
++ 		  commas.
++ 		For example, the Vim object:
++ 			[1,v:none,{"one":1}],v:none ~
++ 		Will be encoded as:
++ 			[1,,{one:1},,] ~
++ 		While jsonencode() would produce:
++ 			[1,null,{"one":1},null] ~
++ 		This encoding is valid for JavaScript. It is more efficient
++ 		than JSON, especially when using an array with optional items.
++ 
++ 
+  jsondecode({string})					*jsondecode()*
+  		This parses a JSON formatted string and returns the equivalent
+  		in Vim values.  See |jsonencode()| for the relation between
+  		JSON and Vim values.
+  		The decoding is permissive:
+  		- A trailing comma in an array and object is ignored.
+  		- More floating point numbers are recognized, e.g. "1." for
+  		  "1.0".
+  		The result must be a valid Vim type:
+***************
+*** 4320,4326 ****
+  		   			used recursively: {}
+  		   v:false		"false"
+  		   v:true		"true"
+! 		   v:none		nothing
+  		   v:null		"null"
+  		Note that using v:none is permitted, although the JSON
+  		standard does not allow empty items.  This can be useful for
+--- 4430,4436 ----
+  		   			used recursively: {}
+  		   v:false		"false"
+  		   v:true		"true"
+! 		   v:none		"null"
+  		   v:null		"null"
+  		Note that using v:none is permitted, although the JSON
+  		standard does not allow empty items.  This can be useful for
+*** ../vim-7.4.1278/runtime/doc/channel.txt	2016-02-05 22:36:09.733738185 +0100
+--- runtime/doc/channel.txt	2016-02-07 17:07:07.666721855 +0100
+***************
+*** 1,4 ****
+! *channel.txt*      For Vim version 7.4.  Last change: 2016 Feb 05
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *channel.txt*      For Vim version 7.4.  Last change: 2016 Feb 07
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 16,22 ****
+  
+  1. Demo					|channel-demo|
+  2. Opening a channel			|channel-open|
+! 3. Using a JSON channel			|channel-use|
+  4. Vim commands				|channel-commands|
+  5. Using a raw channel			|channel-use|
+  6. Job control				|job-control|
+--- 16,22 ----
+  
+  1. Demo					|channel-demo|
+  2. Opening a channel			|channel-open|
+! 3. Using a JSON or JS channel		|channel-use|
+  4. Vim commands				|channel-commands|
+  5. Using a raw channel			|channel-use|
+  6. Job control				|job-control|
+***************
+*** 77,82 ****
+--- 77,83 ----
+  
+  "mode" can be:						*channel-mode*
+  	"json" - Use JSON, see below; most convenient way. Default.
++ 	"js"   - Use JavaScript encoding, more efficient than JSON.
+  	"raw"  - Use raw messages
+  
+  							*channel-callback*
+***************
+*** 86,116 ****
+  	func Handle(handle, msg)
+  	  echo 'Received: ' . a:msg
+  	endfunc
+! 	let handle = ch_open("localhost:8765", 'json', "Handle")
+  
+  "waittime" is the time to wait for the connection to be made in milliseconds.
+  The default is zero, don't wait, which is useful if the server is supposed to
+  be running already.  A negative number waits forever.
+  
+  "timeout" is the time to wait for a request when blocking, using
+! ch_sendexpr().  Again in millisecons.  The default si 2000 (2 seconds).
+  
+! When "mode" is "json" the "msg" argument is the body of the received message,
+! converted to Vim types.
+  When "mode" is "raw" the "msg" argument is the whole message as a string.
+  
+! When "mode" is "json" the "callback" is optional.  When omitted it is only
+! possible to receive a message after sending one.
+  
+  The handler can be added or changed later: >
+      call ch_setcallback(handle, {callback})
+! When "callback is empty (zero or an empty string) the handler is removed.
+  NOT IMPLEMENTED YET
+  
+  The timeout can be changed later: >
+      call ch_settimeout(handle, {msec})
+  NOT IMPLEMENTED YET
+! 
+  Once done with the channel, disconnect it like this: >
+      call ch_close(handle)
+  
+--- 87,117 ----
+  	func Handle(handle, msg)
+  	  echo 'Received: ' . a:msg
+  	endfunc
+! 	let handle = ch_open("localhost:8765", {"callback": "Handle"})
+  
+  "waittime" is the time to wait for the connection to be made in milliseconds.
+  The default is zero, don't wait, which is useful if the server is supposed to
+  be running already.  A negative number waits forever.
+  
+  "timeout" is the time to wait for a request when blocking, using
+! ch_sendexpr().  Again in milliseconds.  The default is 2000 (2 seconds).
+  
+! When "mode" is "json" or "js" the "msg" argument is the body of the received
+! message, converted to Vim types.
+  When "mode" is "raw" the "msg" argument is the whole message as a string.
+  
+! When "mode" is "json" or "js" the "callback" is optional.  When omitted it is
+! only possible to receive a message after sending one.
+  
+  The handler can be added or changed later: >
+      call ch_setcallback(handle, {callback})
+! When "callback" is empty (zero or an empty string) the handler is removed.
+  NOT IMPLEMENTED YET
+  
+  The timeout can be changed later: >
+      call ch_settimeout(handle, {msec})
+  NOT IMPLEMENTED YET
+! 							  *E906*
+  Once done with the channel, disconnect it like this: >
+      call ch_close(handle)
+  
+***************
+*** 123,134 ****
+  *E896* *E630* *E631* 
+  
+  ==============================================================================
+! 3. Using a JSON channel					*channel-use*
+  
+  If {mode} is "json" then a message can be sent synchronously like this: >
+      let response = ch_sendexpr(handle, {expr})
+  This awaits a response from the other side.
+  
+  To send a message, without handling a response: >
+      call ch_sendexpr(handle, {expr}, 0)
+  
+--- 124,138 ----
+  *E896* *E630* *E631* 
+  
+  ==============================================================================
+! 3. Using a JSON or JS channel					*channel-use*
+  
+  If {mode} is "json" then a message can be sent synchronously like this: >
+      let response = ch_sendexpr(handle, {expr})
+  This awaits a response from the other side.
+  
++ When {mode} is "js" this works the same, except that the messages use
++ JavaScript encoding.  See |jsencode()| for the difference.
++ 
+  To send a message, without handling a response: >
+      call ch_sendexpr(handle, {expr}, 0)
+  
+***************
+*** 231,237 ****
+  to avoid confusion with message that Vim sends.
+  
+  {result} is the result of the evaluation and is JSON encoded.  If the
+! evaluation fails it is the string "ERROR".
+  
+  
+  Command "expr" ~
+--- 235,242 ----
+  to avoid confusion with message that Vim sends.
+  
+  {result} is the result of the evaluation and is JSON encoded.  If the
+! evaluation fails or the result can't be encoded in JSON it is the string
+! "ERROR".
+  
+  
+  Command "expr" ~
+*** ../vim-7.4.1278/src/testdir/test_json.vim	2016-02-07 16:53:08.779395103 +0100
+--- src/testdir/test_json.vim	2016-02-07 18:36:14.467351645 +0100
+***************
+*** 32,40 ****
+--- 32,43 ----
+  let s:varl3 = [l3, l3]
+  
+  let s:jsond1 = '{"a":1,"b":"bee","c":[1,2]}'
++ let s:jsd1 = '{a:1,b:"bee",c:[1,2]}'
+  let s:vard1 = {"a": 1, "b": "bee","c": [1,2]}
+  let s:jsond2 = '{"1":1,"2":{"a":"aa","b":{},"c":"cc"},"3":3}'
++ let s:jsd2 = '{"1":1,"2":{a:"aa",b:{},c:"cc"},"3":3}'
+  let s:jsond2s = "  { \"1\" : 1 , \"2\" :\n{ \"a\"\r: \"aa\" , \"b\" : {\<Tab>} , \"c\" : \"cc\" } , \"3\" : 3 }\r\n"
++ let s:jsd2s = "  { \"1\" : 1 , \"2\" :\n{ a\r: \"aa\" , b : {\<Tab>} , c : \"cc\" } , \"3\" : 3 }\r\n"
+  let s:vard2 = {"1": 1, "2": 2, "3": 3}
+  let d2 = {"a": "aa", "b": s:vard2, "c": "cc"}
+  let s:vard2["2"] = d2
+***************
+*** 42,52 ****
+  let d3 = {"a": 1, "b": 2}
+  let s:vard3 = {"x": d3, "y": d3}
+  let s:jsond3 = '{"x":{"a":1,"b":2},"y":{"a":1,"b":2}}'
+  
+! let s:jsonvals = '[true,false,,null]'
+! let s:varvals = [v:true, v:false, v:none, v:null]
+  
+! func Test_encode()
+    call assert_equal(s:json1, jsonencode(s:var1))
+    call assert_equal(s:json2, jsonencode(s:var2))
+    call assert_equal(s:json3, jsonencode(s:var3))
+--- 45,60 ----
+  let d3 = {"a": 1, "b": 2}
+  let s:vard3 = {"x": d3, "y": d3}
+  let s:jsond3 = '{"x":{"a":1,"b":2},"y":{"a":1,"b":2}}'
++ let s:jsd3 = '{x:{a:1,b:2},y:{a:1,b:2}}'
++ let s:vard4 = {"key": v:none}
++ let s:vard4x = {"key": v:null}
++ let s:jsond4 = '{"key":null}'
++ let s:jsd4 = '{key:null}'
+  
+! let s:jsonvals = '[true,false,null,null]'
+! let s:varvals = [v:true, v:false, v:null, v:null]
+  
+! func Test_json_encode()
+    call assert_equal(s:json1, jsonencode(s:var1))
+    call assert_equal(s:json2, jsonencode(s:var2))
+    call assert_equal(s:json3, jsonencode(s:var3))
+***************
+*** 69,86 ****
+    call assert_equal(s:jsond1, jsonencode(s:vard1))
+    call assert_equal(s:jsond2, jsonencode(s:vard2))
+    call assert_equal(s:jsond3, jsonencode(s:vard3))
+  
+    call assert_equal(s:jsonvals, jsonencode(s:varvals))
+  
+    call assert_fails('echo jsonencode(function("tr"))', 'E474:')
+    call assert_fails('echo jsonencode([function("tr")])', 'E474:')
+-   call assert_fails('echo jsonencode({"key":v:none})', 'E474:')
+  
+    silent! let res = jsonencode(function("tr"))
+    call assert_equal("", res)
+  endfunc
+  
+! func Test_decode()
+    call assert_equal(s:var1, jsondecode(s:json1))
+    call assert_equal(s:var2, jsondecode(s:json2))
+    call assert_equal(s:var3, jsondecode(s:json3))
+--- 77,94 ----
+    call assert_equal(s:jsond1, jsonencode(s:vard1))
+    call assert_equal(s:jsond2, jsonencode(s:vard2))
+    call assert_equal(s:jsond3, jsonencode(s:vard3))
++   call assert_equal(s:jsond4, jsonencode(s:vard4))
+  
+    call assert_equal(s:jsonvals, jsonencode(s:varvals))
+  
+    call assert_fails('echo jsonencode(function("tr"))', 'E474:')
+    call assert_fails('echo jsonencode([function("tr")])', 'E474:')
+  
+    silent! let res = jsonencode(function("tr"))
+    call assert_equal("", res)
+  endfunc
+  
+! func Test_json_decode()
+    call assert_equal(s:var1, jsondecode(s:json1))
+    call assert_equal(s:var2, jsondecode(s:json2))
+    call assert_equal(s:var3, jsondecode(s:json3))
+***************
+*** 103,109 ****
+--- 111,119 ----
+  
+    call assert_equal(s:vard1, jsondecode(s:jsond1))
+    call assert_equal(s:vard2x, jsondecode(s:jsond2))
++   call assert_equal(s:vard2x, jsondecode(s:jsond2s))
+    call assert_equal(s:vard3, jsondecode(s:jsond3))
++   call assert_equal(s:vard4x, jsondecode(s:jsond4))
+  
+    call assert_equal(s:varvals, jsondecode(s:jsonvals))
+  
+***************
+*** 134,137 ****
+--- 144,253 ----
+    call assert_fails('call jsondecode("[1")', "E474:")
+    call assert_fails('call jsondecode("[1,")', "E474:")
+    call assert_fails('call jsondecode("[1 2]")', "E474:")
++ 
++   call assert_fails('call jsondecode("[1,,2]")', "E474:")
++ endfunc
++ 
++ let s:jsl5 = '[7,,,]'
++ let s:varl5 = [7, v:none, v:none]
++ 
++ func Test_js_encode()
++   call assert_equal(s:json1, jsencode(s:var1))
++   call assert_equal(s:json2, jsencode(s:var2))
++   call assert_equal(s:json3, jsencode(s:var3))
++   call assert_equal(s:json4, jsencode(s:var4))
++   call assert_equal(s:json5, jsencode(s:var5))
++ 
++   if has('multi_byte')
++     call assert_equal(s:jsonmb, jsencode(s:varmb))
++   endif
++ 
++   call assert_equal(s:jsonnr, jsencode(s:varnr))
++   if has('float')
++     call assert_equal(s:jsonfl, jsencode(s:varfl))
++   endif
++ 
++   call assert_equal(s:jsonl1, jsencode(s:varl1))
++   call assert_equal(s:jsonl2, jsencode(s:varl2))
++   call assert_equal(s:jsonl3, jsencode(s:varl3))
++ 
++   call assert_equal(s:jsd1, jsencode(s:vard1))
++   call assert_equal(s:jsd2, jsencode(s:vard2))
++   call assert_equal(s:jsd3, jsencode(s:vard3))
++   call assert_equal(s:jsd4, jsencode(s:vard4))
++ 
++   call assert_equal(s:jsonvals, jsencode(s:varvals))
++ 
++   call assert_fails('echo jsencode(function("tr"))', 'E474:')
++   call assert_fails('echo jsencode([function("tr")])', 'E474:')
++ 
++   silent! let res = jsencode(function("tr"))
++   call assert_equal("", res)
++ 
++   call assert_equal(s:jsl5, jsencode(s:varl5))
++ endfunc
++ 
++ func Test_js_decode()
++   call assert_equal(s:var1, jsdecode(s:json1))
++   call assert_equal(s:var2, jsdecode(s:json2))
++   call assert_equal(s:var3, jsdecode(s:json3))
++   call assert_equal(s:var4, jsdecode(s:json4))
++   call assert_equal(s:var5, jsdecode(s:json5))
++ 
++   if has('multi_byte')
++     call assert_equal(s:varmb, jsdecode(s:jsonmb))
++   endif
++ 
++   call assert_equal(s:varnr, jsdecode(s:jsonnr))
++   if has('float')
++     call assert_equal(s:varfl, jsdecode(s:jsonfl))
++   endif
++ 
++   call assert_equal(s:varl1, jsdecode(s:jsonl1))
++   call assert_equal(s:varl2x, jsdecode(s:jsonl2))
++   call assert_equal(s:varl2x, jsdecode(s:jsonl2s))
++   call assert_equal(s:varl3, jsdecode(s:jsonl3))
++ 
++   call assert_equal(s:vard1, jsdecode(s:jsond1))
++   call assert_equal(s:vard1, jsdecode(s:jsd1))
++   call assert_equal(s:vard2x, jsdecode(s:jsond2))
++   call assert_equal(s:vard2x, jsdecode(s:jsd2))
++   call assert_equal(s:vard2x, jsdecode(s:jsond2s))
++   call assert_equal(s:vard2x, jsdecode(s:jsd2s))
++   call assert_equal(s:vard3, jsdecode(s:jsond3))
++   call assert_equal(s:vard3, jsdecode(s:jsd3))
++   call assert_equal(s:vard4x, jsdecode(s:jsond4))
++   call assert_equal(s:vard4x, jsdecode(s:jsd4))
++ 
++   call assert_equal(s:varvals, jsdecode(s:jsonvals))
++ 
++   call assert_equal(v:true, jsdecode('true'))
++   call assert_equal(type(v:true), type(jsdecode('true')))
++   call assert_equal(v:none, jsdecode(''))
++   call assert_equal(type(v:none), type(jsdecode('')))
++   call assert_equal("", jsdecode('""'))
++ 
++   call assert_equal({'n': 1}, jsdecode('{"n":1,}'))
++ 
++   call assert_fails('call jsdecode("\"")', "E474:")
++   call assert_fails('call jsdecode("blah")', "E474:")
++   call assert_fails('call jsdecode("true blah")', "E474:")
++   call assert_fails('call jsdecode("<foobar>")', "E474:")
++ 
++   call assert_fails('call jsdecode("{")', "E474:")
++   call assert_fails('call jsdecode("{foobar}")', "E474:")
++   call assert_fails('call jsdecode("{\"n\",")', "E474:")
++   call assert_fails('call jsdecode("{\"n\":")', "E474:")
++   call assert_fails('call jsdecode("{\"n\":1")', "E474:")
++   call assert_fails('call jsdecode("{\"n\":1,")', "E474:")
++   call assert_fails('call jsdecode("{\"n\",1}")', "E474:")
++   call assert_fails('call jsdecode("{-}")', "E474:")
++ 
++   call assert_fails('call jsdecode("[foobar]")', "E474:")
++   call assert_fails('call jsdecode("[")', "E474:")
++   call assert_fails('call jsdecode("[1")', "E474:")
++   call assert_fails('call jsdecode("[1,")', "E474:")
++   call assert_fails('call jsdecode("[1 2]")', "E474:")
++ 
++   call assert_equal(s:varl5, jsdecode(s:jsl5))
+  endfunc
+*** ../vim-7.4.1278/src/version.c	2016-02-07 16:53:08.783395062 +0100
+--- src/version.c	2016-02-07 19:08:51.167015826 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1279,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+170. You introduce your wife as "my_lady@home.wife" and refer to your
+     children as "forked processes."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,65 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1365
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1365
+Problem:    Cannot execute a single test function.
+Solution:   Add an argument to filter the functions with. (Yasuhiro Matsumoto)
+Files:      src/testdir/runtest.vim
+
+
+*** ../vim-7.4.1364/src/testdir/runtest.vim	2016-02-18 22:25:37.464230986 +0100
+--- src/testdir/runtest.vim	2016-02-20 14:39:34.401161929 +0100
+***************
+*** 2,7 ****
+--- 2,12 ----
+  " When the script is successful the .res file will be created.
+  " Errors are appended to the test.log file.
+  "
++ " To execute only specific test functions, add a second argument.  It will be
++ " matched against the names of the Test_ funtion.  E.g.:
++ "	../vim -u NONE -S runtest.vim test_channel.vim open_delay
++ " The output can be found in the "messages" file.
++ "
+  " The test script may contain anything, only functions that start with
+  " "Test_" are special.  These will be invoked and should contain assert
+  " functions.  See test_assert.vim for an example.
+***************
+*** 94,99 ****
+--- 99,109 ----
+  redir END
+  let s:tests = split(substitute(@q, 'function \(\k*()\)', '\1', 'g'))
+  
++ " If there is an extra argument filter the function names against it.
++ if argc() > 1
++   let s:tests = filter(s:tests, 'v:val =~ argv(1)')
++ endif
++ 
+  " Execute the tests in alphabetical order.
+  for s:test in sort(s:tests)
+    echo 'Executing ' . s:test
+*** ../vim-7.4.1364/src/version.c	2016-02-20 13:54:39.149146991 +0100
+--- src/version.c	2016-02-20 14:40:45.724419177 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1365,
+  /**/
+
+-- 
+FATHER:    Did you kill all those guards?
+LAUNCELOT: Yes ...  I'm very sorry ...
+FATHER:    They cost fifty pounds each!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,82 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1035
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1035
+Problem:    An Ex range gets adjusted for folded lines even when the range is
+            not using line numbers.
+Solution:   Only adjust line numbers for folding. (Christian Brabandt)
+Files:      runtime/doc/fold.txt, src/ex_docmd.c
+
+
+*** ../vim-7.4.1034/runtime/doc/fold.txt	2015-03-31 17:46:16.840128074 +0200
+--- runtime/doc/fold.txt	2016-01-02 21:36:44.450849524 +0100
+***************
+*** 572,579 ****
+  When using an operator, a closed fold is included as a whole.  Thus "dl"
+  deletes the whole closed fold under the cursor.
+  
+! For Ex commands the range is adjusted to always start at the first line of a
+! closed fold and end at the last line of a closed fold.  Thus this command: >
+  	:s/foo/bar/g
+  when used with the cursor on a closed fold, will replace "foo" with "bar" in
+  all lines of the fold.
+--- 585,593 ----
+  When using an operator, a closed fold is included as a whole.  Thus "dl"
+  deletes the whole closed fold under the cursor.
+  
+! For Ex commands that work on buffer lines the range is adjusted to always
+! start at the first line of a closed fold and end at the last line of a closed
+! fold.  Thus this command: >
+  	:s/foo/bar/g
+  when used with the cursor on a closed fold, will replace "foo" with "bar" in
+  all lines of the fold.
+*** ../vim-7.4.1034/src/ex_docmd.c	2015-12-31 19:53:16.262087808 +0100
+--- src/ex_docmd.c	2016-01-02 21:37:14.370522226 +0100
+***************
+*** 2543,2549 ****
+      correct_range(&ea);
+  
+  #ifdef FEAT_FOLDING
+!     if (((ea.argt & WHOLEFOLD) || ea.addr_count >= 2) && !global_busy)
+      {
+  	/* Put the first line at the start of a closed fold, put the last line
+  	 * at the end of a closed fold. */
+--- 2543,2550 ----
+      correct_range(&ea);
+  
+  #ifdef FEAT_FOLDING
+!     if (((ea.argt & WHOLEFOLD) || ea.addr_count >= 2) && !global_busy
+! 	    && ea.addr_type == ADDR_LINES)
+      {
+  	/* Put the first line at the start of a closed fold, put the last line
+  	 * at the end of a closed fold. */
+*** ../vim-7.4.1034/src/version.c	2016-01-02 21:31:35.814226730 +0100
+--- src/version.c	2016-01-02 21:35:21.423757858 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1035,
+  /**/
+
+
+-- 
+ARTHUR: Charge!
+   [They all charge with swords drawn towards the RABBIT.  A tremendous twenty
+   second fight with Peckinpahish shots and borrowing heavily also on the
+   Kung Fu and karate-type films ensues, in which some four KNIGHTS are
+   comprehensively killed.]
+ARTHUR: Run away!  Run away!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

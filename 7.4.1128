@@ -1,0 +1,223 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1128
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1128
+Problem:    MS-Windows: delete() does not recognize junctions.
+Solution:   Add mch_isrealdir() for MS-Windows. Update mch_is_symbolic_link().
+            (Ken Takata)
+Files:      src/fileio.c, src/os_win32.c, src/proto/os_win32.pro
+
+
+*** ../vim-7.4.1127/src/fileio.c	2016-01-17 18:23:51.531928778 +0100
+--- src/fileio.c	2016-01-17 22:12:16.913673638 +0100
+***************
+*** 7297,7310 ****
+      /* A symbolic link to a directory itself is deleted, not the directory it
+       * points to. */
+      if (
+! # if defined(WIN32)
+! 	 mch_isdir(name) && !mch_is_symbolic_link(name)
+! # else
+! #  ifdef UNIX
+  	 mch_isrealdir(name)
+! #  else
+  	 mch_isdir(name)
+- #  endif
+  # endif
+  	    )
+      {
+--- 7297,7306 ----
+      /* A symbolic link to a directory itself is deleted, not the directory it
+       * points to. */
+      if (
+! # if defined(UNIX) || defined(WIN32)
+  	 mch_isrealdir(name)
+! # else
+  	 mch_isdir(name)
+  # endif
+  	    )
+      {
+*** ../vim-7.4.1127/src/os_win32.c	2016-01-16 22:02:52.942046118 +0100
+--- src/os_win32.c	2016-01-17 22:12:16.913673638 +0100
+***************
+*** 3130,3135 ****
+--- 3130,3146 ----
+  }
+  
+  /*
++  * return TRUE if "name" is a directory, NOT a symlink to a directory
++  * return FALSE if "name" is not a directory
++  * return FALSE for error
++  */
++     int
++ mch_isrealdir(char_u *name)
++ {
++     return mch_isdir(name) && !mch_is_symbolic_link(name);
++ }
++ 
++ /*
+   * Create directory "name".
+   * Return 0 on success, -1 on error.
+   */
+***************
+*** 3190,3199 ****
+  }
+  
+  /*
+!  * Return TRUE if file "fname" is a symbolic link.
+   */
+      int
+! mch_is_symbolic_link(char_u *fname)
+  {
+      HANDLE		hFind;
+      int			res = FALSE;
+--- 3201,3210 ----
+  }
+  
+  /*
+!  * Return TRUE if "name" is a symbolic link (or a junction).
+   */
+      int
+! mch_is_symbolic_link(char_u *name)
+  {
+      HANDLE		hFind;
+      int			res = FALSE;
+***************
+*** 3204,3210 ****
+      WIN32_FIND_DATAW	findDataW;
+  
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 	wn = enc_to_utf16(fname, NULL);
+      if (wn != NULL)
+      {
+  	hFind = FindFirstFileW(wn, &findDataW);
+--- 3215,3221 ----
+      WIN32_FIND_DATAW	findDataW;
+  
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 	wn = enc_to_utf16(name, NULL);
+      if (wn != NULL)
+      {
+  	hFind = FindFirstFileW(wn, &findDataW);
+***************
+*** 3213,3219 ****
+  		&& GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+  	{
+  	    /* Retry with non-wide function (for Windows 98). */
+! 	    hFind = FindFirstFile(fname, &findDataA);
+  	    if (hFind != INVALID_HANDLE_VALUE)
+  	    {
+  		fileFlags = findDataA.dwFileAttributes;
+--- 3224,3230 ----
+  		&& GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+  	{
+  	    /* Retry with non-wide function (for Windows 98). */
+! 	    hFind = FindFirstFile(name, &findDataA);
+  	    if (hFind != INVALID_HANDLE_VALUE)
+  	    {
+  		fileFlags = findDataA.dwFileAttributes;
+***************
+*** 3229,3235 ****
+      else
+  #endif
+      {
+! 	hFind = FindFirstFile(fname, &findDataA);
+  	if (hFind != INVALID_HANDLE_VALUE)
+  	{
+  	    fileFlags = findDataA.dwFileAttributes;
+--- 3240,3246 ----
+      else
+  #endif
+      {
+! 	hFind = FindFirstFile(name, &findDataA);
+  	if (hFind != INVALID_HANDLE_VALUE)
+  	{
+  	    fileFlags = findDataA.dwFileAttributes;
+***************
+*** 3241,3247 ****
+  	FindClose(hFind);
+  
+      if ((fileFlags & FILE_ATTRIBUTE_REPARSE_POINT)
+! 	    && reparseTag == IO_REPARSE_TAG_SYMLINK)
+  	res = TRUE;
+  
+      return res;
+--- 3252,3259 ----
+  	FindClose(hFind);
+  
+      if ((fileFlags & FILE_ATTRIBUTE_REPARSE_POINT)
+! 	    && (reparseTag == IO_REPARSE_TAG_SYMLINK
+! 		|| reparseTag == IO_REPARSE_TAG_MOUNT_POINT))
+  	res = TRUE;
+  
+      return res;
+***************
+*** 5839,5845 ****
+  
+  
+  /*
+!  * this version of remove is not scared by a readonly (backup) file
+   * Return 0 for success, -1 for failure.
+   */
+      int
+--- 5851,5858 ----
+  
+  
+  /*
+!  * This version of remove is not scared by a readonly (backup) file.
+!  * This can also remove a symbolic link like Unix.
+   * Return 0 for success, -1 for failure.
+   */
+      int
+***************
+*** 5850,5855 ****
+--- 5863,5875 ----
+      int		n;
+  #endif
+  
++     /*
++      * On Windows, deleting a directory's symbolic link is done by
++      * RemoveDirectory(): mch_rmdir.  It seems unnatural, but it is fact.
++      */
++     if (mch_isdir(name) && mch_is_symbolic_link(name))
++ 	return mch_rmdir(name);
++ 
+      win32_setattrs(name, FILE_ATTRIBUTE_NORMAL);
+  
+  #ifdef FEAT_MBYTE
+*** ../vim-7.4.1127/src/proto/os_win32.pro	2016-01-16 22:02:52.942046118 +0100
+--- src/proto/os_win32.pro	2016-01-17 22:12:16.913673638 +0100
+***************
+*** 21,26 ****
+--- 21,27 ----
+  void mch_hide __ARGS((char_u *name));
+  int mch_ishidden __ARGS((char_u *name));
+  int mch_isdir __ARGS((char_u *name));
++ int mch_isrealdir __ARGS((char_u *name));
+  int mch_mkdir __ARGS((char_u *name));
+  int mch_rmdir __ARGS((char_u *name));
+  int mch_is_hard_link __ARGS((char_u *fname));
+*** ../vim-7.4.1127/src/version.c	2016-01-17 22:05:09.286375447 +0100
+--- src/version.c	2016-01-17 22:13:41.992738285 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1128,
+  /**/
+
+-- 
+EXPERIENCE - experience is a wonderful thing. It enables you to 
+recognise a mistake when you make it again.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

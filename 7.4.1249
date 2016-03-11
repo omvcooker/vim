@@ -1,0 +1,273 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1249
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1249
+Problem:    Crash when the process a channel is connected to exits.
+Solution:   Use the file descriptor properly.  Add a test. (Damien)
+            Also add a test for eval().
+Files:      src/channel.c, src/testdir/test_channel.py,
+            src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1248/src/channel.c	2016-02-02 23:22:38.101181704 +0100
+--- src/channel.c	2016-02-03 21:28:54.105429460 +0100
+***************
+*** 698,707 ****
+  	}
+  	else
+  	{
+! 	    typval_T	*tv = eval_expr(arg, NULL);
+  	    typval_T	err_tv;
+  	    char_u	*json;
+  
+  	    if (is_eval)
+  	    {
+  		if (tv == NULL)
+--- 698,711 ----
+  	}
+  	else
+  	{
+! 	    typval_T	*tv;
+  	    typval_T	err_tv;
+  	    char_u	*json;
+  
++ 	    /* Don't pollute the display with errors. */
++ 	    ++emsg_skip;
++ 	    tv = eval_expr(arg, NULL);
++ 	    --emsg_skip;
+  	    if (is_eval)
+  	    {
+  		if (tv == NULL)
+***************
+*** 714,720 ****
+  		channel_send(idx, json, "eval");
+  		vim_free(json);
+  	    }
+! 	    free_tv(tv);
+  	}
+      }
+      else if (p_verbose > 2)
+--- 718,725 ----
+  		channel_send(idx, json, "eval");
+  		vim_free(json);
+  	    }
+! 	    if (tv != &err_tv)
+! 		free_tv(tv);
+  	}
+      }
+      else if (p_verbose > 2)
+***************
+*** 1119,1125 ****
+  
+  	    /* Wait for up to 2 seconds.
+  	     * TODO: use timeout set on the channel. */
+! 	    if (channel_wait(channels[ch_idx].ch_fd, 2000) == FAIL)
+  		break;
+  	    channel_read(ch_idx);
+  	}
+--- 1124,1131 ----
+  
+  	    /* Wait for up to 2 seconds.
+  	     * TODO: use timeout set on the channel. */
+! 	    if (channels[ch_idx].ch_fd < 0
+! 			|| channel_wait(channels[ch_idx].ch_fd, 2000) == FAIL)
+  		break;
+  	    channel_read(ch_idx);
+  	}
+*** ../vim-7.4.1248/src/testdir/test_channel.py	2016-02-03 20:13:19.721014093 +0100
+--- src/testdir/test_channel.py	2016-02-03 21:11:46.544209797 +0100
+***************
+*** 52,58 ****
+                  decoded = [-1, '']
+  
+              # Send a response if the sequence number is positive.
+-             # Negative numbers are used for "eval" responses.
+              if decoded[0] >= 0:
+                  if decoded[1] == 'hello!':
+                      # simply send back a string
+--- 52,57 ----
+***************
+*** 65,73 ****
+--- 64,90 ----
+                      print("sending: {}".format(cmd))
+                      thesocket.sendall(cmd.encode('utf-8'))
+                      response = "ok"
++                 elif decoded[1] == 'eval-works':
++                     # Send an eval request.  We ignore the response.
++                     cmd = '["eval","\\"foo\\" . 123", -1]'
++                     print("sending: {}".format(cmd))
++                     thesocket.sendall(cmd.encode('utf-8'))
++                     response = "ok"
++                 elif decoded[1] == 'eval-fails':
++                     # Send an eval request that will fail.
++                     cmd = '["eval","xxx", -2]'
++                     print("sending: {}".format(cmd))
++                     thesocket.sendall(cmd.encode('utf-8'))
++                     response = "ok"
++                 elif decoded[1] == 'eval-result':
++                     # Send back the last received eval result.
++                     response = last_eval
+                  elif decoded[1] == '!quit!':
+                      # we're done
+                      sys.exit(0)
++                 elif decoded[1] == '!crash!':
++                     # Crash!
++                     42 / 0
+                  else:
+                      response = "what?"
+  
+***************
+*** 75,80 ****
+--- 92,101 ----
+                  print("sending: {}".format(encoded))
+                  thesocket.sendall(encoded.encode('utf-8'))
+  
++             # Negative numbers are used for "eval" responses.
++             elif decoded[0] < 0:
++                 last_eval = decoded
++ 
+          thesocket = None
+  
+  class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+*** ../vim-7.4.1248/src/testdir/test_channel.vim	2016-02-03 20:22:05.127510774 +0100
+--- src/testdir/test_channel.vim	2016-02-03 21:32:34.091124780 +0100
+***************
+*** 18,42 ****
+  endif
+  
+  func s:start_server()
+    if has('win32')
+      silent !start cmd /c start "test_channel" py test_channel.py
+    else
+      silent !python test_channel.py&
+    endif
+- endfunc
+- 
+- func s:kill_server()
+-   if has('win32')
+-     call system('taskkill /IM py.exe /T /F /FI "WINDOWTITLE eq test_channel"')
+-   else
+-     call system("pkill --full test_channel.py")
+-   endif
+- endfunc
+- 
+- func Test_communicate()
+-   call delete("Xportnr")
+-   " The Python program writes the port number in Xportnr.
+-   call s:start_server()
+  
+    " Wait for up to 2 seconds for the port number to be there.
+    let cnt = 20
+--- 18,31 ----
+  endif
+  
+  func s:start_server()
++   " The Python program writes the port number in Xportnr.
++   call delete("Xportnr")
++ 
+    if has('win32')
+      silent !start cmd /c start "test_channel" py test_channel.py
+    else
+      silent !python test_channel.py&
+    endif
+  
+    " Wait for up to 2 seconds for the port number to be there.
+    let cnt = 20
+***************
+*** 57,66 ****
+    if len(l) == 0
+      " Can't make the connection, give up.
+      call s:kill_server()
+!     return
+    endif
+    let port = l[0]
+    let handle = ch_open('localhost:' . port, 'json')
+  
+    " Simple string request and reply.
+    call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+--- 46,73 ----
+    if len(l) == 0
+      " Can't make the connection, give up.
+      call s:kill_server()
+!     call assert_false(1, "Can't start test_channel.py")
+!     return -1
+    endif
+    let port = l[0]
++ 
+    let handle = ch_open('localhost:' . port, 'json')
++   return handle
++ endfunc
++ 
++ func s:kill_server()
++   if has('win32')
++     call system('taskkill /IM py.exe /T /F /FI "WINDOWTITLE eq test_channel"')
++   else
++     call system("pkill --full test_channel.py")
++   endif
++ endfunc
++ 
++ func Test_communicate()
++   let handle = s:start_server()
++   if handle < 0
++     return
++   endif
+  
+    " Simple string request and reply.
+    call assert_equal('got it', ch_sendexpr(handle, 'hello!'))
+***************
+*** 73,80 ****
+--- 80,108 ----
+    call assert_equal('added1', getline(line('$') - 1))
+    call assert_equal('added2', getline('$'))
+  
++   " Send an eval request that works.
++   call assert_equal('ok', ch_sendexpr(handle, 'eval-works'))
++   call assert_equal([-1, 'foo123'], ch_sendexpr(handle, 'eval-result'))
++ 
++   " Send an eval request that fails.
++   call assert_equal('ok', ch_sendexpr(handle, 'eval-fails'))
++   call assert_equal([-2, 'ERROR'], ch_sendexpr(handle, 'eval-result'))
++ 
+    " make the server quit, can't check if this works, should not hang.
+    call ch_sendexpr(handle, '!quit!', 0)
+  
+    call s:kill_server()
+  endfunc
++ 
++ " Test that a server crash is handled gracefully.
++ func Test_server_crash()
++   let handle = s:start_server()
++   if handle < 0
++     return
++   endif
++   call ch_sendexpr(handle, '!crash!')
++ 
++   " kill the server in case if failed to crash
++   sleep 10m
++   call s:kill_server()
++ endfunc
+*** ../vim-7.4.1248/src/version.c	2016-02-03 20:22:05.131510733 +0100
+--- src/version.c	2016-02-03 21:30:07.208663497 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1249,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+122. You ask if the Netaholics Anonymous t-shirt you ordered can be
+     sent to you via e-mail.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

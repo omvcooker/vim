@@ -1,0 +1,275 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1337
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1337 (after 7.4.1336)
+Problem:    Part of the change missing.
+Solution:   Add changes to eval.c
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1336/src/eval.c	2016-02-16 15:06:54.657635357 +0100
+--- src/eval.c	2016-02-16 18:54:11.952235823 +0100
+***************
+*** 7535,7541 ****
+  
+  /*
+   * Get a number item from a dictionary.
+!  * Returns 0 if the entry doesn't exist or out of memory.
+   */
+      long
+  get_dict_number(dict_T *d, char_u *key)
+--- 7535,7541 ----
+  
+  /*
+   * Get a number item from a dictionary.
+!  * Returns 0 if the entry doesn't exist.
+   */
+      long
+  get_dict_number(dict_T *d, char_u *key)
+***************
+*** 9930,9949 ****
+  }
+  
+  /*
+   * "ch_open()" function
+   */
+      static void
+  f_ch_open(typval_T *argvars, typval_T *rettv)
+  {
+      char_u	*address;
+-     char_u	*mode;
+      char_u	*callback = NULL;
+      char_u	*p;
+      char	*rest;
+      int		port;
+      int		waittime = 0;
+      int		timeout = 2000;
+!     ch_mode_T	ch_mode = MODE_JSON;
+      channel_T	*channel;
+  
+      /* default: fail */
+--- 9930,9978 ----
+  }
+  
+  /*
++  * Get the "mode" entry from "dict", if it exists, and parse the mode name.
++  * If the mode is invalide return FAIL.
++  */
++     static int
++ get_mode_arg(dict_T *dict, jobopt_T *opt)
++ {
++     dictitem_T	*item;
++     char_u	*mode;
++ 
++     if ((item = dict_find(dict, (char_u *)"mode", -1)) != NULL)
++     {
++ 	mode = get_tv_string(&item->di_tv);
++ 	if (STRCMP(mode, "nl") == 0)
++ 	    opt->jo_mode = MODE_NL;
++ 	else if (STRCMP(mode, "raw") == 0)
++ 	    opt->jo_mode = MODE_RAW;
++ 	else if (STRCMP(mode, "js") == 0)
++ 	    opt->jo_mode = MODE_JS;
++ 	else if (STRCMP(mode, "json") == 0)
++ 	    opt->jo_mode = MODE_JSON;
++ 	else
++ 	{
++ 	    EMSG2(_(e_invarg2), mode);
++ 	    return FAIL;
++ 	}
++     }
++     return OK;
++ }
++ 
++ /*
+   * "ch_open()" function
+   */
+      static void
+  f_ch_open(typval_T *argvars, typval_T *rettv)
+  {
+      char_u	*address;
+      char_u	*callback = NULL;
+      char_u	*p;
+      char	*rest;
+      int		port;
+      int		waittime = 0;
+      int		timeout = 2000;
+!     jobopt_T    options;
+      channel_T	*channel;
+  
+      /* default: fail */
+***************
+*** 9974,10000 ****
+  	return;
+      }
+  
+      if (argvars[1].v_type == VAR_DICT)
+      {
+  	dict_T	    *dict = argvars[1].vval.v_dict;
+  	dictitem_T  *item;
+  
+  	/* parse argdict */
+! 	if ((item = dict_find(dict, (char_u *)"mode", -1)) != NULL)
+! 	{
+! 	    mode = get_tv_string(&item->di_tv);
+! 	    if (STRCMP(mode, "raw") == 0)
+! 		ch_mode = MODE_RAW;
+! 	    else if (STRCMP(mode, "js") == 0)
+! 		ch_mode = MODE_JS;
+! 	    else if (STRCMP(mode, "json") == 0)
+! 		ch_mode = MODE_JSON;
+! 	    else
+! 	    {
+! 		EMSG2(_(e_invarg2), mode);
+! 		return;
+! 	    }
+! 	}
+  	if ((item = dict_find(dict, (char_u *)"waittime", -1)) != NULL)
+  	    waittime = get_tv_number(&item->di_tv);
+  	if ((item = dict_find(dict, (char_u *)"timeout", -1)) != NULL)
+--- 10003,10017 ----
+  	return;
+      }
+  
++     options.jo_mode = MODE_JSON;
+      if (argvars[1].v_type == VAR_DICT)
+      {
+  	dict_T	    *dict = argvars[1].vval.v_dict;
+  	dictitem_T  *item;
+  
+  	/* parse argdict */
+! 	if (get_mode_arg(dict, &options) == FAIL)
+! 	    return;
+  	if ((item = dict_find(dict, (char_u *)"waittime", -1)) != NULL)
+  	    waittime = get_tv_number(&item->di_tv);
+  	if ((item = dict_find(dict, (char_u *)"timeout", -1)) != NULL)
+***************
+*** 10012,10018 ****
+      if (channel != NULL)
+      {
+  	rettv->vval.v_channel = channel;
+! 	channel_set_json_mode(channel, ch_mode);
+  	channel_set_timeout(channel, timeout);
+  	if (callback != NULL && *callback != NUL)
+  	    channel_set_callback(channel, callback);
+--- 10029,10035 ----
+      if (channel != NULL)
+      {
+  	rettv->vval.v_channel = channel;
+! 	channel_set_mode(channel, options.jo_mode);
+  	channel_set_timeout(channel, timeout);
+  	if (callback != NULL && *callback != NUL)
+  	    channel_set_callback(channel, callback);
+***************
+*** 14473,14487 ****
+      static void
+  f_job_start(typval_T *argvars UNUSED, typval_T *rettv)
+  {
+!     job_T *job;
+!     char_u *cmd = NULL;
+  #if defined(UNIX)
+  # define USE_ARGV
+!     char    **argv = NULL;
+!     int	    argc = 0;
+  #else
+!     garray_T ga;
+  #endif
+  
+      rettv->v_type = VAR_JOB;
+      job = job_alloc();
+--- 14490,14505 ----
+      static void
+  f_job_start(typval_T *argvars UNUSED, typval_T *rettv)
+  {
+!     job_T	*job;
+!     char_u	*cmd = NULL;
+  #if defined(UNIX)
+  # define USE_ARGV
+!     char	**argv = NULL;
+!     int		argc = 0;
+  #else
+!     garray_T	ga;
+  #endif
++     jobopt_T	options;
+  
+      rettv->v_type = VAR_JOB;
+      job = job_alloc();
+***************
+*** 14490,14495 ****
+--- 14508,14530 ----
+  	return;
+  
+      rettv->vval.v_job->jv_status = JOB_FAILED;
++ 
++     /* Default mode is NL. */
++     options.jo_mode = MODE_NL;
++     if (argvars[1].v_type != VAR_UNKNOWN)
++     {
++ 	dict_T	    *dict;
++ 
++ 	if (argvars[1].v_type != VAR_DICT)
++ 	{
++ 	    EMSG(_(e_invarg));
++ 	    return;
++ 	}
++ 	dict = argvars[1].vval.v_dict;
++ 	if (get_mode_arg(dict, &options) == FAIL)
++ 	    return;
++     }
++ 
+  #ifndef USE_ARGV
+      ga_init2(&ga, (int)sizeof(char*), 20);
+  #endif
+***************
+*** 14552,14560 ****
+  #endif
+      }
+  #ifdef USE_ARGV
+!     mch_start_job(argv, job);
+  #else
+!     mch_start_job((char *)cmd, job);
+  #endif
+  
+  theend:
+--- 14587,14595 ----
+  #endif
+      }
+  #ifdef USE_ARGV
+!     mch_start_job(argv, job, &options);
+  #else
+!     mch_start_job((char *)cmd, job, &options);
+  #endif
+  
+  theend:
+*** ../vim-7.4.1336/src/version.c	2016-02-16 19:25:07.584925674 +0100
+--- src/version.c	2016-02-16 19:36:30.157800204 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1337,
+  /**/
+
+-- 
+The greatest lies of all time:
+  (1) The check is in the mail.
+  (2) We have a really challenging assignment for you.
+  (3) I love you.
+  (4) All bugs have been fixed.
+  (5) This won't hurt a bit.
+  (6) Honey, I just need to debug this program and be home in 5 minutes.
+  (7) I have just sent you an e-mail about that.
+  (8) Of course I'll respect you in the morning.
+  (9) I'm from the government, and I'm here to help you.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

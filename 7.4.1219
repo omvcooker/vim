@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1219
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1219
+Problem:    Build fails with +channel but without +float.
+Solution:   Add #ifdef.
+Files:      src/ex_cmds.c
+
+
+*** ../vim-7.4.1218/src/ex_cmds.c	2016-01-30 15:52:42.567439563 +0100
+--- src/ex_cmds.c	2016-01-30 23:35:40.185570496 +0100
+***************
+*** 520,526 ****
+  	    if (regmatch.regprog != NULL)
+  		end_col = 0;
+  
+! 	if (sort_nr || sort_flt)
+  	{
+  	    /* Make sure vim_str2nr doesn't read any digits past the end
+  	     * of the match, by temporarily terminating the string there */
+--- 520,530 ----
+  	    if (regmatch.regprog != NULL)
+  		end_col = 0;
+  
+! 	if (sort_nr
+! #ifdef FEAT_FLOAT
+! 		|| sort_flt
+! #endif
+! 		)
+  	{
+  	    /* Make sure vim_str2nr doesn't read any digits past the end
+  	     * of the match, by temporarily terminating the string there */
+*** ../vim-7.4.1218/src/version.c	2016-01-30 23:26:28.935356907 +0100
+--- src/version.c	2016-01-30 23:36:37.024973914 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1219,
+  /**/
+
+-- 
+Warning label on a superhero Halloween costume:
+"Caution: Cape does not enable user to fly."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

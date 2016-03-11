@@ -1,0 +1,1849 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1196
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1196
+Problem:    Still using __ARGS.
+Solution:   Remove __ARGS in several files. (script by Hirohito Higashi)
+Files:      src/arabic.c, src/buffer.c, src/charset.c, src/crypt_zip.c,
+            src/diff.c, src/digraph.c, src/edit.c, src/ex_cmds.c,
+            src/ex_cmds2.c, src/ex_docmd.c
+
+
+*** ../vim-7.4.1195/src/arabic.c	2012-06-01 14:59:37.000000000 +0200
+--- src/arabic.c	2016-01-29 21:57:12.866083357 +0100
+***************
+*** 18,42 ****
+   *
+   */
+  
+! static int  A_is_a __ARGS((int cur_c));
+! static int  A_is_s __ARGS((int cur_c));
+! static int  A_is_f __ARGS((int cur_c));
+! static int  chg_c_a2s __ARGS((int cur_c));
+! static int  chg_c_a2i __ARGS((int cur_c));
+! static int  chg_c_a2m __ARGS((int cur_c));
+! static int  chg_c_a2f __ARGS((int cur_c));
+! static int  chg_c_i2m __ARGS((int cur_c));
+! static int  chg_c_f2m __ARGS((int cur_c));
+! static int  chg_c_laa2i __ARGS((int hid_c));
+! static int  chg_c_laa2f __ARGS((int hid_c));
+! static int  half_shape __ARGS((int c));
+! static int  A_firstc_laa __ARGS((int c1, int c));
+! static int  A_is_harakat __ARGS((int c));
+! static int  A_is_iso __ARGS((int c));
+! static int  A_is_formb __ARGS((int c));
+! static int  A_is_ok __ARGS((int c));
+! static int  A_is_valid __ARGS((int c));
+! static int  A_is_special __ARGS((int c));
+  
+  
+  /*
+--- 18,42 ----
+   *
+   */
+  
+! static int  A_is_a(int cur_c);
+! static int  A_is_s(int cur_c);
+! static int  A_is_f(int cur_c);
+! static int  chg_c_a2s(int cur_c);
+! static int  chg_c_a2i(int cur_c);
+! static int  chg_c_a2m(int cur_c);
+! static int  chg_c_a2f(int cur_c);
+! static int  chg_c_i2m(int cur_c);
+! static int  chg_c_f2m(int cur_c);
+! static int  chg_c_laa2i(int hid_c);
+! static int  chg_c_laa2f(int hid_c);
+! static int  half_shape(int c);
+! static int  A_firstc_laa(int c1, int c);
+! static int  A_is_harakat(int c);
+! static int  A_is_iso(int c);
+! static int  A_is_formb(int c);
+! static int  A_is_ok(int c);
+! static int  A_is_valid(int c);
+! static int  A_is_special(int c);
+  
+  
+  /*
+*** ../vim-7.4.1195/src/buffer.c	2016-01-19 22:28:54.611593027 +0100
+--- src/buffer.c	2016-01-29 21:58:21.149359809 +0100
+***************
+*** 28,53 ****
+  #include "vim.h"
+  
+  #if defined(FEAT_CMDL_COMPL) || defined(FEAT_LISTCMDS) || defined(FEAT_EVAL) || defined(FEAT_PERL)
+! static char_u	*buflist_match __ARGS((regmatch_T *rmp, buf_T *buf, int ignore_case));
+  # define HAVE_BUFLIST_MATCH
+! static char_u	*fname_match __ARGS((regmatch_T *rmp, char_u *name, int ignore_case));
+  #endif
+! static void	buflist_setfpos __ARGS((buf_T *buf, win_T *win, linenr_T lnum, colnr_T col, int copy_options));
+! static wininfo_T *find_wininfo __ARGS((buf_T *buf, int skip_diff_buffer));
+  #ifdef UNIX
+! static buf_T	*buflist_findname_stat __ARGS((char_u *ffname, struct stat *st));
+! static int	otherfile_buf __ARGS((buf_T *buf, char_u *ffname, struct stat *stp));
+! static int	buf_same_ino __ARGS((buf_T *buf, struct stat *stp));
+  #else
+! static int	otherfile_buf __ARGS((buf_T *buf, char_u *ffname));
+  #endif
+  #ifdef FEAT_TITLE
+! static int	ti_change __ARGS((char_u *str, char_u **last));
+  #endif
+! static int	append_arg_number __ARGS((win_T *wp, char_u *buf, int buflen, int add_file));
+! static void	free_buffer __ARGS((buf_T *));
+! static void	free_buffer_stuff __ARGS((buf_T *buf, int free_options));
+! static void	clear_wininfo __ARGS((buf_T *buf));
+  
+  #ifdef UNIX
+  # define dev_T dev_t
+--- 28,53 ----
+  #include "vim.h"
+  
+  #if defined(FEAT_CMDL_COMPL) || defined(FEAT_LISTCMDS) || defined(FEAT_EVAL) || defined(FEAT_PERL)
+! static char_u	*buflist_match(regmatch_T *rmp, buf_T *buf, int ignore_case);
+  # define HAVE_BUFLIST_MATCH
+! static char_u	*fname_match(regmatch_T *rmp, char_u *name, int ignore_case);
+  #endif
+! static void	buflist_setfpos(buf_T *buf, win_T *win, linenr_T lnum, colnr_T col, int copy_options);
+! static wininfo_T *find_wininfo(buf_T *buf, int skip_diff_buffer);
+  #ifdef UNIX
+! static buf_T	*buflist_findname_stat(char_u *ffname, struct stat *st);
+! static int	otherfile_buf(buf_T *buf, char_u *ffname, struct stat *stp);
+! static int	buf_same_ino(buf_T *buf, struct stat *stp);
+  #else
+! static int	otherfile_buf(buf_T *buf, char_u *ffname);
+  #endif
+  #ifdef FEAT_TITLE
+! static int	ti_change(char_u *str, char_u **last);
+  #endif
+! static int	append_arg_number(win_T *wp, char_u *buf, int buflen, int add_file);
+! static void	free_buffer(buf_T *);
+! static void	free_buffer_stuff(buf_T *buf, int free_options);
+! static void	clear_wininfo(buf_T *buf);
+  
+  #ifdef UNIX
+  # define dev_T dev_t
+***************
+*** 56,62 ****
+  #endif
+  
+  #if defined(FEAT_SIGNS)
+! static void insert_sign __ARGS((buf_T *buf, signlist_T *prev, signlist_T *next, int id, linenr_T lnum, int typenr));
+  #endif
+  
+  #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+--- 56,62 ----
+  #endif
+  
+  #if defined(FEAT_SIGNS)
+! static void insert_sign(buf_T *buf, signlist_T *prev, signlist_T *next, int id, linenr_T lnum, int typenr);
+  #endif
+  
+  #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+***************
+*** 1006,1012 ****
+  #if defined(FEAT_LISTCMDS) || defined(FEAT_PYTHON) \
+  	|| defined(FEAT_PYTHON3) || defined(PROTO)
+  
+! static int	empty_curbuf __ARGS((int close_others, int forceit, int action));
+  
+  /*
+   * Make the current buffer empty.
+--- 1006,1012 ----
+  #if defined(FEAT_LISTCMDS) || defined(FEAT_PYTHON) \
+  	|| defined(FEAT_PYTHON3) || defined(PROTO)
+  
+! static int	empty_curbuf(int close_others, int forceit, int action);
+  
+  /*
+   * Make the current buffer empty.
+***************
+*** 2613,2619 ****
+  }
+  
+  #ifdef FEAT_DIFF
+! static int wininfo_other_tab_diff __ARGS((wininfo_T *wip));
+  
+  /*
+   * Return TRUE when "wip" has 'diff' set and the diff is only for another tab
+--- 2613,2619 ----
+  }
+  
+  #ifdef FEAT_DIFF
+! static int wininfo_other_tab_diff(wininfo_T *wip);
+  
+  /*
+   * Return TRUE when "wip" has 'diff' set and the diff is only for another tab
+***************
+*** 5118,5124 ****
+  
+  #endif /* FEAT_WINDOWS */
+  
+! static int  chk_modeline __ARGS((linenr_T, int));
+  
+  /*
+   * do_modelines() - process mode lines for the current file
+--- 5118,5124 ----
+  
+  #endif /* FEAT_WINDOWS */
+  
+! static int  chk_modeline(linenr_T, int);
+  
+  /*
+   * do_modelines() - process mode lines for the current file
+*** ../vim-7.4.1195/src/charset.c	2016-01-20 22:47:57.657335800 +0100
+--- src/charset.c	2016-01-29 21:58:36.997191897 +0100
+***************
+*** 10,26 ****
+  #include "vim.h"
+  
+  #ifdef FEAT_LINEBREAK
+! static int win_chartabsize __ARGS((win_T *wp, char_u *p, colnr_T col));
+  #endif
+  
+  #ifdef FEAT_MBYTE
+  # if defined(HAVE_WCHAR_H)
+  #  include <wchar.h>	    /* for towupper() and towlower() */
+  # endif
+! static int win_nolbr_chartabsize __ARGS((win_T *wp, char_u *s, colnr_T col, int *headp));
+  #endif
+  
+! static unsigned nr2hex __ARGS((unsigned c));
+  
+  static int    chartab_initialized = FALSE;
+  
+--- 10,26 ----
+  #include "vim.h"
+  
+  #ifdef FEAT_LINEBREAK
+! static int win_chartabsize(win_T *wp, char_u *p, colnr_T col);
+  #endif
+  
+  #ifdef FEAT_MBYTE
+  # if defined(HAVE_WCHAR_H)
+  #  include <wchar.h>	    /* for towupper() and towlower() */
+  # endif
+! static int win_nolbr_chartabsize(win_T *wp, char_u *s, colnr_T col, int *headp);
+  #endif
+  
+! static unsigned nr2hex(unsigned c);
+  
+  static int    chartab_initialized = FALSE;
+  
+*** ../vim-7.4.1195/src/crypt_zip.c	2014-08-10 13:34:59.052785459 +0200
+--- src/crypt_zip.c	2016-01-29 21:58:49.125063404 +0100
+***************
+*** 36,42 ****
+  } zip_state_T;
+  
+  
+! static void make_crc_tab __ARGS((void));
+  
+  static u32_T crc_32_table[256];
+  
+--- 36,42 ----
+  } zip_state_T;
+  
+  
+! static void make_crc_tab(void);
+  
+  static u32_T crc_32_table[256];
+  
+*** ../vim-7.4.1195/src/diff.c	2015-12-17 15:03:51.299857951 +0100
+--- src/diff.c	2016-01-29 21:59:15.708781766 +0100
+***************
+*** 35,56 ****
+  				      checked yet */
+  #endif
+  
+! static int diff_buf_idx __ARGS((buf_T *buf));
+! static int diff_buf_idx_tp __ARGS((buf_T *buf, tabpage_T *tp));
+! static void diff_mark_adjust_tp __ARGS((tabpage_T *tp, int idx, linenr_T line1, linenr_T line2, long amount, long amount_after));
+! static void diff_check_unchanged __ARGS((tabpage_T *tp, diff_T *dp));
+! static int diff_check_sanity __ARGS((tabpage_T *tp, diff_T *dp));
+! static void diff_redraw __ARGS((int dofold));
+! static int diff_write __ARGS((buf_T *buf, char_u *fname));
+! static void diff_file __ARGS((char_u *tmp_orig, char_u *tmp_new, char_u *tmp_diff));
+! static int diff_equal_entry __ARGS((diff_T *dp, int idx1, int idx2));
+! static int diff_cmp __ARGS((char_u *s1, char_u *s2));
+  #ifdef FEAT_FOLDING
+! static void diff_fold_update __ARGS((diff_T *dp, int skip_idx));
+  #endif
+! static void diff_read __ARGS((int idx_orig, int idx_new, char_u *fname));
+! static void diff_copy_entry __ARGS((diff_T *dprev, diff_T *dp, int idx_orig, int idx_new));
+! static diff_T *diff_alloc_new __ARGS((tabpage_T *tp, diff_T *dprev, diff_T *dp));
+  
+  #ifndef USE_CR
+  # define tag_fgets vim_fgets
+--- 35,56 ----
+  				      checked yet */
+  #endif
+  
+! static int diff_buf_idx(buf_T *buf);
+! static int diff_buf_idx_tp(buf_T *buf, tabpage_T *tp);
+! static void diff_mark_adjust_tp(tabpage_T *tp, int idx, linenr_T line1, linenr_T line2, long amount, long amount_after);
+! static void diff_check_unchanged(tabpage_T *tp, diff_T *dp);
+! static int diff_check_sanity(tabpage_T *tp, diff_T *dp);
+! static void diff_redraw(int dofold);
+! static int diff_write(buf_T *buf, char_u *fname);
+! static void diff_file(char_u *tmp_orig, char_u *tmp_new, char_u *tmp_diff);
+! static int diff_equal_entry(diff_T *dp, int idx1, int idx2);
+! static int diff_cmp(char_u *s1, char_u *s2);
+  #ifdef FEAT_FOLDING
+! static void diff_fold_update(diff_T *dp, int skip_idx);
+  #endif
+! static void diff_read(int idx_orig, int idx_new, char_u *fname);
+! static void diff_copy_entry(diff_T *dprev, diff_T *dp, int idx_orig, int idx_new);
+! static diff_T *diff_alloc_new(tabpage_T *tp, diff_T *dprev, diff_T *dp);
+  
+  #ifndef USE_CR
+  # define tag_fgets vim_fgets
+*** ../vim-7.4.1195/src/digraph.c	2015-12-31 19:06:56.040081995 +0100
+--- src/digraph.c	2016-01-29 21:59:26.332669217 +0100
+***************
+*** 28,35 ****
+      result_T	result;
+  } digr_T;
+  
+! static int getexactdigraph __ARGS((int, int, int));
+! static void printdigraph __ARGS((digr_T *));
+  
+  /* digraphs added by the user */
+  static garray_T	user_digraphs = {0, 0, (int)sizeof(digr_T), 10, NULL};
+--- 28,35 ----
+      result_T	result;
+  } digr_T;
+  
+! static int getexactdigraph(int, int, int);
+! static void printdigraph(digr_T *);
+  
+  /* digraphs added by the user */
+  static garray_T	user_digraphs = {0, 0, (int)sizeof(digr_T), 10, NULL};
+***************
+*** 2357,2363 ****
+  
+  #define KMAP_MAXLEN 20	    /* maximum length of "from" or "to" */
+  
+! static void keymap_unload __ARGS((void));
+  
+  /*
+   * Set up key mapping tables for the 'keymap' option.
+--- 2357,2363 ----
+  
+  #define KMAP_MAXLEN 20	    /* maximum length of "from" or "to" */
+  
+! static void keymap_unload(void);
+  
+  /*
+   * Set up key mapping tables for the 'keymap' option.
+*** ../vim-7.4.1195/src/edit.c	2015-09-25 19:12:16.282267255 +0200
+--- src/edit.c	2016-01-29 22:00:09.380213203 +0100
+***************
+*** 145,192 ****
+  
+  static int	  compl_opt_refresh_always = FALSE;
+  
+! static void ins_ctrl_x __ARGS((void));
+! static int  has_compl_option __ARGS((int dict_opt));
+! static int  ins_compl_accept_char __ARGS((int c));
+! static int ins_compl_add __ARGS((char_u *str, int len, int icase, char_u *fname, char_u **cptext, int cdir, int flags, int adup));
+! static int  ins_compl_equal __ARGS((compl_T *match, char_u *str, int len));
+! static void ins_compl_longest_match __ARGS((compl_T *match));
+! static void ins_compl_add_matches __ARGS((int num_matches, char_u **matches, int icase));
+! static int  ins_compl_make_cyclic __ARGS((void));
+! static void ins_compl_upd_pum __ARGS((void));
+! static void ins_compl_del_pum __ARGS((void));
+! static int  pum_wanted __ARGS((void));
+! static int  pum_enough_matches __ARGS((void));
+! static void ins_compl_dictionaries __ARGS((char_u *dict, char_u *pat, int flags, int thesaurus));
+! static void ins_compl_files __ARGS((int count, char_u **files, int thesaurus, int flags, regmatch_T *regmatch, char_u *buf, int *dir));
+! static char_u *find_line_end __ARGS((char_u *ptr));
+! static void ins_compl_free __ARGS((void));
+! static void ins_compl_clear __ARGS((void));
+! static int  ins_compl_bs __ARGS((void));
+! static int  ins_compl_need_restart __ARGS((void));
+! static void ins_compl_new_leader __ARGS((void));
+! static void ins_compl_addleader __ARGS((int c));
+! static int  ins_compl_len __ARGS((void));
+! static void ins_compl_restart __ARGS((void));
+! static void ins_compl_set_original_text __ARGS((char_u *str));
+! static void ins_compl_addfrommatch __ARGS((void));
+! static int  ins_compl_prep __ARGS((int c));
+! static void ins_compl_fixRedoBufForLeader __ARGS((char_u *ptr_arg));
+! static buf_T *ins_compl_next_buf __ARGS((buf_T *buf, int flag));
+  #if defined(FEAT_COMPL_FUNC) || defined(FEAT_EVAL)
+! static void ins_compl_add_list __ARGS((list_T *list));
+! static void ins_compl_add_dict __ARGS((dict_T *dict));
+  #endif
+! static int  ins_compl_get_exp __ARGS((pos_T *ini));
+! static void ins_compl_delete __ARGS((void));
+! static void ins_compl_insert __ARGS((void));
+! static int  ins_compl_next __ARGS((int allow_get_expansion, int count, int insert_match));
+! static int  ins_compl_key2dir __ARGS((int c));
+! static int  ins_compl_pum_key __ARGS((int c));
+! static int  ins_compl_key2count __ARGS((int c));
+! static int  ins_compl_use_match __ARGS((int c));
+! static int  ins_complete __ARGS((int c));
+! static unsigned  quote_meta __ARGS((char_u *dest, char_u *str, int len));
+  #endif /* FEAT_INS_EXPAND */
+  
+  #define BACKSPACE_CHAR		    1
+--- 145,192 ----
+  
+  static int	  compl_opt_refresh_always = FALSE;
+  
+! static void ins_ctrl_x(void);
+! static int  has_compl_option(int dict_opt);
+! static int  ins_compl_accept_char(int c);
+! static int ins_compl_add(char_u *str, int len, int icase, char_u *fname, char_u **cptext, int cdir, int flags, int adup);
+! static int  ins_compl_equal(compl_T *match, char_u *str, int len);
+! static void ins_compl_longest_match(compl_T *match);
+! static void ins_compl_add_matches(int num_matches, char_u **matches, int icase);
+! static int  ins_compl_make_cyclic(void);
+! static void ins_compl_upd_pum(void);
+! static void ins_compl_del_pum(void);
+! static int  pum_wanted(void);
+! static int  pum_enough_matches(void);
+! static void ins_compl_dictionaries(char_u *dict, char_u *pat, int flags, int thesaurus);
+! static void ins_compl_files(int count, char_u **files, int thesaurus, int flags, regmatch_T *regmatch, char_u *buf, int *dir);
+! static char_u *find_line_end(char_u *ptr);
+! static void ins_compl_free(void);
+! static void ins_compl_clear(void);
+! static int  ins_compl_bs(void);
+! static int  ins_compl_need_restart(void);
+! static void ins_compl_new_leader(void);
+! static void ins_compl_addleader(int c);
+! static int  ins_compl_len(void);
+! static void ins_compl_restart(void);
+! static void ins_compl_set_original_text(char_u *str);
+! static void ins_compl_addfrommatch(void);
+! static int  ins_compl_prep(int c);
+! static void ins_compl_fixRedoBufForLeader(char_u *ptr_arg);
+! static buf_T *ins_compl_next_buf(buf_T *buf, int flag);
+  #if defined(FEAT_COMPL_FUNC) || defined(FEAT_EVAL)
+! static void ins_compl_add_list(list_T *list);
+! static void ins_compl_add_dict(dict_T *dict);
+  #endif
+! static int  ins_compl_get_exp(pos_T *ini);
+! static void ins_compl_delete(void);
+! static void ins_compl_insert(void);
+! static int  ins_compl_next(int allow_get_expansion, int count, int insert_match);
+! static int  ins_compl_key2dir(int c);
+! static int  ins_compl_pum_key(int c);
+! static int  ins_compl_key2count(int c);
+! static int  ins_compl_use_match(int c);
+! static int  ins_complete(int c);
+! static unsigned  quote_meta(char_u *dest, char_u *str, int len);
+  #endif /* FEAT_INS_EXPAND */
+  
+  #define BACKSPACE_CHAR		    1
+***************
+*** 194,273 ****
+  #define BACKSPACE_WORD_NOT_SPACE    3
+  #define BACKSPACE_LINE		    4
+  
+! static void ins_redraw __ARGS((int ready));
+! static void ins_ctrl_v __ARGS((void));
+! static void undisplay_dollar __ARGS((void));
+! static void insert_special __ARGS((int, int, int));
+! static void internal_format __ARGS((int textwidth, int second_indent, int flags, int format_only, int c));
+! static void check_auto_format __ARGS((int));
+! static void redo_literal __ARGS((int c));
+! static void start_arrow __ARGS((pos_T *end_insert_pos));
+! static void start_arrow_with_change __ARGS((pos_T *end_insert_pos, int change));
+! static void start_arrow_common __ARGS((pos_T *end_insert_pos, int change));
+  #ifdef FEAT_SPELL
+! static void check_spell_redraw __ARGS((void));
+! static void spell_back_to_badword __ARGS((void));
+  static int  spell_bad_len = 0;	/* length of located bad word */
+  #endif
+! static void stop_insert __ARGS((pos_T *end_insert_pos, int esc, int nomove));
+! static int  echeck_abbr __ARGS((int));
+! static int  replace_pop __ARGS((void));
+! static void replace_join __ARGS((int off));
+! static void replace_pop_ins __ARGS((void));
+! #ifdef FEAT_MBYTE
+! static void mb_replace_pop_ins __ARGS((int cc));
+! #endif
+! static void replace_flush __ARGS((void));
+! static void replace_do_bs __ARGS((int limit_col));
+! static int del_char_after_col __ARGS((int limit_col));
+  #ifdef FEAT_CINDENT
+! static int cindent_on __ARGS((void));
+  #endif
+! static void ins_reg __ARGS((void));
+! static void ins_ctrl_g __ARGS((void));
+! static void ins_ctrl_hat __ARGS((void));
+! static int  ins_esc __ARGS((long *count, int cmdchar, int nomove));
+  #ifdef FEAT_RIGHTLEFT
+! static void ins_ctrl_ __ARGS((void));
+  #endif
+! static int ins_start_select __ARGS((int c));
+! static void ins_insert __ARGS((int replaceState));
+! static void ins_ctrl_o __ARGS((void));
+! static void ins_shift __ARGS((int c, int lastc));
+! static void ins_del __ARGS((void));
+! static int  ins_bs __ARGS((int c, int mode, int *inserted_space_p));
+  #ifdef FEAT_MOUSE
+! static void ins_mouse __ARGS((int c));
+! static void ins_mousescroll __ARGS((int dir));
+  #endif
+  #if defined(FEAT_GUI_TABLINE) || defined(PROTO)
+! static void ins_tabline __ARGS((int c));
+  #endif
+! static void ins_left __ARGS((int end_change));
+! static void ins_home __ARGS((int c));
+! static void ins_end __ARGS((int c));
+! static void ins_s_left __ARGS((void));
+! static void ins_right __ARGS((int end_change));
+! static void ins_s_right __ARGS((void));
+! static void ins_up __ARGS((int startcol));
+! static void ins_pageup __ARGS((void));
+! static void ins_down __ARGS((int startcol));
+! static void ins_pagedown __ARGS((void));
+  #ifdef FEAT_DND
+! static void ins_drop __ARGS((void));
+  #endif
+! static int  ins_tab __ARGS((void));
+! static int  ins_eol __ARGS((int c));
+  #ifdef FEAT_DIGRAPHS
+! static int  ins_digraph __ARGS((void));
+  #endif
+! static int  ins_ctrl_ey __ARGS((int tc));
+  #ifdef FEAT_SMARTINDENT
+! static void ins_try_si __ARGS((int c));
+  #endif
+! static colnr_T get_nolist_virtcol __ARGS((void));
+  #ifdef FEAT_AUTOCMD
+! static char_u *do_insert_char_pre __ARGS((int c));
+  #endif
+  
+  static colnr_T	Insstart_textlen;	/* length of line when insert started */
+--- 194,273 ----
+  #define BACKSPACE_WORD_NOT_SPACE    3
+  #define BACKSPACE_LINE		    4
+  
+! static void ins_redraw(int ready);
+! static void ins_ctrl_v(void);
+! static void undisplay_dollar(void);
+! static void insert_special(int, int, int);
+! static void internal_format(int textwidth, int second_indent, int flags, int format_only, int c);
+! static void check_auto_format(int);
+! static void redo_literal(int c);
+! static void start_arrow(pos_T *end_insert_pos);
+! static void start_arrow_with_change(pos_T *end_insert_pos, int change);
+! static void start_arrow_common(pos_T *end_insert_pos, int change);
+  #ifdef FEAT_SPELL
+! static void check_spell_redraw(void);
+! static void spell_back_to_badword(void);
+  static int  spell_bad_len = 0;	/* length of located bad word */
+  #endif
+! static void stop_insert(pos_T *end_insert_pos, int esc, int nomove);
+! static int  echeck_abbr(int);
+! static int  replace_pop(void);
+! static void replace_join(int off);
+! static void replace_pop_ins(void);
+! #ifdef FEAT_MBYTE
+! static void mb_replace_pop_ins(int cc);
+! #endif
+! static void replace_flush(void);
+! static void replace_do_bs(int limit_col);
+! static int del_char_after_col(int limit_col);
+  #ifdef FEAT_CINDENT
+! static int cindent_on(void);
+  #endif
+! static void ins_reg(void);
+! static void ins_ctrl_g(void);
+! static void ins_ctrl_hat(void);
+! static int  ins_esc(long *count, int cmdchar, int nomove);
+  #ifdef FEAT_RIGHTLEFT
+! static void ins_ctrl_(void);
+  #endif
+! static int ins_start_select(int c);
+! static void ins_insert(int replaceState);
+! static void ins_ctrl_o(void);
+! static void ins_shift(int c, int lastc);
+! static void ins_del(void);
+! static int  ins_bs(int c, int mode, int *inserted_space_p);
+  #ifdef FEAT_MOUSE
+! static void ins_mouse(int c);
+! static void ins_mousescroll(int dir);
+  #endif
+  #if defined(FEAT_GUI_TABLINE) || defined(PROTO)
+! static void ins_tabline(int c);
+  #endif
+! static void ins_left(int end_change);
+! static void ins_home(int c);
+! static void ins_end(int c);
+! static void ins_s_left(void);
+! static void ins_right(int end_change);
+! static void ins_s_right(void);
+! static void ins_up(int startcol);
+! static void ins_pageup(void);
+! static void ins_down(int startcol);
+! static void ins_pagedown(void);
+  #ifdef FEAT_DND
+! static void ins_drop(void);
+  #endif
+! static int  ins_tab(void);
+! static int  ins_eol(int c);
+  #ifdef FEAT_DIGRAPHS
+! static int  ins_digraph(void);
+  #endif
+! static int  ins_ctrl_ey(int tc);
+  #ifdef FEAT_SMARTINDENT
+! static void ins_try_si(int c);
+  #endif
+! static colnr_T get_nolist_virtcol(void);
+  #ifdef FEAT_AUTOCMD
+! static char_u *do_insert_char_pre(int c);
+  #endif
+  
+  static colnr_T	Insstart_textlen;	/* length of line when insert started */
+***************
+*** 4024,4030 ****
+  }
+  
+  #ifdef FEAT_COMPL_FUNC
+! static void expand_by_function __ARGS((int type, char_u *base));
+  
+  /*
+   * Execute user defined complete function 'completefunc' or 'omnifunc', and
+--- 4024,4030 ----
+  }
+  
+  #ifdef FEAT_COMPL_FUNC
+! static void expand_by_function(int type, char_u *base);
+  
+  /*
+   * Execute user defined complete function 'completefunc' or 'omnifunc', and
+***************
+*** 7852,7858 ****
+  
+      void
+  fixthisline(get_the_indent)
+!     int (*get_the_indent) __ARGS((void));
+  {
+      int amount = get_the_indent();
+  
+--- 7852,7858 ----
+  
+      void
+  fixthisline(get_the_indent)
+!     int (*get_the_indent)(void);
+  {
+      int amount = get_the_indent();
+  
+***************
+*** 8849,8855 ****
+      AppendCharToRedobuff(K_DEL);
+  }
+  
+! static void ins_bs_one __ARGS((colnr_T *vcolp));
+  
+  /*
+   * Delete one character for ins_bs().
+--- 8849,8855 ----
+      AppendCharToRedobuff(K_DEL);
+  }
+  
+! static void ins_bs_one(colnr_T *vcolp);
+  
+  /*
+   * Delete one character for ins_bs().
+*** ../vim-7.4.1195/src/ex_cmds.c	2016-01-20 20:05:38.277062590 +0100
+--- src/ex_cmds.c	2016-01-29 22:00:27.520021055 +0100
+***************
+*** 19,44 ****
+  #endif
+  
+  #ifdef FEAT_EX_EXTRA
+! static int linelen __ARGS((int *has_tab));
+  #endif
+! static void do_filter __ARGS((linenr_T line1, linenr_T line2, exarg_T *eap, char_u *cmd, int do_in, int do_out));
+  #ifdef FEAT_VIMINFO
+! static char_u *viminfo_filename __ARGS((char_u	*));
+! static void do_viminfo __ARGS((FILE *fp_in, FILE *fp_out, int flags));
+! static int viminfo_encoding __ARGS((vir_T *virp));
+! static int read_viminfo_up_to_marks __ARGS((vir_T *virp, int forceit, int writing));
+  #endif
+  
+! static int check_readonly __ARGS((int *forceit, buf_T *buf));
+  #ifdef FEAT_AUTOCMD
+! static void delbuf_msg __ARGS((char_u *name));
+  #endif
+  static int
+  #ifdef __BORLANDC__
+      _RTLENTRYF
+  #endif
+! 	help_compare __ARGS((const void *s1, const void *s2));
+! static void prepare_help_buffer __ARGS((void));
+  
+  /*
+   * ":ascii" and "ga".
+--- 19,44 ----
+  #endif
+  
+  #ifdef FEAT_EX_EXTRA
+! static int linelen(int *has_tab);
+  #endif
+! static void do_filter(linenr_T line1, linenr_T line2, exarg_T *eap, char_u *cmd, int do_in, int do_out);
+  #ifdef FEAT_VIMINFO
+! static char_u *viminfo_filename(char_u	*);
+! static void do_viminfo(FILE *fp_in, FILE *fp_out, int flags);
+! static int viminfo_encoding(vir_T *virp);
+! static int read_viminfo_up_to_marks(vir_T *virp, int forceit, int writing);
+  #endif
+  
+! static int check_readonly(int *forceit, buf_T *buf);
+  #ifdef FEAT_AUTOCMD
+! static void delbuf_msg(char_u *name);
+  #endif
+  static int
+  #ifdef __BORLANDC__
+      _RTLENTRYF
+  #endif
+! 	help_compare(const void *s1, const void *s2);
+! static void prepare_help_buffer(void);
+  
+  /*
+   * ":ascii" and "ga".
+***************
+*** 309,315 ****
+  #ifdef __BORLANDC__
+  _RTLENTRYF
+  #endif
+! sort_compare __ARGS((const void *s1, const void *s2));
+  
+      static int
+  #ifdef __BORLANDC__
+--- 309,315 ----
+  #ifdef __BORLANDC__
+  _RTLENTRYF
+  #endif
+! sort_compare(const void *s1, const void *s2);
+  
+      static int
+  #ifdef __BORLANDC__
+***************
+*** 1759,1765 ****
+  
+  #if defined(FEAT_VIMINFO) || defined(PROTO)
+  
+! static int no_viminfo __ARGS((void));
+  static void write_viminfo_barlines(vir_T *virp, FILE *fp_out);
+  static int  viminfo_errcnt;
+  
+--- 1759,1765 ----
+  
+  #if defined(FEAT_VIMINFO) || defined(PROTO)
+  
+! static int no_viminfo(void);
+  static void write_viminfo_barlines(vir_T *virp, FILE *fp_out);
+  static int  viminfo_errcnt;
+  
+***************
+*** 6627,6633 ****
+  }
+  
+  #if defined(FEAT_EX_EXTRA) || defined(PROTO)
+! static void helptags_one __ARGS((char_u *dir, char_u *ext, char_u *lang, int add_help_tags));
+  
+  /*
+   * ":helptags"
+--- 6627,6633 ----
+  }
+  
+  #if defined(FEAT_EX_EXTRA) || defined(PROTO)
+! static void helptags_one(char_u *dir, char_u *ext, char_u *lang, int add_help_tags);
+  
+  /*
+   * ":helptags"
+***************
+*** 7038,7046 ****
+  static sign_T	*first_sign = NULL;
+  static int	next_sign_typenr = 1;
+  
+! static int sign_cmd_idx __ARGS((char_u *begin_cmd, char_u *end_cmd));
+! static void sign_list_defined __ARGS((sign_T *sp));
+! static void sign_undefine __ARGS((sign_T *sp, sign_T *sp_prev));
+  
+  static char *cmds[] = {
+  			"define",
+--- 7038,7046 ----
+  static sign_T	*first_sign = NULL;
+  static int	next_sign_typenr = 1;
+  
+! static int sign_cmd_idx(char_u *begin_cmd, char_u *end_cmd);
+! static void sign_list_defined(sign_T *sp);
+! static void sign_undefine(sign_T *sp, sign_T *sp_prev);
+  
+  static char *cmds[] = {
+  			"define",
+*** ../vim-7.4.1195/src/ex_cmds2.c	2016-01-23 23:02:30.252636325 +0100
+--- src/ex_cmds2.c	2016-01-29 22:00:53.335747615 +0100
+***************
+*** 14,20 ****
+  #include "vim.h"
+  #include "version.h"
+  
+! static void	cmd_source __ARGS((char_u *fname, exarg_T *eap));
+  
+  #ifdef FEAT_EVAL
+  /* Growarray to store info about already sourced scripts.
+--- 14,20 ----
+  #include "vim.h"
+  #include "version.h"
+  
+! static void	cmd_source(char_u *fname, exarg_T *eap);
+  
+  #ifdef FEAT_EVAL
+  /* Growarray to store info about already sourced scripts.
+***************
+*** 562,569 ****
+  #define DBG_FUNC	1
+  #define DBG_FILE	2
+  
+! static int dbg_parsearg __ARGS((char_u *arg, garray_T *gap));
+! static linenr_T debuggy_find __ARGS((int file,char_u *fname, linenr_T after, garray_T *gap, int *fp));
+  
+  /*
+   * Parse the arguments of ":profile", ":breakadd" or ":breakdel" and put them
+--- 562,569 ----
+  #define DBG_FUNC	1
+  #define DBG_FILE	2
+  
+! static int dbg_parsearg(char_u *arg, garray_T *gap);
+! static linenr_T debuggy_find(int file,char_u *fname, linenr_T after, garray_T *gap, int *fp);
+  
+  /*
+   * Parse the arguments of ":profile", ":breakadd" or ":breakdel" and put them
+***************
+*** 1133,1140 ****
+  /*
+   * Functions for profiling.
+   */
+! static void script_do_profile __ARGS((scriptitem_T *si));
+! static void script_dump_profile __ARGS((FILE *fd));
+  static proftime_T prof_wait_time;
+  
+  /*
+--- 1133,1140 ----
+  /*
+   * Functions for profiling.
+   */
+! static void script_do_profile(scriptitem_T *si);
+! static void script_dump_profile(FILE *fd);
+  static proftime_T prof_wait_time;
+  
+  /*
+***************
+*** 1757,1763 ****
+  		|| forceit);
+  }
+  
+! static void add_bufnum __ARGS((int *bufnrs, int *bufnump, int nr));
+  
+  /*
+   * Add a buffer number to "bufnrs", unless it's already there.
+--- 1757,1763 ----
+  		|| forceit);
+  }
+  
+! static void add_bufnum(int *bufnrs, int *bufnump, int nr);
+  
+  /*
+   * Add a buffer number to "bufnrs", unless it's already there.
+***************
+*** 1951,1962 ****
+   * Code to handle the argument list.
+   */
+  
+! static char_u	*do_one_arg __ARGS((char_u *str));
+! static int	do_arglist __ARGS((char_u *str, int what, int after));
+! static void	alist_check_arg_idx __ARGS((void));
+! static int	editing_arg_idx __ARGS((win_T *win));
+  #ifdef FEAT_LISTCMDS
+! static int	alist_add_list __ARGS((int count, char_u **files, int after));
+  #endif
+  #define AL_SET	1
+  #define AL_ADD	2
+--- 1951,1962 ----
+   * Code to handle the argument list.
+   */
+  
+! static char_u	*do_one_arg(char_u *str);
+! static int	do_arglist(char_u *str, int what, int after);
+! static void	alist_check_arg_idx(void);
+! static int	editing_arg_idx(win_T *win);
+  #ifdef FEAT_LISTCMDS
+! static int	alist_add_list(int count, char_u **files, int after);
+  #endif
+  #define AL_SET	1
+  #define AL_ADD	2
+***************
+*** 2960,2966 ****
+      source_runtime(eap->arg, eap->forceit);
+  }
+  
+! static void source_callback __ARGS((char_u *fname, void *cookie));
+  
+      static void
+  source_callback(fname, cookie)
+--- 2960,2966 ----
+      source_runtime(eap->arg, eap->forceit);
+  }
+  
+! static void source_callback(char_u *fname, void *cookie);
+  
+      static void
+  source_callback(fname, cookie)
+***************
+*** 3224,3234 ****
+  }
+  #endif
+  
+! static char_u *get_one_sourceline __ARGS((struct source_cookie *sp));
+  
+  #if (defined(WIN32) && defined(FEAT_CSCOPE)) || defined(HAVE_FD_CLOEXEC)
+  # define USE_FOPEN_NOINH
+! static FILE *fopen_noinh_readbin __ARGS((char *filename));
+  
+  /*
+   * Special function to open a file without handle inheritance.
+--- 3224,3234 ----
+  }
+  #endif
+  
+! static char_u *get_one_sourceline(struct source_cookie *sp);
+  
+  #if (defined(WIN32) && defined(FEAT_CSCOPE)) || defined(HAVE_FD_CLOEXEC)
+  # define USE_FOPEN_NOINH
+! static FILE *fopen_noinh_readbin(char *filename);
+  
+  /*
+   * Special function to open a file without handle inheritance.
+***************
+*** 4196,4202 ****
+   */
+      int
+  source_finished(fgetline, cookie)
+!     char_u	*(*fgetline) __ARGS((int, void *, int));
+      void	*cookie;
+  {
+      return (getline_equal(fgetline, cookie, getsourceline)
+--- 4196,4202 ----
+   */
+      int
+  source_finished(fgetline, cookie)
+!     char_u	*(*fgetline)(int, void *, int);
+      void	*cookie;
+  {
+      return (getline_equal(fgetline, cookie, getsourceline)
+***************
+*** 4232,4238 ****
+  #if (defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
+  	&& (defined(FEAT_EVAL) || defined(FEAT_MULTI_LANG))
+  # define HAVE_GET_LOCALE_VAL
+! static char *get_locale_val __ARGS((int what));
+  
+      static char *
+  get_locale_val(what)
+--- 4232,4238 ----
+  #if (defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
+  	&& (defined(FEAT_EVAL) || defined(FEAT_MULTI_LANG))
+  # define HAVE_GET_LOCALE_VAL
+! static char *get_locale_val(int what);
+  
+      static char *
+  get_locale_val(what)
+***************
+*** 4353,4359 ****
+  	|| ((defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
+  		&& (defined(FEAT_GETTEXT) || defined(FEAT_MBYTE)) \
+  		&& !defined(LC_MESSAGES))
+! static char_u *get_mess_env __ARGS((void));
+  
+  /*
+   * Get the language used for messages from the environment.
+--- 4353,4359 ----
+  	|| ((defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
+  		&& (defined(FEAT_GETTEXT) || defined(FEAT_MBYTE)) \
+  		&& !defined(LC_MESSAGES))
+! static char_u *get_mess_env(void);
+  
+  /*
+   * Get the language used for messages from the environment.
+***************
+*** 4555,4562 ****
+  static char_u	**locales = NULL;	/* Array of all available locales */
+  static int	did_init_locales = FALSE;
+  
+! static void init_locales __ARGS((void));
+! static char_u **find_locales __ARGS((void));
+  
+  /*
+   * Lazy initialization of all available locales.
+--- 4555,4562 ----
+  static char_u	**locales = NULL;	/* Array of all available locales */
+  static int	did_init_locales = FALSE;
+  
+! static void init_locales(void);
+! static char_u **find_locales(void);
+  
+  /*
+   * Lazy initialization of all available locales.
+*** ../vim-7.4.1195/src/ex_docmd.c	2016-01-21 23:32:14.154035915 +0100
+--- src/ex_docmd.c	2016-01-29 22:01:58.039062349 +0100
+***************
+*** 43,53 ****
+  #define USER_CMD(i) (&((ucmd_T *)(ucmds.ga_data))[i])
+  #define USER_CMD_GA(gap, i) (&((ucmd_T *)((gap)->ga_data))[i])
+  
+! static void do_ucmd __ARGS((exarg_T *eap));
+! static void ex_command __ARGS((exarg_T *eap));
+! static void ex_delcommand __ARGS((exarg_T *eap));
+  # ifdef FEAT_CMDL_COMPL
+! static char_u *get_user_command_name __ARGS((int idx));
+  # endif
+  
+  /* Wether a command index indicates a user command. */
+--- 43,53 ----
+  #define USER_CMD(i) (&((ucmd_T *)(ucmds.ga_data))[i])
+  #define USER_CMD_GA(gap, i) (&((ucmd_T *)((gap)->ga_data))[i])
+  
+! static void do_ucmd(exarg_T *eap);
+! static void ex_command(exarg_T *eap);
+! static void ex_delcommand(exarg_T *eap);
+  # ifdef FEAT_CMDL_COMPL
+! static char_u *get_user_command_name(int idx);
+  # endif
+  
+  /* Wether a command index indicates a user command. */
+***************
+*** 61,102 ****
+  # define IS_USER_CMDIDX(idx) (FALSE)
+  #endif
+  
+! static int compute_buffer_local_count __ARGS((int addr_type, int lnum, int local));
+  #ifdef FEAT_EVAL
+! static char_u	*do_one_cmd __ARGS((char_u **, int, struct condstack *, char_u *(*fgetline)(int, void *, int), void *cookie));
+  #else
+! static char_u	*do_one_cmd __ARGS((char_u **, int, char_u *(*fgetline)(int, void *, int), void *cookie));
+  static int	if_level = 0;		/* depth in :if */
+  #endif
+! static void	append_command __ARGS((char_u *cmd));
+! static char_u	*find_command __ARGS((exarg_T *eap, int *full));
+  
+! static void	ex_abbreviate __ARGS((exarg_T *eap));
+! static void	ex_map __ARGS((exarg_T *eap));
+! static void	ex_unmap __ARGS((exarg_T *eap));
+! static void	ex_mapclear __ARGS((exarg_T *eap));
+! static void	ex_abclear __ARGS((exarg_T *eap));
+  #ifndef FEAT_MENU
+  # define ex_emenu		ex_ni
+  # define ex_menu		ex_ni
+  # define ex_menutranslate	ex_ni
+  #endif
+  #ifdef FEAT_AUTOCMD
+! static void	ex_autocmd __ARGS((exarg_T *eap));
+! static void	ex_doautocmd __ARGS((exarg_T *eap));
+  #else
+  # define ex_autocmd		ex_ni
+  # define ex_doautocmd		ex_ni
+  # define ex_doautoall		ex_ni
+  #endif
+  #ifdef FEAT_LISTCMDS
+! static void	ex_bunload __ARGS((exarg_T *eap));
+! static void	ex_buffer __ARGS((exarg_T *eap));
+! static void	ex_bmodified __ARGS((exarg_T *eap));
+! static void	ex_bnext __ARGS((exarg_T *eap));
+! static void	ex_bprevious __ARGS((exarg_T *eap));
+! static void	ex_brewind __ARGS((exarg_T *eap));
+! static void	ex_blast __ARGS((exarg_T *eap));
+  #else
+  # define ex_bunload		ex_ni
+  # define ex_buffer		ex_ni
+--- 61,102 ----
+  # define IS_USER_CMDIDX(idx) (FALSE)
+  #endif
+  
+! static int compute_buffer_local_count(int addr_type, int lnum, int local);
+  #ifdef FEAT_EVAL
+! static char_u	*do_one_cmd(char_u **, int, struct condstack *, char_u *(*fgetline)(int, void *, int), void *cookie);
+  #else
+! static char_u	*do_one_cmd(char_u **, int, char_u *(*fgetline)(int, void *, int), void *cookie);
+  static int	if_level = 0;		/* depth in :if */
+  #endif
+! static void	append_command(char_u *cmd);
+! static char_u	*find_command(exarg_T *eap, int *full);
+  
+! static void	ex_abbreviate(exarg_T *eap);
+! static void	ex_map(exarg_T *eap);
+! static void	ex_unmap(exarg_T *eap);
+! static void	ex_mapclear(exarg_T *eap);
+! static void	ex_abclear(exarg_T *eap);
+  #ifndef FEAT_MENU
+  # define ex_emenu		ex_ni
+  # define ex_menu		ex_ni
+  # define ex_menutranslate	ex_ni
+  #endif
+  #ifdef FEAT_AUTOCMD
+! static void	ex_autocmd(exarg_T *eap);
+! static void	ex_doautocmd(exarg_T *eap);
+  #else
+  # define ex_autocmd		ex_ni
+  # define ex_doautocmd		ex_ni
+  # define ex_doautoall		ex_ni
+  #endif
+  #ifdef FEAT_LISTCMDS
+! static void	ex_bunload(exarg_T *eap);
+! static void	ex_buffer(exarg_T *eap);
+! static void	ex_bmodified(exarg_T *eap);
+! static void	ex_bnext(exarg_T *eap);
+! static void	ex_bprevious(exarg_T *eap);
+! static void	ex_brewind(exarg_T *eap);
+! static void	ex_blast(exarg_T *eap);
+  #else
+  # define ex_bunload		ex_ni
+  # define ex_buffer		ex_ni
+***************
+*** 111,119 ****
+  #if !defined(FEAT_LISTCMDS) || !defined(FEAT_WINDOWS)
+  # define ex_buffer_all		ex_ni
+  #endif
+! static char_u	*getargcmd __ARGS((char_u **));
+! static char_u	*skip_cmd_arg __ARGS((char_u *p, int rembs));
+! static int	getargopt __ARGS((exarg_T *eap));
+  #ifndef FEAT_QUICKFIX
+  # define ex_make		ex_ni
+  # define ex_cbuffer		ex_ni
+--- 111,119 ----
+  #if !defined(FEAT_LISTCMDS) || !defined(FEAT_WINDOWS)
+  # define ex_buffer_all		ex_ni
+  #endif
+! static char_u	*getargcmd(char_u **);
+! static char_u	*skip_cmd_arg(char_u *p, int rembs);
+! static int	getargopt(exarg_T *eap);
+  #ifndef FEAT_QUICKFIX
+  # define ex_make		ex_ni
+  # define ex_cbuffer		ex_ni
+***************
+*** 134,142 ****
+  # define ex_cexpr		ex_ni
+  #endif
+  
+! static int	check_more __ARGS((int, int));
+! static linenr_T get_address __ARGS((exarg_T *, char_u **, int addr_type, int skip, int to_other_file));
+! static void	get_flags __ARGS((exarg_T *eap));
+  #if !defined(FEAT_PERL) \
+  	|| !defined(FEAT_PYTHON) || !defined(FEAT_PYTHON3) \
+  	|| !defined(FEAT_TCL) \
+--- 134,142 ----
+  # define ex_cexpr		ex_ni
+  #endif
+  
+! static int	check_more(int, int);
+! static linenr_T get_address(exarg_T *, char_u **, int addr_type, int skip, int to_other_file);
+! static void	get_flags(exarg_T *eap);
+  #if !defined(FEAT_PERL) \
+  	|| !defined(FEAT_PYTHON) || !defined(FEAT_PYTHON3) \
+  	|| !defined(FEAT_TCL) \
+***************
+*** 144,173 ****
+  	|| !defined(FEAT_LUA) \
+  	|| !defined(FEAT_MZSCHEME)
+  # define HAVE_EX_SCRIPT_NI
+! static void	ex_script_ni __ARGS((exarg_T *eap));
+  #endif
+! static char_u	*invalid_range __ARGS((exarg_T *eap));
+! static void	correct_range __ARGS((exarg_T *eap));
+  #ifdef FEAT_QUICKFIX
+! static char_u	*replace_makeprg __ARGS((exarg_T *eap, char_u *p, char_u **cmdlinep));
+  #endif
+! static char_u	*repl_cmdline __ARGS((exarg_T *eap, char_u *src, int srclen, char_u *repl, char_u **cmdlinep));
+! static void	ex_highlight __ARGS((exarg_T *eap));
+! static void	ex_colorscheme __ARGS((exarg_T *eap));
+! static void	ex_quit __ARGS((exarg_T *eap));
+! static void	ex_cquit __ARGS((exarg_T *eap));
+! static void	ex_quit_all __ARGS((exarg_T *eap));
+  #ifdef FEAT_WINDOWS
+! static void	ex_close __ARGS((exarg_T *eap));
+! static void	ex_win_close __ARGS((int forceit, win_T *win, tabpage_T *tp));
+! static void	ex_only __ARGS((exarg_T *eap));
+! static void	ex_resize __ARGS((exarg_T *eap));
+! static void	ex_stag __ARGS((exarg_T *eap));
+! static void	ex_tabclose __ARGS((exarg_T *eap));
+! static void	ex_tabonly __ARGS((exarg_T *eap));
+! static void	ex_tabnext __ARGS((exarg_T *eap));
+! static void	ex_tabmove __ARGS((exarg_T *eap));
+! static void	ex_tabs __ARGS((exarg_T *eap));
+  #else
+  # define ex_close		ex_ni
+  # define ex_only		ex_ni
+--- 144,173 ----
+  	|| !defined(FEAT_LUA) \
+  	|| !defined(FEAT_MZSCHEME)
+  # define HAVE_EX_SCRIPT_NI
+! static void	ex_script_ni(exarg_T *eap);
+  #endif
+! static char_u	*invalid_range(exarg_T *eap);
+! static void	correct_range(exarg_T *eap);
+  #ifdef FEAT_QUICKFIX
+! static char_u	*replace_makeprg(exarg_T *eap, char_u *p, char_u **cmdlinep);
+  #endif
+! static char_u	*repl_cmdline(exarg_T *eap, char_u *src, int srclen, char_u *repl, char_u **cmdlinep);
+! static void	ex_highlight(exarg_T *eap);
+! static void	ex_colorscheme(exarg_T *eap);
+! static void	ex_quit(exarg_T *eap);
+! static void	ex_cquit(exarg_T *eap);
+! static void	ex_quit_all(exarg_T *eap);
+  #ifdef FEAT_WINDOWS
+! static void	ex_close(exarg_T *eap);
+! static void	ex_win_close(int forceit, win_T *win, tabpage_T *tp);
+! static void	ex_only(exarg_T *eap);
+! static void	ex_resize(exarg_T *eap);
+! static void	ex_stag(exarg_T *eap);
+! static void	ex_tabclose(exarg_T *eap);
+! static void	ex_tabonly(exarg_T *eap);
+! static void	ex_tabnext(exarg_T *eap);
+! static void	ex_tabmove(exarg_T *eap);
+! static void	ex_tabs(exarg_T *eap);
+  #else
+  # define ex_close		ex_ni
+  # define ex_only		ex_ni
+***************
+*** 182,232 ****
+  # define ex_tabonly		ex_ni
+  #endif
+  #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+! static void	ex_pclose __ARGS((exarg_T *eap));
+! static void	ex_ptag __ARGS((exarg_T *eap));
+! static void	ex_pedit __ARGS((exarg_T *eap));
+  #else
+  # define ex_pclose		ex_ni
+  # define ex_ptag		ex_ni
+  # define ex_pedit		ex_ni
+  #endif
+! static void	ex_hide __ARGS((exarg_T *eap));
+! static void	ex_stop __ARGS((exarg_T *eap));
+! static void	ex_exit __ARGS((exarg_T *eap));
+! static void	ex_print __ARGS((exarg_T *eap));
+  #ifdef FEAT_BYTEOFF
+! static void	ex_goto __ARGS((exarg_T *eap));
+  #else
+  # define ex_goto		ex_ni
+  #endif
+! static void	ex_shell __ARGS((exarg_T *eap));
+! static void	ex_preserve __ARGS((exarg_T *eap));
+! static void	ex_recover __ARGS((exarg_T *eap));
+  #ifndef FEAT_LISTCMDS
+  # define ex_argedit		ex_ni
+  # define ex_argadd		ex_ni
+  # define ex_argdelete		ex_ni
+  # define ex_listdo		ex_ni
+  #endif
+! static void	ex_mode __ARGS((exarg_T *eap));
+! static void	ex_wrongmodifier __ARGS((exarg_T *eap));
+! static void	ex_find __ARGS((exarg_T *eap));
+! static void	ex_open __ARGS((exarg_T *eap));
+! static void	ex_edit __ARGS((exarg_T *eap));
+  #if !defined(FEAT_GUI) && !defined(FEAT_CLIENTSERVER)
+  # define ex_drop		ex_ni
+  #endif
+  #ifndef FEAT_GUI
+  # define ex_gui			ex_nogui
+! static void	ex_nogui __ARGS((exarg_T *eap));
+  #endif
+  #if defined(FEAT_GUI_W32) && defined(FEAT_MENU) && defined(FEAT_TEAROFF)
+! static void	ex_tearoff __ARGS((exarg_T *eap));
+  #else
+  # define ex_tearoff		ex_ni
+  #endif
+  #if (defined(FEAT_GUI_MSWIN) || defined(FEAT_GUI_GTK)) && defined(FEAT_MENU)
+! static void	ex_popup __ARGS((exarg_T *eap));
+  #else
+  # define ex_popup		ex_ni
+  #endif
+--- 182,232 ----
+  # define ex_tabonly		ex_ni
+  #endif
+  #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+! static void	ex_pclose(exarg_T *eap);
+! static void	ex_ptag(exarg_T *eap);
+! static void	ex_pedit(exarg_T *eap);
+  #else
+  # define ex_pclose		ex_ni
+  # define ex_ptag		ex_ni
+  # define ex_pedit		ex_ni
+  #endif
+! static void	ex_hide(exarg_T *eap);
+! static void	ex_stop(exarg_T *eap);
+! static void	ex_exit(exarg_T *eap);
+! static void	ex_print(exarg_T *eap);
+  #ifdef FEAT_BYTEOFF
+! static void	ex_goto(exarg_T *eap);
+  #else
+  # define ex_goto		ex_ni
+  #endif
+! static void	ex_shell(exarg_T *eap);
+! static void	ex_preserve(exarg_T *eap);
+! static void	ex_recover(exarg_T *eap);
+  #ifndef FEAT_LISTCMDS
+  # define ex_argedit		ex_ni
+  # define ex_argadd		ex_ni
+  # define ex_argdelete		ex_ni
+  # define ex_listdo		ex_ni
+  #endif
+! static void	ex_mode(exarg_T *eap);
+! static void	ex_wrongmodifier(exarg_T *eap);
+! static void	ex_find(exarg_T *eap);
+! static void	ex_open(exarg_T *eap);
+! static void	ex_edit(exarg_T *eap);
+  #if !defined(FEAT_GUI) && !defined(FEAT_CLIENTSERVER)
+  # define ex_drop		ex_ni
+  #endif
+  #ifndef FEAT_GUI
+  # define ex_gui			ex_nogui
+! static void	ex_nogui(exarg_T *eap);
+  #endif
+  #if defined(FEAT_GUI_W32) && defined(FEAT_MENU) && defined(FEAT_TEAROFF)
+! static void	ex_tearoff(exarg_T *eap);
+  #else
+  # define ex_tearoff		ex_ni
+  #endif
+  #if (defined(FEAT_GUI_MSWIN) || defined(FEAT_GUI_GTK)) && defined(FEAT_MENU)
+! static void	ex_popup(exarg_T *eap);
+  #else
+  # define ex_popup		ex_ni
+  #endif
+***************
+*** 302,353 ****
+  #ifndef FEAT_KEYMAP
+  # define ex_loadkeymap		ex_ni
+  #endif
+! static void	ex_swapname __ARGS((exarg_T *eap));
+! static void	ex_syncbind __ARGS((exarg_T *eap));
+! static void	ex_read __ARGS((exarg_T *eap));
+! static void	ex_pwd __ARGS((exarg_T *eap));
+! static void	ex_equal __ARGS((exarg_T *eap));
+! static void	ex_sleep __ARGS((exarg_T *eap));
+! static void	do_exmap __ARGS((exarg_T *eap, int isabbrev));
+! static void	ex_winsize __ARGS((exarg_T *eap));
+  #ifdef FEAT_WINDOWS
+! static void	ex_wincmd __ARGS((exarg_T *eap));
+  #else
+  # define ex_wincmd	    ex_ni
+  #endif
+  #if defined(FEAT_GUI) || defined(UNIX) || defined(VMS) || defined(MSWIN)
+! static void	ex_winpos __ARGS((exarg_T *eap));
+  #else
+  # define ex_winpos	    ex_ni
+  #endif
+! static void	ex_operators __ARGS((exarg_T *eap));
+! static void	ex_put __ARGS((exarg_T *eap));
+! static void	ex_copymove __ARGS((exarg_T *eap));
+! static void	ex_submagic __ARGS((exarg_T *eap));
+! static void	ex_join __ARGS((exarg_T *eap));
+! static void	ex_at __ARGS((exarg_T *eap));
+! static void	ex_bang __ARGS((exarg_T *eap));
+! static void	ex_undo __ARGS((exarg_T *eap));
+  #ifdef FEAT_PERSISTENT_UNDO
+! static void	ex_wundo __ARGS((exarg_T *eap));
+! static void	ex_rundo __ARGS((exarg_T *eap));
+  #endif
+! static void	ex_redo __ARGS((exarg_T *eap));
+! static void	ex_later __ARGS((exarg_T *eap));
+! static void	ex_redir __ARGS((exarg_T *eap));
+! static void	ex_redraw __ARGS((exarg_T *eap));
+! static void	ex_redrawstatus __ARGS((exarg_T *eap));
+! static void	close_redir __ARGS((void));
+! static void	ex_mkrc __ARGS((exarg_T *eap));
+! static void	ex_mark __ARGS((exarg_T *eap));
+  #ifdef FEAT_USR_CMDS
+! static char_u	*uc_fun_cmd __ARGS((void));
+! static char_u	*find_ucmd __ARGS((exarg_T *eap, char_u *p, int *full, expand_T *xp, int *compl));
+  #endif
+  #ifdef FEAT_EX_EXTRA
+! static void	ex_normal __ARGS((exarg_T *eap));
+! static void	ex_startinsert __ARGS((exarg_T *eap));
+! static void	ex_stopinsert __ARGS((exarg_T *eap));
+  #else
+  # define ex_normal		ex_ni
+  # define ex_align		ex_ni
+--- 302,353 ----
+  #ifndef FEAT_KEYMAP
+  # define ex_loadkeymap		ex_ni
+  #endif
+! static void	ex_swapname(exarg_T *eap);
+! static void	ex_syncbind(exarg_T *eap);
+! static void	ex_read(exarg_T *eap);
+! static void	ex_pwd(exarg_T *eap);
+! static void	ex_equal(exarg_T *eap);
+! static void	ex_sleep(exarg_T *eap);
+! static void	do_exmap(exarg_T *eap, int isabbrev);
+! static void	ex_winsize(exarg_T *eap);
+  #ifdef FEAT_WINDOWS
+! static void	ex_wincmd(exarg_T *eap);
+  #else
+  # define ex_wincmd	    ex_ni
+  #endif
+  #if defined(FEAT_GUI) || defined(UNIX) || defined(VMS) || defined(MSWIN)
+! static void	ex_winpos(exarg_T *eap);
+  #else
+  # define ex_winpos	    ex_ni
+  #endif
+! static void	ex_operators(exarg_T *eap);
+! static void	ex_put(exarg_T *eap);
+! static void	ex_copymove(exarg_T *eap);
+! static void	ex_submagic(exarg_T *eap);
+! static void	ex_join(exarg_T *eap);
+! static void	ex_at(exarg_T *eap);
+! static void	ex_bang(exarg_T *eap);
+! static void	ex_undo(exarg_T *eap);
+  #ifdef FEAT_PERSISTENT_UNDO
+! static void	ex_wundo(exarg_T *eap);
+! static void	ex_rundo(exarg_T *eap);
+  #endif
+! static void	ex_redo(exarg_T *eap);
+! static void	ex_later(exarg_T *eap);
+! static void	ex_redir(exarg_T *eap);
+! static void	ex_redraw(exarg_T *eap);
+! static void	ex_redrawstatus(exarg_T *eap);
+! static void	close_redir(void);
+! static void	ex_mkrc(exarg_T *eap);
+! static void	ex_mark(exarg_T *eap);
+  #ifdef FEAT_USR_CMDS
+! static char_u	*uc_fun_cmd(void);
+! static char_u	*find_ucmd(exarg_T *eap, char_u *p, int *full, expand_T *xp, int *compl);
+  #endif
+  #ifdef FEAT_EX_EXTRA
+! static void	ex_normal(exarg_T *eap);
+! static void	ex_startinsert(exarg_T *eap);
+! static void	ex_stopinsert(exarg_T *eap);
+  #else
+  # define ex_normal		ex_ni
+  # define ex_align		ex_ni
+***************
+*** 358,376 ****
+  # define ex_sort		ex_ni
+  #endif
+  #ifdef FEAT_FIND_ID
+! static void	ex_checkpath __ARGS((exarg_T *eap));
+! static void	ex_findpat __ARGS((exarg_T *eap));
+  #else
+  # define ex_findpat		ex_ni
+  # define ex_checkpath		ex_ni
+  #endif
+  #if defined(FEAT_FIND_ID) && defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+! static void	ex_psearch __ARGS((exarg_T *eap));
+  #else
+  # define ex_psearch		ex_ni
+  #endif
+! static void	ex_tag __ARGS((exarg_T *eap));
+! static void	ex_tag_cmd __ARGS((exarg_T *eap, char_u *name));
+  #ifndef FEAT_EVAL
+  # define ex_scriptnames		ex_ni
+  # define ex_finish		ex_ni
+--- 358,376 ----
+  # define ex_sort		ex_ni
+  #endif
+  #ifdef FEAT_FIND_ID
+! static void	ex_checkpath(exarg_T *eap);
+! static void	ex_findpat(exarg_T *eap);
+  #else
+  # define ex_findpat		ex_ni
+  # define ex_checkpath		ex_ni
+  #endif
+  #if defined(FEAT_FIND_ID) && defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+! static void	ex_psearch(exarg_T *eap);
+  #else
+  # define ex_psearch		ex_ni
+  #endif
+! static void	ex_tag(exarg_T *eap);
+! static void	ex_tag_cmd(exarg_T *eap, char_u *name);
+  #ifndef FEAT_EVAL
+  # define ex_scriptnames		ex_ni
+  # define ex_finish		ex_ni
+***************
+*** 400,411 ****
+  # define ex_return		ex_ni
+  # define ex_oldfiles		ex_ni
+  #endif
+! static char_u	*arg_all __ARGS((void));
+  #ifdef FEAT_SESSION
+! static int	makeopens __ARGS((FILE *fd, char_u *dirnow));
+! static int	put_view __ARGS((FILE *fd, win_T *wp, int add_edit, unsigned *flagp, int current_arg_idx));
+! static void	ex_loadview __ARGS((exarg_T *eap));
+! static char_u	*get_view_file __ARGS((int c));
+  static int	did_lcd;	/* whether ":lcd" was produced for a session */
+  #else
+  # define ex_loadview		ex_ni
+--- 400,411 ----
+  # define ex_return		ex_ni
+  # define ex_oldfiles		ex_ni
+  #endif
+! static char_u	*arg_all(void);
+  #ifdef FEAT_SESSION
+! static int	makeopens(FILE *fd, char_u *dirnow);
+! static int	put_view(FILE *fd, win_T *wp, int add_edit, unsigned *flagp, int current_arg_idx);
+! static void	ex_loadview(exarg_T *eap);
+! static char_u	*get_view_file(int c);
+  static int	did_lcd;	/* whether ":lcd" was produced for a session */
+  #else
+  # define ex_loadview		ex_ni
+***************
+*** 414,427 ****
+  # define ex_compiler		ex_ni
+  #endif
+  #ifdef FEAT_VIMINFO
+! static void	ex_viminfo __ARGS((exarg_T *eap));
+  #else
+  # define ex_viminfo		ex_ni
+  #endif
+! static void	ex_behave __ARGS((exarg_T *eap));
+  #ifdef FEAT_AUTOCMD
+! static void	ex_filetype __ARGS((exarg_T *eap));
+! static void	ex_setfiletype  __ARGS((exarg_T *eap));
+  #else
+  # define ex_filetype		ex_ni
+  # define ex_setfiletype		ex_ni
+--- 414,427 ----
+  # define ex_compiler		ex_ni
+  #endif
+  #ifdef FEAT_VIMINFO
+! static void	ex_viminfo(exarg_T *eap);
+  #else
+  # define ex_viminfo		ex_ni
+  #endif
+! static void	ex_behave(exarg_T *eap);
+  #ifdef FEAT_AUTOCMD
+! static void	ex_filetype(exarg_T *eap);
+! static void	ex_setfiletype(exarg_T *eap);
+  #else
+  # define ex_filetype		ex_ni
+  # define ex_setfiletype		ex_ni
+***************
+*** 434,460 ****
+  # define ex_diffthis		ex_ni
+  # define ex_diffupdate		ex_ni
+  #endif
+! static void	ex_digraphs __ARGS((exarg_T *eap));
+! static void	ex_set __ARGS((exarg_T *eap));
+  #if !defined(FEAT_EVAL) || !defined(FEAT_AUTOCMD)
+  # define ex_options		ex_ni
+  #endif
+  #ifdef FEAT_SEARCH_EXTRA
+! static void	ex_nohlsearch __ARGS((exarg_T *eap));
+! static void	ex_match __ARGS((exarg_T *eap));
+  #else
+  # define ex_nohlsearch		ex_ni
+  # define ex_match		ex_ni
+  #endif
+  #ifdef FEAT_CRYPT
+! static void	ex_X __ARGS((exarg_T *eap));
+  #else
+  # define ex_X			ex_ni
+  #endif
+  #ifdef FEAT_FOLDING
+! static void	ex_fold __ARGS((exarg_T *eap));
+! static void	ex_foldopen __ARGS((exarg_T *eap));
+! static void	ex_folddo __ARGS((exarg_T *eap));
+  #else
+  # define ex_fold		ex_ni
+  # define ex_foldopen		ex_ni
+--- 434,460 ----
+  # define ex_diffthis		ex_ni
+  # define ex_diffupdate		ex_ni
+  #endif
+! static void	ex_digraphs(exarg_T *eap);
+! static void	ex_set(exarg_T *eap);
+  #if !defined(FEAT_EVAL) || !defined(FEAT_AUTOCMD)
+  # define ex_options		ex_ni
+  #endif
+  #ifdef FEAT_SEARCH_EXTRA
+! static void	ex_nohlsearch(exarg_T *eap);
+! static void	ex_match(exarg_T *eap);
+  #else
+  # define ex_nohlsearch		ex_ni
+  # define ex_match		ex_ni
+  #endif
+  #ifdef FEAT_CRYPT
+! static void	ex_X(exarg_T *eap);
+  #else
+  # define ex_X			ex_ni
+  #endif
+  #ifdef FEAT_FOLDING
+! static void	ex_fold(exarg_T *eap);
+! static void	ex_foldopen(exarg_T *eap);
+! static void	ex_folddo(exarg_T *eap);
+  #else
+  # define ex_fold		ex_ni
+  # define ex_foldopen		ex_ni
+***************
+*** 558,570 ****
+      int		current_line;		/* last read line from growarray */
+      int		repeating;		/* TRUE when looping a second time */
+      /* When "repeating" is FALSE use "getline" and "cookie" to get lines */
+!     char_u	*(*getline) __ARGS((int, void *, int));
+      void	*cookie;
+  };
+  
+! static char_u	*get_loop_line __ARGS((int c, void *cookie, int indent));
+! static int	store_loop_line __ARGS((garray_T *gap, char_u *line));
+! static void	free_cmdlines __ARGS((garray_T *gap));
+  
+  /* Struct to save a few things while debugging.  Used in do_cmdline() only. */
+  struct dbg_stuff
+--- 558,570 ----
+      int		current_line;		/* last read line from growarray */
+      int		repeating;		/* TRUE when looping a second time */
+      /* When "repeating" is FALSE use "getline" and "cookie" to get lines */
+!     char_u	*(*getline)(int, void *, int);
+      void	*cookie;
+  };
+  
+! static char_u	*get_loop_line(int c, void *cookie, int indent);
+! static int	store_loop_line(garray_T *gap, char_u *line);
+! static void	free_cmdlines(garray_T *gap);
+  
+  /* Struct to save a few things while debugging.  Used in do_cmdline() only. */
+  struct dbg_stuff
+***************
+*** 582,589 ****
+      except_T	*current_exception;
+  };
+  
+! static void save_dbg_stuff __ARGS((struct dbg_stuff *dsp));
+! static void restore_dbg_stuff __ARGS((struct dbg_stuff *dsp));
+  
+      static void
+  save_dbg_stuff(dsp)
+--- 582,589 ----
+      except_T	*current_exception;
+  };
+  
+! static void save_dbg_stuff(struct dbg_stuff *dsp);
+! static void restore_dbg_stuff(struct dbg_stuff *dsp);
+  
+      static void
+  save_dbg_stuff(dsp)
+***************
+*** 761,767 ****
+      int
+  do_cmdline(cmdline, fgetline, cookie, flags)
+      char_u	*cmdline;
+!     char_u	*(*fgetline) __ARGS((int, void *, int));
+      void	*cookie;		/* argument for fgetline() */
+      int		flags;
+  {
+--- 761,767 ----
+      int
+  do_cmdline(cmdline, fgetline, cookie, flags)
+      char_u	*cmdline;
+!     char_u	*(*fgetline)(int, void *, int);
+      void	*cookie;		/* argument for fgetline() */
+      int		flags;
+  {
+***************
+*** 786,792 ****
+      struct msglist	*private_msg_list;
+  
+      /* "fgetline" and "cookie" passed to do_one_cmd() */
+!     char_u	*(*cmd_getline) __ARGS((int, void *, int));
+      void	*cmd_cookie;
+      struct loop_cookie cmd_loop_cookie;
+      void	*real_cookie;
+--- 786,792 ----
+      struct msglist	*private_msg_list;
+  
+      /* "fgetline" and "cookie" passed to do_one_cmd() */
+!     char_u	*(*cmd_getline)(int, void *, int);
+      void	*cmd_cookie;
+      struct loop_cookie cmd_loop_cookie;
+      void	*real_cookie;
+***************
+*** 1627,1638 ****
+   */
+      int
+  getline_equal(fgetline, cookie, func)
+!     char_u	*(*fgetline) __ARGS((int, void *, int));
+      void	*cookie UNUSED;		/* argument for fgetline() */
+!     char_u	*(*func) __ARGS((int, void *, int));
+  {
+  #ifdef FEAT_EVAL
+!     char_u		*(*gp) __ARGS((int, void *, int));
+      struct loop_cookie *cp;
+  
+      /* When "fgetline" is "get_loop_line()" use the "cookie" to find the
+--- 1627,1638 ----
+   */
+      int
+  getline_equal(fgetline, cookie, func)
+!     char_u	*(*fgetline)(int, void *, int);
+      void	*cookie UNUSED;		/* argument for fgetline() */
+!     char_u	*(*func)(int, void *, int);
+  {
+  #ifdef FEAT_EVAL
+!     char_u		*(*gp)(int, void *, int);
+      struct loop_cookie *cp;
+  
+      /* When "fgetline" is "get_loop_line()" use the "cookie" to find the
+***************
+*** 1658,1668 ****
+   */
+      void *
+  getline_cookie(fgetline, cookie)
+!     char_u	*(*fgetline) __ARGS((int, void *, int)) UNUSED;
+      void	*cookie;		/* argument for fgetline() */
+  {
+  # ifdef FEAT_EVAL
+!     char_u		*(*gp) __ARGS((int, void *, int));
+      struct loop_cookie *cp;
+  
+      /* When "fgetline" is "get_loop_line()" use the "cookie" to find the
+--- 1658,1668 ----
+   */
+      void *
+  getline_cookie(fgetline, cookie)
+!     char_u	*(*fgetline)(int, void *, int) UNUSED;
+      void	*cookie;		/* argument for fgetline() */
+  {
+  # ifdef FEAT_EVAL
+!     char_u		*(*gp)(int, void *, int);
+      struct loop_cookie *cp;
+  
+      /* When "fgetline" is "get_loop_line()" use the "cookie" to find the
+***************
+*** 1731,1738 ****
+  }
+  
+  #ifdef FEAT_WINDOWS
+! static int current_win_nr __ARGS((win_T *win));
+! static int current_tab_nr __ARGS((tabpage_T *tab));
+  
+      static int
+  current_win_nr(win)
+--- 1731,1738 ----
+  }
+  
+  #ifdef FEAT_WINDOWS
+! static int current_win_nr(win_T *win);
+! static int current_tab_nr(tabpage_T *tab);
+  
+      static int
+  current_win_nr(win)
+***************
+*** 1812,1818 ****
+  #ifdef FEAT_EVAL
+      struct condstack	*cstack;
+  #endif
+!     char_u		*(*fgetline) __ARGS((int, void *, int));
+      void		*cookie;		/* argument for fgetline() */
+  {
+      char_u		*p;
+--- 1812,1818 ----
+  #ifdef FEAT_EVAL
+      struct condstack	*cstack;
+  #endif
+!     char_u		*(*fgetline)(int, void *, int);
+      void		*cookie;		/* argument for fgetline() */
+  {
+      char_u		*p;
+***************
+*** 4782,4788 ****
+  }
+  
+  #ifdef FEAT_QUICKFIX
+! static char_u	*skip_grep_pat __ARGS((exarg_T *eap));
+  
+  /*
+   * For a ":vimgrep" or ":vimgrepadd" command return a pointer past the
+--- 4782,4788 ----
+  }
+  
+  #ifdef FEAT_QUICKFIX
+! static char_u	*skip_grep_pat(exarg_T *eap);
+  
+  /*
+   * For a ":vimgrep" or ":vimgrepadd" command return a pointer past the
+***************
+*** 5733,5743 ****
+  #endif
+  
+  #if defined(FEAT_USR_CMDS) || defined(PROTO)
+! static int	uc_add_command __ARGS((char_u *name, size_t name_len, char_u *rep, long argt, long def, int flags, int compl, char_u *compl_arg, int addr_type, int force));
+! static void	uc_list __ARGS((char_u *name, size_t name_len));
+! static int	uc_scan_attr __ARGS((char_u *attr, size_t len, long *argt, long *def, int *flags, int *compl, char_u **compl_arg, int* attr_type_arg));
+! static char_u	*uc_split_args __ARGS((char_u *arg, size_t *lenp));
+! static size_t	uc_check_code __ARGS((char_u *code, size_t len, char_u *buf, ucmd_T *cmd, exarg_T *eap, char_u **split_buf, size_t *split_len));
+  
+      static int
+  uc_add_command(name, name_len, rep, argt, def, flags, compl, compl_arg, addr_type, force)
+--- 5733,5743 ----
+  #endif
+  
+  #if defined(FEAT_USR_CMDS) || defined(PROTO)
+! static int	uc_add_command(char_u *name, size_t name_len, char_u *rep, long argt, long def, int flags, int compl, char_u *compl_arg, int addr_type, int force);
+! static void	uc_list(char_u *name, size_t name_len);
+! static int	uc_scan_attr(char_u *attr, size_t len, long *argt, long *def, int *flags, int *compl, char_u **compl_arg, int* attr_type_arg);
+! static char_u	*uc_split_args(char_u *arg, size_t *lenp);
+! static size_t	uc_check_code(char_u *code, size_t len, char_u *buf, ucmd_T *cmd, exarg_T *eap, char_u **split_buf, size_t *split_len);
+  
+      static int
+  uc_add_command(name, name_len, rep, argt, def, flags, compl, compl_arg, addr_type, force)
+***************
+*** 10923,10937 ****
+  #endif
+  
+  #ifdef FEAT_SESSION
+! static int ses_winsizes __ARGS((FILE *fd, int restore_size,
+! 							win_T *tab_firstwin));
+! static int ses_win_rec __ARGS((FILE *fd, frame_T *fr));
+! static frame_T *ses_skipframe __ARGS((frame_T *fr));
+! static int ses_do_frame __ARGS((frame_T *fr));
+! static int ses_do_win __ARGS((win_T *wp));
+! static int ses_arglist __ARGS((FILE *fd, char *cmd, garray_T *gap, int fullname, unsigned *flagp));
+! static int ses_put_fname __ARGS((FILE *fd, char_u *name, unsigned *flagp));
+! static int ses_fname __ARGS((FILE *fd, buf_T *buf, unsigned *flagp));
+  
+  /*
+   * Write openfile commands for the current buffers to an .exrc file.
+--- 10923,10937 ----
+  #endif
+  
+  #ifdef FEAT_SESSION
+! static int ses_winsizes(FILE *fd, int restore_size,
+! 							win_T *tab_firstwin);
+! static int ses_win_rec(FILE *fd, frame_T *fr);
+! static frame_T *ses_skipframe(frame_T *fr);
+! static int ses_do_frame(frame_T *fr);
+! static int ses_do_win(win_T *wp);
+! static int ses_arglist(FILE *fd, char *cmd, garray_T *gap, int fullname, unsigned *flagp);
+! static int ses_put_fname(FILE *fd, char_u *name, unsigned *flagp);
+! static int ses_fname(FILE *fd, buf_T *buf, unsigned *flagp);
+  
+  /*
+   * Write openfile commands for the current buffers to an .exrc file.
+*** ../vim-7.4.1195/src/version.c	2016-01-29 21:11:20.971061323 +0100
+--- src/version.c	2016-01-29 22:02:14.786884991 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1196,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+76. Your ISP regards you as a business partner rather than as a customer.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

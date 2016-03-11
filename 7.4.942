@@ -1,0 +1,44 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.942
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.942 (after 7.4.941)
+Problem:    test_tagcase breaks for small builds.
+Solution:   Bail out of the test early. (Hirohito Higashi)
+Files:      src/testdir/test_tagcase.in
+
+
+*** ../vim-7.4.941/src/testdir/test_tagcase.in	2015-11-24 18:45:52.641646980 +0100
+--- src/testdir/test_tagcase.in	2015-11-25 23:50:55.885738053 +0100
+***************
+*** 1,6 ****
+--- 1,7 ----
+  Tests for 'tagcase' option
+  
+  STARTTEST
++ :so small.vim
+  :/^start text$/+1,/^end text$/w! Xtext
+  :/^start tags$/+1,/^end tags$/-1w! Xtags
+  :set tags=Xtags
+*** ../vim-7.4.941/src/version.c	2015-11-24 18:45:52.641646980 +0100
+--- src/version.c	2015-11-25 23:52:02.632999089 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     942,
+  /**/
+
+-- 
+The coffee just wasn't strong enough to defend itself -- Tom Waits
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

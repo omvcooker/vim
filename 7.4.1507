@@ -1,0 +1,55 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1507
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1507
+Problem:    Crash when starting a job fails.
+Solution:   Check for the channel to be NULL.  (idea by Yasuhiro Matsumoto)
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1506/src/eval.c	2016-03-06 23:06:20.663506802 +0100
+--- src/eval.c	2016-03-07 15:20:46.072426942 +0100
+***************
+*** 15262,15268 ****
+  
+  #ifdef FEAT_CHANNEL
+      /* If the channel is reading from a buffer, write lines now. */
+!     channel_write_in(job->jv_channel);
+  #endif
+  
+  theend:
+--- 15262,15269 ----
+  
+  #ifdef FEAT_CHANNEL
+      /* If the channel is reading from a buffer, write lines now. */
+!     if (job->jv_channel != NULL)
+! 	channel_write_in(job->jv_channel);
+  #endif
+  
+  theend:
+*** ../vim-7.4.1506/src/version.c	2016-03-06 23:06:20.671506716 +0100
+--- src/version.c	2016-03-07 15:23:32.234710007 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1507,
+  /**/
+
+-- 
+It's totally unfair to suggest - as many have - that engineers are socially
+inept.  Engineers simply have different objectives when it comes to social
+interaction.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,85 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1109
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1109 (after 7.4.1107)
+Problem:    MS-Windows doesn't have rmdir().
+Solution:   Add mch_rmdir().
+Files:      src/os_win32.c, src/proto/os_win32/pro
+
+
+*** ../vim-7.4.1108/src/os_win32.c	2016-01-16 18:05:40.441065385 +0100
+--- src/os_win32.c	2016-01-16 22:00:24.763670013 +0100
+***************
+*** 3154,3159 ****
+--- 3154,3183 ----
+  }
+  
+  /*
++  * Delete directory "name".
++  * Return 0 on success, -1 on error.
++  */
++     int
++ mch_rmdir(char_u *name)
++ {
++ #ifdef FEAT_MBYTE
++     if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
++     {
++ 	WCHAR	*p;
++ 	int	retval;
++ 
++ 	p = enc_to_utf16(name, NULL);
++ 	if (p == NULL)
++ 	    return -1;
++ 	retval = _wrmdir(p);
++ 	vim_free(p);
++ 	return retval;
++     }
++ #endif
++     return _rmdir(name);
++ }
++ 
++ /*
+   * Return TRUE if file "fname" has more than one link.
+   */
+      int
+*** ../vim-7.4.1108/src/proto/os_win32.pro	2016-01-16 18:05:40.441065385 +0100
+--- src/proto/os_win32.pro	2016-01-16 22:00:27.403641080 +0100
+***************
+*** 22,27 ****
+--- 22,28 ----
+  int mch_ishidden __ARGS((char_u *name));
+  int mch_isdir __ARGS((char_u *name));
+  int mch_mkdir __ARGS((char_u *name));
++ int mch_rmdir __ARGS((char_u *name));
+  int mch_is_hard_link __ARGS((char_u *fname));
+  int mch_is_symbolic_link __ARGS((char_u *fname));
+  int mch_is_linked __ARGS((char_u *fname));
+*** ../vim-7.4.1108/src/version.c	2016-01-16 21:50:32.590161433 +0100
+--- src/version.c	2016-01-16 22:00:39.267511058 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1109,
+  /**/
+
+-- 
+The word "leader" is derived from the word "lead", as in the material that
+bullets are made out of.  The term "leader" was popularized at about the same
+time as the invention of firearms.  It grew out of the observation that the
+person in charge of every organization was the person whom everyone wanted to
+fill with hot lead.
+   I don't recomment this; it's just a point of historical interest.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

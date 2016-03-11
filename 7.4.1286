@@ -1,0 +1,141 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1286
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1286
+Problem:    ch_open() with a timeout doesn't work correctly.
+Solution:   Change how select() is used.  Don't give an error on timeout.
+            Add a test for ch_open() failing.
+Files:      src/channel.c, src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1285/src/channel.c	2016-02-07 19:16:24.234303776 +0100
+--- src/channel.c	2016-02-07 20:52:55.749731594 +0100
+***************
+*** 431,448 ****
+  	}
+      }
+  
+!     if (waittime >= 0)
+      {
+  	struct timeval	tv;
+! 	fd_set		rfds, wfds;
+  
+- 	FD_ZERO(&rfds);
+  	FD_ZERO(&wfds);
+- 	FD_SET(sd, &rfds);
+  	FD_SET(sd, &wfds);
+  	tv.tv_sec = waittime / 1000;
+  	tv.tv_usec = (waittime % 1000) * 1000;
+! 	ret = select((int)sd+1, &rfds, &wfds, NULL, &tv);
+  	if (ret < 0)
+  	{
+  	    SOCK_ERRNO;
+--- 431,446 ----
+  	}
+      }
+  
+!     if (waittime >= 0 && ret < 0)
+      {
+  	struct timeval	tv;
+! 	fd_set		wfds;
+  
+  	FD_ZERO(&wfds);
+  	FD_SET(sd, &wfds);
+  	tv.tv_sec = waittime / 1000;
+  	tv.tv_usec = (waittime % 1000) * 1000;
+! 	ret = select((int)sd + 1, NULL, &wfds, NULL, &tv);
+  	if (ret < 0)
+  	{
+  	    SOCK_ERRNO;
+***************
+*** 452,466 ****
+  	    sock_close(sd);
+  	    return -1;
+  	}
+! 	if (!FD_ISSET(sd, &rfds) && !FD_ISSET(sd, &wfds))
+  	{
+! 	    errno = ECONNREFUSED;
+! 	    CHERROR("Cannot connect to port\n", "");
+! 	    PERROR(_("E902: Cannot connect to port"));
+  	    sock_close(sd);
+  	    return -1;
+  	}
+  
+  #ifdef _WIN32
+  	val = 0;
+  	ioctlsocket(sd, FIONBIO, &val);
+--- 450,465 ----
+  	    sock_close(sd);
+  	    return -1;
+  	}
+! 	if (!FD_ISSET(sd, &wfds))
+  	{
+! 	    /* don't give an error, we just timed out. */
+  	    sock_close(sd);
+  	    return -1;
+  	}
++     }
+  
++     if (waittime >= 0)
++     {
+  #ifdef _WIN32
+  	val = 0;
+  	ioctlsocket(sd, FIONBIO, &val);
+*** ../vim-7.4.1285/src/testdir/test_channel.vim	2016-02-07 16:53:08.779395103 +0100
+--- src/testdir/test_channel.vim	2016-02-07 21:24:16.409970894 +0100
+***************
+*** 177,179 ****
+--- 177,203 ----
+    sleep 10m
+    call s:kill_server()
+  endfunc
++ 
++ " Test that trying to connect to a non-existing port fails quickly.
++ func Test_connect_waittime()
++   let start = reltime()
++   let handle = ch_open('localhost:9876')
++   if handle >= 0
++     " Oops, port does exists.
++     call ch_close(handle)
++   else
++     let elapsed = reltime(start)
++     call assert_true(elapsed < 1.0)
++   endif
++ 
++   let start = reltime()
++   let handle = ch_open('localhost:9867', {'waittime': 2000})
++   if handle >= 0
++     " Oops, port does exists.
++     call ch_close(handle)
++   else
++     " Failed connection doesn't wait the full time.
++     let elapsed = reltime(start)
++     call assert_true(elapsed < 1.0)
++   endif
++ endfunc
+*** ../vim-7.4.1285/src/version.c	2016-02-07 21:19:24.145042290 +0100
+--- src/version.c	2016-02-07 21:20:24.036412833 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1286,
+  /**/
+
+-- 
+If Microsoft would build a car...
+... Occasionally, executing a maneuver such as a left turn
+would cause your car to shut down and refuse to restart, in
+which case you would have to reinstall the engine.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

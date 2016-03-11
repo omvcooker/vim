@@ -1,0 +1,180 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.949
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.949
+Problem:    When using 'colorcolumn' and there is a sign with a fullwidth
+            character the highlighting is wrong. (Andrew Stewart)
+Solution:   Only increment vcol when in the right state. (Christian Brabandt)
+Files:      src/screen.c, src/testdir/test_listlbr_utf8.in,
+            src/testdir/test_listlbr_utf8.ok
+
+
+*** ../vim-7.4.948/src/screen.c	2015-11-19 17:56:09.434210164 +0100
+--- src/screen.c	2015-12-03 14:09:15.416941882 +0100
+***************
+*** 5422,5428 ****
+  		else
+  		    /* DBCS: Put second byte in the second screen char. */
+  		    ScreenLines[off] = mb_c & 0xff;
+! 		++vcol;
+  		/* When "tocol" is halfway a character, set it to the end of
+  		 * the character, otherwise highlighting won't stop. */
+  		if (tocol == vcol)
+--- 5422,5433 ----
+  		else
+  		    /* DBCS: Put second byte in the second screen char. */
+  		    ScreenLines[off] = mb_c & 0xff;
+! 		if (draw_state > WL_NR
+! #ifdef FEAT_DIFF
+! 			&& filler_todo <= 0
+! #endif
+! 			)
+! 		    ++vcol;
+  		/* When "tocol" is halfway a character, set it to the end of
+  		 * the character, otherwise highlighting won't stop. */
+  		if (tocol == vcol)
+*** ../vim-7.4.948/src/testdir/test_listlbr_utf8.in	2015-06-25 13:30:41.206095684 +0200
+--- src/testdir/test_listlbr_utf8.in	2015-12-03 14:14:01.281859134 +0100
+***************
+*** 2,8 ****
+  
+  STARTTEST
+  :so small.vim
+! :if !exists("+linebreak") || !has("conceal") | e! test.ok | w! test.out | qa! | endif
+  :so mbyte.vim
+  :if &enc !=? 'utf-8'|:e! test.ok|:w! test.out|qa!|endif
+  :10new|:vsp|:vert resize 20
+--- 2,8 ----
+  
+  STARTTEST
+  :so small.vim
+! :if !exists("+linebreak") || !has("conceal") || !has("signs") | e! test.ok | w! test.out | qa! | endif
+  :so mbyte.vim
+  :if &enc !=? 'utf-8'|:e! test.ok|:w! test.out|qa!|endif
+  :10new|:vsp|:vert resize 20
+***************
+*** 25,30 ****
+--- 25,31 ----
+  :	$put =g:line
+  :	wincmd p
+  :endfu
++ :"
+  :let g:test ="Test 1: set linebreak + set list + fancy listchars"
+  :exe "set linebreak list listchars=nbsp:\u2423,tab:\u2595\u2014,trail:\u02d1,eol:\ub6"
+  :redraw!
+***************
+*** 45,50 ****
+--- 46,52 ----
+  :redraw!
+  :let line=ScreenChar(winwidth(0),4)
+  :call DoRecordScreen()
++ :"
+  :let g:test ="Test 4: set linebreak list listchars and concealing"
+  :let c_defines=['#define ABCDE		1','#define ABCDEF		1','#define ABCDEFG		1','#define ABCDEFGH	1', '#define MSG_MODE_FILE			1','#define MSG_MODE_CONSOLE		2','#define MSG_MODE_FILE_AND_CONSOLE	3','#define MSG_MODE_FILE_THEN_CONSOLE	4']
+  :call append('$', c_defines)
+***************
+*** 56,61 ****
+--- 58,64 ----
+  :redraw!
+  :let line=ScreenChar(winwidth(0),7)
+  :call DoRecordScreen()
++ :"
+  :let g:test ="Test 5: set linebreak list listchars and concealing part2"
+  :let c_defines=['bbeeeeee		;	some text']
+  :call append('$', c_defines)
+***************
+*** 74,79 ****
+--- 77,83 ----
+  :redraw!
+  :let line=ScreenChar(winwidth(0),1)
+  :call DoRecordScreen()
++ :"
+  :let g:test ="Test 6: Screenattributes for comment"
+  :$put =g:test
+  :call append('$', ' /*		 and some more */')
+***************
+*** 92,101 ****
+--- 96,134 ----
+  :   call append('$', "Not all attributes are different")
+  :endif
+  :set cpo&vim linebreak selection=exclusive
++ :"
+  :let g:test ="Test 8: set linebreak with visual block mode and v_b_A and selection=exclusive and multibyte char"
+  :$put =g:test
+  Golong line: 40afoobar aTARGETÃ' at end
+  :exe "norm! $3B\<C-v>eAx\<Esc>"
++ :"
++ :let g:test ="Test 9: a multibyte sign and colorcolumn"
++ :let attr=[]
++ :let attr2=[]
++ :$put =''
++ :$put ='a b c'
++ :$put ='a b c'
++ :set list nolinebreak cc=3
++ :sign define foo text=ï¼
++ :sign place 1 name=foo line=50 buffer=2
++ :norm! 2kztj
++ :let line1=line('.')
++ 0GGlGGlGGlGGl
++ :let line2=line('.')
++ :let attr2=attr
++ :let attr=[]
++ 0GGlGGlGGlGGl
++ :redraw!
++ :let line=ScreenChar(winwidth(0),3)
++ :call DoRecordScreen()
++ :call append('$', ['ScreenAttributes for test9:'])
++ :call append('$', ["Line: ".line1. " ". string(g:attr),"Line: ".line2. " ". string(g:attr2)])
++ :" expected: attr[2] is different because of colorcolumn
++ :if attr[0] != attr2[0] || attr[1] != attr2[1] || attr[2] != attr2[2]
++ :   call append('$', "Screen attributes are different!")
++ :else
++ :   call append('$', "Screen attributes are the same!")
++ :endif
+  :%w! test.out
+  :qa!
+  ENDTEST
+*** ../vim-7.4.948/src/testdir/test_listlbr_utf8.ok	2015-06-25 13:30:41.206095684 +0200
+--- src/testdir/test_listlbr_utf8.ok	2015-12-03 14:14:29.637553299 +0100
+***************
+*** 46,48 ****
+--- 46,60 ----
+  Attribut 0 and 1 and 3 and 5 are different!
+  Test 8: set linebreak with visual block mode and v_b_A and selection=exclusive and multibyte char
+  long line: foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar TARGETÃx' at end
++ 
++ a b c
++ a b c
++ 
++ Test 9: a multibyte sign and colorcolumn
++   Â¶                                     
++ ï¼a b cÂ¶                                
++   a b cÂ¶                                
++ ScreenAttributes for test9:
++ Line: 50 ['0', '0', '72', '0']
++ Line: 51 ['0', '0', '72', '0']
++ Screen attributes are the same!
+*** ../vim-7.4.948/src/version.c	2015-12-03 13:52:48.439584211 +0100
+--- src/version.c	2015-12-03 14:11:40.499377439 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     949,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+174. You know what a listserv is.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

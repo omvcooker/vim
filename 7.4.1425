@@ -1,0 +1,597 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1425
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1425
+Problem:    There are still references to MS-DOS support.
+Solution:   Remove most of the help txt and install instructions. (Ken Takata)
+Files:      src/INSTALLpc.txt, runtime/doc/os_msdos.txt, csdpmi4b.zip,
+            Filelist
+
+
+*** ../vim-7.4.1424/src/INSTALLpc.txt	2016-01-16 16:20:23.704823329 +0100
+--- src/INSTALLpc.txt	2016-02-26 19:54:49.717762603 +0100
+***************
+*** 686,749 ****
+  13. Windows 3.1x
+  ================
+  
+! make -f Make_w16.mak		 16 bit, Borland C++ 5.0
+! 
+! Warning: Be sure to use the right make.exe.  It should be Borland make.
+! 
+! You will almost certainly have to change the paths for libs and include files
+! in the Makefile.  Look for "D:\BC5" and "ctl3dv2".  You will get a number of
+! warnings which can be ignored ( _chmod, precompiled header files, and
+! "possibly incorrect assignment").
+! 
+! The makefile should also work for BC++ 4.0 and 4.5, but may need tweaking to
+! remove unsupported compiler & liker options.
+! 
+! For making the Win32s version, you need Microsoft Visual C++ 4.1 OR EARLIER.
+! In MSVC 4.2 support for Win32s was dropped!  Use this command:
+!     nmake -f Make_mvc.mak GUI=yes
+  
+  
+  14. MS-DOS
+  ==========
+  
+! Summary:
+! ren Make_bc3.mak Makefile; make     16 bit, Borland C++ and Turbo C++
+! ren Make_tcc.mak Makefile; make     16 bit, Turbo C
+! make -f Make_djg.mak		    32 bit, DJGPP 2.0
+! make -f Make_bc5.mak		    32 bit, Borland C++ 5.x (edit it to
+! 				    define DOS)
+! 
+! Warning: Be sure to use the right make.exe.  Microsoft C make doesn't work;
+! Borland make only works with Make_bc3.mak, Make_bc5.mak and Make_tcc.mak;
+! DJGPP/GNU make must be used for Make_djg.mak.
+! 
+! The Borland C++ compiler has been used to generate the MS-DOS executable; it
+! should work without problems. You will probably have to change the paths for
+! LIBPATH and INCLUDEPATH in the start of the Makefile.  You will get two
+! warnings which can be ignored (one about _chmod and one about precompiled
+! header files).
+! 
+! The "spawno" library by Ralf Brown was used in order to free memory when Vim
+! starts a shell or other external command.  Only about 200 bytes are taken from
+! conventional memory.  When recompiling get the spawno library from Simtel,
+! directory "msdos/c".  It is called something like "spwno413.zip".  Or follow
+! the instructions in the Makefile to remove the library.
+! 
+! The Turbo C Makefile has not been tested much lately. It is included for those
+! that don't have C++. You may need to make a few changes to get it to work.
+! 
+! DJGPP needs to be installed properly to compile Vim; you need a lot of things
+! before it works. When your setup is OK, Vim should compile with just one
+! warning (about an argument to signal()).
+! 
+! Make_bc5.mak is for those that have Borland C++ 5.0 or later.  At the top of
+! the file, there are some variables you can change to make either a 32-bit
+! Windows exe (GUI or console mode), or a 16-bit MS-DOS version.
+! NOTE: multi-byte support is broken in the Borland libraries, not everything
+! will work properly!  Esp. handling multi-byte file names.
+! 
+! If you get all kinds of strange error messages when compiling, try changing
+! the file format from "unix" to "dos".
+  
+  
+  15. Installing after building from sources
+--- 686,698 ----
+  13. Windows 3.1x
+  ================
+  
+! The Windows 3.1x support was removed in patch 7.4.1364.
+  
+  
+  14. MS-DOS
+  ==========
+  
+! The MS-DOS support was removed in patch 7.4.1399.
+  
+  
+  15. Installing after building from sources
+*** ../vim-7.4.1424/runtime/doc/os_msdos.txt	2013-08-10 13:24:58.000000000 +0200
+--- runtime/doc/os_msdos.txt	2016-02-26 19:54:03.222246082 +0100
+***************
+*** 1,276 ****
+! *os_msdos.txt*  For Vim version 7.4.  Last change: 2005 Mar 29
+  
+  
+  		  VIM REFERENCE MANUAL    by Bram Moolenaar
+  
+  
+  					*msdos* *ms-dos* *MSDOS* *MS-DOS*
+! This file contains the particularities for the MS-DOS version of Vim.
+  
+- 1. Two versions for MS-DOS	|msdos-versions|
+- 2. Known problems		|msdos-problems|
+- 3. Long file names		|msdos-longfname|
+- 4. Termcap codes		|msdos-termcap|
+- 5. Shifted arrow keys		|msdos-arrows|
+- 6. Filename extensions		|msdos-fname-extensions|
+- 7. Memory usage and limitations	|msdos-limitations|
+- 8. Symbolically linked files	|msdos-linked-files|
+- 9. Copy/paste in a dos box	|msdos-copy-paste|
+- 
+- Additionally, there are a number of common Win32 and DOS items:
+- File locations			|dos-locations|
+- Using backslashes		|dos-backslash|
+- Standard mappings		|dos-standard-mappings|
+- Screen output and colors	|dos-colors|
+- File formats			|dos-file-formats|
+- :cd command			|dos-:cd|
+- Interrupting			|dos-CTRL-Break|
+- Temp files			|dos-temp-files|
+- Shell option default		|dos-shell|
+- 
+- For compiling Vim see src/INSTALL.pc.			*msdos-compiling*
+- 
+- ==============================================================================
+- 1. Two versions for MS-DOS				*msdos-versions*
+- 
+- There are two versions of Vim that can be used with MS-DOS machines:
+- 
+- 							*dos16*
+- Dos16 version	Can be used on any MS-DOS system, only uses up to 640 Kbyte of
+- 		memory.  Also runs on OS/2, Windows 95, and NT.  Excludes some
+- 		Vim-specific features (autocommands, syntax highlighting,
+- 		etc.).  Recommended for use on pre-386 machines.
+- 							*dos32*
+- Dos32 version	Requires 386 processor and a |DPMI| driver, uses all
+- 		available memory.  Supports long file names and the Windows
+- 		clipboard, but NOT on Windows NT.  Recommended for MS-DOS,
+- 		Windows 3.1 and Windows 95.
+- 
+- There are also two versions that run under Windows:
+- Win32 version   Requires Windows 95 or Windows NT, uses all available
+- 		memory, supports long file names, etc.  Has some problems on
+- 		Windows 95.  Recommended for Windows NT.  See |os_win32.txt|
+- Win32 GUI	Requirements like the Win32 version, but runs in its own
+- 		window, instead of a console.  Has scrollbars, menu, etc.
+- 		Recommended for Windows 95 and Windows NT.  See |gui-w32|.
+- 
+- It is recommended to use the Dos32 or Win32 version.  Although the Dos16
+- version is able to edit very big files, it quickly runs out of memory when
+- making big changes.  Disabling undo helps: ":set ul=-1".  The screen updating
+- of the Dos16 version is the fastest of the three on DOS or Windows 95; on
+- Windows NT, the Win32 version is just as fast.
+- 
+- 								*DPMI*
+- For the Dos32 version, you may need a DPMI driver when running in MS-DOS.  If
+- you are running Windows or installed a clever memory manager, it will probably
+- work already.  If you get the message "No DPMI", you need to install a DPMI
+- driver.  Such a driver is included with the executable in CSDPMI4B.ZIP.  Run
+- "cwsdpmi" just before starting Vim each time.  Or you might want to include
+- "cwsdpmi -p" in your autoexec.bat to make it resident.  The latest version of
+- "CSDPMI*.ZIP" can be obtained from: "ftp.neosoft.com:pub/users/s/sandmann".
+- 
+- 							*minimal-features*
+- The 16 bit DOS version has been compiled with minimal features.  Check the
+- |+feature-list| which ones are included (marked with a "T").
+- You can include more features by editing feature.h and recompiling.
+- 
+- ==============================================================================
+- 2. Known problems					*msdos-problems*
+- 
+- When using smartdrive (MS-DOS 6.x) with write-behind caching, it is possible
+- that Vim will try to create a swap file on a read-only file system (e.g.
+- write protected floppy).  You will then be given the message >
+- 	A serious disk error has occurred .., Retry (r)?
+- There is nothing you can do but unprotect the floppy or switch off the
+- computer.  Even CTRL-ALT-DEL will not get you out of this.  This is really a
+- problem of smartdrive, not Vim.  Smartdrive works fine otherwise.  If this
+- bothers you, don't use the write-behind caching.
+- 
+- Vim can't read swap files that have been opened already, unless the "share"
+- command has been used.  If you see stray warnings for existing swap files,
+- include the "share" command in your config.sys or autoexec.bat (see your MSDOS
+- documentation).
+- 
+- The Dos16 version can only have about 10 files open (in a window or hidden) at
+- one time.  With more files you will get error messages when trying to read or
+- write a file, and for filter commands.  Or Vim runs out of memory, and random
+- problems may result.
+- 
+- The Dos32 version cannot have an unlimited number of files open at any one
+- time.  The limit depends on the setting of FILES in your CONFIG.SYS.  This
+- defaults to 15; if you need to edit a lot of files, you should increase this.
+- If you do not set FILES high enough, you can get strange errors, and shell
+- commands may cause a crash!
+- 
+- The Dos32 version can work with long file names.  When doing file name
+- completion, matches for the short file name will also be found.  But this will
+- result in the corresponding long file name.  For example, if you have the long
+- file name "this_is_a_test" with the short file name "this_i~1", the command
+- ":e *1" will start editing "this_is_a_test".
+- 
+- When using the Dos32 version and you run into problems with DPMI support,
+- check if there is a program in your config.sys that eats resources.  One
+- program known to cause this problem is "netx", which says "NetWare v. 3.26
+- Workstation shell".  Replace it with version 3.32 to fix the problem.
+- 
+- The Dos32 version will parse its arguments to handle quotation.  This is good
+- to edit a file with spaces in its name, for example: >
+- 	vim "program files\accessories\ppp.scp"
+- A side effect is that single quotes are removed.  Insert a backslash to avoid
+- that.  For example, to edit the file "fi'le.txt": >
+- 	vim fi\'le.txt
+- 
+- ==============================================================================
+- 3. Long file names					*msdos-longfname*
+- 
+- If the Dos32 version is run on Windows 95, it can use long file names.  It
+- will work by default.  If you want to disable this, use this setting:
+- 	set LFN=N
+- You can put this in your autoexec.bat file.
+- 
+- Note: If you have installed DJGPP on your machine, you probably have a
+- "djgpp.env" file, which contains "LFN=n".  You need to use "LFN=Y" to switch
+- on using long file names then.
+- 
+- ==============================================================================
+- 4. Termcap codes					*msdos-termcap*
+- 
+- If you want to use another output method (e.g., when using a terminal on a COM
+- port), set the terminal name to "pcansi".  You can change the termcap options
+- when needed (see |terminal-options|).  Note that the
+- normal IBM ansi.sys does not support all the codes of the builtin pcansi
+- terminal.  If you use ansi.sys, you will need to delete the termcap entries
+- t_al and t_dl with >
+-    :set t_al= t_dl=
+- Otherwise, the screen will not be updated correctly.  It is better to use
+- nansi.sys, nnansi.sys, or the like instead of ansi.sys.
+- 
+- If you want to use Vim on a terminal connected to a COM: port, reset the
+- 'bioskey' option.  Otherwise the commands will be read from the PC keyboard.
+- CTRL-C and CTRL-P may not work correctly with 'bioskey' reset.
+- 
+- ==============================================================================
+- 5. Shifted arrow keys					*msdos-arrows*
+- 
+- Use CTRL-arrow-left and CTRL-arrow-right instead of SHIFT-arrow-left and
+- SHIFT-arrow-right.  The arrow-up and arrow-down cannot be used with SHIFT or
+- CTRL.
+- 
+- ==============================================================================
+- 6. Filename extensions				*msdos-fname-extensions*
+- 
+- MS-DOS allows for only one file name extension.  Therefore, when appending an
+- extension, the '.' in the original file name is replaced with a '_', the name
+- is truncated to 8 characters, and the new extension (e.g., ".swp") is
+- appended.  Two examples: "test.c" becomes "test_c.bak", "thisisat.est"
+- becomes "thisisat.bak".  To reduce these problems, the default for
+- 'backupext' is "~" instead of ".bak".  The backup file for "thisisat.est"
+- then becomes "thisisat.es~".  The 'shortname' option is not available,
+- because it would always be set.
+- 
+- ==============================================================================
+- 7. Memory usage and limitations			*msdos-limitations*
+- 
+- A swap file is used to store most of the text.  You should be able to edit
+- very large files.  However, memory is used for undo and other things.  If you
+- delete a lot of text, you can still run out of memory in the Dos16 version.
+- 
+- If Vim gives an "Out of memory" warning, you should stop editing.  The result
+- of further editing actions is unpredictable.  Setting 'undolevels' to 0 saves
+- some memory.  Running the maze macros on a big maze is guaranteed to run out
+- of memory, because each change is remembered for undo.  In this case set
+- 'undolevels' to a negative number.  This will switch off undo completely.
+- 
+- 						*msdos-clipboard-limits*
+- In the Dos32 version, extended memory is used to avoid these problems.
+- However, if you are using the clipboard, you can still run into memory
+- limitations because the Windows clipboard can only communicate with Vim using
+- Dos memory.  This means that the largest amount of text that can be sent to
+- or received from the Windows clipboard is limited by how much free Dos memory
+- is available on your system.
+- 
+- You can usually maximize the amount of available Dos memory by adding the
+- following lines to Dos's "config.sys" file: >
+- 
+- 	DOS=HIGH,UMB
+- 	DEVICE=C:\WINDOWS\himem.sys
+- 	DEVICE=C:\WINDOWS\emm386.exe RAM
+- 
+- Modifying config.sys in this way will also help to make more memory available
+- for the Dos16 version, if you are using that.
+- 
+- In the Dos16 version the line length is limited to about 32000 characters.
+- When reading a file the lines are automatically split.  But editing a line
+- in such a way that it becomes too long may give unexpected results.
+- 
+- ==============================================================================
+- 8. Symbolically linked files			*msdos-linked-files*
+- 
+- When using Vim to edit a symbolically linked file on a unix NFS file server,
+- you may run into problems.  When writing the file, Vim does not "write
+- through" the symlink.  Instead, it deletes the symbolic link and creates a new
+- file in its place.
+- 
+- On Unix, Vim is prepared for links (symbolic or hard).  A backup copy of the
+- original file is made and then the original file is overwritten.  This assures
+- that all properties of the file remain the same.  On non-Unix systems, the
+- original file is renamed and a new file is written.  Only the protection bits
+- are set like the original file.  However, this doesn't work properly when
+- working on an NFS-mounted file system where links and other things exist.  The
+- only way to fix this in the current version is not making a backup file, by
+- ":set nobackup nowritebackup"	|'writebackup'|
+- 
+- A similar problem occurs when mounting a Unix filesystem through Samba or a
+- similar system.  When Vim creates a new file it will get the default user ID
+- for the mounted file system.  This may be different from the original user ID.
+- To avoid this set the 'backupcopy' option to "yes".
+- 
+- ==============================================================================
+- 9. Copy/paste in a dos box			*msdos-copy-paste*
+- 
+- 					*E450* *E451* *E452* *E453* *E454*
+- The 32 bit version can copy/paste from/to the Windows clipboard directly.  Use
+- the "* register.  Large amounts of text can be copied this way, but it must be
+- possible to allocate memory for it, see |msdos-clipboard-limits|.  When moving
+- text from one Vim to another, the type of the selection
+- (characterwise/linewise/blockwise) is passed on.
+- 
+- In other versions, the following can be used.
+- 
+- (posted to comp.editors by John Velman <velman@igate1.hac.com>)
+- 
+- How to copy/paste text from/to vim in a dos box:
+- 
+- 1) To get VIM to run in a window, instead of full screen, press alt+enter.
+-    This toggles back and forth between full screen and a dos window.
+-    NOTE: In Windows 95 you must have the property "Fast Pasting" unchecked!
+-    In the properties dialog box for the MS-DOS window, go to "MS-DOS
+-    Prompt/Misc/Fast pasting" and make sure that it is NOT checked.
+-    To make this permanent, change the properties for
+-    "\windows\system\conagent.exe" (from Philip Nelson, unverified).
+- 
+- 2) To paste something _into_ Vim, put Vim in insert mode.
+- 
+- 3) Put the text you want to paste on the windows clipboard.
+- 
+- 4) Click the control box in the upper left of the Vim window.  (This looks
+-    like a big minus sign.)  If you don't want to use the mouse, you can get
+-    this with alt+spacebar.
+- 5) On the resulting dropdown menu choose "Edit".
+- 6) On the child dropdown menu choose "Paste".
+- 
+- To copy something from the Vim window to the clipboard,
+- 
+- 1) Select the control box to get the control drop down menu.
+- 2) Select "Edit".
+- 3) Select "Mark".
+- 4) Using either the keys or the mouse, select the part of the Vim window that
+-    you want to copy.  To use the keys, use the arrow keys, and hold down shift
+-    to extend the selection.
+- 5) When you've completed your selection, press 'enter'.  The selection
+-    is now in the windows clipboard.  By the way, this can be any
+-    rectangular selection, for example columns 4-25 in rows 7-10.  It can
+-    include anything in the VIM window: the output of a :!dir, for
+-    example.
+  
+   vim:tw=78:ts=8:ft=help:norl:
+--- 1,15 ----
+! *os_msdos.txt*  For Vim version 7.4.  Last change: 2016 Feb 26
+  
+  
+  		  VIM REFERENCE MANUAL    by Bram Moolenaar
+  
+  
+  					*msdos* *ms-dos* *MSDOS* *MS-DOS*
+! This file used to contain the particularities for the MS-DOS version of Vim.
+! MS-DOS support was removed in patch 7.4.1399.  If you want to use it you will
+! need to get a version older than that.  Note that the MS-DOS version doesn't
+! work, there is not enough memory.  The DOS32 version (using DJGPP) might still
+! work on older systems.
+  
+  
+   vim:tw=78:ts=8:ft=help:norl:
+*** ../vim-7.4.1424/csdpmi4b.zip	2010-05-15 13:04:04.000000000 +0200
+--- csdpmi4b.zip	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,166 ****
+- PK    ³S#               BIN/PK    ³S#            	   MANIFEST/PK  ®S#iú3  ùO     BIN/CWSDPMI.EXEí|}|TÅ½÷ì³dÙ=Q l`^c4]cÄtÂVpC|	 d³¬h²Ð^KK6'F®r}{ÐV½ÔK-zSØB^h­Z#Z¥g9\Ìå%	!ä<ß9g7	Úö¹Ïóyþ{Âç{vÞgæ7¿ùÍo~Ãº¢En$fò,;!Î£÷õ/Ð«9
+- òOþâÙ!ñ@e	9¸áLLL"d0k<!gµ¯°k¦âlÀT 8FÈ¿Í ¤4ÅY¸³Èÿÿûú'dkÉÁWØõ\É<+ä'pí-öo¬ßTä&¼õj­pMøó'k8.ü9LåIªîðMì[æ±Ü¡o4åt¦$ÌµØ_Lß¬YÔö p®éIÜ÷líL«Li¥Më''ÒPmnË£íMwKb3Y ¢ùò¥¿¶ÓD¥ìý~ÿþ;S'
+- 6ï£J°´1þÃBÝÏZ6i
+- «á&¦[:ç?½ÕÚVÁf¶I[|ÿ%üù ¦ÕÏX?¬Nk&þà$æDb7Îÿ¡?¨Ú3ÛîähfZ|V­¡éö:;ZVßö¬êMOÿ÷N®3mª*¶°uvý¸øÆ
+- %°Á øu§6²Gª8aK°Ø0tñÕi+Jù}{d>Ö¦'ý§ÚM¯µå~iz­»]8ÑzÕdúUéW'Ús¿.ÓëLÚ£ÉÑ¦$T±ýv^K¼IS/Ø¹·ârÐ©¢Ev.È
+- v½ÅT[OB°P+Øµ¬à4ÀûV¸G®-ÔÕÙµquv¾¥Ór¥#åº/q)rà.\Bhæf3	.:z¡#®¾yÁB6\¸rAæ£öÎâÆØ }8lÊ"GJ§° pÞ+Æ]P
+- i|ÕÂ6¾n	ÝÄòSñnhô2Aûàa/#t´hý$ØãôDJ"
+- öyñ ò¯»h§ÊÕZùñîÛGX­9#)AøºõÓ±=Ý@ì5Ã~²ùÏJ÷KªÈy)D,I[ãÅ¹Iâà½}h½ã¸8ÒÚ£?HHC[F(%É!>¾&¿ÃrÃZ_fMþË|3ß!çñIø<·»úFû`fNÓ}ià&°ýÒ÷c:,&ÔµYL­gY6ÇvgYË.¾/ñ}_§{
+- 4¶	vJ>¡7ò9±%øn:2íÃ¹jØ£ßBu­Û¡ü±¥{ÈÛdlü/i¼½µUúx¡t(`¢4jK"ÛH®¶b®«Áyº-§bm^u|ë·­óFÒt´°M¾n¹jð){¯C~`åª§ìâTêI}7ÖI³ä==Éü3R1Ýþ»s|qY³UB2Ã4Í¨4-X5,iPfBÚnÇ¶ý¿®"ÁÝRSYÿÖò¤
+- 6·Ì _]Qyù¸Gè¶¯$BobÏ4ìp/ÕH¬Ó]ª!f£¹>\í«ÝîUq"8¾È¯Î½N#ÖÐdrµE®.WÝ>¸	iôj¨]®.«ÈÕrõmru\-WgÉÕyrõ\¹z\=Ë]¯á&5Ã:¹Ú!W?"W/«ÊÕËäêErõ|¹z\/WÛÜïkÄ:Å£»Jèèûó©ç§¯ òè`	eK7®3¶ôåjò/Êþk¾NËðÜd¢Oº3ø,WÒ@ÔÙæ§³-£N÷N¶ÁÃftèHn_äiÇ|á¿ûfÞOìBFéÞoÎHÐÕÚ¯¸SµâO¯ø·\ÙèÓupà~éx|¾81É&ýÎJßýñÉÁa lïÃ.ßa¿lÌjÑu(ç²Ëe³×o¼W/öÕjd{^â;á¿ëfÓGÅ¯ãJìÖªÁ'ÈZÎ.K<"r_F¼RâaÅKWJÄÿºgÏT"Ö,gbÍ"þzÁ)¤`Þóâ¿.p{~7Dó	WJÞÓ¦üÎ´0·ÿmRÛÃ§î5þ¸!©n3/ÚgEp `;qÏâÅ¦ÁÀc,gDË:w/þ­q?I£¢~4q¿ÀUÑÜ/ú£¹ÇßbÅÛi¬GvÏãÅhÞgH}·,àEÉ(+-Cèr^ÌGCÝU¯äES4x0VÍGW¢%-äÅWÔj.Äªy+éàÅÏ¢´ÿâÂXûÿ¸kyñhtÑ;,âì±Ñ~^|~Lî¬bÂØè¼¸I¾Eì(yc{F0cÈäìv]!?y÷Ú`¨mäI&¸@èj&·ª+çÑd:5êíCa.ÝaQv	ÙNÂö³XÁò¼ÄÉö³We ïðVºúd~Iø3ÿ:,ÿ7¼`?Ê<+ÕnâchPx¥ÐX:à¸:úàMéuÆ]§W(\ysId¦&bÑ¸mY $ºA·pÌýdºø^ÌíÍ­¸kó)ñB)e¤ßõ0MèÓ Ï@>}ãñ¹42Ô.Áaî%|ÅZ¹jH|g~X.¾ßìóÆùAûÙÜ>ée¿oÎf¨ÓÂóÍç;Ð÷þó1]Jpðy3Ï`	Ýfs;
+- 0Bìa~ó7»	ÓõõúÝZ;vkÿ^,s{ã¸0·ýÏ<÷~l¼fÚöoú@ruós)Iil¶¤kè²ÕBB»,ÁüW,}
+- SØÐ«¡×-¹-¡shQ¸¾ñ+ÂÙ÷©µ¨µ3â%nTýãt$ôû	¦Bãi5Çk#9b9Úh0÷Ò¸É¢½
+- XÁÒ^ÁÞ¢²Ëù°ý]Îe:È*ýZ6äef"Rô÷Gî]®6¦/ÚnÝR2Ü8áR,CÍ¶Z¹÷VpÙ¾D0ßhzÔ>üår,ßX¾áËÈ'A´@jµo´ÂÓ5u÷Xè,,ï!ÞÔõ­ï±·^»Õ:Y¡­UdÞºüÑí×ï	lá7ñHêÛ<Öu½N:ûº2Ì:UD,Jp7VþºÅ,²¾­9~rz[,>´WÆ}|èM>Ìíçä@þ^ìÀw
+- ©{yìTbÙtjîåÅ¯.bröh[0Ñ ÷«ZQmXÉ ^½zCÉÙð	B<?ªûÔ%°P lNóÞàÅ?]*óöhÅ%  øÑ¥ì ZYVj¨¼XíqÞ~^ãóäÙ£q±¡£ ´·rûø*m¹7y¡CJ¶[óJIE;¬ûè:r¹$·eTT¦r²"vXQn%ÄW6¾ÉÇÄa¥}OP9Æ­öÚ2­®«)}o°t0¸x 0,û´Òþõ¹ïcâæX.Ã!ÓDûx}(à&¥$÷¸Õ9\=¾"ÎjªLD@Ø>L">Ñ%Ó\l¿¿B#K<T7Äg/>àPÈ´óä7áå*Vñ{à:Lçì3Kj¶þqîÏµbéeÚñi@Aòk/Òd´dÏØï<ÿ[%gÐéXé Ôµ¶F´]å¯Yº£Ë_Å¢îþî©ôAg±'jé!fÓÛ§y£ûQÎû#/çzøÔü1ñ.)jæD-SCí.!ÿÞ%äÄ'û>©ø$ñ#ÞÕxoàºù¯øì¯ùö]Ùõ©;îWØiOsä]A;Hsiî Í¤¹4wè8_ÜõÈ]ÜõÉgøìÆÆÐ	¾Ý¡É£{´Ò2#9<¬´È'-ôpR¡G'xôÍ/Íó$Hs=RÇ eyÆI³<FÉâ1If/Mñ$I)ñÒDÏ÷L$½'Yb=$".
+- JokÎf(Y8Wph¿E:`&_óçkoBKI.q=eì5ûÿ2fµsÃÚaNä[O±.aûp+;ô1/l×NÏ}_vz¨Ù<Ö,W û¨e®«ñ¨ÅúÔ"nÛ¹éÔ)lOxeÑÌqaFZ~ÍÓ5ô+K&¾XÄËô.wwµö°p¥æ]L»+Ô"mR;by9ä¼TVÝÛÅ}9OÃ1lùaã°6U'\:¼ß¢ôFÌVý;î:p#ØÃåt»×¿æZá*u-5íNEÃµËõÊ@®å®Òi´W®ò_¹2ÊEsÊEÌå¢læúuÈ«w±üµÜ/GÑD¿¹k{²/%»ÎÛò|dy)IÙGòÇ'Ë³I{5¾Ù'§5Åw¦)*[ón~l­×\èøÁ}fßúJßÆ*¼ek²Ç%XR]K¹i¹_º.ûtÑ²§ÌÁÓ.Zä
+- Írd¹Å9ÁòyÁó]Á6W°ºÀÜZX_ì ¼©úx²Rrõ-.¬7è¦¸çX×.h#8"?t 
+- 9pÍ³É:Wùï}ül®J'Oî4JhÝ4×£®c.Ì±]tå¶4ô4tªÑÓLCqP>·¡(Ë%l°)G Â³þ0Ò
+- ×R*\´c_ôV¢eÁ%Åtl^°ýÙj¦= 3òå¥®GÛÿ°96/'w^¹¢ìÇ¾µ
+- 9ÄÂÉÙ{lLé½`vÐ5¾© òû$%%]k ñðçãÄãvPKÎ5Q©!÷øþ¤óðÕµßï?¿êù:û°z0-}ÐLh|Ïß¯¡ñçÕ5Ñ	¡ÇQ·-Kk6¶fÒP¤Í&ÎóÁäsü&ãüËÆX¹ó¼o¢>ã=+úÍ=j1R<§ÍÿÑH´êX@zü gÑ`í7ÝÉ·ï³à.4cmJàxv`"N©þü)ÐÄÌ¼=²V¼«(ãÏµzß
+- ñvyaÔøñDæP¤6hÊ[DÝmÃ%kL7o-@÷ShwÓÓ=uÕ¨+fÐ}Å)Û-kQ<ò²º=åãa®®éÝnÁÎ<¢tæÊ*{k/wS@Ö?¨ÔÎ£R*ó'JKpÜ,IðÅB$æÀ"|¹-Bë­°³×118I	]Pµu?;§¥bî0Ö.B:¢TÞIQ@ce¥¬Rê>FFF½øÍ\Ð¿¯_¡ÍêÞû¾LUçy#Ä'QPú¯W£ÒR³Dux#Êa ¿hCÏ'F]ãª«©É§«Xà
+- AÆÈ#ÍY¢,ÒÞ¸C½¼Äê2Áãaö?lÔIà¦åEëâuPÝ'Ò¢éB±yÔ·HIdOPl/Ïõ9¢	Õ§6Ì3VÌ'sª»W±83pÄ MP'¶#{>ÝóºÌJûí¯§	Ï¿FãEÓÅ±à½Ñ Eá¢ÝlÀÝUyªz8HFqÒªw%EåS÷¨ÄìßöÔxç¯Ì.U¥= ³  ¬µËþ-ò"ZQJÄÏf+CSÔlõód_|¸h!´âÙJuNÖ?¨¯è4UêÚØ=gy-Gº.)o~²©0?aªÇÕµÍÕ#ZêBµ!gy^JòÎPÝIRýëÚÈx'Ò4ðæëGIÂ	æ±Ñ³LX ´1wùIUwÔQ½ò¡î=Åä¶·O7(Îàv³êØOj·ÏTµÛ-ª£c{¡ êJ7\¸gõ£CB[f4TçµÄ¢I¦ëûÛXâ¬
+- ÷]5~RiTòúC?êÕbdùÑá ×Ãrê_Ì
+- ­ê!Bè¢QU©Òdw/óÅ¨o!õ-ùSßòïêÃöðhtÝ ÊÐ-ºmJ½ç0ÄUpHäf	 êdTPhUè×
+- 2Ê4^CÔÙç/·!°à¸¼·aN¶ ³Ú½ú@»öäÅ-{ÔeÅÐöQ!ù$(Õ®)|;+²6)âJûiÅwÉ28¨ Ü7\Y¤rÝ\ºæÐ_Ñd0Ú*­ªC«=Ô÷¢Þª7Oñ²oâVª¸ï<<ÝàÍaAÈð¨·LVÖ¯AÔÆ
+- mðüuÍ¼Q°¬íQZ}Há¯£|B";øÈS¼:¡géI¤ÇC­¬öq¯²RpÎæ¨ÎçgÞ!­'õmj¬ÈÝ¼ØuMPKÃ+Ú¢P£ð¯¢})ÌR¡Ð-³Õ"+á#Ã&ñék±&D®°5é@ÔÀ!SÕT!Î¡Ö,ê ÀÐO»Î¡hÍj'ýÿaØëº=üÂ$æ´¯Î4Ò¾ý|mUúØVu)±o¦?aHP=µpF6çFXá{&ÅMC±±È7]?êi<ÕAÛuÐ1åLéKïÛÚUSû|º!rÕ0ÁÑ*N=úÔü±êçbkzdæ8ñá¡Í~£$îø»i¯¥cW)ótºü«Qéî¹Ëtò´*ý­,Ý<êb0²H1åÆÿÅ(f$«U®Û´çÛ .(¥¶Îª§Ó¹hnäÒ8ôýÁAÿkÜXæ`Þ9Å¯Ò³xN9e¼ic®ø:Z{äÝq¦qjçsÄñWKbÔy~Ü&níQsÏO7àÒéjh£:fÐ½RÉ«4hVdõ8§xµ¿±[G
+- ´ÿ
+- õöûJ¹ÂÕÄb§DÛ0¦àÖ¹«uë7\A´(*v·Pñ2:ÁÆé"7r#òa`Ps &Ñ	·,K0aY"2E~«Søhà	Ã½Í |qÝ>õ«Ûyä)YõÝ\£¹¹fnp2 1AäÒüYHÚhÏþm =óçcwô.Ø}áñNè|ë½mÄ/@Þ¶eLØ|´g^4ü6"Ç£k(t¾DuËÊ$ÒÈÂÅ¡üf¨Øç8BÏPcoWE¶'´ðb?H©´Ã{J¥©:
+- tGýô¶Oè®ÛNÅNá(-$°5+ÓWUôNûfÌ$ÍÁûM5gLBkÿÙE&¦ËêD¸LhNH´g½fµÔãPyuc".¨4,mU¥Ú)£ÙU¹6ò&Á_àJ/2Ã8%mà0Òz9È§)çéü0v&¸L>?¦xFFS;]ñwàØÿö "¸Òºú%Úö(¾ÏócMî>aÔ?Hý½fpµOÓRZóÈN2B¾é×ofvÔ£PäóøfÛÝh©RtØ±´ÅY´*[Úua·	+r WÛ9?-¸k^Z¤!^uêmñÀoWTevôÚ?¦% XJñ«­ÑR©zóHA| ÿO|Fªôyêççã&to<3ÃiÜD÷ÕNïì3÷ÌÆÅ5ýÅçîPc7ÑaÆb]ñGþóüãymzg9KãX?Ù`ãqÑÑ$2tz¨(ø2É
+- Úã»Á>ÐR÷ð#X'Z¤äÅwÏ©¡õ&ôãÜÓl(PçÔt*µ
+- p ^ËTáBA9FD³TÓ,¾hõd£E4ËO
+- CC÷<jÊ-ò5UßßÁ­+¸áô£¾]ä²îò1ëNmò¡¸àññ²ëø8z:°ÅÑzdàÔBáÂ W4Iý¬os<]k\JÕEY½Ú¸YßHa-ÎñÇÌÔÈÍ:¥ÝD¦è¢!õKæb¥zl|¸¨ Z±";%Vácã#µ%v&uÄ¢¤S\´07¨ÛTeRV½ú:TÞ!1y,'òkÎãÉSöCqý¨%Â¸/:»ö?]AûGâø²å¡Ì.ìêöOÎãAûÑ ³C\	Û{¨Ràk±Ê"8{Ò¯3SwZ''?geºÇ!	¶	ö6huWÿ)èDîCdTy¸ÞÀÁZV²	V²,%°2Y« ³!ér=wÆ :¾¢û=Õ\`¹ÇãdêI'½24VçBÂÃûCìOT:¼z§8üeI¤%.x{ÀÞ§	8 i}ÊÙVIËDÆ98²ãYÍTt¦.Ã!Zw!¶9
+- G°¨ ²5Z{!j§5 ®áñª	)ÆEÆE{÷­¤jã"¹¥Z«²üOÑ¨ËýDÍ?ínhúTúdN\¨´in j­aq_æ»¥/,ý¡H¢Ýf"Ñ;'ÁyA³M*äõT`{¨è­EÚJ{·OgÇ6ÄèqNS)?5°Yþ;X­8¡ãÒtØÏkûù³ÎÞÑ69/L5Ç²W+Ïß@H{¯à<?È}ìÿÈ*¢£;2h½ËèSÇp¤¡´Ûê)ÆHê»ôôÝ¦&ÈçjIö¡× é¥ÖÊPçST	Ø§âkI5*«5G^'¯H-©á_hUêf{o;¢oUÛ3
+- /½b©ÉG%tìnc)a-ä*&TÇY±UèÜM÷G&0Ñ¥¾j@®êSeJj@yD£ÄåhòþÈií(ë×1m\Í!ÂW1Øok[	¿ÔªKþ,ZZ¯ø­
+- CïÐF~¦Ôi#ÛµjsébEøH6Rù*V»Y\´	Eê®¡Ä82£­±ÄZ3Y[ãêÃ0mÊ ¢Äk¿3.Ñ;ËoW­v4°u.â>ÔÄNÞ¢Á¦ñ1ÿIæ?_^ð±Z.ÉU¢u1q#/+ÙÔm(YÙ+ãÍvÍÒD6kb-b Y4DÓDVh_Q¥"Ï:û`Wdº£ö||AÔº?¶,÷xbqÖ8:!'·ûgß2CÉs!Ès2>ù¥jâ9ÓE½¥õiìÑÀØª¡Hì:r×¶ÒúÛùº?ÿýy<îþãw©ÙAZ¬-,È³F¼Ýóæ¢\´¢nñÐ'=ý]iÜshÅÐH+ú§¡iéÑ²|îqG³÷w!Õ¤¡©ìºÂQ
+- #'ÎÿJ$Ehé+«õNT­oÑÜ8{jòrV¯H	~T9EU8Ô¨XK\¯èÄHÔh4ZDi´Z-£eµ°Ãd4ac8°$N§câ¸8]>.>pNË1ËiuR&^O5ÚD&Qc<ÂÜ8ùÆ¯nosÓã7}pqò'ÿbr÷äû§üf
+- 7Õ5õù©L%©©'Sg§ÑÞéÌïÍpÏøù3r,g-ÆtO'ãø÷ÄÌ'f®³vÎI|ûf®õ¡ò/aö»³Ù9SæÜ9ç;·2C¿Îâ¥Í¯à`bzµÅÁU¶Ð|mò6¾6o;¿ÿûoæYk&Éf82³ëÈÄõÙéè@î2×[_wûv¾À¤In°4©µV¹Å 1Mo9ÛBaÙÐÝ Üä4te(ÉÛbÞåjÜ2Ã4£ÅÕø$~ºÖá§Û¡6ÍèuñM3ú|3ép¹¢).lFMÓ»QÃCü´ª[³RH³H7nËVSZ¯+ôÜµ¥w8úë'ÇÈ¿lÜ¢%¸k¦áÍÿ7:×lEkÑ)Wê¶ú3ìüáäI´¦t[iMÿßÙèç²Ìl\;92ë»bÝóçVÞÇ¢jã÷xbâûå|(t+¸ù©2þ§~>¹ùó9¨uçÕõøOë´_aÖ´÷[qMï!:Ó;ÝÝ2×dZ?qks2äiôê*rïðÃ+JÛU¢$øó±æ{YñåÉíô>øN?c¹&3Ï|;EõH]§1hiGà©âÝdÿÇgÖóÈþ?Y)ÞJöËðÍ!"2W_n_Joá6¹_®tBWWÙö"~Ívõã² ÁI·C0%§Èé5{µ=}í&M¬h¶ëaÿßLK_ÞµrÇ]¤×{ÿXoÔë½Eø4pzhÿxT#¬4ï¿-©L¡±Ã»?Î«»À´§îHº´ß?¡µÝé2½ÓÔå.¡Ûez¯#ö²âÍmw-Óê-UÍ<8Å>åO;eì¨æV),,>Áúv$õ§lDbÜ¡éÐ D»¢ÑÉßKÀÅ¹uÖÄíÆz WéÅ£7Qûd5ä¶Âl¤
+- ¬X/+^k¨Âên°.jLÞdU! Ö*>¨l¶~js[¬pWí·Búæ¶YéíõÖÌ0÷sk
+- lÜ*¬b|£5´ÞS]¹ç¤;ñÆË2Ä5ÃÂF>äeù^\ýMlz¤·GýL¨÷«æãªf­`B?erei
+- Õp¡óU´óá"\pduôFË})ª	»ùkuN%Ãlîqy9%¡FªÒBaÂ/B~9ò1hÔ¸#UCÌÅà2\_±(×l>á\©Ú{©I­ä´[§U+ï¥²´AT±DM¶Uå|¸éã=î;gñ¡«b@7¬èkhµ1ÕZÃÉó×àzk¨N¬½ç®)ãó¦%´ÏL¡8I¾c5YÉ»ÓC¯¤;#tpFì~ñ-Ê@âe¨|aÂRk¤­7ù¸ÀTËájC¼Ó1ÁÏ
+- 5AÈÀö=èdÅÆI£ö047I¾8«s¨"At}µ£«N® q&5$rP´^ÌfFªÄlµsSiYlErT°äªJ@µ"Æ«òèÇÊ]ÌÑåîCÉbfWºÌ£cß¯ÓÐ«â¸íÈZ/àEïAÂcA¤y(:M0ê§AXr¸Ý3Å}¥Ød÷ë¿,QLn¨ñ{fªX}¢ [i2 6Q­ªÂ"©³Ôå¤UÑdåÿ4"I7*Ævßb(tRYÝÜKw$n"
+- ë§Ç:£RÀ Î>
+- "ÀbTuþ0Ó®¾b­
+- ¡Ø­ÊÄ'Õ3âFz*u¬Óà
+- ë|k
+- TÜw*|©TF/¶£}PÚ±0±jm¬G½Â\=ãÍP.öcÄ|î#a@Ü6g²/).êé%.}%¸¨/£fæ/Lr-ìíé¤[òÑ8t4M¼.#%)#[LäÄ	´¤XüÓt@R¢¶Ð3Oì1f
+- ÌüÌWÒSo$¨õª2½ñÄK-L0 Ã×±&iØ»4¬ÏÂé8{Jnhb c.Nú×b
+- w\þ"ªMe¯9í5¤ çÎ±ãÏfÄ/Óó·0j¡Ò$!\ða_ì¿*Znqs¨´Ry¶Ðèg¨)çýÌõ¬s2·JôßSxY>Ó+ßMFGfèCPè:_~è@(ù»>|¸$ñhâ`i_pñ¥±åôë
+- ô^/-OUì½°úAèû!à3zR/.(ú´[BÍÌ¯£
+- +ôYó¡hº¶HÍ Ð8-ÓaL[Æè¬9¦T$qØeñE²»À)4b"çgÐ=4~FCÅ
+- }ÛA×_+ÁýúpäXN»Ïx§~öØq|ªqp*s±Ð;(gSç«rAôiènáú*®*3D9í:a¦j U_úÃÈtáùjó$h§oWöE÷»ð§ÔØYêà¢í Kë/Ô¥õXû5Ú©O²'(RÔdä@lç>=¨´ýêìê½é´uQ5|}³ Uçu®SutxYiô ôp¬Ô#Ra'Xìî(ZGÄ=W!Ë¦y4jD¦³o²}#ÅïËÔ>·]='{è9`´6Zë«ûEBõMt¿ÐWNvåË+1ÕÍt9·EÝÈj\zÒÝLTxé»òÝÕiºhÜ0Êï0ù¥raæá~éév5²MºµÞi£?yß!þè³5Ê|5ëõhxiÂhÃqv\/WëÑöjz|?jÌ¢ª¼¤%±íÌgÅfæË½ìe±gËôeÌ\ÆNJ*Êeâ"jÓ®hâGK(ùëô¿¢ëYìeX#½x²@ãÇfîíÑB£8ä:>îyQ½¬¤
+- |¦{Â?\ªªNñ®  (-¾= Ð®gÊÍ0}qEÇýNLt}@u®mCýgÕKeí8<Ñ~;µ~aô OS¯$ñö!é§H+È<e¢V­nµhE	$^4AZhb/}âä3ÒøQ÷ã*xãi`À¤tcæ5Ã W}¿ ®$X4jìe,=uâD}:P/hè`¾3Ý/0í°ODÙ±®ÿ:^SØÔítì­.
+- ^{»TªT¿} 7md­XV&eßõrdz¬cÙíñv[%Ó³?þRÅ!&U .½À9@N=ÀW@7ð)Ð| -Àof 	Øìö¯»]ÀÀN`PÔÛ ?°ØxÀ:À¬V ËeX,
+- ÀÌæ9@0° f`
+- LxÀ è Àý.½À9@N=ÀW@7ð)Ð| -Àof 	Øìö¯»]ÀÀN`PÔÛ ?°ØxÀ:À¬V ËeX,
+- ÀÌæ9@0° f`
+- LxÀ è Àý.½À9@N=ÀW@7ð)Ð| -Àof 	Øìö¯»]ÀÀN`PÔÛ ?°ØxÀ:À¬V ËeX,
+- ÀÌæ9@0° f`
+- LxÀ è ÀæÀ p	èÎ"pè¾ºO.àCà(ph~4MÀ~`°xØì^ v;z ØøÍÀ&ÀlÖn`°xX,À"`!P 6`0È²Y0S §Å @° !°A~«³Õd×Ù¼ó[ñÕN.i£"Ø7ÖÙjÊ]Bõ¼rÍT½$K_q?®ì·ª×ô5åxÓì?ãÊñ¦ìØáõô:Mæ.8ÝÒT~c,+î¶uúóÊË}ñÂ1­0µKÊcYÌ.¥,¸,ÔvQ!·u/ã§4YL±çQýÆ¥JC©¦GÉ0ú·ÁÀùçÂp?Ç£þTõ[`Ô?Fý90êÏQ¿Fý`Ô¿FýaÔ¿FýIäÁQËmEµàOp=ÿÙ7.aß`è
+- |3UF»Mï^FaÕ³îÀ7fX·ôÚ,ìpÀèÞûöR­Kxz^+¾§miÁÅú°Ý ãýà¾å*6áºi>ì:æbL?yÕ¦5=v5Ö&ÅHþ@.ihu¦ûª±üÐÅ9¹nZäÒà®T51M÷ëîëÒM{ÙEx¾â:;VM
+- á±Ný±Îøc	Ç:uu;Öi<Öi:6æªKUÏôÏòFñ²kPµDk?³W,èag¿üàgFaeF[ÿñ$¶b¸§Eä¶´ûO_sä¾ßÐZ·¤¼õ/Zá
+- t·Cñ9Ë% 0Q\
+- ¼>Ç0Zâ³»]3©ôT#áMP¯üçïñÍ.©G¼ù3Ho_w´KJÇc¶«õLì¦}#öRc¸(Íg)<¶|¹7XdÂ¶röO¢Wfì	Ð«ÑüÁâ¸dkL¥Ãq¥²°¤Z/@ ûý^l4GK}öºRíô6cY¬Åß®­Ö¼=¹ótÒpðfäÙC0¿©çv0Â×_zõÔ ¬¢§¡¡ÚÀT|æzïI7¬m&êÿ	¡ªJ§òß`dh¸òÞ`Äb®Dù½Ã£-ËªÐ(9UàKló~
+- ìâB¾{q³¸UnQo]!w
+- ½j£V(ö·Ä79PµX0­>A}öØ$C{Õ¦Bo¨ñ¹C¡¶@þ36Õ[¹gl^¨ù±uJ$½Ä5î°±Ñ×Úqæf²¼3-ô­YKwÚ5ËßóÓ7Ìr<þïjÚRwÚÞU4Àù­3)5Ä9ÄÌC%1rUrÓÂ÷dÄL}É¦¨Gõ×Ä/Ùªnl°ÍZÿéiHåíûõ©JPÂB/Ù¤éá!J
+- ]ã#æi|É¨Ì·Ïb4´Ô@)´ËV9®«·ñ>ïß§Mã.­Æía.+å4p»Ô0xopLPph¯-´Û¦dyÉv3ÑÐ ×mQÁ_5ýÝëó½Ê^ª×¼Æ7)"N£^}÷KFù(ÝÁ!âÅkùî!º&Ê¢rËùKâÞÇ¿;TYpjí{%çèåúhÄ¨Ô¢¡-iË[¦ÚÎZE-jC§FIeõ=Æû /íOTõVnþ¶/¯ö-ú<6®â¯	ï{cY]Q¶ò!£®øfXÉÂZà,â?iJhÃË#£Ú)û¨­h|ÕzLÁ ÞÂJúÆ=¶LDöõ`8íM¤o¤zÁ&ÝámâXêä¿`ÓW¢üÐç:·Ä×la0!ê#ële,12<^Ö*c8v¨!%Øu Ô×mYÎ{ÁGö¯©çWÞýFüñïJÄ@KÛÁjh?*x ±0$-wÙÉM|èmþ0@ß¦QóNKaTHåoàÛÁíe4â_Îè³þÎSSÅ_}mú¦M}mjTuvY}pª¦cyéo4ó5%mé0ÆiºýzÝýKú<Å{#FÒäÛè#O/N§]Ú¼äÜc«TùÝ{dFqÃU¾Ó¶qÂu½v6îÆÌzÝVßøºM6Peþ|Õ{»øÉÕ09Ñ
+- ¸iQ^3:8ÏtÝTp¨óhÅT%¦VúÑ|NU5£äÖþ¾­l?X"tDäª2ELÐR³o®rÒWªÔWªÒJ¨þó^@áO(G=}¼ OÕ>i|Øg«¼ÀXgo¬Ün[ÕtZz'ÃóíË,OÀYçbÿQ¦m±è¦ã!ÅÊU[§+·hJ¤kþ+6<zÅW6¾a£ÈØ¨&ï¶}¿õ¤Zü«ø3¬wû8Ù¸Û&ýQ]P8\ý}¿£BA3¹·óß]h{3w0õm[=×DooªáKøÒ§w	]®Ö³|{äooÆ5qR|Sú âQÞÞ4Nê¥ÿ!B+Ï¶]´ft	m®V÷jüþ#ñ±$Ï´/¶©¹üöÎ´úÄöö<ÛLîÂÖ6Yè¦ÿÍxJöòXóîÅÝìýÿl»Ø){¸{/4}¯³¼]|OöB`§7¸ç4[TêrBþÈ¶Y`ÐîÂ%1¯£iÖÒÖ³¡­½þ²øÝvZ¡I46ßô®uµ44Ç!9hêöèokôsÍJ|Â-¶áéE<!÷/u,Xt?Y=ÿÕÕk6þhmveõÆÿÙÿå7°õIò,y¼Lö·È!ÒIþDÎ>Üã'k¦k¬¨Â®)\[µ¶ríõæÇ~b~¨¬b),{ÌWNÿà>² ¢lÕã7¬]ï%KªÊ*\ë6T|ë×Tïu­~Ü·¾jÕºµkÌK6®Þ°¦ØâYåªªUk×­zl])ÜàÃÙ¾Ê·Î«Dn@)¾õ#ù-]Jÿ¨l½×¼x×ì¨(«,õ®Zýx4_QÙú²Uë·Á[¶ÚK[ªF8V-û{*È¸î5çlJÏ¹mI¯$æÕ·Ý3oÝ&b^»ÞüÀî]@Ì«¼æ²µïJ_·Éjv­[U^yWú¦R¶jÒ\öØkõkÍ«ríHXÔÌm¹VÓrÍkoòu)_¥>s¥NôsQFá¥æÜÑg	tü·ªÎì;s2Í³*æÎ6ß»aãO*Ö»½æY÷Î6ßzçwï-6/]µ~ÍV­_o6ß³`éE.ûÞ¢óâ%æâ{xàÅËJH~ekÌ?ÂX×Ü«V¯.«¬\1B]e«+Önôn¨¨4mr¯òUz6Èrñªõk×Ï7¯FÈ¶acÙzseõªf×ZozeY¼A¨Ü¸juYZYJ=kÖV>nvùÖ­C !¯°)ßù#z½ic5©ÝñÂî½ûÜÈ-7ÜrÃóô«þyÃ¨»4Æ]ÿo&Rºè¿Æäk4.öïâö¥%úGL'êShN{ZQö#°ì<Æu °Ø|ó yù¢Ïk½«Ý é½`@Lf'ÞÑRúpÎÂûÞO¢yVoð­[£}Ýº«WyËÌ)ÿzéD1ÿõTüRé{?øÁrüåÿPK  ì­S#rÀî
+- °1  cM     BIN/CWSDPR0.EXEí|}XSWºïJv² &A-Òj1h@ü(Ã¥h"EKj©fi-~A©£HÀq4LÚjØÔz:©íufÄ´s;s¦ÛÃé ¶ÊCì#ZÛÃØ¥ÖiwÜÃT("ûþÖÞ	`;3Ï}î}îßÎÚëó]ïz×Zïz×»}èYävb"Ï©&ª´~"ÿå
+- r#ËSMþÉHga"`!p3¿ ?'ä:Bõ,1ò	ð²ò	Õéø`²ÉÀq!Ç2y}6!'¯gÿÿ÷ÿôËT#sl<{ËO"õá­Ö7TþÅnùKuîqb´ü¥NÉÝä.|øå3ÜÌ¹`¤heoµÎ=Ý:|í×ÍY]©!	³[­ÄÏ5´(»Ræ®4/4øÉ~·ÙÊ9U]©5ÉÍ¢0¹¹ qÜ2-çd¹r«Ìn}¬£ù^o!KÏi¹|áO4S¹êA¿ÁÿàÉ¤ZÄó1)Ú©
+- ´3þ#b8ÍS­Ûô4O¥`'¦G¸â¿´ÓÒ^­Û.LJhõý{y¯¾ÍÏX>¨Km!þàæ\B«WíÿÀÔpsÛ°´0­^­[h¾»ÁÊÛ,¿¦¥àý÷N¶+uº¢.åv¨l,úqí×k¤È=¶xÇ¯³4eO¹êD-Ëíçé¯½<}M¹)¿¯UØ¡ÆµkÉÀçWÚ³?1¼ÒÓÁk»a0¼Ömxí\Gö'ÂßhËë»R¹Ç¢Ìhvt¥ÊqµªQI¼SËÙØ7tübÐ©"Tq6­Ù°»/ñÁB%gÓí.TqN^ßHæ»56ýîBuÍØÚËjÙòÑzÝ_qòÉbà.,N&´ÂBSK`¡ëT÷á-/X¨
+- ®ÝFPø$¦½³´é,´mÃóÈòá¦tp8w¹©ØJ&M%æÐÇLÓ:Ëò	ñniÊD¡ã×ÙÆúA!³©µäÊ8;¢8Û ¸lù§À"Úá;Å:¥x_<?pBØËõ_DçÎ·}Îtîº@lõ#~²ý/µîs¹É¯	ÊøËzþµÅý¬(½Vµ´õj²§==Ô¢÷çßAÏX_k¾m£on}¾×ü½DßÌ¤·¦¹ôx¼®÷|¿|ÌáÛîÚiÓü@W*Ä£2¿¦üÝ!ÝNæ°ÚÍ¶Ë*UuA­R5k·jÙ	ïú"kFÊµgÀ`Û0gSw\_ä¿5Þw;×9×6âkG<Jþa4çQºÈ¿k¼IÆ§ÿ¦ÛTÖ+Ø)Ä²È$[Û0ÑåhNCy<ÃU=ÁW×LÔÝ"7(­|:d¡ÉC4­l¯G¬zÆÖçàç@Tbíà3¶ëþNú úî8®%bùQ-{¹ÿ½Y>u@TìÐ¥Á¹aHKHÖ
+- Ôß
+- ÚMâxÚûn Ã(ßRzÿÎªÄjUv+$oöªfrºëáv­%\_B¿Ï0íp¯T*§»\Áÿ'ÆW-­÷Ä:Xçv¯SðûÀúó÷WãÞ¤àGÊh6±Î,ÖÍëLnß<Z9Ö&ÖuKÄº±n¾X%ÖeuóÄº\±.G¬#Öe¸¼îlëbÝj±nXW$ÖuÅbÝB±.O¬Ëë¬îwüíÈìQðÑ!×Ñ!÷çëS3Á=AÉÝ,CâûCeT,^u'«#ªÒ«Ï¿&úoúâ;Ù·ÆNv*Qð_5ÅyùéKoÐìãEÛ0ÂÌôNÉîü¦0çÓý÷Þå«µqY¦ç)=^³ÛvÃ¢ä¾Yæßqc«OÓÉBâxñùÔ|÷Á`o1Ûéà*Ú®mØ:m&a¦\oêðï0yñó&på×òÁÝÑ6hCñýÍ2ðC&R'Ò	¾'ÍáMC´·wàÉðñTñú¡2þw÷¼ððO±2Oã(884Ìn#ÿhbrv{åë²£JÒªî IqÓùÓfý
+- ¸ÿJÜùCz¼=äsþÍÑä]Ä}ÑÀ·Ofø&÷eß$%+Ü?¢É	¼w,q¯0ò?~4Ì>ó_<DS=¢û+_-ûiìÍ±Ä!_$%2HôÐ"b'ùù£ÔàATRæ;üÔo6sîëhMJ#?òõ7y'oä?&Ræ,É7ÏÇ%F¾}\rÿÉøäF>4.¹ÈÂ×O^jä¿Ã:XvkbGz0	kbèu½÷rzÓí®¯ÁôÊ&#àº[Èwåód¶á0ÛÃ¥ÁÇDv°í2®ÜLF`EÛeÎ«Åìï?¾.:Ñ¸ÃÀ]Àß%JWàlÑXÂ g­¼èÓåßâ!9_'@è£A¾¤~ÎÓÀõº4­R¸¼[Ñe"Eä~{ÿlÊÊ¨IEÃàÛ±ðü4>,­TJá}Ê¼ßJa:¦TÞ cÐ§!#xôOÄãú$èMÅ3	Kñky_^ÿÙ~­¦åÉ{îòß´]Îîî6¸ð®OgÈÕÿ=t|àê#L·|áMïZÍ(¶w ÝhÉÄ1nÿË#Êf¬©·¦8HKçoÿ½Ôw¢©av½úµEav¢jFþ1-ÍãGÜ¢Ás Ãç^ÝØDûw®c"oªa¶EÏ&·9MAWµ¦d*6ó9Û0Õ>fB%fh!§9»5´ßÚg¦ES£Yýö~Yô¡4´õ2ês	þj×ËïT$ÔhÆ>¹Òô¼\bïhÁX×h0ë2ÓA¨0+çS­+XÞÇÙúBT¡¹¶]¡
+- ÍtN³]ër#M]äª¾{´êþXÕ+dbú£Äì6KÐ-©j´ÀõXTZ ´ZØ½fïw!qÎ¯¢}Ø+÷á¿ÅÊ}+ùÊ	Ð÷[îmðy³÷é4M6zfòs¥oIFö·èLHC[[DyÍUõi8y­êeL@÷·O;KÅÜJ:ù¹ÄðfúóF½»\'æ>msö÷¤4OñhâAå³ìA%ÔÝáï2º¸\ñH©Å#é_ñÐï0º~dÜÃî6îIo4îÉÜcìØ?Ù£s?¡þ,û´Ñ¤¥´tÒÒAZ:HK~dlDéFnDéÆ¤3rt¡c«=
+- aG)xÁáQ	ÅµPäaBF(ðh«'NÈóÄ9!Ë£æy&½`öÇ(Ló$
+- ÉÂdÏ$Áè,è<·	ZO òL_">¤ÞÖ_!Ìp&p¥àØZ37|ØD®½âÏoQß¤0F5¸Ñ0ù?ÙÛÌ#lrÝglû\åâv½êÊýÛõfjfÈßæÔÛµ)	cñq2·s\MÛÌ®Ðf|ÛõV*r»¤"]ß,W]k^®§âÜhÎÀóysq~ÇþÔèjëU!ò¼ÑÅt¸B~ØGI
+- ³^³Ú¨ÛÃÈë0ÿYÏ"0¢ßgÑ·(S4ÜõãkÍRoøÜiÐ¿5à®Ã·C<\NW©»v­¢ê×W¹k¥á@
+- â®ý®dr­rO§½rU½æJ¯
+- ÚçT½FLéU{&ËNwqª»VõJö'£ø©>Y²hW/9³Aÿ>»õ¨ydr¹-úÌùoêOe¯ë_Uøf¹ª×OoëJ¤ßÍ½kýF¯©ÐñÐ&ßæßÖ­[ª½âÍ)®ìôìO\ÏÚsµ<k7×ÌxÖ^ì
+- Ú3\Áåó\ÁÒ¬`U^pÍBWpÕ¬+pw6:¨lJ£>Ìç~ýfÇw\Xö]»¸+èðÊWÕï3º©ª UÜý!TÜ§¢!-iiHGC:OÖtÊòé®GÁ¨*ÃF×c®S.L»ýtÞe·îéÝÃÓÙGuÐ=¥Y\UÎû<·Å*)®{Öd¼?Jk%Í¶¯8ØW´Kèk^°]Üi¢¢ôgkÊ]u¼9kª®üßÆjCü_ïÈ<øÞÊT3ÓO?r»±¹ ÊØáDåîI%=f¨üùÐS}Ó(Éfº¦g9xoWù¯ºójmDH9M>b"4=UJW]=¤ éW¡¨ `Ûr4<y{N[¯2lõ¦ÎÙéÜÐÏÁ¤ýÆÃ
+- "LÅ©E5banôM¶ Ñ§_øZ»½W®FÃÖ¿ýß[ph¶]üÒLä=ÒÉS*pòÐq=Âw­J%¤`ÉqWL4r"";1uQg!þ4gu|FîÁÃJ~NîÁ·þüÃJ­o·xðRN(í©ißuðº\HJ4Ü>R&Æuóxz>ºLû¼Éh¨Ñ@C0nh«?Ø¨eUG¨¿ï(o¬íÝcÊ}Ð£HDêÊ#Oª:)Çw[@Ôþ0Aj	s'èV?ÔI2aõ (ð©O#sx&áþÙ­Ü@ÛJîù&lâÁ)Rd4ê UªlxêRT\OË!HïBÃÄ'âP#Êz@æ^æGË_ÉðûË£¼y1èk²ß¨}áçF#Ä§PúO7¢ÇÉ]FÜ ]ÕµLD¥¨Ï§Ëþk°C8ñ£.iµöª0
+- Ì1¿)\É«Vªh8 Lkåì¹ÒM°±'Óû®Ô4öV,eª¤t®Ô<´+Í{sD3Ê-ßØg
+- ¬YH<¦÷£| tðÏÐ	äéìÈÂt^Hçtß$ÑÏír¦r/¤Òô }F°4½*U¶§ÓØ!è®fÀ¢¨mJ>#«!èù£S©R)H¶¹ØÑ\fa_`dþao9ý¹øÂ{JáfÓs-ýC2`ÉÙmý;Äb'fþâËøgKCBsÔïÌx:É¶ÃÒKià7[j¢Á©òi«'ûuvÕàÁJö²¡[È]ô¶²zÒÂ¤wuÚçà<¬Ò"Y¸Ó?4b_2DÿÐL9(¨éØÐÞLFíZGDÉQ,¶ü¡&;Çüqüéá2"ãpíLç"?©íêQ v¹ÏìÖà®O¤`p×99pìÞõÜ½ë¼èÜÕP]HxnñËªqís;a¢¢öåf¬0å1;æ@»x§rím<Ãu×ùI^*ë?CÌmÅÇbeòû2×&+v\7~²íf[PZâSí%$úVDßbo«èÛªØÛjúMá±èjAW;Xy	Ú1 z§pÎèâP:K»$pÈSPRí ñf«óz¤g¢ÈsÎ_e@`?|79Ú5+ÓXl#^m CyñZ¤ 1S¬òÈ=ÇÂ2Cí;L$+Ö@¹kÜfDR#SùÚð"QDu"=HôEDYêrèJ3Hy²Ãh?,QÕ ª$SÂýÑ×Ïä×\é5püLYs¤°Ìô)¼àø§	¾IÑçQÂbF»¢d]¬~9Ö¥(Á;·;ö$¢|$C]rM¶aINÎGåDî7Få	¡%\#?&@¹©FÉTì¤³Æ#_ø,á-ÒvQÐ.ç¹nà»orrä#2+ÌäW:2ÎÈø6³Õ,JñT#ÿaà½#áç±Û|`j`Ç°¡öN.sÎá¶*´;!Àû?Iè:£>'wÒÿ?{¶Æº®E#%>k¾{Çè;d§T]OU·ú¦aÆ½	ñòËn#FexTôÔ 4kú[Ç¢S>!¥8(Ñàa-á·ðQn^H0÷½©OÏ»_¸9¤¼¦çcM¼ ÷hSFË;Æ
+- øãiOuü£Ã1y¤Ì7ï4¬à2g½`ØôRwç`.Ó 0dz¡hSÑhº¼.RLdþÿf1|<!òþ©É59ÍE¸ZÂèK9µ3£&Ng{NäWÀÐwb=8a<C³0ïüéÔÜ¦SNoJ$ç£­G6Ml w>x£,Æâ	ã¸­W.Á½ðiäL÷vj&ßkd*)Aä	N>áF~c¶VxC÷Ï+õv©T/w£:¡ÔÉ'Rú#'ucwæDéäM.ÇÁoùÐª¨²ÝJÊè§¼¤-CvåN¸y²$Åq%Y¢)µ)|2ðµÃ½@Çýñ}z^ô]ÞÎ#ÏHÒ·K1ÑRÒÜæìó9hJå´<&õÇ	£þd=óçcwô.9ðqßã­,×8­Ö;ô¥e\Üe÷QdWBtmÈ /có20ºp1ã¸÷s0{HÁ	$¼Ð+§ÎTE¬c^(£j(ÄðV(¢<GáØ;½­ ôq=»¨²É¤vÎËðÕ6\`Æ¢8"èê/©ãÚ.ùRÇt[C	-	öìI®õìAÍ¸r`UÉºìáä±â²6yàr&ðu²/	:Ã)oà8òzYh¥ÉÕWéò?~'¸ëéõTéet4ßß;qþÿýcâ-Q×Þ¸\9J¤ÖûL±w¬É=Á½Ñ÷&q»ý¥R¸3 jÀë8IÏ¶ët²0CqãöP1Þé~ruæ´
+- ô2o\ ÿ§FâÓSóË3O_QEèycÓO¡ª?oÄðÑ¾<HÄ;ýéÞÙ¸â£¿¸ÆSìúÄÁw°ZÖ§?mü¯üzýÓFe|Á¡ðN
+- lÂyh¨éihÿEÄýÙf!¾¹ÒlA!r=?îöGgÄ(kW3òwýYîÕÞeËv(9Öí¤|Y¨gPµÙôå"hôQcöùa{1,±-BLUó^#tûhS¾¤µØÍ°Oª¯27e#h';)ÿFd¡vìmod62[û	Åhep¥ÿHJn¤¨znãJ£ZPà­hÂ¢ LH4Kãòyß9:Ù_ÒH'Øçaú<©qßMä°fÁp56U"ë4ÝF¨¦CHãò,·ÃöØ§ì6Ê¬ÂÛ»åF¤Ôs¤ºGSQÓX "GMdxK¿ëÔaé¨mÀIá-S²"³,·H±sð½ôÚ6+-ûLÐÙ´}tvmà§§9øiÌíÆ¶j;t	ÚNa[/¶'¿iæ½\ùù¹)©I6Ó8EøD°¼³µãò}aoÐÂÇ<YIh)òÉ ½¶Àµ6,ý¢~Q8\Çàw0èìÇºtÇ-Ýi|áçg] û-=§Ïa£*Pöµh@;i¤/pQ¯Í¤ÒhXXóV8øLtûíÕ:ùÎEþ¦Þ°õ+ÎA£9g¿t¶äp÷?qMîvYq'úB6XC,në=$:ß¼J1ß<§®×A{!BÚ"Mj BD(@ó§&ÊïLäê_ñ©£þFVÞÈÃ
+- ´"ç+ä8WñO;
+- Cv¿Ì²¹§*íÛ¨}i[Ö?÷½©=ÁòëÁe_­üoN9ÁDúàöps~¥(Q%²íZªCýÈp«µ»²ÁvêÓX¦ ð$R´Aµ áÔò`ÜØ"Öi9;Ëb¨úÎ«ÛUg»pöÎÙ·Â¥ÉùÕT\¯¹·kÕël}óêx¾÷O²~ï1&Ë. Ãp]¬ýJ®Vîe¬r¾Ë@GEf)ÝF1ÅÌxÙA¯_0ûcë¼Ì
+- 1¦ûîÇ}óå¹\iÂ9h®w>z½-ÉVMO:ÿcsqð%²|¶D~Iþ^Ýd´Ðj¥¥SÌôÿâ7°_Ú tIªÕØÆóÊRÈVOªS[JTµºè|OóG&1Qq­kûeEÞÐGV+bø1}¦?rI9&\ãfÎ-¢I«ß1LuzÃÊÀ!À¯ò6áÛÛåë1ÈïUFRF]J¹Áº@Í#ÆH­2Ró»YZá´Iöy!¨§Ì84cÔcÔLUÖ»ú1LãIy¤h#qÊoM¶ëôòçMËìÌ1¢º±ã2¯³*|z,¤±½0ÆZ¡më×XhtIÅä­+IÚ_ÕÒFc;íÈvElsFÊrd¦ÈzEd¢iéLÈäù1i°u÷B1i8ùáÐÀ¹©g´3ÄûD²ì3	¥ó&Ð¹>å&¸+kfðÌR#AqIKgÊ³pNLc$Ò§°E#°½§éHB×}¦¡|¨õs¥¿ÃØð>ÿãsq¸eK*78ï´N/;T`OùutÌA½ ¢aÙð½Ý©¬TR1p&t ¦µW©2fq´Hun )h&Í·TÖPIûË?iD~{Ò;Y¾~¼UsÄöá¤*a¢|ë*ÄÚ1|}§ JÂàrDC´$Ä¢#à¤B¡P"I¡T*¥J	/7FÁ(Q1jÎ*¢V¨jFÍª5j­:NMX«dVÅ*5T"NG	Ê&A¡$ý&éDÒSSþmÊS&'×$ÿ.ùÛn¯¿ýúíåwüöÃÔ©5S552¶2þûùô»L[LÏ.ÊRÓg,qræÉ³Í³Íà_xVxVAZxVIÚ±´9éô;ý¶Yëgýë¬fýE¡OgéÊ'TÙg/·«pepU-$d5îNÊ7îÎ]l<tÓÄÞk4±vxÎ$Í"ÁôCIofàúëRÔ`»ÈKî|W_OER¾Å HÉ³L­:aFëåôÙÉdÎo{zöH×.{º39ÔäÊn5Ìèv5eÎ4Ìlu5ÍÇÏIWS.~¹?=.¶af¢o9(µçEÌÅÙ§¹°aM6ÌèA3.ñÓ¦þMµ¸ôà¶k-1¤ö¹B¶2¥¬ýÅÕcô_&nô@	îÕZh|fÂè\K¨E§\ébJ²ÅNÇ¦ÐÒ ì¤-Ýcm&úÙ;¢CÝ±îùóÁ+ïú¨µ÷¨X§ygf²vØjv!{TY«ÿíBØ_«ó²°Ææ5ôú/ib¦Öw0vâ3ÎC4·z»%®Ï<¨ô·2+]Nï"÷<º¦¼CfJ¼?«¾WÅÿyj½<"¾ÁKÏo
+- äç¾#<cÿÐ¥çtJf|'/9tú
+- >ºðÅZþ»ä·9åÆÏ:VÒ+³¢=|ö'ëè®Üe7Vì2XNWNy´ê,ù\ªxUÙÛßaPôÂ!qûõiXù³ý« ,"}ÞEþS}ÑWïw¸³KÃ&¢îbéÐm ¤&
+- ÆAï!µWpá`Ã4éX?®­Ãé2¼ÕÐU.®Çe8ÚûôÝáZ !ÔW.Ùwm¬tÕÿÙGMÁqÁ¯gïGXáN¤ä0Lnpá¥A	6-Ô'9£Mõw3°±av¥¸g`Åkµ|òThÆÁ¤;,¡dÕHX±VÅ7R¤ÙaIqç[xõü&eXBéÈ³ðËó,¡90iÙ»æ,tv6ÇBoç[ÒgÙ\K2üfXøt9»ÉJ±Ä,ÎaÖ&e-ÄS(BÍàUgá£uÃ®eÂQ4!¾/ùÄdð#?}64	e1<#ZÏÊé`R.Êa²Ea5L¡óY´óa;î%ÒÃzý|±×Dµý¼<§àUAw¹Üù¿ ~Bª0qá¡ÁT !÷äÛ²µÃÌµô`	îT¨Æ¨Ø~:½Ôu¯×ÜÈ%·F)7ÀßG)AÔD]bez2|ö`ò=M¡|ä¬¦´Ä*°4]6ò,ÚÕR´ÕZHG'FïÒøC«Í(*ÀùÓe	UXI´Ð²´`Ò¦!ÏÌØeà:Yø|tÂåTØÁwøØÀ©Ã"©Ð1ÁÍÌcrIoqÐ©âÿ:%vC)'Ã _mð©-Îáj-îàHÀ9BFSêªiJA	¡Ô&Äõø¤î]seå×bc«ï¤5©ª¢%[§"ê$Å4NÖGOK('ã¥yJ$ñ]gÒDùÞê%üÇ·A×zì~þLôò"<>T¢cþNýnª
+- S§äY)ü3ÐüÜÌA¾iZ>%yÀ
+- Dmp7äKXÍö¯ÿ4¤	·KNJßVe¤ªj{/<¹HrÞs:J»Üaÿéit8(Uy¢æíGi¨%SY¿ðp¥nYÄibÏ|hcÁËÈDV26)pÍtµÞ5HuLª]ó¯HB(5F¯£||PV©|J¡Ë·ÁGÄÆÓ¥÷ç<Îñüdª>6\ÂO¤´µëéõ³~aHT)á¼L§úô^4O&=I£?%c
+- 8/ÓãÉãWCßÕÑ\Y¿À-}­7xÚ¬þÐH¸ ç1ðhÞ>~ABµH¡ò=ézÌYØüÝ^I¦Ç©5¥º0ÚÒîñã§J+Qóó¹&a
+- .8JT/Üà,Ë~ âöN¾eM©o|¡zàBæVAõI·Ð)aÇñ/NáÉEILÇõµ"c¬ï>Å¾ðÛSXAüò©GËN&÷]_Ï¦@ë}V·~ÛUÊIí(×û¿;&ça[!ãËÕÏ:ãJÄÅ§¸¤Óåqp-r	ÀÉWÒøJÆdÎi]`Ã¬Od[!K¦1ÐôØzEcg!£ aAÎkºZáßÑÏX8Ü©8uS;	>ØFpªwép²r©`]Î8´×êÅZïSÐõÞ}{ý$öÒÕ	=x¹í£slT,Ä-SH:ø(ï®èõ61zRoSÑ ¥.¿Ç}1ú¤UÖ©M´ÅKDÉòi0r8¶÷djèù­Á¦.,§®uuIdÜJì¡òdS¶îîtPUÂáaáÑX+äcÔ Ý,uwÚ7¾ë´QxTË	sýSmIô,È/©³&_|ÖõÐ³.\±hk´Õq×üøº;è¯­íÊ¡fÝ*oEõø\¬O¨jÙCß^qæÈkÁmcB.|àà'&¡&¥0Cþ³éY.#­MñÑ°Ò«§¡1I«ß¬åñcdVÿ¨N2ëÈ6ñÝ¨lÃÇv{/Wô²¢Wô>~)@ç¨¦ÂÆ(þÔÙW2'9ùûß/£ü2Þbã{®Q±Ïdê],éþ;¯w¶G	«á°ë<Ýû¢|!8[ÅôLzï{+eKGßùf©<óµÄ/º8`FI÷ #ô:Ä0EÒô#t\/n;Ôøf@Al#ð0Qk#Í½ÄÙEæ4Æ}ø4¹¡hsQ½6DÇ[0ãÈ¢Ô
+- Íì¥|øô4}Ý¸î%Þ80(uÑp21Êo¿ ®%Xêm,!-uâ#PwOèlÚxÛßîaðJÞ'·Èì&oã7Üèü¿%3öf¹d×¢|¡¢ó/º,¬{Oý·Î¿Ñ0ºÊ(|\Û:Õå¿~Iáë@pàK@/ð)ÐºÀ	 xhCÀoWÀ~`ð<°hvO~`;°ð[M¨ Ö«U@	à " ( ¬@dóÀi@200:@¨ +Ñà:Ð\xàÐ|
+- ô gnàà$phÞàÊ7ß ¯/ýÀ>ày`/ÐìüÀv`à¶ 7P¬V«ÀE@!P X< Èæ0Ód`2`tPV ÿÀu ¸ðÀ% øèÎÝÀÀIàÐ
+- ¼´ ÍÀ!à7À«ÀËÀ`?°xØ4»'?°Øx­À&ÀT kÕÀ* p Å@P V È²y@`LÀ4  T 1ë@pàK@/ð)ÐºÀ	 xhCÀoWÀ~`ð<°hvO~`;°ð[M¨ Ö«U@	à " ( ¬@dóÀi ¿üd Îò:@¨ \ÂdÁ²ÐZ¹Ðúä=mx*§Ãö³UÒÍZwÛ«\\]Þ*ÕP·|¶úAÜ¿ciZE¾ñô_Êògy÷îuá·ò&ü	¦nÝÂ5ü§¾²[<bíòéóªª|qÜ)¥þr÷òªXKª!3¨¸åÅðD=ºì¶Wï)2hwÐl¹p}Î£ö4KöBLrÍ²Å·J¿âMR)Aàá|o£}êsà@åIs}
+- ëÍp®çú,8×çÂ¹Þ
+- çú%p®/sý28×À¹þ¤I²ÿ|	¾ ð\ÏÐ¼Å©ï´ÊLCÔwºÐLªí:)H=ªíF)H]ªí]UÏ©¶=¹ª±tZcÏn÷¥k`w®haeªáä¼R=OÂrÍÉRØ(Õ7M
+- O®j,1'SJT<RÆÅò Î0râxHÎ RÄ4e"v­6³päçMrÔù"Ú²i×ªéºNùÃS{¬JÃ³C)¬äfÿ=ÉWþpÙÓæ:Nøeùa8Í»Ê¨÷½fzä±¡ý)rfï®cr¾ÛnÉ7ýg.jO\Ç[[aw<Õ¥=Õwª+þTWÂ©.Ý©®	§ºô§º§Æ}"[øRäS§9í£|_LöÉÞçãÝècÎó#=ÜíWùHÏ-7Ïl83ó½6Háôè÷"Ù­þK7ÙïîikX^Õöû&Í»a?Ípq¨..Á÷Ý7SÐãøÏ#fQ§çÛ¨aÃ/ûäï$þH·ÐËç#èäù½pV8ó\µ^óq§Û3©«ü<Iô0= |í¶`i!<+ó°³ë$óÜvÆó-,]û¼¦égcB=ü¨6eP~÷·Í±Z¯´¯ÕFï
+- )%12K¿Ù;ÖÎøÑkÙÔõôVw¤ý"_Ä4²KñXÂ'^-õ«îÝÓ
+- UL)bª?rý^âm[ü¿lz½3_Á°åV0|)[&ý.fËð½	C=T©^ËëYY'Mh÷.¥Ç¾Jª`|[&«VòM/´ù;ÛB%Vêb|#ju¬­b1m>DáÖ¢Ð
+- « ³%V+¬D¶ñ_´
+- ¬ü%VxÔ[Ø%V/ÌK¬ü¹Ö2A+°MÖÐ+ýÀV]mj!«ºRC6kþZ[«úéÌ*|4ý^Î;q\J¡õwÒ÷Ú¬]©¨LjAíàÐZó&N\+6E03e©U2·j6ZëmÊ·ÎF:jiLÍÝM«ô©âBK­Â)Ä°«CÓ´Ð2MK­¸ÒÛ©`W[QVè ­5:Y«ðô±¾(­´enp ,BÄÓD©=l±\~oü"VVYC«Td©õ.¢ QNkôl"{ ïúz|ú²ôn:ßD5¢¦^m'»QD>"À~ñ>¡1¿v3ÒJ"ïÈñÞüç7ùßòÒ½é¯ÛÅðñmepÈö¼Sù)½¿ÑK­(è@ã{þo(wwÝÖÆ+A8ü\$Må¯á;Þûk§z"-hOþñ*ß _7ª«ÿÿ®7[ú@Ú)}ÞPzeà´
+- ÉCô<ã¿hoÇHz­Sñ©h*±AÐ!øÁU¶iu.
+- B«!zðö&Ðï[*²
+- ·cxÛøxµ¾ò¬ÚÔÒTNtH½Ì×ò­a!ò²ÒXbdøèQÃñcDý)!hµ:­IÌ-²âséí7åÓ´Ñý?þØñ2það²ñí2jh-(G þ¤\R±5Ta­7®0	ô³AÂïèÂhÞÁ³]Ï(øûbÔcìÞ×ðÿ3Í!Å^É¥E¿O¤[ñ¸V#èå`MìïN7i¢fæXYz(+|SÊ[>qa»)¸l`°L{oÇH|»XÀº[Yf³ä®°Ö
+- ²üõR6=¿åüß)­ïø¼p;YNk]\Ó*êÁ¨J>Øê½ÿðF=(ÆOÜÜHòGÏpËTpîÄ·æ·ËvR¥ðïü¯Ù9²{ù1úað¤wÊ¸ÎèX KÈ4>^I½w¼Ù"ØéQ8ùÃÒÿGÐ)¬ÅUBî2(6Nþó2él«å: [ÂY¹_4=¬¶ÖÌG0Ös!7Öa­AëBïD¼|ó2ËãÅ¯±ÿXÓ¶÷PÎñR> S§)åw(ÊxKþ2k
+- ×OXé2®ªIëÒ¶rõçÒá"ãKH·ÜëcE½Ã*|,¯h.ÿ>ßqû¹¯ë;V¿&Ø#ÂÁõÖF¶VßÑ¼[Ä[ü'>­ëvµ]6v4kiLöfµ0¡âãåï £ñÍ>úèb1ÔÖóã®¶ì¢.®ÝÕÆ½Êf¿ÿD\,ËsEQZªîîJmlMèè8òÓBakÊõÐÿ0ÿ\ô±æ7ß»Þaúÿ½$d:ø.Ñ;Ä!pÆûUóý]UüQÑ½¾¢Ú*såjµ'v¨Zvq.\:53-JÓvYÇµw´0Ó_~¼$ñ$DÉ7üÎ©rµ]Ôµ¨ñ4wGô·-ú?¼pËØ)=Æá­Ö­Vb¤WûÜWºÒ±¤øÁÿ£ÿéÇUÉÏÈ«ärtÿ&I?<34aSn¬ÝX³qËfÓú'LTVo!ë}UdÙC%Õëßºeãf/Y^[YíÚ´¥,ÙâÛ\QcºÏ]¹áqòÀæÚu6VoÝ°¥¢Øã3Ëuµë6nZ·~S%)ÜâÃÉ¶Î·É+%nA-Õ¾Í£åJV®$++«¾_¹ÙkZ¶ÅkrTWÖ LVz×mx<ZÎ^¹¹²zÝ&¤mñVnðRJåÇºªñuß_]½¥LGå^SÖ¶´¬ùÛHZ1m¨¿(-+oÓ6bÚ¸Ù´â¡ûÓ:¯©rãÖEi¶YL®Mëªj¥m'ë¶É9MëGCFC£¡£qÑ
+- ¯ß:m õ*¤g¥ôtIO©=SOÉFþÔQ¸|¥){ìÌx:þÒ·«Î¬ÌYsMÕ9³M÷mÙúDõÆ*·×qßlÓw,¸Çt_©iåºÍß_·y³É´xÉÊåÅÜ_\fZ¶ÜTºxÅÅËJÊâI¦ïc¬LÁîu6TÖÔlÄ¡­ÂÊÕ·z·T×*·¹×ùj¼<¡JþÖÑj[ëÈî½û¼z¨eÐ½\xqb~>}ÊÿÎMk&Ó´[ÿÎ!ÇXþ[:9Ký}i'oý#óÓ<[$nÑ®UW~ÂV}q« ÆKÂ±ÐôpÍÆÍU¦U­4ÕÔmônp÷At à[LN|þJ9.;Xù Ù°Å·©Bf×¦M[6¬óV¶RÉóR7}íT?A¹tÿC­Â_ù_PK  ºO#l~eÀ        BIN/CWSDPMI.DOCµY[sÛº~çÿÃ½«}lçÖc;K¾@$$¡& -ëßw/ )ÙiZOÆI`±ûíí[äãÝì|z}	&ÀG×l½Y­#|ÃÉ»w¯ñ×kå+àfÊµ²Búö÷¢2îÈBé²çü?'§Ç¯áWº2ÖN`Ö®+8ùwxóæåwygó5jÿ¼®´
+- ^Ì×´1"-X«üJ¢76g¡V[XhÜØ?Õeµ¶Ô7iø<½k®õó@»6òy+54Þ=RïI§¿@Bìèâûíâ?oùOå5X¡v¥Y]ÊnaêèÇB7¢-Ó³Û³kwã"¢ÑA´x¼b¶°Vµ¯à
+- ¯mÒÃ]ºß'ðmSª -;Qaóç4¶"KSàZP~ÐOÂÒ´6JW´µ¶QÈG¤þáÿöDv¹Q6ÞÄ¨-¼ üz@ÐÄ¾o§àpþÇçém¼P´Þ£Õ6ÏJÈ%¡mç#¼>\(RTÓTd;&äËgOðµÆ»gÖTÐÐ¨T©½Çgtò­ª ÖµC? cÐ¾ÜPhµ÷m\¯.8XÞÕxm"_­_êãÈ8øvrtòÈ"ogß÷õÌ³©*PUpà[m 9?+í'°Yb²m@á;¨j»V¶Àg³Ñ»*Ïnúêµ¹:ùáäèXÀ¬ÅÁñã«ã× 7òñv,aèit¤©JSéò¨wvÊÔSd) QG«ð}vÆ1'ë°ÑÛ&¨E¢Ù/©°©f	ª(tE(âðZÅÖ£ïÈÀRãÓÎ<ë# ÂQUq Õúýn	 ðqaWu²ó,´¸K]~¾¼³÷ðë§éP-Rè ôý¸ÒV{IÊÒµh,U[¡bÎò7àéøä mZPY|D¤D©¶c÷m*$B(S
+- 8xØ
+- iÄº%ÄÒ, ÒÆ\ùNÆ0*6¡lj3B/9«Å	ÖA£¼ªu¤êÅêã·Ú°É"Tx)I wO_náq¸ù|u!4½ýòñb6ã
+- ozT¡Î&Bk+§JútµÍZ[ØºÖ§	úÑpJ'üDmEV·ÏSVë2ºªÎ4¶Ð]áì Òºø5y)l«(élFýt@
+- ÑÆ¤µÑTd>ªÝ*M@N°§Ð×_¯?Áþêw´u8«íéDe|>»e^ûÖ)>§xxR¬Â¡4v5¡tI	1! SQ¨p«µØ²ìÑa(Þÿ#~6hjØÚ¨	ZP¸º&k+c©ý@ë6D.ÌrË²Rà)Q­BgUÔÏï+9~Y7ÌU=%¦'îÈ¶øØYª9ð ¼áåðùËÓùõtüt_\O)%Yu¸]iN©T/ÀRKæV¢²U5GuØc¦ x±X+Zòl*¡ÔÑ0µZé	ZÎÕÄ18C~±*°áÖ]{n+¢)ñ{.sçÀ¹®7î6ÔTø@|´2×æá ¢/´;p¡Äk*Oî¯â6ÓÑ"F/ÏLM¨eQÁ£:²Nä¤#jø~vü¿xÃ\ôTXe¨c J!vúH½¬utà«[´¼n` ¨äR£°*F;£Å¶\0³ã"K¥ÅÙ¨-)]ÛOQa·ZõÍE¨¨è:ÏMT?áz\¯P'Ýp:vÆÊGS´ò¨ÄB	gMÑZé#8¤à;S«5U¥WªÂMÝk<°i´er­àöúã:a·ÓMà rÅ=¨Jö_óùz@(Ãä´~nü´IZûbü.ÒÔØ­³T5öIU*K%¡q¬FGÎ¥A~JæA¦©ô.f®(ZOy7º´ª2%Ìg3Z·êPQ£o9~f3Z@ºÑ:
+- ÷e)³8è+Tø-ÑÁäRãGÜº¯ñý6ZÆÚµA#£ÏÜð+ö¦¡
+- Z¤ÞTUìã·Ç/Þ¾N|UG#z8ã6ööøßpÖ!~Dh(ý5FÏ÷¬¦4IàQyFr#nl¿WÞµ4²µÍÊ«Rs.Î¿ÌàÅ5Î`©7;dÓÐÐ7ök³Z¹NúéÇAAUòL?0ZJJÊä®aµ*ÖÆê -ÌÕ»²-zÏ¥(ÓJ¶µ.î)k4Æéã£.u¿½;þ+:ñåøùüc8û0ûrõu~qõn¾ÀÝÙííÙÍüà`Q¥ó5=7*VºXS©­ðTòC*ÒV"3zcÁY}Ø¨ ÄF4îM
+- ¼Xx®YTZÐï Õ}\£OÆS,Åy_°¨ô£B¿ÓI;æ7êg3Ë¥íZ_@	ÁÓúÊkU²
+- CÉ ôÃ/$sãC¨ù~ãË³{jº¨:ò§AÁòºNÆÀt'ýÂÐÝ)Oæ¾§fK¯]£íN[ÂlhËµÚ¢6t×yi¼Xêtèëñsv`lá<Jÿ¤ZÏðÞÇ(£ýÂèG7N¤ãÃBÿòÜÃÂIÉèyDûkç¹(Y1â	»½>Ï
+- W7¦-bõñôÕëëå}\iäéfp>úvE7v¦u°BéÍ¥Ë$ìOZÌ­ÄîÙKvr²ìXUìÆ~lÐ.3tà·<;n+yãÇGtsC|¾fË4ÔÏNZSÀ§ È3º¡ ±(¦Iìòk-níªò²4×ëÂÓÕVqG¬]k9¨n<è<qúfé<,=¢Ö&8$¶Ë¾w?þíoÚ¶+§[·Ýix|%±ÑÉ<ëqïQ}&f+Íñøzµã$UPª¨ºÎMs¹ÞI-]óPpl.Î"-@;É.j%¤ú.²ðIý4õI{É®Þ®pTv9JG ²"8^±z_ïï×³t?N¿Ê4öZ¼ä"÷;]âf+keÆÂÙ×ù®~Î	%.ÔC³í¹4U
+- <?D×¤¶ï*?äDÇGñE®º¢DÒý'oà@¡ÖÔmMyòúÏÅ¯jznÃÁ >húZ\iºKµàõËã?àõÂÏydSLìÌÚ{ÊUd§À@Kä )#'ÏêÀ§Lâ©ÀíèØ<ª­5Ï".aM×éÖhWòIw3àuºÛyÊ÷o7¢säû­¼Ë³§d¹¿ ¼Ù(õnMÅ/ay£96Ê­Uu*à»6LúêDÖË%Ý_.4j¬*éM-3Y·ÜÓU7Ër'ÜÛ[QÏ$¿üÄ¤]Ûôµb¯hu·UAÜ²L¼Ø^+q/¾{M$*± Ö¥¬Uº%QùØ6M­á	4½>ºoO÷­:e'óÛ²R+8¥ðÒÅw¯¡[Ûß JÙéÊ
+- ^òJ.ý-°c0Ð®tÛÒUTtæ9ÿ0M¯Å9ª»ýN+'°Ñ)yþI×2ä{Û	½ cì*G#qk	÷ZwñÂdºyVÂî/íjµíNMüF W¥Ñ#Ï|þ±õðmîB¹ð3º¿Wù 	V¡Õ2=ïÎø,.ævh±­(Æåç8]XûÿsD?®BÒO0Tºn]À»ù«2Ä%mº:Ðµ4ký4Wâ¡í¢ÕyÆ	ÐÝ¶«óùþÜÁÜoKVãy®<lw&Bºöè%_ÝíÞR§¾_ÕB5Þð5<1õ¡5ø7PK  ÒjM#ðò ×"  Ð5     BIN/CWSPARAM.EXEí{{|TÕÕè>Ï99Iâ#@ Ô¨äa
+- a8NÐ@&wæÚ0|cÉ!Tòð³¿Ji}`ôb5àW	&¥%`Ð"%>ÎxP(H&$9wís&à×ïëýïþîïÞ3ÌÉ~¬µöZkï½ÖÚk nCPIÓ~Ã{ñäÁ@3×:Ñóèÿ?ÿw?AÎð%"[g(Ï 2m=·÷y´}ùR¶ ßWò4±gÚÚÙ.ûhÁ«oöÍM¿ú<Ç=³¾Ø&t@§z½··ß²m9ñ÷[S£Hé}Dúp¥;µÑ9Êëb©oÑ§.ÏÏ¾ìï$¼Ð¤Ø÷Q|öå:<¤R~?§ÎùR^N~ö<2Îlmo}¸èøÄ§¾ØzRþz0³}ÆVöùþEþ@jcÆ_×öyóv±Iµó=yÏ#Ê_gòämC)ÎûÚ%ïèøDçÔÖ5rÊ.JBëCï¸i\þÞWÑC@zTx ÙEù}D+:~«/yòÅîB|»ÝzxoJï2ßêc:ÍÃðÊ	¤emï3ð})i«²Ñ¤Ø]ÔAþVvÚôFÐåw£tö|,ÓÅQÆ£w#' N¾Ôúh<>ñ@,:øòSDJº÷øD_SÚh½²*?Em^©µ±zÅCm(mË±­çî%OÐ	$Ò>HAº	)m4×EõF¢;Û!"Ïþ\îyPcÓ#f}ý¡Ë§¼¬Úýx|º±F4V4¥k+Hz$]+?ìlEaãtÑé÷¯!lzÓÂ ðåA Û ÐÞÙ¯O[çtÐflM9D*ßhm²*ÓYl>$²ÉnÚA{·{Ð{÷½yûÌhc¶C7µKJñZBù)~iÚenâºØ}(r|²uÌ-f-kYIJõa}P£;4SÆXã	%X ð+¦¸ýLff:Åó-æ¹ÒDÇBîbÞ0[½Pzyïgn¶ÍAìÚÐFXí'~¤ÿâVBùê_K*óâµHîzh÷"«ÎõáVí|R¾¤eµÀòúÌ£whw{Þ1ly-O´Þ\á×6C³j¹\Ëjµ´c=¡übFY7®ØóÆ­Å¼<èÌvj»Èëð ÕZZv³$E;¼D¢6h5N.åº´ØV¤ÄìÒÀuÈSá.©I@ï¯!­+²)çRGaÉµìÚ6`L5Ì°)06ïxj>\3 ×Î4P¶jºTúäãai#«ã9º''Bèk¸³ÛB¨÷o×ûwã~ÙòÑRõÕ#ßèÒh»_ ­E³:^ÔÐÄ0Ïr£¨v[uYü µÙ´:öèÐY Í5Ywù,ýhôÞÌÙmé3×I^¼¦N¡­á2¾h92?m!ÙTºh-ä³*£ÅyO¢·¢Jçõ´=ªP=ãeðóî(ÇzFY×m©^¶êå?P×)Ç½%Z8X¤äóO}ÊkïîGáÂ(q;°xC¦úÏ`a!±¤6vëuÓû6ÇaJHåO17f}Óh´·ÔGt×Ã RªAY·6·/7ÚÅ(G7¥<,VcpëÁbF[96ÓÞsôXÒ¼}kRSÃHcA,:ÿò¦ß£lØT³-;¬zÓÏ<´mg+1#Bc¨0¡icå}{-R>&±ÿ/0èüÒÔõÌ,5ÃËª#_¦äó=½Ú=Ê O¼¾T»Î@i0¬Tå	(F_áT¤ÑaÙ@ßùæY×Çë×mHµ§Y^wÐTÿK¼¬t¢pJ1ryl½òÏÓ<î$êOÕuY4lì7+ìÉÿVaN¬4åÈ 4Á©Kù§8:Ã0¡ësÇûR¬ºùYPÙ¶^Þ¼BZ6©rJ!ÝÓ+[hß¦ó-Ë³¼3l8s¢Æj±´¦í<ïÁÈHR×ûµäEò£Jk¿×!C"@sZòlc°m8Ò«·E@,³ÝjÅM/kºù­Ð[¶CÃ-ÊÏµN\ÔË´ÎØÅñ®xùÜ)åÔ7}g=ãOõ;?òøãÏ<yJùÈ`6÷Õõ¸©CEÈõ!Ûôô1v|E	÷f6ø»ÙYMóemGmL(hSþC»[ÚP\Jø|éz/¥ÚXÙÍ§Àvzï¬[â$eK´\k>ºqDÍ]Ìôù³3Þ³¨¹ö|oÜs'×\ÛdéRÿkPÕr½¹ð|à,õç`a=wÑôl"-ô¾÷£}&ÙÂ¯(¿\ÞVaeÛxdÝÿÊ¬ÊZmy;ÏÞÆW^`µ¡Ö9Mêr!'Ûp@EªUù"´{y§mÇó?oÉ@o/ó\à+êð@/uº´s?°éD"ÛÆ «ÐúàÍD rúu(¬©¶"}uÃ®DêxÙÝgÑÑt$×k¦;åÜÈN6(×ò-¡æ¤ËwíÔ,àk4]ln¯OßeÖÖÏòüñN!elã?]ç}\3ªá+ÿÔk6¶lÒº?»[lëp>å/ º-}·UË._-¿Ó¬ÕoúÕ¦Ywpl-å£zzgh¯ðq;ýu,å)ÔõcïåÜ} {ø°ô©íÐÃ©áM«­ð&Õ7=«µÏÕW¡,¨¿-'AXB´ª¿<Ä!5úTÓ¡x¤}nIQ^mHcÍ~0PVÙÒ¦5XmX*ÃQº)ïX¯»¹oÁÄ¤8°#Ê»¡×¡Bäó¯û»Bõ¿ô
+- BþJr´À«û´Üü3rQÎlq¬¹Ý=ºéOÕÛp	Y}ñî-Yª¯<A]9rÛëþÅ!¿f¹Mkdé³pÜí=­s|EÛõ¤)
+- Iè<3mQÄ@"Ñn-R~H´`Hy#ÚÿýòJtýþÝfíBçU:.8Eo"öÁü³á`þøöõQÛôµ±ÍÍh}°L FÁñ?;dÊ!¹¶ÏÜ·!Þz3Áúäð8_àÀÿÉ!¿2ÚÉ¦f÷ipþ×^oy¿S*10ñ-­¨éÜÿuêòzìäÜS§[r³\LË.ý}vRÝß<P9Ó2µCü<qâï'BJß«õÿÁ²ÔåÎÂ\vë­?`îÉòyå;<ÊG'¿|zíéÛDâENÓÿFéèGö©oÖø¾Fg´1/aµlê]ÑÊ¡zðX NJ£ö;qöÅ/½nü]ì/VßÏ8	!ÌFý¼E`/{CGëïiR<ßÎtNõñÎqoÇ8Ïëä=ß
+- Îd(¹Æx>à{.ò¯ê;í´ÈûWhºéë¬ÅóJ³Ã<;¦ÅÜb~ÇüÓèzófó¿_1^óù-stôVóvób:ÓêªMðN­c<ªI¥<ê]¸Å<û¬ËTPÐÿ.,ÍcmEØ`[2j	'Ç®m}{ÿqº ¤ÞmZatýÒÑ³²h¸þðM(÷fôÉ!¹ï]è½qgÝÏÒ9%g¦ô8-©ÏÏY/>³D\¨º`hMSÝÚ¨ÁöÝþW;ÊÙmáá0	¸<BZ9tè%Òt¨£oS®¶9÷ïPùÕ<u%q@1ÁÔ¡þÚæú:uGàï;7\¤w&æcXá°{öôhæäOÂ8~îÝ±)wÈîx¹tÀw«ë Ö@Z48IC¼âH=cÌêAe'ïb]ò¹Þnp;Éç õÐÛµi£É§.0Kðò½¾M«9Ôù×1»¬Ê~P´Ä6¦/e´¡6DZìR¢¾`££%àð¾OPð¥J9³6³ÖÀ!GpÓq:º5u|ÿÌ(<s~ö®¤ü»öá5ÓxiÂ®ï;¼`.Yáõø?KÑMÕ~õÍ@ÏYù¡ÂKÒÝ_Ä6?³VËèÇok®O¾ 0îï­ÕLKKÀYâ¢Ïá_-Ýf¸Í1aß)-ê÷£|µWZ ãk Í<ê+¼ê+m.¼Þmé×4ÝªDË¬/äò*xâJlúõ&ïà8pÍ¼%Ùï¥<C¨®ß["Ô¸ø-Iõ\¼èq_Ï©Í¶ëêÛÞÕ¡ÏUú·õÜ»0`	`ý¡{P·ùï§à¤%3^MzHW¹}«èÁAëmÊ_£yhé¥/ô%®¸½Mk>ÿÚóÓfî¤ºño,ý°zz.È'z.ô\ :K¿?SÇý÷M>tßÝ×ç§Áñ~»ÖXBpzÙ_¬½Ë©ü»<|ãÿà'ÏuY®£Í¶ÁÌmjü»<ý¡ÕhØ=¾¯¡âÈdÉc¡ê¦ÝïÁL%OJà¦ûà¤ÕÅ ¹[MéEÖ¢¦î]Ö&ð¯®'d[ù$øWôÝ!~ÊÒî;×WJuñYò8½lRví½/Ù´TùÅ&Ï7 À`sáÁþ³{H¹ÇÿkðlW¬bì¡ÞõEä¿c¤_DÉs1XÉ¬©æ,Ñôvs·Ä¤ÞÙ¤X²ûj)¹°Ïÿód¨B K`QÑãÍ¥ï-^jÎáDþ"Ä(pê@W!°£¹6=ÇiCâ-²­ß|Ò=F¹L÷äN=nÊg»k¢¹ÉrsÒcé¯û*róáá´Â«J{Pà%_Ú'ËÀé¡iõ 'X#Å`èØ0Wa{ßæ	®Op4f!ÿG¼ÕWÉ¸!ªðª±,£Uv¿ l>}¶¡ò!ß?Sqá¦¬#üU`ó®cçÒèé"#ÍLé-ÊÜàG6ë5üýÁ7 q6½exRJFðâó§î(ù#c,ø#º7Gt¯Âo³¢©Kå»tc¬1ÓüùéÝÄ@É°Í¯äûÓ£°Ý¥~ûu#g;×ý¬F°¡*%[¾3úY=aÂºó	jÂÄ÷&îN(MÌIÌO,HücâÚ¤¤éI-cý#'<#{-Üø"³;\¦½/"H%Eu³ÛÏ>z8!l,Å¾Í´ü!,ùøÆÃtòÙr± ù8ü­V<1å]­êc9:È`P8Axà.tð®5ÿøDÿ)Û¸Ö&«-x8WDëEZîPY|ÂÈ½
+- §"ù{yëUiglvÊ(9H¥
+- çiHÉçÄIrÙG"ëËÃ©Bv´ÅÈç'<ÜMPÉlßÏAyo·XétjqÙ÷ÀéW!ä¦L>Z~ôI¤|èÏB¸&3¯"ÑIä uÅ·rÝrÒX_^'×Ñ>öÕ³Ýld:å¬8ñr=ë[ÆúÓ¾ÖWGwúR
+- 8ß
+- Ú·5Ä)`Áz-bäÌJi¹rQxCååÃÖ °ùSàÔ&×­ò
+- 6ût]YÔJRoWn¿Ó(_ñvqÜçò+OiIîdh¬ì½¬JV¨¤$bÝ¨Ì0¡¶Äùéb«rs5MLÏø@~(tI¾^´ÜÙYÙÞiõ`Éò=s8ß|òfÀ% 8Å$_£îCT¾ÍÞ¼]´Ü9ñÅÖÇ­ÊX­D>bNH1å~¹6$GC¿Íëgzü×~@åÎP\¤H§Üáíà²{êî{ðKq>f¢:G5E¤ú}ËÉSÆÁ<\õÕs|cåäÏûBòYà	Ôª[98$Ã÷þ¦ÃãÈ'¼÷bÈ;À¹¨Ê>æ®c EåM°Ç4¹S±*öÊ.VÊl/YzÔÒÿÌké'à{¾óý}ûû(|¹[RïË²r¾¼E\p+\Ãò Y_¤·äoù`ÓémrV²XÀc¶²[z«G½NÏ?¬òaª3æ^fô;"ÍNH6=¾àÚogµïÛú·MW7;ås;PÙY#QPÝu0NTè(éYíêÕ4g
+- bî3fµßèÛ²`ZªG§æ,LTlY`îëôÛbêäåé7úá¥Õùü¥oÆC\o¬¯y? ³Àì\¯d¶û,HAFdÔ²
+- áû(·ÇÂí}íyÛô9¬õB®u.ÞÄ6H8©çðÆ}ú;ÃØh=ZÒ=DÍwDx`F£5OÏ«8£»`uüïÂé¬J6dXLF-d'½GS3Î¼¾to1'ó¨Üõ¬md¸Ù1ÈÛ.-voCs /!ÛrFÕ1Ù ä3Þ5ýè[çÍÄ(ÕH]ýÀÆXÃüzsQýÀ<C/wÃ~`/Y°Ôîçq¾y¼:S!Ïc)&_¾2å^«ÑhmGCú}v)±Þd¼úkËLâ¸r×2\ZÂ¨	B"gSVjÅ%äí»äkðÈFSTgSqÞÎèÍÎª\Éù{sÐF^~¥æÈªY¦wgvdt@XØó4M~Ç0w¨Qä³y/w<#\Qãå³?¾©Eî^É
+- ¼M9¸ÚÐÒ|/N) 9·Ù¦Ôk»§XØñ6®±\ê¦A(°|Mh*À
+- Yð-ÄÚÞMâÁìH:r:83Ò'­±ÇHÅcLcRþ§CÄ Ñ×	'ApòK:ò ¤ÁÖÎH;´Ú Óz)ÌT&ÍÔ4Ì×THú@xÌgÚ_và[HY¬Áñp1 ßèób+z?	á9LÈ4Då"JblÊCÅIüjEi8«JÃlÀ²¦ÖPÕàf5o¹ aíæ¼åäç°^S@R¸¹ª¡ù
+- HÃúõ>JÆÿ ©A2FÅëHJ,Àøwbu¹c´hy¯ðM&¿·Ô?ÄÒBø~ÄÒø(éAÞzHgFÛÅLôqµ]=:Ìí­¶Æ0¯àdTïç3¦úF3ìÿ©æÉKiLú2ßÄ¢½ÒØUýäV¨ÜÿT
+- R¥Zì¦>VNYÉhìJ¦ÉÔTN£Ë'ðL2Þ^ú«¾*²úÙ¸ãÂC¸pÔ°AÒ·@â¶B®Ç¼ö;ñ[°8án¹nÍôÜçÉ±fÍ8°ÁRáÝ ñèBí·§MCíæ+álöÉâbX5ÐGë'åÁõV÷kB2aÕ)ü^wH&yó>dI× O­äùýß¢@·Ç`8@W£ -Þ¤Uý,Ðuã:Î+#<ÞFEÊïÕÝ,££Òÿ"Ò/ñ~qKýR=/'öaÆ¯Á@)FàSÒ4s¤'ßÇû`BUzH.RB!^q.M&Iç"VÏÍcòþxöµú»¡âñfO7^ÔúÍ'¨HXj>!ÞÓëÛùç$lÉÀî'äB6px~?8÷
+- $\Ùè·®¤²üáÖ\[A!²MÓÚb	 ûL"*íë0±=ÛáB¥ÛèÍÛP}´²ÁµÆÎ'p|ú¿gÑßç­mëa	µÀSÞfkUb®DîBµh[/l¹Xu³Ðø¡Ñ«m­1òr^Ço6Îò yÇbDÊÿÌÒö8AùÏápÚù{À?$¢¡·q!	'Ú°ýæ£ñ8À_x¬Æá63éÃI?-R&cñ¨¿T«°eÇ²º:ø5hAÇ& Að·èüÃaöÞà°§ÃíBc¸ýt¸]äÏFùs5`«·SX¡ÊBÅÅ#®ï?¾Á×§¨·A,§Y¸&Ð|	`u¯Ùî/& P+Ä¶å3ÿÂàò÷"¬(¼@#ÙÖõxXOF¶ç%ðÑ¯@`=·Í1X 4/"õçþ¿!¡,lým@Wâa²2æ±>F.RzX­ÿ'>Lyyß^cKÌãaëý+æýmð ù)M]¦Ï®z·ÆlL2&ná°èÍØÆEtfUlCÊ(ÿ±PDaÝêøÑÔÓ¨0uÊÿ»ÐpaÜÈ,uñzðöû/ û([¸ü\9cn
+- Á`Z¶ «C_¿Æø!d¾Äà¹R.Á£Ï[rn§CHËì»ø½zûÅ+ìb¼-Cú*qaR%&8¬íËHu·*è ³·µ[Ç ñ Â÷]¿Àìdî4¬ÿ^mT|ò+Áé#ØFMk¨ÕßËpæú¤RcCFâºÙ?ñøÚÓw£CKífA#¸DqÌH bS¨ >¼&rJÑ?Áu]ë.ÀÉË.}ºïÆ#yf­vv7»i¬oo)Rÿ Ëê[_ÒÀ-ÒðKªJocÖÃ}>GH4tq8H·1 9ýHù16³D|{	vLÐÐÆ¤iëp,øº¼óu)%SòíÝ4®©ÎzF7uè®8bø2&©S¦­mÞtk[yºU¹Öë=Â3Ü;OG:mæ JÙ@>¶ÌîÇ§¶cÞÂ(p³{E.õé2Ç-Í¡aÑ·ÀÏÊúÛ@YídÅ)VXEµôµ
+- ´¦åZFç(§ü ¾6Ê¯	aðÉñ£«of¨MÜG×öÀ6^Úlüz	4Ù¿þ»ÿïÃ[ÂwÁ)=Yx{ÙÞEÊÚx~Ù	± "øeÎ«p)ÏeÀ=Æu­¯v (b7¿P}R: w)M¦Í¡^¢»èlÍ gÖkòéTWÆ¸èLL>§=¢ÅÓÄ2Ø=Íï¬ßyôFÍ¸"wÛk'ÚpPj,  ÕÑM\Ä%Gv21|)<¡5ô¥pudÆ/ÁxãØALëp¼qè÷Å«ÅAø¬Kûþß<Î©qVUs32éÂÜuk¢pÏÜ#w.¨+g B©²RXWSQ-ÚBËU±¦ºÊ^-ÆðµåvÁîtÖ8cø¯¬®qV¨³f³¬J ðªê2±¢¦:ÿßû%fjcjãÛ^!örÓ-ôY¢Þ§?£o!SÉD0³%d§·í ÿi¸t<nÅR÷ë¥4Páö²r¡¦ºrÃ4aC$¬*«ÖkBm½n6æH«WÕ5¢PYæ\¢U×HkX#8j*Ë 29­\X¹A´»¦ÌàQÑbëGAÖ2×µ³²²fÕSBUÙU:Õ5¨±¢0'òÐJÒ\Ë¦T¸ÊVVÚË§¢´rVïGVÂk!¼*+ÒV!W]ÙºÕvdÁPC5«u@¼z;É©©·rÐ}vaÎªV?¼]Ð]¶¢ºB¬(«áU³ªL*3sË$±f
+- Â³µn]½
+- -°*©JjeÅ*}
+- h¯qnÊí®
+- §`_]ã´Y?ùH'ä*«µ¯]è
+- %°ÎáÂ<¶xpÚ]vg­]¨sØ«oÂvØËÖý 3	öõ¢³L[´¸Àºp ¯ÅjXk:RUÙz¬+´°l½ÎuuDøéÔAr¢«­®,[ãB¶²JI×¨SU°NÑèyÒ8³Uu.,MP2½v9¼ð¶òuU3ìëíP[]a¯,Ï­Õ	ÍÐ?Ëy4Ý!ä
+- k*@D½r Ók¡¯0àbu Æª²U»]êî®Á;§jeú=÷»`Í 1x:j_å¬Ð¹Z-Fñ-Üô0¼ptZIiîòÜ4**sV¦gO8`/TTáQ^ÚÁKÕ%­[Wãîô±çá}=[0v)`ò0^3}-?ñ#ü§È¿ù!#O¸!Ièòý·è÷OÜ+üÿùV"GÚ@Î'Gþwê q¤¾êsÁ\?¡>âágóÿÚïðñ>ôKäKÿ4_Óô¿$I3,¬¤±Lbl23L2m2~ô?3eÜ¸ØÑOÜ´Iä´¸©ÐxÛí$ÉÄã&OMî{ûäqÒ'ëS¥?~ÈÿôèM~Ñz<#0&~,Ef2)VoàH2$ãáÖÄóz9&÷ë\f
+- h%H·(:)*2PÒÈ7.?¦¤äHSÌHo<ÇñIIlR96)iLRôH?Zçk*¸À®f¬sFwøØôVÆö¯¬¨~Ê^þ_¸òw¸CÜiî
+- §qQiQ÷F=µ,jCTsÔQû£þu(êxÔµ(Ã§òü<¾_ÂóKù~¿/åWð?áËøÞÃoç_æ_á_å_ã÷ñ¯ÃÙÞàßäÿ'¿i#a&ZP¶BRõ*ÝhæÖ[å0<#@Z%ÿ §":FÜ1z¢¦\tõ0úà0¸Yq¬¡+·WWØËÑ²rTüBÃ9íÕeø"
+- h8F0|U»°ë2²òrp{®H§½º¶ÂY£GQ#âèTËV­aUM¹=ÒV^&¡åöÚUvôcQ´Ó ¬;×ªp<«$'°)RfÔ#0©ÂîÛ>2¨s¤3õcçn4kkÐ¼õöUaxÍuÖ¸\ÓrúÒµbG-²»¤JU!VkY%Æ6cq`Z)À`Y9VÚèÅõdõSÕ5uÕáÓ\³uÿbôÎwÿCÿ òB<Tãÿ¿ PK  IN#uï¡	  w     BIN/CWSPARAM.DOCXÛnÉ} èìËRX®@Òì6¾mâ(_7Øä¡g¦Ééh¦{Üé¯OêiaË"§»êÔíTÕ¼øôîþÙÛgwâäOçì^WªÅA¼¨¥kÄ;iªV#>ÿöç²ÑöÒéR]ª*^ÿãÏz³ºÏT6f)ÞÅtâï$q)Þÿ&?¾züÇó³Ù¯Þ~|ýêÓùÙùÙûZ9%$ý+RÑI'[ó¢º	B`E¨ /ïï^_¾úí ÙéóÛÖ­Ü)~Ö×º¬E«wuF¹t·P¢µÞjú¸µNTÚ§´Ù	o[çìH«çÇ
+- ¤]uÊÑgr
+- ùBB:au¢´±© Þ)CÉZÀ"¨ñ¬ðÊí;?Ã2EHñòo¹¿7YH+áC,T¥C½bFõ7³þÉ7¥¥4GöÁd_½G¬Ucû§ðó¯±iX°[³é[Ý(±øá(¤;²hÔøEü^>ýWÙûªkõ¥ï»ã:i×^Ðßãh|;È¹åÅ^»e#ZÕZw¾ÔØRidÆë@Ò²ÍtE;¨²fDWj+#E¾b+=ÂA EÇÒªÅØ:E¢¶Nó:b4m\
+- ep;ôôÄF<ømP>;[HÒÝwï)¤³aÊ¥ØÂsuîx$<3PÃò*%EdEÓ9fK¡j¹×ÖÑ{£Nèì{Pªceet°½l¢ºÏÿÛ §xc Êã6:hÙ4A?Ø±b±úÁrøV)b÷³KÈ
+- ÈaÈ¶½|ón=lÙîcP 	©mô$ ÛèÆ"¢ÃHoE±³ÖCaheÐåL[ÊØ¸«IÔ%µm*Å êê×å@´aHØCä6¶Yö(m³º+Nî] í¶â@FTË/ª"Q^%Â%`ÆdToÈ+aIKµHæ¸ð|G>Ú8'aJ(YÖâÀØcÕ?zÖ÷}L¾%o,9$uÈ½"¨ü@ÈÖF qßRÌ9¯PL{é;Ü] }_i#Ee|ßÒPHsxu^¦#*R©½&C¡<çYVP8t¦àèÍ¸Ü¬hµj½jöô+FTðlÈ¿'Y2ÕvLÕÁÈ6[1¬*LÍd n Ê©=jpàÆ¼'èÌ r¸gydJÂ#ILnäß9ï­¢;ð­ª¹U}	NÎà@O+»« R{]RÔPÏw9ÝéL£see$L£Ìö[8ýæju;TÌ/â÷ëõæ¶È$>Dx9ºÐòTDí"e8Y*aÍ4%}Jÿ!ß¤á¢û¥o¸ïúÈº7&gp>×Ê²ÖCÀ3«Rý!a@Ëz®`A²;k¡ÑLhÉýäË¢%pÊ]f¯èy£C /Ù¨mr/u ,Sg¿Yí¤ÍÔGC¾ªÁC;¦ÐÏ-GBíg:Jµ½¯¥ètüçî;òtªVibNjíÑ<HÜàªS?%
+- É=)^q !S^NêtþsäLBñ	oyÚå°º¼¾+æÕ5:çab{X~eü·^£ Î×©l(8*ÃDd²úOôúZw4·¸[ùKd^WO°ÉN«pH!òKë íìjÌ¬©xc§õèÉUîµ¯·»8ÜÝ¸ºÿG¿]%»ri óÙä¥¸ÉÂîÕEåäµ ÆÚößéäv1 
+- kêÃ³rDO:0Õ¥;{`±¾!DÀKÇå	ç¬Aró§{7«[¼ÚHZÿP¦Bq=IQèBçl!~*ÕcVÆ:»Bø®X·Àÿ%ô¾Ãð>6ÅãRÃÄ'¯¤¬îl Òô¤¾tÒ0ËólH4lõ{X\udG»/ï"n·Êù¥P¡R:CÈÃx"&dI)pÈÙQH¯}%3?I?°ý¶úNFfx¨à¶1·ÆlÂ«ìëÍãaJ0Ó«[¾E¼Â bWZþaháMâ­V°§3¢¯¨Þ èèúj8 ËøÐ_?%m.vA,&g¾d'×Yr"»dßqÑ3â4ñ3Ìè¨4`WJ:Ö)ÜcÉ@*T¹ ¸óS`HÝ%¯8J¸õáäxòQ/Cv§Ð°,&Z%ë×ÆÁ´õ&%&u¢ÔOñævÔ;-M;ká|èL-i³&Ú|+"u¸¶C§ÇSÝ~,5Eþ_ÛiU"x²HÇ¶fÓ&õp9«|kPÌªTéôJhnE_CCÎtº|Ò¤{s{ÌÆC¦!gKzÌñ98y#ä±É3OU{ëD	$9\7W·7.ÒÌ7±+æÅ¤é{Ù%Ö@/Ø<¾Y×Þ÷fQ?6Ùð9ðõMÊQ6hhXn	v¡C'¹?ó±èÁ+¹w{ñh
+- jÚÀ¯Y0ÄwNö9:ÏVdÏsÏÏðÖ'3xfÍÉJ3 tä¹â8¬:¹hÞ¥H VÝò«Ü§%YÅ»¹Ó{Å}I§ä«¬ù1íÛâpäñ¾SKW·¦óCf÷Ö!(F$øÔ0ë÷\ùÈ×^0vÜa:må¡àmÂ¸MCÁÌ6~ýóáî9oy¿bØ&åh­á!#aDæ¤AmoOÞ¿,ÇE{ù±q¯¯7OÄC$Ï¸à'WxÊfW¦)Fs­8Cóû¹£V?N>æéáµYdrÃø7îåü8¼uOl¿FîüìÕÇôRQ­êqôgNÍt«wÜ!Ä3t 6èâ@N÷x_E ÝÀ÷¹ÉË2è½sÛ V$Á
+- ôß>§+±X_<âe~;uüzd,ù D?Ü=÷bÑØ×´QÚZ,6vïÔÏ#ÏvÉ!IÄlä¼aå°ùYÜ@ÇºmïdmÛÊB7:¤ßÔ¦WUÍAèÁK%
+- ÌPK
+-     1H#,3ª2   2      MANIFEST/CSDPMI4B.VERcsdpmi4b CWSDPMI binary distribution (release 4)
+- PK  H#ß 	B         MANIFEST/CSDPMI4B.MFTËMÌËLK-.ÑO.N)ÈÍ4IÒËM+áåÂ.K-âåJÊÌÓO.é¥ä'£
+- ¤V¤"	 $%æ¢èÕ  PK      ³S#                    0       BIN/PK      ³S#            	        0   "   MANIFEST/PK    ®S#iú3  ùO               I   BIN/CWSDPMI.EXEPK    ì­S#rÀî
+- °1  cM               4  BIN/CWSDPR0.EXEPK    ºO#l~eÀ                 ñe  BIN/CWSDPMI.DOCPK    ÒjM#ðò ×"  Ð5               >r  BIN/CWSPARAM.EXEPK    IN#uï¡	  w              C  BIN/CWSPARAM.DOCPK 
+-      1H#,3ª2   2                 MANIFEST/CSDPMI4B.VERPK    H#ß 	B                  u  MANIFEST/CSDPMI4B.MFTPK    	 	 "  ê    
+\ No newline at end of file
+--- 0 ----
+*** ../vim-7.4.1424/Filelist	2016-02-25 20:37:31.873711864 +0100
+--- Filelist	2016-02-26 19:57:26.400133417 +0100
+***************
+*** 694,700 ****
+  		src/tee/Makefile \
+  		src/tee/Make_mvc.mak \
+  		src/tee/tee.c \
+- 		csdpmi4b.zip \
+  
+  # generic language files
+  LANG_GEN = \
+--- 694,699 ----
+*** ../vim-7.4.1424/src/version.c	2016-02-26 15:56:38.406283974 +0100
+--- src/version.c	2016-02-26 19:56:02.329007578 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1425,
+  /**/
+
+-- 
+The Law, in its majestic equality, forbids the rich, as well as the
+poor, to sleep under the bridges, to beg in the streets, and to steal
+bread.                       -- Anatole France
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

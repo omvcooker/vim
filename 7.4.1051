@@ -1,0 +1,131 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1051
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1051
+Problem:    Segfault when unletting "count".
+Solution:   Check for readonly and locked first. (Dominique Pelle)
+            Add a test.
+Files:      src/eval.c, src/testdir/test_alot.vim, src/testdir/test_unlet.vim
+
+
+*** ../vim-7.4.1050/src/eval.c	2016-01-03 22:47:52.983427374 +0100
+--- src/eval.c	2016-01-04 21:55:55.088351213 +0100
+***************
+*** 3737,3760 ****
+      ht = find_var_ht(name, &varname);
+      if (ht != NULL && *varname != NUL)
+      {
+- 	if (ht == &globvarht)
+- 	    d = &globvardict;
+- 	else if (current_funccal != NULL
+- 				 && ht == &current_funccal->l_vars.dv_hashtab)
+- 	    d = &current_funccal->l_vars;
+- 	else
+- 	{
+- 	    di = find_var_in_ht(ht, *name, (char_u *)"", FALSE);
+- 	    d = di->di_tv.vval.v_dict;
+- 	}
+  	hi = hash_find(ht, varname);
+  	if (!HASHITEM_EMPTY(hi))
+  	{
+  	    di = HI2DI(hi);
+  	    if (var_check_fixed(di->di_flags, name, FALSE)
+! 		    || var_check_ro(di->di_flags, name, FALSE)
+! 		    || tv_check_lock(d->dv_lock, name, FALSE))
+  		return FAIL;
+  	    delete_var(ht, hi);
+  	    return OK;
+  	}
+--- 3737,3763 ----
+      ht = find_var_ht(name, &varname);
+      if (ht != NULL && *varname != NUL)
+      {
+  	hi = hash_find(ht, varname);
+  	if (!HASHITEM_EMPTY(hi))
+  	{
+  	    di = HI2DI(hi);
+  	    if (var_check_fixed(di->di_flags, name, FALSE)
+! 		    || var_check_ro(di->di_flags, name, FALSE))
+! 		return FAIL;
+! 
+! 	    if (ht == &globvarht)
+! 		d = &globvardict;
+! 	    else if (current_funccal != NULL
+! 				 && ht == &current_funccal->l_vars.dv_hashtab)
+! 		d = &current_funccal->l_vars;
+! 	    else
+! 	    {
+! 		di = find_var_in_ht(ht, *name, (char_u *)"", FALSE);
+! 		d = di->di_tv.vval.v_dict;
+! 	    }
+! 	    if (d == NULL || tv_check_lock(d->dv_lock, name, FALSE))
+  		return FAIL;
++ 
+  	    delete_var(ht, hi);
+  	    return OK;
+  	}
+*** ../vim-7.4.1050/src/testdir/test_alot.vim	2016-01-03 23:31:09.883025493 +0100
+--- src/testdir/test_alot.vim	2016-01-04 21:50:15.196168448 +0100
+***************
+*** 8,10 ****
+--- 8,11 ----
+  source test_set.vim
+  source test_sort.vim
+  source test_undolevels.vim
++ source test_unlet.vim
+*** ../vim-7.4.1050/src/testdir/test_unlet.vim	2016-01-04 22:04:26.326630800 +0100
+--- src/testdir/test_unlet.vim	2016-01-04 22:01:33.020566171 +0100
+***************
+*** 0 ****
+--- 1,26 ----
++ " Tests for :unlet
++ 
++ func Test_read_only()
++   try
++     " this caused a crash
++     unlet count
++   catch
++     call assert_true(v:exception =~ ':E795:')
++   endtry
++ endfunc
++ 
++ func Test_existing()
++   let does_exist = 1
++   call assert_true(exists('does_exist'))
++   unlet does_exist
++   call assert_false(exists('does_exist'))
++ endfunc
++ 
++ func Test_not_existing()
++   unlet! does_not_exist
++   try
++     unlet does_not_exist
++   catch
++     call assert_true(v:exception =~ ':E108:')
++   endtry
++ endfunc
+*** ../vim-7.4.1050/src/version.c	2016-01-04 21:43:02.828884458 +0100
+--- src/version.c	2016-01-04 21:47:50.721743800 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1051,
+  /**/
+
+-- 
+BRIDGEKEEPER: What is your favorite colour?
+GAWAIN:       Blue ...  No yelloooooww!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,405 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.945
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.945 (after 7.4.944)
+Problem:    New style testing is incomplete.
+Solution:   Add the runtest script to the list of distributed files.
+            Add the new functions to the function overview.
+            Rename the functions to match Vim function style.
+            Move undolevels testing into a new style test script.
+Files:      Filelist, runtime/doc/usr_41.txt, runtime/doc/eval.txt,
+            src/testdir/test_assert.vim, src/testdir/Makefile,
+            src/testdir/test_undolevels.vim, src/testdir/test100.in,
+            src/testdir/test100.ok
+
+
+*** ../vim-7.4.944/Filelist	2015-11-02 12:50:49.752534446 +0100
+--- Filelist	2015-11-29 17:36:43.198130329 +0100
+***************
+*** 87,92 ****
+--- 87,93 ----
+  		src/testdir/README.txt \
+  		src/testdir/*.in \
+  		src/testdir/sautest/autoload/*.vim \
++ 		src/testdir/runtest.vim \
+  		src/testdir/test[0-9]*.ok \
+  		src/testdir/test[0-9]*a.ok \
+  		src/testdir/test_[a-z]*.ok \
+*** ../vim-7.4.944/runtime/doc/usr_41.txt	2014-06-17 17:48:21.768628007 +0200
+--- runtime/doc/usr_41.txt	2015-11-30 20:43:14.879729497 +0100
+***************
+*** 884,889 ****
+--- 888,898 ----
+  	maparg()		get rhs of a mapping
+  	wildmenumode()		check if the wildmode is active
+  
++ Testing:				    *test-functions*
++ 	assert_equal()       	assert that two expressions values are equal
++ 	assert_false()		assert that an expression is false
++ 	assert_true()		assert that an expression is true
++ 
+  Various:					*various-functions*
+  	mode()			get current editing mode
+  	visualmode()		last visual mode used
+*** ../vim-7.4.944/runtime/doc/eval.txt	2015-11-29 17:34:30.455580245 +0100
+--- runtime/doc/eval.txt	2015-11-30 20:42:59.263900121 +0100
+***************
+*** 1380,1386 ****
+  <		"errmsg" also works, for backwards compatibility.
+  
+  					*v:errors* *errors-variable*
+! v:errors	Errors found by assert functions, such as |assertTrue()|.
+  		This is a list of strings.
+  		The assert functions append an item when an assert fails.
+  		To remove old results make it empty: >
+--- 1380,1386 ----
+  <		"errmsg" also works, for backwards compatibility.
+  
+  					*v:errors* *errors-variable*
+! v:errors	Errors found by assert functions, such as |assert_true()|.
+  		This is a list of strings.
+  		The assert functions append an item when an assert fails.
+  		To remove old results make it empty: >
+***************
+*** 1740,1752 ****
+  append( {lnum}, {list})		Number	append lines {list} below line {lnum}
+  argc()				Number	number of files in the argument list
+  argidx()			Number	current index in the argument list
+! arglistid( [{winnr}, [ {tabnr}]])
+  				Number	argument list id
+  argv( {nr})			String	{nr} entry of the argument list
+  argv( )				List	the argument list
+! assertEqual( {exp}, {act})  	none    assert that {exp} equals {act}
+! assertFalse( {actual})		none    assert that {actual} is false
+! assertTrue( {actual})		none    assert that {actual} is true
+  asin( {expr})			Float	arc sine of {expr}
+  atan( {expr})			Float	arc tangent of {expr}
+  atan2( {expr}, {expr})		Float   arc tangent of {expr1} / {expr2}
+--- 1742,1754 ----
+  append( {lnum}, {list})		Number	append lines {list} below line {lnum}
+  argc()				Number	number of files in the argument list
+  argidx()			Number	current index in the argument list
+! arglistid( [{winnr} [, {tabnr}]])
+  				Number	argument list id
+  argv( {nr})			String	{nr} entry of the argument list
+  argv( )				List	the argument list
+! assert_equal( {exp}, {act} [, {msg}]) none    assert that {exp} equals {act}
+! assert_false( {actual} [, {msg}])     none    assert that {actual} is false
+! assert_true( {actual} [, {msg}])      none    assert that {actual} is true
+  asin( {expr})			Float	arc sine of {expr}
+  atan( {expr})			Float	arc tangent of {expr}
+  atan2( {expr}, {expr})		Float   arc tangent of {expr1} / {expr2}
+***************
+*** 2164,2193 ****
+  <		Without the {nr} argument a |List| with the whole |arglist| is
+  		returned.
+  
+! 							*assertEqual()*
+! assertEqual({expected}, {actual})
+  		When {expected} and {actual} are not equal an error message is
+  		added to |v:errors|.
+  		There is no automatic conversion, the String "4" is different
+  		from the Number 4.  And the number 4 is different from the
+  		Float 4.0.  The value of 'ignorecase' is not used here, case
+  		always matters.
+  		Example: >
+! 	assertEqual('foo', 'bar')
+  <		Will result in a string to be added to |v:errors|:
+  	test.vim line 12: Expected 'foo' but got 'bar' ~
+  
+! assertFalse({actual})					*assertFalse()*
+  		When {actual} is not false an error message is added to
+! 		|v:errors|, like with |assertEqual()|..
+  		A value is false when it is zero. When "{actual}" is not a
+  		number the assert fails.
+  
+! assertTrue({actual})					*assertTrue()*
+  		When {actual} is not true an error message is added to
+! 		|v:errors|, like with |assertEqual()|..
+  		A value is true when it is a non-zeron number.  When {actual}
+  		is not a number the assert fails.
+  
+  asin({expr})						*asin()*
+  		Return the arc sine of {expr} measured in radians, as a |Float|
+--- 2166,2201 ----
+  <		Without the {nr} argument a |List| with the whole |arglist| is
+  		returned.
+  
+! 							*assert_equal()*
+! assert_equal({expected}, {actual}, [, {msg}])
+  		When {expected} and {actual} are not equal an error message is
+  		added to |v:errors|.
+  		There is no automatic conversion, the String "4" is different
+  		from the Number 4.  And the number 4 is different from the
+  		Float 4.0.  The value of 'ignorecase' is not used here, case
+  		always matters.
++ 		When {msg} is omitted an error in the form "Expected
++ 		{expected} but got {actual}" is produced.
+  		Example: >
+! 	assert_equal('foo', 'bar')
+  <		Will result in a string to be added to |v:errors|:
+  	test.vim line 12: Expected 'foo' but got 'bar' ~
+  
+! assert_false({actual}, [, {msg}])				*assert_false()*
+  		When {actual} is not false an error message is added to
+! 		|v:errors|, like with |assert_equal()|..
+  		A value is false when it is zero. When "{actual}" is not a
+  		number the assert fails.
++ 		When {msg} is omitted an error in the form "Expected False but
++ 		got {actual}" is produced.
+  
+! assert_true({actual}, [, {msg}])				*assert_true()*
+  		When {actual} is not true an error message is added to
+! 		|v:errors|, like with |assert_equal()|..
+  		A value is true when it is a non-zeron number.  When {actual}
+  		is not a number the assert fails.
++ 		When {msg} is omitted an error in the form "Expected True but
++ 		got {actual}" is produced.
+  
+  asin({expr})						*asin()*
+  		Return the arc sine of {expr} measured in radians, as a |Float|
+*** ../vim-7.4.944/src/testdir/test_assert.vim	2015-11-29 17:34:30.447580332 +0100
+--- src/testdir/test_assert.vim	2015-11-30 20:38:01.451155011 +0100
+***************
+*** 1,19 ****
+  " Test that the methods used for testing work.
+  
+! func Test_assertFalse()
+!   call assertFalse(0)
+  endfunc
+  
+! func Test_assertTrue()
+!   call assertTrue(1)
+!   call assertTrue(123)
+  endfunc
+  
+! func Test_assertEqual()
+    let s = 'foo'
+!   call assertEqual('foo', s)
+    let n = 4
+!   call assertEqual(4, n)
+    let l = [1, 2, 3]
+!   call assertEqual([1, 2, 3], l)
+  endfunc
+--- 1,19 ----
+  " Test that the methods used for testing work.
+  
+! func Test_assert_false()
+!   call assert_false(0)
+  endfunc
+  
+! func Test_assert_true()
+!   call assert_true(1)
+!   call assert_true(123)
+  endfunc
+  
+! func Test_assert_equal()
+    let s = 'foo'
+!   call assert_equal('foo', s)
+    let n = 4
+!   call assert_equal(4, n)
+    let l = [1, 2, 3]
+!   call assert_equal([1, 2, 3], l)
+  endfunc
+*** ../vim-7.4.944/src/testdir/Makefile	2015-11-29 17:34:30.447580332 +0100
+--- src/testdir/Makefile	2015-11-30 21:08:14.595330850 +0100
+***************
+*** 68,74 ****
+  		test_utf8.out \
+  		test_writefile.out
+  
+! NEW_TESTS = test_assert.res
+  
+  SCRIPTS_GUI = test16.out
+  
+--- 68,75 ----
+  		test_utf8.out \
+  		test_writefile.out
+  
+! NEW_TESTS = test_assert.res \
+! 	    test_undolevels.res
+  
+  SCRIPTS_GUI = test16.out
+  
+*** ../vim-7.4.944/src/testdir/test_undolevels.vim	2015-11-30 21:34:32.514090437 +0100
+--- src/testdir/test_undolevels.vim	2015-11-30 21:23:59.493009966 +0100
+***************
+*** 0 ****
+--- 1,46 ----
++ " Tests for 'undolevels'
++ 
++ set nocompatible viminfo+=nviminfo
++ 
++ func FillBuffer()
++   for i in range(1,13)
++     put=i
++     " Set 'undolevels' to split undo. 
++     exe "setg ul=" . &g:ul
++   endfor
++ endfunc
++ 
++ func Test_global_local_undolevels()
++   new one
++   set undolevels=5
++   call FillBuffer()
++   " will only undo the last 5 changes, end up with 13 - (5 + 1) = 7 lines
++   earlier 10
++   call assert_equal(5, &g:undolevels)
++   call assert_equal(-123456, &l:undolevels)
++   call assert_equal('7', getline('$'))
++ 
++   new two
++   setlocal undolevels=2
++   call FillBuffer()
++   " will only undo the last 2 changes, end up with 13 - (2 + 1) = 10 lines
++   earlier 10
++   call assert_equal(5, &g:undolevels)
++   call assert_equal(2, &l:undolevels)
++   call assert_equal('10', getline('$'))
++ 
++   setlocal ul=10
++   call assert_equal(5, &g:undolevels)
++   call assert_equal(10, &l:undolevels)
++ 
++   " Setting local value in "two" must not change local value in "one"
++   wincmd p
++   call assert_equal(5, &g:undolevels)
++   call assert_equal(-123456, &l:undolevels)
++ 
++   new three
++   setglobal ul=50
++   call assert_equal(50, &g:undolevels)
++   call assert_equal(-123456, &l:undolevels)
++ 
++ endfunc
+*** ../vim-7.4.944/src/testdir/test100.in	2014-10-09 15:37:02.492904600 +0200
+--- src/testdir/test100.in	2015-11-30 21:24:32.932644981 +0100
+***************
+*** 1,45 ****
+! Tests for 'undolevel' and 'lispwords' settings being global-local
+  
+  STARTTEST
+  :so small.vim
+! :set nocompatible viminfo+=nviminfo ul=5
+! :fu! FillBuffer()
+!   :for i in range(1,13)
+!     :put=i
+!     :exe "setg ul=" . &g:ul
+!   :endfor
+! :endfu
+! :fu! UndoLevel()
+!   :redir @a | setglobal undolevels? | echon ' global' | setlocal undolevels? | echon ' local' |redir end
+!   :$put a
+! :endfu
+! :new one
+! :0put ='ONE: expecting global undolevels: 5, local undolevels: -123456 (default)'
+! :call FillBuffer()
+! :earlier 10
+! :call UndoLevel()
+! :set ff=unix
+! :%w! test.out
+! :new two
+! :0put ='TWO: expecting global undolevels: 5, local undolevels: 2 (first) then 10 (afterwards)'
+! :setlocal ul=2
+! :call FillBuffer()
+! :earlier 10
+! :call UndoLevel()
+! :setlocal ul=10
+! :call UndoLevel()
+! :set ff=unix
+! :%w >> test.out
+! :wincmd p
+! :redir >>test.out | echo "global value shouldn't be changed and still be 5!" | echo 'ONE: expecting global undolevels: 5, local undolevels: -123456 (default)'|:setglobal undolevels? | echon ' global' | setlocal undolevels? | echon ' local' |echo "" |redir end
+! :new three
+! :setglobal ul=50
+! :1put ='global value should be changed to 50'
+! :2put ='THREE: expecting global undolevels: 50, local undolevels: -123456 (default)'
+! :call UndoLevel()
+! :set ff=unix
+! :%w >> test.out
+! :"sleep 10
+  :"
+  :" Testing 'lispwords'
+  :"
+--- 1,8 ----
+! Tests for 'lispwords' settings being global-local
+  
+  STARTTEST
+  :so small.vim
+! :set nocompatible viminfo+=nviminfo
+  :"
+  :" Testing 'lispwords'
+  :"
+*** ../vim-7.4.944/src/testdir/test100.ok	2014-03-12 18:55:52.104906804 +0100
+--- src/testdir/test100.ok	2015-11-30 21:24:57.588375881 +0100
+***************
+*** 1,44 ****
+- ONE: expecting global undolevels: 5, local undolevels: -123456 (default)
+- 1
+- 2
+- 3
+- 4
+- 5
+- 6
+- 7
+- 
+- 
+-   undolevels=5 global
+-   undolevels=-123456 local
+- TWO: expecting global undolevels: 5, local undolevels: 2 (first) then 10 (afterwards)
+- 1
+- 2
+- 3
+- 4
+- 5
+- 6
+- 7
+- 8
+- 9
+- 10
+- 
+- 
+-   undolevels=5 global
+-   undolevels=2 local
+- 
+-   undolevels=5 global
+-   undolevels=10 local
+- 
+- global value shouldn't be changed and still be 5!
+- ONE: expecting global undolevels: 5, local undolevels: -123456 (default)
+-   undolevels=5 global
+-   undolevels=-123456 local
+- 
+- global value should be changed to 50
+- THREE: expecting global undolevels: 50, local undolevels: -123456 (default)
+- 
+-   undolevels=50 global
+-   undolevels=-123456 local
+  
+  Testing 'lispwords' local value
+    lispwords=foo,bar,baz
+--- 1,3 ----
+*** ../vim-7.4.944/src/version.c	2015-11-29 17:34:30.455580245 +0100
+--- src/version.c	2015-11-30 21:25:31.272008262 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     945,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+164. You got out to buy software, instead of going out for a beer.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

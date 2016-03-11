@@ -1,0 +1,183 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1322
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1322
+Problem:    Crash when unletting the variable that holds the channel in a
+            callback function.  (Christian Robinson)
+Solution:   Increase the reference count while invoking the callback.
+Files:      src/eval.c, src/channel.c, src/proto/eval.pro,
+            src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1321/src/eval.c	2016-02-14 19:13:37.322808585 +0100
+--- src/eval.c	2016-02-15 20:33:00.366026959 +0100
+***************
+*** 7730,7741 ****
+      return OK;
+  }
+  
+! #ifdef FEAT_CHANNEL
+!     static void
+  channel_unref(channel_T *channel)
+  {
+      if (channel != NULL && --channel->ch_refcount <= 0)
+  	channel_free(channel);
+  }
+  #endif
+  
+--- 7730,7750 ----
+      return OK;
+  }
+  
+! #if defined(FEAT_CHANNEL) || defined(PROTO)
+! /*
+!  * Decrement the reference count on "channel" and free it when it goes down to
+!  * zero.
+!  * Returns TRUE when the channel was freed.
+!  */
+!     int
+  channel_unref(channel_T *channel)
+  {
+      if (channel != NULL && --channel->ch_refcount <= 0)
++     {
+  	channel_free(channel);
++ 	return TRUE;
++     }
++     return FALSE;
+  }
+  #endif
+  
+*** ../vim-7.4.1321/src/channel.c	2016-02-14 23:02:29.834701666 +0100
+--- src/channel.c	2016-02-15 20:33:58.253422141 +0100
+***************
+*** 1217,1224 ****
+  #endif
+  
+      channel->ch_close_cb = NULL;
+-     vim_free(channel->ch_callback);
+-     channel->ch_callback = NULL;
+      channel_clear(channel);
+  }
+  
+--- 1217,1222 ----
+***************
+*** 1298,1303 ****
+--- 1296,1304 ----
+  	free_tv(json_head->jq_next->jq_value);
+  	remove_json_node(json_head, json_head->jq_next);
+      }
++ 
++     vim_free(channel->ch_callback);
++     channel->ch_callback = NULL;
+  }
+  
+  #if defined(EXITFREE) || defined(PROTO)
+***************
+*** 1802,1816 ****
+      int
+  channel_parse_messages(void)
+  {
+!     channel_T *channel;
+!     int	    ret = FALSE;
+  
+!     for (channel = first_channel; channel != NULL; channel = channel->ch_next)
+! 	while (may_invoke_callback(channel) == OK)
+  	{
+! 	    channel = first_channel;  /* start over */
+  	    ret = TRUE;
+  	}
+      return ret;
+  }
+  
+--- 1803,1830 ----
+      int
+  channel_parse_messages(void)
+  {
+!     channel_T	*channel = first_channel;
+!     int		ret = FALSE;
+!     int		r;
+! 
+!     while (channel != NULL)
+!     {
+! 	/* Increase the refcount, in case the handler causes the channel to be
+! 	 * unreferenced or closed. */
+! 	++channel->ch_refcount;
+! 	r = may_invoke_callback(channel);
+! 	if (channel_unref(channel))
+! 	    /* channel was freed, start over */
+! 	    channel = first_channel;
+  
+! 	if (r == OK)
+  	{
+! 	    channel = first_channel;  /* something was done, start over */
+  	    ret = TRUE;
+  	}
++ 	else
++ 	    channel = channel->ch_next;
++     }
+      return ret;
+  }
+  
+*** ../vim-7.4.1321/src/proto/eval.pro	2016-02-01 21:38:13.319011999 +0100
+--- src/proto/eval.pro	2016-02-15 20:33:04.245986420 +0100
+***************
+*** 79,84 ****
+--- 79,85 ----
+  dictitem_T *dict_find(dict_T *d, char_u *key, int len);
+  char_u *get_dict_string(dict_T *d, char_u *key, int save);
+  long get_dict_number(dict_T *d, char_u *key);
++ int channel_unref(channel_T *channel);
+  int string2float(char_u *text, float_T *value);
+  char_u *get_function_name(expand_T *xp, int idx);
+  char_u *get_expr_name(expand_T *xp, int idx);
+*** ../vim-7.4.1321/src/testdir/test_channel.vim	2016-02-14 00:19:55.088992301 +0100
+--- src/testdir/test_channel.vim	2016-02-15 20:38:56.042294334 +0100
+***************
+*** 295,297 ****
+--- 295,315 ----
+      call job_stop(job)
+    endtry
+  endfunc
++ 
++ let s:unletResponse = ''
++ func s:UnletHandler(handle, msg)
++   let s:unletResponse = a:msg
++   unlet s:channelfd
++ endfunc
++ 
++ " Test that "unlet handle" in a handler doesn't crash Vim.
++ func s:unlet_handle(port)
++   let s:channelfd = ch_open('localhost:' . a:port, s:chopt)
++   call ch_sendexpr(s:channelfd, "test", function('s:UnletHandler'))
++   sleep 10m
++   call assert_equal('what?', s:unletResponse)
++ endfunc
++ 
++ func Test_unlet_handle()
++   call s:run_server('s:unlet_handle')
++ endfunc
+*** ../vim-7.4.1321/src/version.c	2016-02-15 12:44:16.221956302 +0100
+--- src/version.c	2016-02-15 20:37:05.635459200 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1322,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+265. Your reason for not staying in touch with family is that
+     they do not have e-mail addresses.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

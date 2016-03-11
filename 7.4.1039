@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1039
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1039 (after 7.4.1037)
+Problem:    Test 31 fails with small build.
+Solution:   Bail out for small build. (Hirohito Higashi)
+Files:      src/testdir/test31.in
+
+
+*** ../vim-7.4.1038/src/testdir/test31.in	2016-01-02 22:25:40.662710195 +0100
+--- src/testdir/test31.in	2016-01-03 14:31:14.777920872 +0100
+***************
+*** 10,16 ****
+  :edit
+  
+  STARTTEST
+! :so tiny.vim
+  GA 1:$w! Xtest1
+  $r2:$w! Xtest2
+  $r3:$w! Xtest3
+--- 10,16 ----
+  :edit
+  
+  STARTTEST
+! :so small.vim
+  GA 1:$w! Xtest1
+  $r2:$w! Xtest2
+  $r3:$w! Xtest3
+*** ../vim-7.4.1038/src/version.c	2016-01-02 22:46:33.037000177 +0100
+--- src/version.c	2016-01-03 14:31:34.557706238 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1039,
+  /**/
+
+-- 
+Compilation process failed successfully.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

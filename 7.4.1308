@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1309
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1308 (after 7.4.1307)
+Problem:    Typo in test.
+Solution:   Change endf to endif.
+Files:      src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1307/src/testdir/test_channel.vim	2016-02-12 22:25:50.714277831 +0100
+--- src/testdir/test_channel.vim	2016-02-12 22:32:38.025901478 +0100
+***************
+*** 194,200 ****
+    " TODO: make this work again with MS-Windows
+    if has('unix')
+      call s:run_server('s:two_channels')
+!   endf
+  endfunc
+  
+  " Test that a server crash is handled gracefully.
+--- 194,200 ----
+    " TODO: make this work again with MS-Windows
+    if has('unix')
+      call s:run_server('s:two_channels')
+!   endif
+  endfunc
+  
+  " Test that a server crash is handled gracefully.
+*** ../vim-7.4.1307/src/version.c	2016-02-12 22:25:50.714277831 +0100
+--- src/version.c	2016-02-12 22:33:28.869357045 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1308,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+240. You think Webster's Dictionary is a directory of WEB sites.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

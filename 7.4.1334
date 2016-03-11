@@ -1,0 +1,2180 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1334
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1334
+Problem:    Many compiler warnings with MingW.
+Solution:   Add type casts. (Yasuhiro Matsumoto)
+Files:      src/channel.c, src/dosinst.h, src/eval.c, src/ex_cmds2.c,
+            src/ex_getln.c, src/fileio.c, src/if_cscope.c, src/if_perl.xs,
+            src/if_python.c, src/if_python3.c, src/if_ruby.c, src/main.c,
+            src/mbyte.c, src/misc1.c, src/option.c, src/os_mswin.c,
+            src/os_win32.c
+
+
+*** ../vim-7.4.1333/src/channel.c	2016-02-16 13:33:46.995504250 +0100
+--- src/channel.c	2016-02-16 15:03:00.236058889 +0100
+***************
+*** 58,64 ****
+  
+  #ifdef WIN32
+      static int
+! fd_read(sock_T fd, char_u *buf, size_t len)
+  {
+      HANDLE h = (HANDLE)fd;
+      DWORD nread;
+--- 58,64 ----
+  
+  #ifdef WIN32
+      static int
+! fd_read(sock_T fd, char *buf, size_t len)
+  {
+      HANDLE h = (HANDLE)fd;
+      DWORD nread;
+***************
+*** 69,75 ****
+  }
+  
+      static int
+! fd_write(sock_T fd, char_u *buf, size_t len)
+  {
+      HANDLE h = (HANDLE)fd;
+      DWORD nwrite;
+--- 69,75 ----
+  }
+  
+      static int
+! fd_write(sock_T fd, char *buf, size_t len)
+  {
+      HANDLE h = (HANDLE)fd;
+      DWORD nwrite;
+***************
+*** 1393,1399 ****
+  	/* reading from a pipe, not a socket */
+  	while (TRUE)
+  	{
+! 	    if (PeekNamedPipe(fd, NULL, 0, NULL, &nread, NULL) && nread > 0)
+  		return OK;
+  	    diff = deadline - GetTickCount();
+  	    if (diff < 0)
+--- 1393,1399 ----
+  	/* reading from a pipe, not a socket */
+  	while (TRUE)
+  	{
+! 	    if (PeekNamedPipe((HANDLE)fd, NULL, 0, NULL, &nread, NULL) && nread > 0)
+  		return OK;
+  	    diff = deadline - GetTickCount();
+  	    if (diff < 0)
+***************
+*** 1509,1517 ****
+  	if (channel_wait(channel, fd, 0) == FAIL)
+  	    break;
+  	if (use_socket)
+! 	    len = sock_read(fd, buf, MAXMSGSIZE);
+  	else
+! 	    len = fd_read(fd, buf, MAXMSGSIZE);
+  	if (len <= 0)
+  	    break;	/* error or nothing more to read */
+  
+--- 1509,1517 ----
+  	if (channel_wait(channel, fd, 0) == FAIL)
+  	    break;
+  	if (use_socket)
+! 	    len = sock_read(fd, (char *)buf, MAXMSGSIZE);
+  	else
+! 	    len = fd_read(fd, (char *)buf, MAXMSGSIZE);
+  	if (len <= 0)
+  	    break;	/* error or nothing more to read */
+  
+***************
+*** 1713,1721 ****
+      }
+  
+      if (use_socket)
+! 	res = sock_write(fd, buf, len);
+      else
+! 	res = fd_write(fd, buf, len);
+      if (res != len)
+      {
+  	if (!channel->ch_error && fun != NULL)
+--- 1713,1721 ----
+      }
+  
+      if (use_socket)
+! 	res = sock_write(fd, (char *)buf, len);
+      else
+! 	res = fd_write(fd, (char *)buf, len);
+      if (res != len)
+      {
+  	if (!channel->ch_error && fun != NULL)
+*** ../vim-7.4.1333/src/dosinst.h	2010-08-02 22:14:38.000000000 +0200
+--- src/dosinst.h	2016-02-16 15:03:00.236058889 +0100
+***************
+*** 452,458 ****
+  /*
+   * Append a backslash to "name" if there isn't one yet.
+   */
+!     static void
+  add_pathsep(char *name)
+  {
+      int		len = strlen(name);
+--- 452,458 ----
+  /*
+   * Append a backslash to "name" if there isn't one yet.
+   */
+!     void
+  add_pathsep(char *name)
+  {
+      int		len = strlen(name);
+*** ../vim-7.4.1333/src/eval.c	2016-02-16 14:07:36.190482636 +0100
+--- src/eval.c	2016-02-16 15:03:00.240058847 +0100
+***************
+*** 14554,14560 ****
+  #ifdef USE_ARGV
+      mch_start_job(argv, job);
+  #else
+!     mch_start_job(cmd, job);
+  #endif
+  
+  theend:
+--- 14554,14560 ----
+  #ifdef USE_ARGV
+      mch_start_job(argv, job);
+  #else
+!     mch_start_job((char *)cmd, job);
+  #endif
+  
+  theend:
+***************
+*** 16410,16416 ****
+  	return;		/* type error; errmsg already given */
+      }
+  # ifdef WIN32
+!     sscanf(serverid, SCANF_HEX_LONG_U, &n);
+      if (n == 0)
+  	rettv->vval.v_number = -1;
+      else
+--- 16410,16416 ----
+  	return;		/* type error; errmsg already given */
+      }
+  # ifdef WIN32
+!     sscanf((const char *)serverid, SCANF_HEX_LONG_U, &n);
+      if (n == 0)
+  	rettv->vval.v_number = -1;
+      else
+***************
+*** 16456,16462 ****
+  	/* The server's HWND is encoded in the 'id' parameter */
+  	long_u		n = 0;
+  
+! 	sscanf(serverid, SCANF_HEX_LONG_U, &n);
+  	if (n != 0)
+  	    r = serverGetReply((HWND)n, FALSE, TRUE, TRUE);
+  	if (r == NULL)
+--- 16456,16462 ----
+  	/* The server's HWND is encoded in the 'id' parameter */
+  	long_u		n = 0;
+  
+! 	sscanf((char *)serverid, SCANF_HEX_LONG_U, &n);
+  	if (n != 0)
+  	    r = serverGetReply((HWND)n, FALSE, TRUE, TRUE);
+  	if (r == NULL)
+***************
+*** 25415,25421 ****
+      char_u	*newbuf;
+  
+      len = *fnamelen;
+!     l = GetShortPathName(*fnamep, *fnamep, len);
+      if (l > len - 1)
+      {
+  	/* If that doesn't work (not enough space), then save the string
+--- 25415,25421 ----
+      char_u	*newbuf;
+  
+      len = *fnamelen;
+!     l = GetShortPathName((LPSTR)*fnamep, (LPSTR)*fnamep, len);
+      if (l > len - 1)
+      {
+  	/* If that doesn't work (not enough space), then save the string
+***************
+*** 25428,25434 ****
+  	*fnamep = *bufp = newbuf;
+  
+  	/* Really should always succeed, as the buffer is big enough. */
+! 	l = GetShortPathName(*fnamep, *fnamep, l+1);
+      }
+  
+      *fnamelen = l;
+--- 25428,25434 ----
+  	*fnamep = *bufp = newbuf;
+  
+  	/* Really should always succeed, as the buffer is big enough. */
+! 	l = GetShortPathName((LPSTR)*fnamep, (LPSTR)*fnamep, l+1);
+      }
+  
+      *fnamelen = l;
+***************
+*** 25720,25726 ****
+  	    p = alloc(_MAX_PATH + 1);
+  	    if (p != NULL)
+  	    {
+! 		if (GetLongPathName(*fnamep, p, _MAX_PATH))
+  		{
+  		    vim_free(*bufp);
+  		    *bufp = *fnamep = p;
+--- 25720,25726 ----
+  	    p = alloc(_MAX_PATH + 1);
+  	    if (p != NULL)
+  	    {
+! 		if (GetLongPathName((LPSTR)*fnamep, (LPSTR)p, _MAX_PATH))
+  		{
+  		    vim_free(*bufp);
+  		    *bufp = *fnamep = p;
+*** ../vim-7.4.1333/src/ex_cmds2.c	2016-02-07 21:19:24.137042374 +0100
+--- src/ex_cmds2.c	2016-02-16 15:03:00.240058847 +0100
+***************
+*** 4149,4164 ****
+  #if (defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
+  	&& (defined(FEAT_EVAL) || defined(FEAT_MULTI_LANG))
+  # define HAVE_GET_LOCALE_VAL
+! static char *get_locale_val(int what);
+  
+!     static char *
+  get_locale_val(int what)
+  {
+!     char	*loc;
+  
+      /* Obtain the locale value from the libraries.  For DJGPP this is
+       * redefined and it doesn't use the arguments. */
+!     loc = setlocale(what, NULL);
+  
+  # ifdef WIN32
+      if (loc != NULL)
+--- 4149,4164 ----
+  #if (defined(HAVE_LOCALE_H) || defined(X_LOCALE)) \
+  	&& (defined(FEAT_EVAL) || defined(FEAT_MULTI_LANG))
+  # define HAVE_GET_LOCALE_VAL
+! static char_u *get_locale_val(int what);
+  
+!     static char_u *
+  get_locale_val(int what)
+  {
+!     char_u	*loc;
+  
+      /* Obtain the locale value from the libraries.  For DJGPP this is
+       * redefined and it doesn't use the arguments. */
+!     loc = (char_u *)setlocale(what, NULL);
+  
+  # ifdef WIN32
+      if (loc != NULL)
+***************
+*** 4222,4228 ****
+  
+      for (i = 0; mtable[i] != NULL; i += 2)
+  	if (STRNICMP(mtable[i], name, STRLEN(mtable[i])) == 0)
+! 	    return mtable[i + 1];
+      return name;
+  }
+  #endif
+--- 4222,4228 ----
+  
+      for (i = 0; mtable[i] != NULL; i += 2)
+  	if (STRNICMP(mtable[i], name, STRLEN(mtable[i])) == 0)
+! 	    return (char_u *)mtable[i + 1];
+      return name;
+  }
+  #endif
+***************
+*** 4239,4251 ****
+  
+  # ifdef HAVE_GET_LOCALE_VAL
+  #  if defined(LC_MESSAGES)
+!     p = (char_u *)get_locale_val(LC_MESSAGES);
+  #  else
+      /* This is necessary for Win32, where LC_MESSAGES is not defined and $LANG
+       * may be set to the LCID number.  LC_COLLATE is the best guess, LC_TIME
+       * and LC_MONETARY may be set differently for a Japanese working in the
+       * US. */
+!     p = (char_u *)get_locale_val(LC_COLLATE);
+  #  endif
+  # else
+      p = mch_getenv((char_u *)"LC_ALL");
+--- 4239,4251 ----
+  
+  # ifdef HAVE_GET_LOCALE_VAL
+  #  if defined(LC_MESSAGES)
+!     p = get_locale_val(LC_MESSAGES);
+  #  else
+      /* This is necessary for Win32, where LC_MESSAGES is not defined and $LANG
+       * may be set to the LCID number.  LC_COLLATE is the best guess, LC_TIME
+       * and LC_MONETARY may be set differently for a Japanese working in the
+       * US. */
+!     p = get_locale_val(LC_COLLATE);
+  #  endif
+  # else
+      p = mch_getenv((char_u *)"LC_ALL");
+***************
+*** 4290,4296 ****
+  		p = NULL;		/* ignore something like "1043" */
+  # ifdef HAVE_GET_LOCALE_VAL
+  	    if (p == NULL || *p == NUL)
+! 		p = (char_u *)get_locale_val(LC_CTYPE);
+  # endif
+  	}
+      }
+--- 4290,4296 ----
+  		p = NULL;		/* ignore something like "1043" */
+  # ifdef HAVE_GET_LOCALE_VAL
+  	    if (p == NULL || *p == NUL)
+! 		p = get_locale_val(LC_CTYPE);
+  # endif
+  	}
+      }
+***************
+*** 4310,4316 ****
+      char_u	*loc;
+  
+  # ifdef HAVE_GET_LOCALE_VAL
+!     loc = (char_u *)get_locale_val(LC_CTYPE);
+  # else
+      /* setlocale() not supported: use the default value */
+      loc = (char_u *)"C";
+--- 4310,4316 ----
+      char_u	*loc;
+  
+  # ifdef HAVE_GET_LOCALE_VAL
+!     loc = get_locale_val(LC_CTYPE);
+  # else
+      /* setlocale() not supported: use the default value */
+      loc = (char_u *)"C";
+***************
+*** 4320,4333 ****
+      /* When LC_MESSAGES isn't defined use the value from $LC_MESSAGES, fall
+       * back to LC_CTYPE if it's empty. */
+  # if defined(HAVE_GET_LOCALE_VAL) && defined(LC_MESSAGES)
+!     loc = (char_u *)get_locale_val(LC_MESSAGES);
+  # else
+      loc = get_mess_env();
+  # endif
+      set_vim_var_string(VV_LANG, loc, -1);
+  
+  # ifdef HAVE_GET_LOCALE_VAL
+!     loc = (char_u *)get_locale_val(LC_TIME);
+  # endif
+      set_vim_var_string(VV_LC_TIME, loc, -1);
+  }
+--- 4320,4333 ----
+      /* When LC_MESSAGES isn't defined use the value from $LC_MESSAGES, fall
+       * back to LC_CTYPE if it's empty. */
+  # if defined(HAVE_GET_LOCALE_VAL) && defined(LC_MESSAGES)
+!     loc = get_locale_val(LC_MESSAGES);
+  # else
+      loc = get_mess_env();
+  # endif
+      set_vim_var_string(VV_LANG, loc, -1);
+  
+  # ifdef HAVE_GET_LOCALE_VAL
+!     loc = get_locale_val(LC_TIME);
+  # endif
+      set_vim_var_string(VV_LC_TIME, loc, -1);
+  }
+*** ../vim-7.4.1333/src/ex_getln.c	2016-01-31 17:30:47.418544455 +0100
+--- src/ex_getln.c	2016-02-16 15:03:00.240058847 +0100
+***************
+*** 626,633 ****
+  #endif
+  		    if (vim_ispathsep(ccline.cmdbuff[j])
+  #ifdef BACKSLASH_IN_FILENAME
+! 			    && vim_strchr(" *?[{`$%#", ccline.cmdbuff[j + 1])
+! 			       == NULL
+  #endif
+  		       )
+  		    {
+--- 626,633 ----
+  #endif
+  		    if (vim_ispathsep(ccline.cmdbuff[j])
+  #ifdef BACKSLASH_IN_FILENAME
+! 			    && vim_strchr((char_u *)" *?[{`$%#",
+! 				ccline.cmdbuff[j + 1]) == NULL
+  #endif
+  		       )
+  		    {
+*** ../vim-7.4.1333/src/fileio.c	2016-02-07 15:13:56.081193256 +0100
+--- src/fileio.c	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 7480,7490 ****
+      }
+      strcpy(buf4, "VIM");
+      buf4[2] = extra_char;   /* make it "VIa", "VIb", etc. */
+!     if (GetTempFileName(szTempFile, buf4, 0, itmp) == 0)
+  	return NULL;
+      if (!keep)
+  	/* GetTempFileName() will create the file, we don't want that */
+! 	(void)DeleteFile(itmp);
+  
+      /* Backslashes in a temp file name cause problems when filtering with
+       * "sh".  NOTE: This also checks 'shellcmdflag' to help those people who
+--- 7480,7490 ----
+      }
+      strcpy(buf4, "VIM");
+      buf4[2] = extra_char;   /* make it "VIa", "VIb", etc. */
+!     if (GetTempFileName(szTempFile, buf4, 0, (LPSTR)itmp) == 0)
+  	return NULL;
+      if (!keep)
+  	/* GetTempFileName() will create the file, we don't want that */
+! 	(void)DeleteFile((LPSTR)itmp);
+  
+      /* Backslashes in a temp file name cause problems when filtering with
+       * "sh".  NOTE: This also checks 'shellcmdflag' to help those people who
+*** ../vim-7.4.1333/src/if_cscope.c	2016-01-30 17:24:01.798502450 +0100
+--- src/if_cscope.c	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 839,845 ****
+  # ifdef __BORLANDC__
+  #  define OPEN_OH_ARGTYPE long
+  # else
+! #  if (_MSC_VER >= 1300)
+  #   define OPEN_OH_ARGTYPE intptr_t
+  #  else
+  #   define OPEN_OH_ARGTYPE long
+--- 839,845 ----
+  # ifdef __BORLANDC__
+  #  define OPEN_OH_ARGTYPE long
+  # else
+! #  if (_MSC_VER >= 1300) || defined(__MINGW32__)
+  #   define OPEN_OH_ARGTYPE intptr_t
+  #  else
+  #   define OPEN_OH_ARGTYPE long
+***************
+*** 1423,1429 ****
+      /* On windows 9x GetFileInformationByHandle doesn't work, so skip it */
+      if (!mch_windows95())
+      {
+! 	switch (win32_fileinfo(fname, &bhfi))
+  	{
+  	case FILEINFO_ENC_FAIL:		/* enc_to_utf16() failed */
+  	case FILEINFO_READ_FAIL:	/* CreateFile() failed */
+--- 1423,1429 ----
+      /* On windows 9x GetFileInformationByHandle doesn't work, so skip it */
+      if (!mch_windows95())
+      {
+! 	switch (win32_fileinfo((char_u *)fname, &bhfi))
+  	{
+  	case FILEINFO_ENC_FAIL:		/* enc_to_utf16() failed */
+  	case FILEINFO_READ_FAIL:	/* CreateFile() failed */
+***************
+*** 1459,1465 ****
+  	    && csinfo[j].st_dev == sb->st_dev && csinfo[j].st_ino == sb->st_ino
+  #else
+  	    /* compare pathnames first */
+! 	    && ((fullpathcmp(csinfo[j].fname, fname, FALSE) & FPC_SAME)
+  		/* if not Windows 9x, test index file attributes too */
+  		|| (!mch_windows95()
+  		    && csinfo[j].nVolume == bhfi.dwVolumeSerialNumber
+--- 1459,1466 ----
+  	    && csinfo[j].st_dev == sb->st_dev && csinfo[j].st_ino == sb->st_ino
+  #else
+  	    /* compare pathnames first */
+! 	    && ((fullpathcmp((char_u *)csinfo[j].fname,
+! 			(char_u *)fname, FALSE) & FPC_SAME)
+  		/* if not Windows 9x, test index file attributes too */
+  		|| (!mch_windows95()
+  		    && csinfo[j].nVolume == bhfi.dwVolumeSerialNumber
+*** ../vim-7.4.1333/src/if_perl.xs	2016-01-31 17:30:47.422544414 +0100
+--- src/if_perl.xs	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 49,54 ****
+--- 49,60 ----
+  # define __inline__ __inline
+  #endif
+  
++ #ifdef __GNUC__
++ # pragma GCC diagnostic push
++ # pragma GCC diagnostic ignored "-Wunused-variable"
++ # pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
++ #endif
++ 
+  #include <EXTERN.h>
+  #include <perl.h>
+  #include <XSUB.h>
+***************
+*** 1730,1732 ****
+--- 1736,1741 ----
+  	}
+      }
+  
++ #ifdef __GNUC__
++ # pragma GCC diagnostic pop
++ #endif
+*** ../vim-7.4.1333/src/if_python.c	2016-02-13 23:22:35.093363549 +0100
+--- src/if_python.c	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 43,48 ****
+--- 43,57 ----
+  # undef _DEBUG
+  #endif
+  
++ #ifdef HAVE_STRFTIME
++ # undef HAVE_STRFTIME
++ #endif
++ #ifdef HAVE_STRING_H
++ # undef HAVE_STRING_H
++ #endif
++ #ifdef HAVE_PUTENV
++ # undef HAVE_PUTENV
++ #endif
+  #ifdef HAVE_STDARG_H
+  # undef HAVE_STDARG_H	/* Python's config.h defines it as well. */
+  #endif
+*** ../vim-7.4.1333/src/if_python3.c	2016-02-13 23:22:35.093363549 +0100
+--- src/if_python3.c	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 51,56 ****
+--- 51,65 ----
+  # undef F_BLANK
+  #endif
+  
++ #ifdef HAVE_STRFTIME
++ # undef HAVE_STRFTIME
++ #endif
++ #ifdef HAVE_STRING_H
++ # undef HAVE_STRING_H
++ #endif
++ #ifdef HAVE_PUTENV
++ # undef HAVE_PUTENV
++ #endif
+  #ifdef HAVE_STDARG_H
+  # undef HAVE_STDARG_H   /* Python's config.h defines it as well. */
+  #endif
+*** ../vim-7.4.1333/src/if_ruby.c	2016-01-30 17:24:01.798502450 +0100
+--- src/if_ruby.c	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 158,163 ****
+--- 158,167 ----
+  # define RSTRING_PTR(s) RSTRING(s)->ptr
+  #endif
+  
++ #ifdef HAVE_DUP
++ # undef HAVE_DUP
++ #endif
++ 
+  #include "vim.h"
+  #include "version.h"
+  
+***************
+*** 253,258 ****
+--- 257,263 ----
+  # define rb_raise			dll_rb_raise
+  # define rb_str_cat			dll_rb_str_cat
+  # define rb_str_concat			dll_rb_str_concat
++ # undef rb_str_new
+  # define rb_str_new			dll_rb_str_new
+  # ifdef rb_str_new2
+  /* Ruby may #define rb_str_new2 to use rb_str_new_cstr. */
+***************
+*** 300,306 ****
+  #  define ruby_script			dll_ruby_script
+  #  define rb_enc_find_index		dll_rb_enc_find_index
+  #  define rb_enc_find			dll_rb_enc_find
+! #  define rb_enc_str_new			dll_rb_enc_str_new
+  #  define rb_sprintf			dll_rb_sprintf
+  #  define rb_require			dll_rb_require
+  #  define ruby_options			dll_ruby_options
+--- 305,312 ----
+  #  define ruby_script			dll_ruby_script
+  #  define rb_enc_find_index		dll_rb_enc_find_index
+  #  define rb_enc_find			dll_rb_enc_find
+! #  undef rb_enc_str_new
+! #  define rb_enc_str_new		dll_rb_enc_str_new
+  #  define rb_sprintf			dll_rb_sprintf
+  #  define rb_require			dll_rb_require
+  #  define ruby_options			dll_ruby_options
+*** ../vim-7.4.1333/src/main.c	2016-01-30 18:51:05.232232015 +0100
+--- src/main.c	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 3940,3946 ****
+      }
+      cdp = vim_strsave_escaped_ext(cwd,
+  #ifdef BACKSLASH_IN_FILENAME
+! 		    "",  /* rem_backslash() will tell what chars to escape */
+  #else
+  		    PATH_ESC_CHARS,
+  #endif
+--- 3940,3946 ----
+      }
+      cdp = vim_strsave_escaped_ext(cwd,
+  #ifdef BACKSLASH_IN_FILENAME
+! 		    (char_u *)"",  /* rem_backslash() will tell what chars to escape */
+  #else
+  		    PATH_ESC_CHARS,
+  #endif
+*** ../vim-7.4.1333/src/mbyte.c	2016-01-30 18:51:05.240231931 +0100
+--- src/mbyte.c	2016-02-16 15:03:00.244058806 +0100
+***************
+*** 473,479 ****
+  	CPINFO	cpinfo;
+  
+  	/* Get info on this codepage to find out what it is. */
+! 	if (GetCPInfo(atoi(name + 2), &cpinfo) != 0)
+  	{
+  	    if (cpinfo.MaxCharSize == 1) /* some single-byte encoding */
+  		return ENC_8BIT;
+--- 473,479 ----
+  	CPINFO	cpinfo;
+  
+  	/* Get info on this codepage to find out what it is. */
+! 	if (GetCPInfo(atoi((char *)name + 2), &cpinfo) != 0)
+  	{
+  	    if (cpinfo.MaxCharSize == 1) /* some single-byte encoding */
+  		return ENC_8BIT;
+***************
+*** 535,541 ****
+  	CPINFO	cpinfo;
+  
+  	/* Get info on this codepage to find out what it is. */
+! 	if (GetCPInfo(atoi(p_enc + 2), &cpinfo) != 0)
+  	{
+  	    if (cpinfo.MaxCharSize == 1)
+  	    {
+--- 535,541 ----
+  	CPINFO	cpinfo;
+  
+  	/* Get info on this codepage to find out what it is. */
+! 	if (GetCPInfo(atoi((char *)p_enc + 2), &cpinfo) != 0)
+  	{
+  	    if (cpinfo.MaxCharSize == 1)
+  	    {
+***************
+*** 547,553 ****
+  		    && (cpinfo.LeadByte[0] != 0 || cpinfo.LeadByte[1] != 0))
+  	    {
+  		/* must be a DBCS encoding, check below */
+! 		enc_dbcs_new = atoi(p_enc + 2);
+  	    }
+  	    else
+  		goto codepage_invalid;
+--- 547,553 ----
+  		    && (cpinfo.LeadByte[0] != 0 || cpinfo.LeadByte[1] != 0))
+  	    {
+  		/* must be a DBCS encoding, check below */
+! 		enc_dbcs_new = atoi((char *)p_enc + 2);
+  	    }
+  	    else
+  		goto codepage_invalid;
+***************
+*** 571,577 ****
+  #ifdef WIN3264
+  	/* Windows: accept only valid codepage numbers, check below. */
+  	if (p_enc[6] != 'c' || p_enc[7] != 'p'
+! 				      || (enc_dbcs_new = atoi(p_enc + 8)) == 0)
+  	    return e_invarg;
+  #else
+  	/* Unix: accept any "2byte-" name, assume current locale. */
+--- 571,577 ----
+  #ifdef WIN3264
+  	/* Windows: accept only valid codepage numbers, check below. */
+  	if (p_enc[6] != 'c' || p_enc[7] != 'p'
+! 			      || (enc_dbcs_new = atoi((char *)p_enc + 8)) == 0)
+  	    return e_invarg;
+  #else
+  	/* Unix: accept any "2byte-" name, assume current locale. */
+***************
+*** 4338,4344 ****
+  		continue;
+  	    pImpName = (PIMAGE_IMPORT_BY_NAME)(pImage
+  					+ (UINT_PTR)(pINT->u1.AddressOfData));
+! 	    if (strcmp(pImpName->Name, funcname) == 0)
+  		return (void *)pIAT->u1.Function;
+  	}
+      }
+--- 4338,4344 ----
+  		continue;
+  	    pImpName = (PIMAGE_IMPORT_BY_NAME)(pImage
+  					+ (UINT_PTR)(pINT->u1.AddressOfData));
+! 	    if (strcmp((char *)pImpName->Name, funcname) == 0)
+  		return (void *)pIAT->u1.Function;
+  	}
+      }
+***************
+*** 6268,6274 ****
+  	    {
+  		tmp_len = MultiByteToWideChar(vcp->vc_cpfrom,
+  					unconvlenp ? MB_ERR_INVALID_CHARS : 0,
+! 					ptr, len, 0, 0);
+  		if (tmp_len == 0
+  			&& GetLastError() == ERROR_NO_UNICODE_TRANSLATION)
+  		{
+--- 6268,6274 ----
+  	    {
+  		tmp_len = MultiByteToWideChar(vcp->vc_cpfrom,
+  					unconvlenp ? MB_ERR_INVALID_CHARS : 0,
+! 					(char *)ptr, len, 0, 0);
+  		if (tmp_len == 0
+  			&& GetLastError() == ERROR_NO_UNICODE_TRANSLATION)
+  		{
+***************
+*** 6288,6294 ****
+  	    if (vcp->vc_cpfrom == 0)
+  		utf8_to_utf16(ptr, len, tmp, unconvlenp);
+  	    else
+! 		MultiByteToWideChar(vcp->vc_cpfrom, 0, ptr, len, tmp, tmp_len);
+  
+  	    /* 2. ucs-2  ->  codepage/UTF-8. */
+  	    if (vcp->vc_cpto == 0)
+--- 6288,6295 ----
+  	    if (vcp->vc_cpfrom == 0)
+  		utf8_to_utf16(ptr, len, tmp, unconvlenp);
+  	    else
+! 		MultiByteToWideChar(vcp->vc_cpfrom, 0,
+! 			(char *)ptr, len, tmp, tmp_len);
+  
+  	    /* 2. ucs-2  ->  codepage/UTF-8. */
+  	    if (vcp->vc_cpto == 0)
+***************
+*** 6303,6309 ****
+  		    utf16_to_utf8(tmp, tmp_len, retval);
+  		else
+  		    WideCharToMultiByte(vcp->vc_cpto, 0,
+! 					  tmp, tmp_len, retval, retlen, 0, 0);
+  		retval[retlen] = NUL;
+  		if (lenp != NULL)
+  		    *lenp = retlen;
+--- 6304,6311 ----
+  		    utf16_to_utf8(tmp, tmp_len, retval);
+  		else
+  		    WideCharToMultiByte(vcp->vc_cpto, 0,
+! 					  tmp, tmp_len,
+! 					  (char *)retval, retlen, 0, 0);
+  		retval[retlen] = NUL;
+  		if (lenp != NULL)
+  		    *lenp = retlen;
+*** ../vim-7.4.1333/src/misc1.c	2016-01-30 19:39:45.273838657 +0100
+--- src/misc1.c	2016-02-16 15:03:00.248058765 +0100
+***************
+*** 3779,3785 ****
+  	homedrive = mch_getenv((char_u *)"HOMEDRIVE");
+  	homepath = mch_getenv((char_u *)"HOMEPATH");
+  	if (homepath == NULL || *homepath == NUL)
+! 	    homepath = "\\";
+  	if (homedrive != NULL
+  			   && STRLEN(homedrive) + STRLEN(homepath) < MAXPATHL)
+  	{
+--- 3779,3785 ----
+  	homedrive = mch_getenv((char_u *)"HOMEDRIVE");
+  	homepath = mch_getenv((char_u *)"HOMEPATH");
+  	if (homepath == NULL || *homepath == NUL)
+! 	    homepath = (char_u *)"\\";
+  	if (homedrive != NULL
+  			   && STRLEN(homedrive) + STRLEN(homepath) < MAXPATHL)
+  	{
+***************
+*** 3817,3823 ****
+       * Best assumption we can make in such a situation.
+       */
+      if (var == NULL)
+! 	var = "C:/";
+  #endif
+      if (var != NULL)
+      {
+--- 3817,3823 ----
+       * Best assumption we can make in such a situation.
+       */
+      if (var == NULL)
+! 	var = (char_u *)"C:/";
+  #endif
+      if (var != NULL)
+      {
+***************
+*** 9944,9950 ****
+  
+      if (wn == NULL)
+  # endif
+! 	hFind = FindFirstFile(buf, &fb);
+      ok = (hFind != INVALID_HANDLE_VALUE);
+  #else
+      /* If we are expanding wildcards we try both files and directories */
+--- 9944,9950 ----
+  
+      if (wn == NULL)
+  # endif
+! 	hFind = FindFirstFile((LPCSTR)buf, &fb);
+      ok = (hFind != INVALID_HANDLE_VALUE);
+  #else
+      /* If we are expanding wildcards we try both files and directories */
+***************
+*** 10042,10048 ****
+  	    }
+  	    if (wn == NULL)
+  # endif
+! 		hFind = FindFirstFile(buf, &fb);
+  	    ok = (hFind != INVALID_HANDLE_VALUE);
+  #else
+  	    ok = (findfirst((char *)buf, &fb,
+--- 10042,10048 ----
+  	    }
+  	    if (wn == NULL)
+  # endif
+! 		hFind = FindFirstFile((LPCSTR)buf, &fb);
+  	    ok = (hFind != INVALID_HANDLE_VALUE);
+  #else
+  	    ok = (findfirst((char *)buf, &fb,
+*** ../vim-7.4.1333/src/option.c	2016-01-30 19:39:45.285838531 +0100
+--- src/option.c	2016-02-16 15:03:00.248058765 +0100
+***************
+*** 3196,3202 ****
+  # endif
+  	    || ((p = mch_getenv((char_u *)"COMSPEC")) != NULL && *p != NUL)
+  # ifdef WIN3264
+! 	    || ((p = default_shell()) != NULL && *p != NUL)
+  # endif
+  #endif
+  	    )
+--- 3196,3202 ----
+  # endif
+  	    || ((p = mch_getenv((char_u *)"COMSPEC")) != NULL && *p != NUL)
+  # ifdef WIN3264
+! 	    || ((p = (char_u *)default_shell()) != NULL && *p != NUL)
+  # endif
+  #endif
+  	    )
+***************
+*** 3479,3485 ****
+  		STRCPY(buf, "ja");
+  	    else
+  		buf[2] = NUL;		/* truncate to two-letter code */
+! 	    vim_setenv("LANG", buf);
+  	}
+      }
+  # else
+--- 3479,3485 ----
+  		STRCPY(buf, "ja");
+  	    else
+  		buf[2] = NUL;		/* truncate to two-letter code */
+! 	    vim_setenv((char_u *)"LANG", (char_u *)buf);
+  	}
+      }
+  # else
+*** ../vim-7.4.1333/src/os_mswin.c	2016-01-30 20:31:21.241607996 +0100
+--- src/os_mswin.c	2016-02-16 15:03:00.248058765 +0100
+***************
+*** 273,283 ****
+      for (i = 0; i < 256; ++i)
+  	toupper_tab[i] = tolower_tab[i] = i;
+  #ifdef WIN3264
+!     CharUpperBuff(toupper_tab, 256);
+!     CharLowerBuff(tolower_tab, 256);
+  #else
+!     AnsiUpperBuff(toupper_tab, 256);
+!     AnsiLowerBuff(tolower_tab, 256);
+  #endif
+  }
+  
+--- 273,283 ----
+      for (i = 0; i < 256; ++i)
+  	toupper_tab[i] = tolower_tab[i] = i;
+  #ifdef WIN3264
+!     CharUpperBuff((LPSTR)toupper_tab, 256);
+!     CharLowerBuff((LPSTR)tolower_tab, 256);
+  #else
+!     AnsiUpperBuff((LPSTR)toupper_tab, 256);
+!     AnsiLowerBuff((LPSTR)tolower_tab, 256);
+  #endif
+  }
+  
+***************
+*** 327,333 ****
+  	    }
+  	}
+  #  endif
+! 	SetConsoleTitle(title);
+      }
+  # endif
+  }
+--- 327,333 ----
+  	    }
+  	}
+  #  endif
+! 	SetConsoleTitle((LPCSTR)title);
+      }
+  # endif
+  }
+***************
+*** 428,434 ****
+  	if (nResult == FAIL)	    /* fall back to non-wide function */
+  #endif
+  	{
+! 	    if (_fullpath(buf, fname, len - 1) == NULL)
+  	    {
+  		/* failed, use relative path name */
+  		vim_strncpy(buf, fname, len - 1);
+--- 428,434 ----
+  	if (nResult == FAIL)	    /* fall back to non-wide function */
+  #endif
+  	{
+! 	    if (_fullpath((char *)buf, (const char *)fname, len - 1) == NULL)
+  	    {
+  		/* failed, use relative path name */
+  		vim_strncpy(buf, fname, len - 1);
+***************
+*** 469,478 ****
+  	return TRUE;
+  
+      /* A name that can't be made absolute probably isn't absolute. */
+!     if (mch_FullName(fname, szName, sizeof(szName) - 1, FALSE) == FAIL)
+  	return FALSE;
+  
+!     return pathcmp(fname, szName, -1) == 0;
+  }
+  
+  /*
+--- 469,478 ----
+  	return TRUE;
+  
+      /* A name that can't be made absolute probably isn't absolute. */
+!     if (mch_FullName(fname, (char_u *)szName, sizeof(szName) - 1, FALSE) == FAIL)
+  	return FALSE;
+  
+!     return pathcmp((const char *)fname, (const char *)szName, -1) == 0;
+  }
+  
+  /*
+***************
+*** 619,632 ****
+      /* WinNT and later can use _MAX_PATH wide characters for a pathname, which
+       * means that the maximum pathname is _MAX_PATH * 3 bytes when 'enc' is
+       * UTF-8. */
+!     char	buf[_MAX_PATH * 3 + 1];
+  #else
+!     char	buf[_MAX_PATH + 1];
+  #endif
+!     char	*p;
+  
+      vim_strncpy((char_u *)buf, (char_u *)name, sizeof(buf) - 1);
+!     p = buf + strlen(buf);
+      if (p > buf)
+  	mb_ptr_back(buf, p);
+  
+--- 619,632 ----
+      /* WinNT and later can use _MAX_PATH wide characters for a pathname, which
+       * means that the maximum pathname is _MAX_PATH * 3 bytes when 'enc' is
+       * UTF-8. */
+!     char_u	buf[_MAX_PATH * 3 + 1];
+  #else
+!     char_u	buf[_MAX_PATH + 1];
+  #endif
+!     char_u	*p;
+  
+      vim_strncpy((char_u *)buf, (char_u *)name, sizeof(buf) - 1);
+!     p = buf + STRLEN(buf);
+      if (p > buf)
+  	mb_ptr_back(buf, p);
+  
+***************
+*** 637,646 ****
+      if ((buf[0] == '\\' && buf[1] == '\\') || (buf[0] == '/' && buf[1] == '/'))
+      {
+  	/* UNC root path must be followed by '\\'. */
+! 	p = vim_strpbrk(buf + 2, "\\/");
+  	if (p != NULL)
+  	{
+! 	    p = vim_strpbrk(p + 1, "\\/");
+  	    if (p == NULL)
+  		STRCAT(buf, "\\");
+  	}
+--- 637,646 ----
+      if ((buf[0] == '\\' && buf[1] == '\\') || (buf[0] == '/' && buf[1] == '/'))
+      {
+  	/* UNC root path must be followed by '\\'. */
+! 	p = vim_strpbrk(buf + 2, (char_u *)"\\/");
+  	if (p != NULL)
+  	{
+! 	    p = vim_strpbrk(p + 1, (char_u *)"\\/");
+  	    if (p == NULL)
+  		STRCAT(buf, "\\");
+  	}
+***************
+*** 668,674 ****
+  	}
+      }
+  #endif
+!     return stat_symlink_aware(buf, stp);
+  }
+  
+  #if defined(FEAT_GUI_MSWIN) || defined(PROTO)
+--- 668,674 ----
+  	}
+      }
+  #endif
+!     return stat_symlink_aware((char *)buf, stp);
+  }
+  
+  #if defined(FEAT_GUI_MSWIN) || defined(PROTO)
+***************
+*** 820,826 ****
+  #ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*p = enc_to_utf16(path, NULL);
+  	int	n;
+  
+  	if (p != NULL)
+--- 820,826 ----
+  #ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*p = enc_to_utf16((char_u *)path, NULL);
+  	int	n;
+  
+  	if (p != NULL)
+***************
+*** 853,859 ****
+      if (g_PlatformId == VER_PLATFORM_WIN32_NT || Columns == 80)
+  	return TRUE;
+      if (give_msg)
+! 	msg(_("'columns' is not 80, cannot execute external commands"));
+      return FALSE;
+  #endif
+  }
+--- 853,860 ----
+      if (g_PlatformId == VER_PLATFORM_WIN32_NT || Columns == 80)
+  	return TRUE;
+      if (give_msg)
+! 	msg((char_u *)
+! 		_("'columns' is not 80, cannot execute external commands"));
+      return FALSE;
+  #endif
+  }
+***************
+*** 915,921 ****
+      MEMORY_BASIC_INFORMATION	mbi;
+      size_t			length = 0;
+      size_t			i;
+!     const char			*p;
+  
+      /* get page size */
+      GetSystemInfo(&si);
+--- 916,922 ----
+      MEMORY_BASIC_INFORMATION	mbi;
+      size_t			length = 0;
+      size_t			i;
+!     const char_u		*p;
+  
+      /* get page size */
+      GetSystemInfo(&si);
+***************
+*** 953,959 ****
+      HANDLE *h = (HANDLE *)cookie;
+  
+      *h = LoadImage(NULL,
+! 		   fname,
+  		   IMAGE_ICON,
+  		   64,
+  		   64,
+--- 954,960 ----
+      HANDLE *h = (HANDLE *)cookie;
+  
+      *h = LoadImage(NULL,
+! 		   (LPSTR)fname,
+  		   IMAGE_ICON,
+  		   64,
+  		   64,
+***************
+*** 992,998 ****
+  # ifdef WIN16
+      hinstLib = LoadLibrary(libname);
+  # else
+!     hinstLib = vimLoadLib(libname);
+  # endif
+  
+      // If the handle is valid, try to get the function address.
+--- 993,999 ----
+  # ifdef WIN16
+      hinstLib = LoadLibrary(libname);
+  # else
+!     hinstLib = vimLoadLib((char *)libname);
+  # endif
+  
+      // If the handle is valid, try to get the function address.
+***************
+*** 1005,1029 ****
+  	if (argstring != NULL)
+  	{
+  	    /* Call with string argument */
+! 	    ProcAdd = (MYSTRPROCSTR) GetProcAddress(hinstLib, funcname);
+  	    if ((fRunTimeLinkSuccess = (ProcAdd != NULL)) != 0)
+  	    {
+  		if (string_result == NULL)
+! 		    retval_int = ((MYSTRPROCINT)ProcAdd)(argstring);
+  		else
+! 		    retval_str = (ProcAdd)(argstring);
+  	    }
+  	}
+  	else
+  	{
+  	    /* Call with number argument */
+! 	    ProcAddI = (MYINTPROCSTR) GetProcAddress(hinstLib, funcname);
+  	    if ((fRunTimeLinkSuccess = (ProcAddI != NULL)) != 0)
+  	    {
+  		if (string_result == NULL)
+  		    retval_int = ((MYINTPROCINT)ProcAddI)(argint);
+  		else
+! 		    retval_str = (ProcAddI)(argint);
+  	    }
+  	}
+  
+--- 1006,1030 ----
+  	if (argstring != NULL)
+  	{
+  	    /* Call with string argument */
+! 	    ProcAdd = (MYSTRPROCSTR)GetProcAddress(hinstLib, (LPCSTR)funcname);
+  	    if ((fRunTimeLinkSuccess = (ProcAdd != NULL)) != 0)
+  	    {
+  		if (string_result == NULL)
+! 		    retval_int = ((MYSTRPROCINT)ProcAdd)((LPSTR)argstring);
+  		else
+! 		    retval_str = (char_u *)(ProcAdd)((LPSTR)argstring);
+  	    }
+  	}
+  	else
+  	{
+  	    /* Call with number argument */
+! 	    ProcAddI = (MYINTPROCSTR) GetProcAddress(hinstLib, (LPCSTR)funcname);
+  	    if ((fRunTimeLinkSuccess = (ProcAddI != NULL)) != 0)
+  	    {
+  		if (string_result == NULL)
+  		    retval_int = ((MYINTPROCINT)ProcAddI)(argint);
+  		else
+! 		    retval_str = (char_u *)(ProcAddI)(argint);
+  	    }
+  	}
+  
+***************
+*** 1228,1234 ****
+  	vim_free(wp);
+  	return ret;
+      }
+!     return SetDlgItemText(hDlg, nIDDlgItem, s);
+  }
+  #endif
+  
+--- 1229,1235 ----
+  	vim_free(wp);
+  	return ret;
+      }
+!     return SetDlgItemText(hDlg, nIDDlgItem, (LPCSTR)s);
+  }
+  #endif
+  
+***************
+*** 1283,1300 ****
+  		{
+  		    SendDlgItemMessage(hDlg, i, WM_SETFONT, (WPARAM)hfont, 1);
+  		    if (GetDlgItemText(hDlg,i, buff, sizeof(buff)))
+! 			vimSetDlgItemText(hDlg,i, _(buff));
+  		}
+  		SendDlgItemMessage(hDlg, IDCANCEL,
+  						WM_SETFONT, (WPARAM)hfont, 1);
+  		if (GetDlgItemText(hDlg,IDCANCEL, buff, sizeof(buff)))
+! 		    vimSetDlgItemText(hDlg,IDCANCEL, _(buff));
+  	    }
+  #endif
+! 	    SetWindowText(hDlg, szAppName);
+  	    if (prt_name != NULL)
+  	    {
+! 		vimSetDlgItemText(hDlg, IDC_PRINTTEXT2, (LPSTR)prt_name);
+  		vim_free(prt_name);
+  		prt_name = NULL;
+  	    }
+--- 1284,1301 ----
+  		{
+  		    SendDlgItemMessage(hDlg, i, WM_SETFONT, (WPARAM)hfont, 1);
+  		    if (GetDlgItemText(hDlg,i, buff, sizeof(buff)))
+! 			vimSetDlgItemText(hDlg,i, (char_u *)_(buff));
+  		}
+  		SendDlgItemMessage(hDlg, IDCANCEL,
+  						WM_SETFONT, (WPARAM)hfont, 1);
+  		if (GetDlgItemText(hDlg,IDCANCEL, buff, sizeof(buff)))
+! 		    vimSetDlgItemText(hDlg,IDCANCEL, (char_u *)_(buff));
+  	    }
+  #endif
+! 	    SetWindowText(hDlg, (LPCSTR)szAppName);
+  	    if (prt_name != NULL)
+  	    {
+! 		vimSetDlgItemText(hDlg, IDC_PRINTTEXT2, (char_u *)prt_name);
+  		vim_free(prt_name);
+  		prt_name = NULL;
+  	    }
+***************
+*** 1585,1591 ****
+  	 * NT, but NULL appears to work just as well.
+  	 */
+  	if (*p_pdev != NUL)
+! 	    prt_dlg.hDC = CreateDC(NULL, p_pdev, NULL, NULL);
+  	else
+  #endif
+  	{
+--- 1586,1592 ----
+  	 * NT, but NULL appears to work just as well.
+  	 */
+  	if (*p_pdev != NUL)
+! 	    prt_dlg.hDC = CreateDC(NULL, (LPCSTR)p_pdev, NULL, NULL);
+  	else
+  #endif
+  	{
+***************
+*** 1649,1655 ****
+      {
+  	char_u	*printer_name = (char_u *)devname + devname->wDeviceOffset;
+  	char_u	*port_name = (char_u *)devname +devname->wOutputOffset;
+! 	char_u	*text = _("to %s on %s");
+  #ifdef FEAT_MBYTE
+  	char_u  *printer_name_orig = printer_name;
+  	char_u	*port_name_orig = port_name;
+--- 1650,1656 ----
+      {
+  	char_u	*printer_name = (char_u *)devname + devname->wDeviceOffset;
+  	char_u	*port_name = (char_u *)devname +devname->wOutputOffset;
+! 	char_u	*text = (char_u *)_("to %s on %s");
+  #ifdef FEAT_MBYTE
+  	char_u  *printer_name_orig = printer_name;
+  	char_u	*port_name_orig = port_name;
+***************
+*** 1671,1677 ****
+  	prt_name = alloc((unsigned)(STRLEN(printer_name) + STRLEN(port_name)
+  							     + STRLEN(text)));
+  	if (prt_name != NULL)
+! 	    wsprintf(prt_name, text, printer_name, port_name);
+  #ifdef FEAT_MBYTE
+  	if (printer_name != printer_name_orig)
+  	    vim_free(printer_name);
+--- 1672,1679 ----
+  	prt_name = alloc((unsigned)(STRLEN(printer_name) + STRLEN(port_name)
+  							     + STRLEN(text)));
+  	if (prt_name != NULL)
+! 	    wsprintf((char *)prt_name, (const char *)text,
+! 		    printer_name, port_name);
+  #ifdef FEAT_MBYTE
+  	if (printer_name != printer_name_orig)
+  	    vim_free(printer_name);
+***************
+*** 1781,1791 ****
+      SetAbortProc(prt_dlg.hDC, AbortProc);
+  #endif
+      wsprintf(szBuffer, _("Printing '%s'"), gettail(psettings->jobname));
+!     vimSetDlgItemText(hDlgPrint, IDC_PRINTTEXT1, (LPSTR)szBuffer);
+  
+      vim_memset(&di, 0, sizeof(DOCINFO));
+      di.cbSize = sizeof(DOCINFO);
+!     di.lpszDocName = psettings->jobname;
+      ret = StartDoc(prt_dlg.hDC, &di);
+  
+  #ifdef FEAT_GUI
+--- 1783,1793 ----
+      SetAbortProc(prt_dlg.hDC, AbortProc);
+  #endif
+      wsprintf(szBuffer, _("Printing '%s'"), gettail(psettings->jobname));
+!     vimSetDlgItemText(hDlgPrint, IDC_PRINTTEXT1, (char_u *)szBuffer);
+  
+      vim_memset(&di, 0, sizeof(DOCINFO));
+      di.cbSize = sizeof(DOCINFO);
+!     di.lpszDocName = (LPCSTR)psettings->jobname;
+      ret = StartDoc(prt_dlg.hDC, &di);
+  
+  #ifdef FEAT_GUI
+***************
+*** 1815,1821 ****
+  mch_print_begin_page(char_u *msg)
+  {
+      if (msg != NULL)
+! 	vimSetDlgItemText(hDlgPrint, IDC_PROGRESS, (LPSTR)msg);
+      return (StartPage(prt_dlg.hDC) > 0);
+  }
+  
+--- 1817,1823 ----
+  mch_print_begin_page(char_u *msg)
+  {
+      if (msg != NULL)
+! 	vimSetDlgItemText(hDlgPrint, IDC_PROGRESS, msg);
+      return (StartPage(prt_dlg.hDC) > 0);
+  }
+  
+***************
+*** 1878,1893 ****
+      }
+  #endif
+      TextOut(prt_dlg.hDC, prt_pos_x + prt_left_margin,
+! 					  prt_pos_y + prt_top_margin, p, len);
+  #ifndef FEAT_PROPORTIONAL_FONTS
+      prt_pos_x += len * prt_tm.tmAveCharWidth;
+      return (prt_pos_x + prt_left_margin + prt_tm.tmAveCharWidth
+  				     + prt_tm.tmOverhang > prt_right_margin);
+  #else
+  # ifdef WIN16
+!     GetTextExtentPoint(prt_dlg.hDC, p, len, &sz);
+  # else
+!     GetTextExtentPoint32(prt_dlg.hDC, p, len, &sz);
+  # endif
+      prt_pos_x += (sz.cx - prt_tm.tmOverhang);
+      /* This is wrong when printing spaces for a TAB. */
+--- 1880,1896 ----
+      }
+  #endif
+      TextOut(prt_dlg.hDC, prt_pos_x + prt_left_margin,
+! 					  prt_pos_y + prt_top_margin,
+! 					  (LPCSTR)p, len);
+  #ifndef FEAT_PROPORTIONAL_FONTS
+      prt_pos_x += len * prt_tm.tmAveCharWidth;
+      return (prt_pos_x + prt_left_margin + prt_tm.tmAveCharWidth
+  				     + prt_tm.tmOverhang > prt_right_margin);
+  #else
+  # ifdef WIN16
+!     GetTextExtentPoint(prt_dlg.hDC, (LPCSTR)p, len, &sz);
+  # else
+!     GetTextExtentPoint32(prt_dlg.hDC, (LPCSTR)p, len, &sz);
+  # endif
+      prt_pos_x += (sz.cx - prt_tm.tmOverhang);
+      /* This is wrong when printing spaces for a TAB. */
+***************
+*** 2027,2033 ****
+  	goto shortcut_end;
+  
+      // full path string must be in Unicode.
+!     MultiByteToWideChar(CP_ACP, 0, fname, -1, wsz, MAX_PATH);
+  
+      // "load" the name and resolve the link
+      hr = ppf->lpVtbl->Load(ppf, wsz, STGM_READ);
+--- 2030,2036 ----
+  	goto shortcut_end;
+  
+      // full path string must be in Unicode.
+!     MultiByteToWideChar(CP_ACP, 0, (LPCSTR)fname, -1, wsz, MAX_PATH);
+  
+      // "load" the name and resolve the link
+      hr = ppf->lpVtbl->Load(ppf, wsz, STGM_READ);
+***************
+*** 2043,2049 ****
+      ZeroMemory(buf, MAX_PATH);
+      hr = psl->lpVtbl->GetPath(psl, buf, MAX_PATH, &ffd, 0);
+      if (hr == S_OK && buf[0] != NUL)
+! 	rfname = vim_strsave(buf);
+  
+  shortcut_end:
+      // Release all interface pointers (both belong to the same object)
+--- 2046,2052 ----
+      ZeroMemory(buf, MAX_PATH);
+      hr = psl->lpVtbl->GetPath(psl, buf, MAX_PATH, &ffd, 0);
+      if (hr == S_OK && buf[0] != NUL)
+! 	rfname = vim_strsave((char_u *)buf);
+  
+  shortcut_end:
+      // Release all interface pointers (both belong to the same object)
+***************
+*** 2234,2240 ****
+  
+  	    if (res == NULL)
+  	    {
+! 		res = vim_strsave(_(e_invexprmsg));
+  		reply.dwData = COPYDATA_ERROR_RESULT;
+  	    }
+  	    else
+--- 2237,2243 ----
+  
+  	    if (res == NULL)
+  	    {
+! 		res = vim_strsave((char_u *)_(e_invexprmsg));
+  		reply.dwData = COPYDATA_ERROR_RESULT;
+  	    }
+  	    else
+***************
+*** 2399,2406 ****
+  	return TRUE;
+  
+      /* Add the name to the list */
+!     ga_concat(ga, server);
+!     ga_concat(ga, "\n");
+      return TRUE;
+  }
+  
+--- 2402,2409 ----
+  	return TRUE;
+  
+      /* Add the name to the list */
+!     ga_concat(ga, (char_u *)server);
+!     ga_concat(ga, (char_u *)"\n");
+      return TRUE;
+  }
+  
+***************
+*** 2459,2465 ****
+  #endif
+  
+  	/* Update the message window title */
+! 	SetWindowText(message_window, ok_name);
+  
+  #ifdef FEAT_EVAL
+  	/* Set the servername variable */
+--- 2462,2468 ----
+  #endif
+  
+  	/* Update the message window title */
+! 	SetWindowText(message_window, (LPCSTR)ok_name);
+  
+  #ifdef FEAT_EVAL
+  	/* Set the servername variable */
+***************
+*** 2948,2954 ****
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  	int	len;
+! 	enc_to_acp(name, (int)strlen(name), &acpname, &len);
+  	name = acpname;
+      }
+  #endif
+--- 2951,2957 ----
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  	int	len;
+! 	enc_to_acp(name, (int)strlen((char *)name), &acpname, &len);
+  	name = acpname;
+      }
+  #endif
+*** ../vim-7.4.1333/src/os_win32.c	2016-02-15 21:56:42.721119732 +0100
+--- src/os_win32.c	2016-02-16 15:03:00.248058765 +0100
+***************
+*** 91,97 ****
+   */
+  #ifdef PROTO
+  #define WINAPI
+- #define WINBASEAPI
+  typedef char * LPCSTR;
+  typedef char * LPWSTR;
+  typedef int ACCESS_MASK;
+--- 91,96 ----
+***************
+*** 148,161 ****
+   * and Michael Dietrich for helping me figure out this workaround.
+   */
+  
+! /* WINBASEAPI BOOL WINAPI GetConsoleKeyboardLayoutNameA(LPSTR); */
+! #ifndef WINBASEAPI
+! # define WINBASEAPI __stdcall
+  #endif
+  #if defined(__BORLANDC__)
+  typedef BOOL (__stdcall *PFNGCKLN)(LPSTR);
+  #else
+! typedef WINBASEAPI BOOL (WINAPI *PFNGCKLN)(LPSTR);
+  #endif
+  static PFNGCKLN    s_pfnGetConsoleKeyboardLayoutName = NULL;
+  #endif
+--- 147,160 ----
+   * and Michael Dietrich for helping me figure out this workaround.
+   */
+  
+! /* WINAPI BOOL WINAPI GetConsoleKeyboardLayoutNameA(LPSTR); */
+! #ifndef WINAPI
+! # define WINAPI __stdcall
+  #endif
+  #if defined(__BORLANDC__)
+  typedef BOOL (__stdcall *PFNGCKLN)(LPSTR);
+  #else
+! typedef BOOL (WINAPI *PFNGCKLN)(LPSTR);
+  #endif
+  static PFNGCKLN    s_pfnGetConsoleKeyboardLayoutName = NULL;
+  #endif
+***************
+*** 340,345 ****
+--- 339,345 ----
+  				     dwMilliseconds, dwWakeMask);
+  }
+  
++ #ifndef FEAT_CLIENTSERVER
+      static DWORD
+  wait_for_single_object(
+      HANDLE hHandle,
+***************
+*** 349,354 ****
+--- 349,355 ----
+  	return WAIT_OBJECT_0;
+      return WaitForSingleObject(hHandle, dwMilliseconds);
+  }
++ #endif
+  
+      static void
+  get_exe_name(void)
+***************
+*** 388,394 ****
+  		    STRCAT(temp, ";");
+  		}
+  		STRCAT(temp, exe_path);
+! 		vim_setenv((char_u *)"PATH", temp);
+  	    }
+  	}
+      }
+--- 389,395 ----
+  		    STRCAT(temp, ";");
+  		}
+  		STRCAT(temp, exe_path);
+! 		vim_setenv((char_u *)"PATH", (char_u *)temp);
+  	    }
+  	}
+      }
+***************
+*** 440,446 ****
+  	    /* Change directory to where the executable is, both to make
+  	     * sure we find a .dll there and to avoid looking for a .dll
+  	     * in the current directory. */
+! 	    SetCurrentDirectory(exe_path);
+  	    dll = LoadLibrary(name);
+  	    SetCurrentDirectoryW(old_dirw);
+  	    return dll;
+--- 441,447 ----
+  	    /* Change directory to where the executable is, both to make
+  	     * sure we find a .dll there and to avoid looking for a .dll
+  	     * in the current directory. */
+! 	    SetCurrentDirectory((LPCSTR)exe_path);
+  	    dll = LoadLibrary(name);
+  	    SetCurrentDirectoryW(old_dirw);
+  	    return dll;
+***************
+*** 453,459 ****
+  		/* Change directory to where the executable is, both to make
+  		 * sure we find a .dll there and to avoid looking for a .dll
+  		 * in the current directory. */
+! 		SetCurrentDirectory(exe_path);
+  		dll = LoadLibrary(name);
+  		SetCurrentDirectory(old_dir);
+  	    }
+--- 454,460 ----
+  		/* Change directory to where the executable is, both to make
+  		 * sure we find a .dll there and to avoid looking for a .dll
+  		 * in the current directory. */
+! 		SetCurrentDirectory((LPCSTR)exe_path);
+  		dll = LoadLibrary(name);
+  		SetCurrentDirectory(old_dir);
+  	    }
+***************
+*** 1961,1967 ****
+  #ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*p = enc_to_utf16(name, NULL);
+  	WCHAR	fnamew[_MAX_PATH];
+  	WCHAR	*dumw;
+  	WCHAR	*wcurpath, *wnewpath;
+--- 1962,1968 ----
+  #ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*p = enc_to_utf16((char_u *)name, NULL);
+  	WCHAR	fnamew[_MAX_PATH];
+  	WCHAR	*dumw;
+  	WCHAR	*wcurpath, *wnewpath;
+***************
+*** 2003,2012 ****
+      vim_free(newpath);
+      if (n == 0)
+  	return FALSE;
+!     if (mch_isdir(fname))
+  	return FALSE;
+      if (path != NULL)
+! 	*path = vim_strsave(fname);
+      return TRUE;
+  }
+  
+--- 2004,2013 ----
+      vim_free(newpath);
+      if (n == 0)
+  	return FALSE;
+!     if (mch_isdir((char_u *)fname))
+  	return FALSE;
+      if (path != NULL)
+! 	*path = vim_strsave((char_u *)fname);
+      return TRUE;
+  }
+  
+***************
+*** 2383,2389 ****
+  #ifdef __BORLANDC__
+  typedef HWND (__stdcall *GETCONSOLEWINDOWPROC)(VOID);
+  #else
+! typedef WINBASEAPI HWND (WINAPI *GETCONSOLEWINDOWPROC)(VOID);
+  #endif
+  char g_szOrigTitle[256] = { 0 };
+  HWND g_hWnd = NULL;	/* also used in os_mswin.c */
+--- 2384,2390 ----
+  #ifdef __BORLANDC__
+  typedef HWND (__stdcall *GETCONSOLEWINDOWPROC)(VOID);
+  #else
+! typedef HWND (WINAPI *GETCONSOLEWINDOWPROC)(VOID);
+  #endif
+  char g_szOrigTitle[256] = { 0 };
+  HWND g_hWnd = NULL;	/* also used in os_mswin.c */
+***************
+*** 2439,2456 ****
+      HICON   hIconSmall,
+      HICON   hIcon)
+  {
+-     HICON   hPrevIconSmall;
+-     HICON   hPrevIcon;
+- 
+      if (hWnd == NULL)
+  	return FALSE;
+  
+      if (hIconSmall != NULL)
+! 	hPrevIconSmall = (HICON)SendMessage(hWnd, WM_SETICON,
+! 				      (WPARAM)ICON_SMALL, (LPARAM)hIconSmall);
+      if (hIcon != NULL)
+! 	hPrevIcon = (HICON)SendMessage(hWnd, WM_SETICON,
+! 					     (WPARAM)ICON_BIG,(LPARAM) hIcon);
+      return TRUE;
+  }
+  
+--- 2440,2454 ----
+      HICON   hIconSmall,
+      HICON   hIcon)
+  {
+      if (hWnd == NULL)
+  	return FALSE;
+  
+      if (hIconSmall != NULL)
+! 	SendMessage(hWnd, WM_SETICON,
+! 			    (WPARAM)ICON_SMALL, (LPARAM)hIconSmall);
+      if (hIcon != NULL)
+! 	SendMessage(hWnd, WM_SETICON,
+! 			    (WPARAM)ICON_BIG, (LPARAM) hIcon);
+      return TRUE;
+  }
+  
+***************
+*** 2496,2502 ****
+  
+      /* Extract the first icon contained in the Vim executable. */
+      if (mch_icon_load((HANDLE *)&g_hVimIcon) == FAIL || g_hVimIcon == NULL)
+! 	g_hVimIcon = ExtractIcon(NULL, exe_name, 0);
+      if (g_hVimIcon != NULL)
+  	g_fCanChangeIcon = TRUE;
+  }
+--- 2494,2500 ----
+  
+      /* Extract the first icon contained in the Vim executable. */
+      if (mch_icon_load((HANDLE *)&g_hVimIcon) == FAIL || g_hVimIcon == NULL)
+! 	g_hVimIcon = ExtractIcon(NULL, (LPCSTR)exe_name, 0);
+      if (g_hVimIcon != NULL)
+  	g_fCanChangeIcon = TRUE;
+  }
+***************
+*** 2851,2857 ****
+  	return;
+  
+      /* Build the new name in szTrueName[] one component at a time. */
+!     porig = name;
+      ptrue = szTrueName;
+  
+      if (isalpha(porig[0]) && porig[1] == ':')
+--- 2849,2855 ----
+  	return;
+  
+      /* Build the new name in szTrueName[] one component at a time. */
+!     porig = (char *)name;
+      ptrue = szTrueName;
+  
+      if (isalpha(porig[0]) && porig[1] == ':')
+***************
+*** 2877,2883 ****
+  
+  	    if (enc_dbcs)
+  	    {
+! 		l = (*mb_ptr2len)(porig);
+  		while (--l >= 0)
+  		    *ptrue++ = *porig++;
+  	    }
+--- 2875,2881 ----
+  
+  	    if (enc_dbcs)
+  	    {
+! 		l = (*mb_ptr2len)((char_u *)porig);
+  		while (--l >= 0)
+  		    *ptrue++ = *porig++;
+  	    }
+***************
+*** 2978,2984 ****
+  #endif
+      if (GetUserName(szUserName, &cch))
+      {
+! 	vim_strncpy(s, szUserName, len - 1);
+  	return OK;
+      }
+      s[0] = NUL;
+--- 2976,2982 ----
+  #endif
+      if (GetUserName(szUserName, &cch))
+      {
+! 	vim_strncpy(s, (char_u *)szUserName, len - 1);
+  	return OK;
+      }
+      s[0] = NUL;
+***************
+*** 3018,3025 ****
+  	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+!     if (!GetComputerName(s, &cch))
+! 	vim_strncpy(s, "PC (Win32 Vim)", len - 1);
+  }
+  
+  
+--- 3016,3023 ----
+  	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+!     if (!GetComputerName((LPSTR)s, &cch))
+! 	vim_strncpy(s, (char_u *)"PC (Win32 Vim)", len - 1);
+  }
+  
+  
+***************
+*** 3069,3075 ****
+  	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+!     return (GetCurrentDirectory(len, buf) != 0 ? OK : FAIL);
+  }
+  
+  /*
+--- 3067,3073 ----
+  	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+!     return (GetCurrentDirectory(len, (LPSTR)buf) != 0 ? OK : FAIL);
+  }
+  
+  /*
+***************
+*** 3082,3088 ****
+      struct stat st;
+      int		n;
+  
+!     n = mch_stat(name, &st);
+      return n == 0 ? (long)(unsigned short)st.st_mode : -1L;
+  }
+  
+--- 3080,3086 ----
+      struct stat st;
+      int		n;
+  
+!     n = mch_stat((char *)name, &st);
+      return n == 0 ? (long)(unsigned short)st.st_mode : -1L;
+  }
+  
+***************
+*** 3113,3119 ****
+      }
+      if (n == -1)
+  #endif
+! 	n = _chmod(name, perm);
+      if (n == -1)
+  	return FAIL;
+  
+--- 3111,3117 ----
+      }
+      if (n == -1)
+  #endif
+! 	n = _chmod((const char *)name, perm);
+      if (n == -1)
+  	return FAIL;
+  
+***************
+*** 3197,3203 ****
+  	return retval;
+      }
+  #endif
+!     return _mkdir(name);
+  }
+  
+  /*
+--- 3195,3201 ----
+  	return retval;
+      }
+  #endif
+!     return _mkdir((const char *)name);
+  }
+  
+  /*
+***************
+*** 3221,3227 ****
+  	return retval;
+      }
+  #endif
+!     return _rmdir(name);
+  }
+  
+  /*
+--- 3219,3225 ----
+  	return retval;
+      }
+  #endif
+!     return _rmdir((const char *)name);
+  }
+  
+  /*
+***************
+*** 3260,3266 ****
+  		&& GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+  	{
+  	    /* Retry with non-wide function (for Windows 98). */
+! 	    hFind = FindFirstFile(name, &findDataA);
+  	    if (hFind != INVALID_HANDLE_VALUE)
+  	    {
+  		fileFlags = findDataA.dwFileAttributes;
+--- 3258,3264 ----
+  		&& GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+  	{
+  	    /* Retry with non-wide function (for Windows 98). */
+! 	    hFind = FindFirstFile((LPCSTR)name, &findDataA);
+  	    if (hFind != INVALID_HANDLE_VALUE)
+  	    {
+  		fileFlags = findDataA.dwFileAttributes;
+***************
+*** 3276,3282 ****
+      else
+  #endif
+      {
+! 	hFind = FindFirstFile(name, &findDataA);
+  	if (hFind != INVALID_HANDLE_VALUE)
+  	{
+  	    fileFlags = findDataA.dwFileAttributes;
+--- 3274,3280 ----
+      else
+  #endif
+      {
+! 	hFind = FindFirstFile((LPCSTR)name, &findDataA);
+  	if (hFind != INVALID_HANDLE_VALUE)
+  	{
+  	    fileFlags = findDataA.dwFileAttributes;
+***************
+*** 3347,3354 ****
+      }
+      if (wn == NULL)
+  #endif
+! 	hFile = CreateFile(fname,	/* file name */
+! 		    GENERIC_READ,	/* access mode */
+  		    FILE_SHARE_READ | FILE_SHARE_WRITE,	/* share mode */
+  		    NULL,		/* security descriptor */
+  		    OPEN_EXISTING,	/* creation disposition */
+--- 3345,3352 ----
+      }
+      if (wn == NULL)
+  #endif
+! 	hFile = CreateFile((LPCSTR)fname,    /* file name */
+! 		    GENERIC_READ,	    /* access mode */
+  		    FILE_SHARE_READ | FILE_SHARE_WRITE,	/* share mode */
+  		    NULL,		/* security descriptor */
+  		    OPEN_EXISTING,	/* creation disposition */
+***************
+*** 3566,3578 ****
+      }
+      if (wn == NULL)
+  #endif
+! 	hFile = CreateFile(name,	/* file name */
+! 		    GENERIC_WRITE,	/* access mode */
+! 		    0,			/* share mode */
+! 		    NULL,		/* security descriptor */
+! 		    OPEN_EXISTING,	/* creation disposition */
+! 		    0,			/* file attributes */
+! 		    NULL);		/* handle to template file */
+  
+  #ifdef FEAT_MBYTE
+      vim_free(wn);
+--- 3564,3576 ----
+      }
+      if (wn == NULL)
+  #endif
+! 	hFile = CreateFile((LPCSTR)name,    /* file name */
+! 		    GENERIC_WRITE,	    /* access mode */
+! 		    0,			    /* share mode */
+! 		    NULL,		    /* security descriptor */
+! 		    OPEN_EXISTING,	    /* creation disposition */
+! 		    0,			    /* file attributes */
+! 		    NULL);		    /* handle to template file */
+  
+  #ifdef FEAT_MBYTE
+      vim_free(wn);
+***************
+*** 4084,4090 ****
+  #  ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*wcmd = enc_to_utf16(cmd, NULL);
+  
+  	if (wcmd != NULL)
+  	{
+--- 4082,4088 ----
+  #  ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*wcmd = enc_to_utf16((char_u *)cmd, NULL);
+  
+  	if (wcmd != NULL)
+  	{
+***************
+*** 4725,4731 ****
+  {
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*wcmd = enc_to_utf16(cmd, NULL);
+  	if (wcmd != NULL)
+  	{
+  	    int ret = _wsystem(wcmd);
+--- 4723,4729 ----
+  {
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	WCHAR	*wcmd = enc_to_utf16((char_u *)cmd, NULL);
+  	if (wcmd != NULL)
+  	{
+  	    int ret = _wsystem(wcmd);
+***************
+*** 4768,4774 ****
+  		wcscat(szShellTitle, L" :sh");
+  	    else
+  	    {
+! 		WCHAR *wn = enc_to_utf16(cmd, NULL);
+  
+  		if (wn != NULL)
+  		{
+--- 4766,4772 ----
+  		wcscat(szShellTitle, L" :sh");
+  	    else
+  	    {
+! 		WCHAR *wn = enc_to_utf16((char_u *)cmd, NULL);
+  
+  		if (wn != NULL)
+  		{
+***************
+*** 4793,4800 ****
+  	    else
+  	    {
+  		strcat(szShellTitle, " - !");
+! 		if ((strlen(szShellTitle) + strlen(cmd) < sizeof(szShellTitle)))
+! 		    strcat(szShellTitle, cmd);
+  	    }
+  	    SetConsoleTitle(szShellTitle);
+  	}
+--- 4791,4799 ----
+  	    else
+  	    {
+  		strcat(szShellTitle, " - !");
+! 		if ((strlen(szShellTitle) + strlen((char *)cmd)
+! 			    < sizeof(szShellTitle)))
+! 		    strcat(szShellTitle, (char *)cmd);
+  	    }
+  	    SetConsoleTitle(szShellTitle);
+  	}
+***************
+*** 4831,4837 ****
+  
+      if (cmd == NULL)
+      {
+! 	x = mch_system(p_sh, options);
+      }
+      else
+      {
+--- 4830,4836 ----
+  
+      if (cmd == NULL)
+      {
+! 	x = mch_system((char *)p_sh, options);
+      }
+      else
+      {
+***************
+*** 4915,4923 ****
+  		char_u	*cmd_shell = mch_getenv("COMSPEC");
+  
+  		if (cmd_shell == NULL || *cmd_shell == NUL)
+! 		    cmd_shell = default_shell();
+  
+! 		subcmd = vim_strsave_escaped_ext(cmdbase, "|", '^', FALSE);
+  		if (subcmd != NULL)
+  		{
+  		    /* make "cmd.exe /c arguments" */
+--- 4914,4923 ----
+  		char_u	*cmd_shell = mch_getenv("COMSPEC");
+  
+  		if (cmd_shell == NULL || *cmd_shell == NUL)
+! 		    cmd_shell = (char_u *)default_shell();
+  
+! 		subcmd = vim_strsave_escaped_ext(cmdbase,
+! 			(char_u *)"|", '^', FALSE);
+  		if (subcmd != NULL)
+  		{
+  		    /* make "cmd.exe /c arguments" */
+***************
+*** 4937,4943 ****
+  	     * inherit our handles which causes unpleasant dangling swap
+  	     * files if we exit before the spawned process
+  	     */
+! 	    if (vim_create_process(newcmd, FALSE, flags, &si, &pi))
+  		x = 0;
+  	    else
+  	    {
+--- 4937,4943 ----
+  	     * inherit our handles which causes unpleasant dangling swap
+  	     * files if we exit before the spawned process
+  	     */
+! 	    if (vim_create_process((char *)newcmd, FALSE, flags, &si, &pi))
+  		x = 0;
+  	    else
+  	    {
+***************
+*** 5010,5016 ****
+  #endif
+  	    )
+      {
+! 	smsg(_("shell returned %d"), x);
+  	msg_putchar('\n');
+      }
+  #ifdef FEAT_TITLE
+--- 5010,5016 ----
+  #endif
+  	    )
+      {
+! 	smsg((char_u *)_("shell returned %d"), x);
+  	msg_putchar('\n');
+      }
+  #ifdef FEAT_TITLE
+***************
+*** 5745,5751 ****
+      {
+  	/* optimization: use one single write_chars for runs of text,
+  	 * rather than once per character  It ain't curses, but it helps. */
+! 	DWORD  prefix = (DWORD)strcspn(s, "\n\r\b\a\033");
+  
+  	if (p_wd)
+  	{
+--- 5745,5751 ----
+      {
+  	/* optimization: use one single write_chars for runs of text,
+  	 * rather than once per character  It ain't curses, but it helps. */
+! 	DWORD  prefix = (DWORD)strcspn((char *)s, "\n\r\b\a\033");
+  
+  	if (p_wd)
+  	{
+***************
+*** 6083,6089 ****
+  	}
+      }
+  #endif
+!     return DeleteFile(name) ? 0 : -1;
+  }
+  
+  
+--- 6083,6089 ----
+  	}
+      }
+  #endif
+!     return DeleteFile((LPCSTR)name) ? 0 : -1;
+  }
+  
+  
+***************
+*** 6368,6377 ****
+      WCHAR	*wn = NULL;
+  
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 	wn = enc_to_utf16(n, NULL);
+  #endif
+  
+!     if (mch_isdir(n))
+      {
+  	char TempName[_MAX_PATH + 16] = "";
+  #ifdef FEAT_MBYTE
+--- 6368,6377 ----
+      WCHAR	*wn = NULL;
+  
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 	wn = enc_to_utf16((char_u *)n, NULL);
+  #endif
+  
+!     if (mch_isdir((char_u *)n))
+      {
+  	char TempName[_MAX_PATH + 16] = "";
+  #ifdef FEAT_MBYTE
+***************
+*** 6414,6420 ****
+  		char		    *pch;
+  		WIN32_FIND_DATA	    d;
+  
+! 		vim_strncpy(TempName, n, _MAX_PATH);
+  		pch = TempName + STRLEN(TempName) - 1;
+  		if (*pch != '\\' && *pch != '/')
+  		    *++pch = '\\';
+--- 6414,6420 ----
+  		char		    *pch;
+  		WIN32_FIND_DATA	    d;
+  
+! 		vim_strncpy((char_u *)TempName, (char_u *)n, _MAX_PATH);
+  		pch = TempName + STRLEN(TempName) - 1;
+  		if (*pch != '\\' && *pch != '/')
+  		    *++pch = '\\';
+***************
+*** 6506,6512 ****
+  
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	wn = enc_to_utf16(name, NULL);
+  	if (wn != NULL)
+  	{
+  	    f = _wopen(wn, flags, mode);
+--- 6506,6512 ----
+  
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	wn = enc_to_utf16((char_u *)name, NULL);
+  	if (wn != NULL)
+  	{
+  	    f = _wopen(wn, flags, mode);
+***************
+*** 6558,6565 ****
+  	else if (newMode == 'b')
+  	    _set_fmode(_O_BINARY);
+  # endif
+! 	wn = enc_to_utf16(name, NULL);
+! 	wm = enc_to_utf16(mode, NULL);
+  	if (wn != NULL && wm != NULL)
+  	    f = _wfopen(wn, wm);
+  	vim_free(wn);
+--- 6558,6565 ----
+  	else if (newMode == 'b')
+  	    _set_fmode(_O_BINARY);
+  # endif
+! 	wn = enc_to_utf16((char_u *)name, NULL);
+! 	wm = enc_to_utf16((char_u *)mode, NULL);
+  	if (wn != NULL && wm != NULL)
+  	    f = _wfopen(wn, wm);
+  	vim_free(wn);
+*** ../vim-7.4.1333/src/version.c	2016-02-16 14:07:36.190482636 +0100
+--- src/version.c	2016-02-16 15:03:54.539497515 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1334,
+  /**/
+
+-- 
+ARTHUR: Right! Knights! Forward!
+   ARTHUR leads a charge toward the castle.  Various shots of them battling on,
+   despite being hit by a variety of farm animals.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,120 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1276
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1276
+Problem:    Warning for not using return value of fcntl().
+Solution:   Explicitly ignore the return value.
+Files:      src/fileio.c, src/channel.c, src/memfile.c, src/memline.c
+
+
+*** ../vim-7.4.1275/src/fileio.c	2016-01-31 17:30:47.422544414 +0100
+--- src/fileio.c	2016-02-07 15:06:39.285745191 +0100
+***************
+*** 2350,2356 ****
+      {
+  	int fdflags = fcntl(fd, F_GETFD);
+  	if (fdflags >= 0 && (fdflags & FD_CLOEXEC) == 0)
+! 	    fcntl(fd, F_SETFD, fdflags | FD_CLOEXEC);
+      }
+  #endif
+      vim_free(buffer);
+--- 2350,2356 ----
+      {
+  	int fdflags = fcntl(fd, F_GETFD);
+  	if (fdflags >= 0 && (fdflags & FD_CLOEXEC) == 0)
+! 	    (void)fcntl(fd, F_SETFD, fdflags | FD_CLOEXEC);
+      }
+  #endif
+      vim_free(buffer);
+*** ../vim-7.4.1275/src/channel.c	2016-02-06 18:18:49.158400089 +0100
+--- src/channel.c	2016-02-07 15:08:27.236620288 +0100
+***************
+*** 465,471 ****
+  	val = 0;
+  	ioctlsocket(sd, FIONBIO, &val);
+  #else
+! 	fcntl(sd, F_SETFL, 0);
+  #endif
+      }
+  
+--- 465,471 ----
+  	val = 0;
+  	ioctlsocket(sd, FIONBIO, &val);
+  #else
+! 	(void)fcntl(sd, F_SETFL, 0);
+  #endif
+      }
+  
+***************
+*** 1474,1479 ****
+--- 1474,1482 ----
+      return ret;
+  }
+  
++ /*
++  * Mark references to lists used in channels.
++  */
+      int
+  set_ref_in_channel(int copyID)
+  {
+*** ../vim-7.4.1275/src/memfile.c	2016-01-30 18:51:05.240231931 +0100
+--- src/memfile.c	2016-02-07 15:06:46.801666874 +0100
+***************
+*** 1312,1318 ****
+  #ifdef HAVE_FD_CLOEXEC
+  	int fdflags = fcntl(mfp->mf_fd, F_GETFD);
+  	if (fdflags >= 0 && (fdflags & FD_CLOEXEC) == 0)
+! 	    fcntl(mfp->mf_fd, F_SETFD, fdflags | FD_CLOEXEC);
+  #endif
+  #if defined(HAVE_SELINUX) || defined(HAVE_SMACK)
+  	mch_copy_sec(fname, mfp->mf_fname);
+--- 1312,1318 ----
+  #ifdef HAVE_FD_CLOEXEC
+  	int fdflags = fcntl(mfp->mf_fd, F_GETFD);
+  	if (fdflags >= 0 && (fdflags & FD_CLOEXEC) == 0)
+! 	    (void)fcntl(mfp->mf_fd, F_SETFD, fdflags | FD_CLOEXEC);
+  #endif
+  #if defined(HAVE_SELINUX) || defined(HAVE_SMACK)
+  	mch_copy_sec(fname, mfp->mf_fname);
+*** ../vim-7.4.1275/src/memline.c	2016-02-02 12:37:57.972109556 +0100
+--- src/memline.c	2016-02-07 15:07:08.141444505 +0100
+***************
+*** 728,734 ****
+  	{
+  	    int fdflags = fcntl(mfp->mf_fd, F_GETFD);
+  	    if (fdflags >= 0 && (fdflags & FD_CLOEXEC) == 0)
+! 		fcntl(mfp->mf_fd, F_SETFD, fdflags | FD_CLOEXEC);
+  	}
+  #endif
+      }
+--- 728,734 ----
+  	{
+  	    int fdflags = fcntl(mfp->mf_fd, F_GETFD);
+  	    if (fdflags >= 0 && (fdflags & FD_CLOEXEC) == 0)
+! 		(void)fcntl(mfp->mf_fd, F_SETFD, fdflags | FD_CLOEXEC);
+  	}
+  #endif
+      }
+*** ../vim-7.4.1275/src/version.c	2016-02-07 14:53:14.642122390 +0100
+--- src/version.c	2016-02-07 15:06:32.973810963 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1276,
+  /**/
+
+-- 
+"Hit any key to continue" does _not_ mean you can hit the on/off button!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

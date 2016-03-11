@@ -1,0 +1,122 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1090
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1090
+Problem:    No tests for :hardcopy and related options.
+Solution:   Add test_hardcopy.
+Files:      src/testdir/test_hardcopy.vim, src/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-7.4.1089/src/testdir/test_hardcopy.vim	2016-01-14 22:09:58.569471303 +0100
+--- src/testdir/test_hardcopy.vim	2016-01-14 21:46:50.864757444 +0100
+***************
+*** 0 ****
+--- 1,56 ----
++ " Test :hardcopy
++ 
++ func Test_printoptions_parsing()
++   " Only test that this doesn't throw an error.
++   set printoptions=left:5in,right:10pt,top:8mm,bottom:2pc
++   set printoptions=left:2in,top:30pt,right:16mm,bottom:3pc
++   set printoptions=header:3,syntax:y,number:7,wrap:n
++   set printoptions=duplex:short,collate:n,jobsplit:y,portrait:n
++   set printoptions=paper:10x14
++   set printoptions=paper:A3
++   set printoptions=paper:A4
++   set printoptions=paper:A5
++   set printoptions=paper:B4
++   set printoptions=paper:B5
++   set printoptions=paper:executive
++   set printoptions=paper:folio
++   set printoptions=paper:ledger
++   set printoptions=paper:legal
++   set printoptions=paper:letter
++   set printoptions=paper:quarto
++   set printoptions=paper:statement
++   set printoptions=paper:tabloid
++   set printoptions=formfeed:y
++   set printoptions=
++   set printoptions&
++ endfunc
++ 
++ func Test_printmbfont_parsing()
++   " Only test that this doesn't throw an error.
++   set printmbfont=r:WadaMin-Regular,b:WadaMin-Bold,i:WadaMin-Italic,o:WadaMin-Bold-Italic,c:yes,a:no
++   set printmbfont=
++   set printmbfont&
++ endfunc
++ 
++ func Test_printheader_parsing()
++   " Only test that this doesn't throw an error.
++   set printheader=%<%f\ %h%m%r%=%-14.(%l,%c%V%)\ %P
++   set printheader=%<%f%h%m%r%=%b\ 0x%B\ \ %l,%c%V\ %P
++   set printheader=%<%f%=\ [%1*%M%*%n%R%H]\ %-19(%3l,%02c%03V%)%O'%02b'
++   set printheader=...%r%{VarExists('b:gzflag','\ [GZ]')}%h...
++   set printheader=
++   set printheader&
++ endfunc
++ 
++ " Test that :hardcopy produces a non-empty file.
++ " We don't check much of the contents.
++ func Test_with_syntax()
++   set printoptions=syntax:y
++   syn on
++   hardcopy > Xhardcopy
++   let lines = readfile('Xhardcopy')
++   call assert_true(len(lines) > 20)
++   call assert_true(lines[0] =~ 'PS-Adobe')
++   call delete('Xhardcopy')
++   set printoptions&
++ endfunc
+*** ../vim-7.4.1089/src/Makefile	2016-01-09 21:08:24.519969953 +0100
+--- src/Makefile	2016-01-14 21:30:24.439656606 +0100
+***************
+*** 1981,1986 ****
+--- 1981,1987 ----
+  test_assert \
+  	test_backspace_opt \
+  	test_cdo \
++ 	test_hardcopy \
+  	test_increment \
+  	test_lispwords \
+  	test_menu \
+*** ../vim-7.4.1089/src/testdir/Make_all.mak	2016-01-09 21:08:24.519969953 +0100
+--- src/testdir/Make_all.mak	2016-01-14 21:31:23.591003243 +0100
+***************
+*** 173,178 ****
+--- 173,179 ----
+  # Keep test_alot.res as the last one, sort the others.
+  NEW_TESTS = test_assert.res \
+  	    test_cdo.res \
++ 	    test_hardcopy.res \
+  	    test_increment.res \
+  	    test_quickfix.res \
+  	    test_viml.res \
+*** ../vim-7.4.1089/src/version.c	2016-01-12 22:20:53.034213670 +0100
+--- src/version.c	2016-01-14 22:09:12.853974149 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1090,
+  /**/
+
+-- 
+ARTHUR: I've said I'm sorry about the old woman, but from the behind you
+        looked ...
+DENNIS: What I object to is that you automatically treat me like an inferior...
+ARTHUR: Well ... I AM king.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

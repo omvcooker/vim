@@ -1,0 +1,145 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1264
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1264
+Problem:    Crash when receiving an empty array.
+Solution:   Check for array with wrong number of arguments. (Damien)
+Files:      src/channel.c, src/eval.c, src/testdir/test_channel.py,
+            src/testdir.test_channel.vim
+
+
+*** ../vim-7.4.1263/src/channel.c	2016-02-05 22:36:09.737738144 +0100
+--- src/channel.c	2016-02-05 22:46:59.886953317 +0100
+***************
+*** 688,694 ****
+      ret = json_decode(&reader, &listtv);
+      if (ret == OK)
+      {
+! 	if (listtv.v_type != VAR_LIST)
+  	{
+  	    /* TODO: give error */
+  	    clear_tv(&listtv);
+--- 688,696 ----
+      ret = json_decode(&reader, &listtv);
+      if (ret == OK)
+      {
+! 	/* Only accept the response when it is a list with at least two
+! 	 * items. */
+! 	if (listtv.v_type != VAR_LIST || listtv.vval.v_list->lv_len < 2)
+  	{
+  	    /* TODO: give error */
+  	    clear_tv(&listtv);
+***************
+*** 909,921 ****
+  	}
+  
+  	list = listtv->vval.v_list;
+- 	if (list->lv_len < 2)
+- 	{
+- 	    /* TODO: give error */
+- 	    clear_tv(listtv);
+- 	    return FALSE;
+- 	}
+- 
+  	argv[1] = list->lv_first->li_next->li_tv;
+  	typetv = &list->lv_first->li_tv;
+  	if (typetv->v_type == VAR_STRING)
+--- 911,916 ----
+*** ../vim-7.4.1263/src/eval.c	2016-02-05 22:36:09.741738101 +0100
+--- src/eval.c	2016-02-05 22:44:49.700312097 +0100
+***************
+*** 9875,9892 ****
+      {
+  	if (channel_read_json_block(ch_idx, id, &listtv) == OK)
+  	{
+! 	    if (listtv->v_type == VAR_LIST)
+! 	    {
+! 		list_T *list = listtv->vval.v_list;
+  
+! 		if (list->lv_len == 2)
+! 		{
+! 		    /* Move the item from the list and then change the type to
+! 		     * avoid the value being freed. */
+! 		    *rettv = list->lv_last->li_tv;
+! 		    list->lv_last->li_tv.v_type = VAR_NUMBER;
+! 		}
+! 	    }
+  	    clear_tv(listtv);
+  	}
+      }
+--- 9875,9886 ----
+      {
+  	if (channel_read_json_block(ch_idx, id, &listtv) == OK)
+  	{
+! 	    list_T *list = listtv->vval.v_list;
+  
+! 	    /* Move the item from the list and then change the type to
+! 	     * avoid the value being freed. */
+! 	    *rettv = list->lv_last->li_tv;
+! 	    list->lv_last->li_tv.v_type = VAR_NUMBER;
+  	    clear_tv(listtv);
+  	}
+      }
+*** ../vim-7.4.1263/src/testdir/test_channel.py	2016-02-04 00:11:33.214558403 +0100
+--- src/testdir/test_channel.py	2016-02-05 22:38:25.444322126 +0100
+***************
+*** 93,98 ****
+--- 93,103 ----
+                          print("sending: {}".format(cmd))
+                          self.request.sendall(cmd.encode('utf-8'))
+                          response = "ok"
++                     elif decoded[1] == 'empty-request':
++                         cmd = '[]'
++                         print("sending: {}".format(cmd))
++                         self.request.sendall(cmd.encode('utf-8'))
++                         response = "ok"
+                      elif decoded[1] == 'eval-result':
+                          # Send back the last received eval result.
+                          response = last_eval
+***************
+*** 123,133 ****
+      server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
+      ip, port = server.server_address
+  
+!     # Start a thread with the server -- that thread will then start one
+!     # more thread for each request
+      server_thread = threading.Thread(target=server.serve_forever)
+- 
+-     # Exit the server thread when the main thread terminates
+      server_thread.start()
+  
+      # Write the port number in Xportnr, so that the test knows it.
+--- 128,136 ----
+      server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
+      ip, port = server.server_address
+  
+!     # Start a thread with the server.  That thread will then start a new thread
+!     # for each connection.
+      server_thread = threading.Thread(target=server.serve_forever)
+      server_thread.start()
+  
+      # Write the port number in Xportnr, so that the test knows it.
+*** ../vim-7.4.1263/src/version.c	2016-02-05 22:36:09.745738060 +0100
+--- src/version.c	2016-02-05 22:39:31.055637474 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1264,
+  /**/
+
+-- 
+We are the Borg of GNU GPL.  We will assimilate your source code.
+Resistance is futile.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

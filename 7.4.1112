@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1112
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1112
+Problem:    When using ":next" with an illegal file name no error is reported.
+Solution:   Give an error message.
+Files:      src/ex_cmds2.c
+
+
+*** ../vim-7.4.1111/src/ex_cmds2.c	2016-01-16 15:40:04.702704650 +0100
+--- src/ex_cmds2.c	2016-01-16 22:42:49.999801576 +0100
+***************
+*** 2147,2155 ****
+  	i = expand_wildcards(new_ga.ga_len, (char_u **)new_ga.ga_data,
+  		&exp_count, &exp_files, EW_DIR|EW_FILE|EW_ADDSLASH|EW_NOTFOUND);
+  	ga_clear(&new_ga);
+! 	if (i == FAIL)
+! 	    return FAIL;
+! 	if (exp_count == 0)
+  	{
+  	    EMSG(_(e_nomatch));
+  	    return FAIL;
+--- 2147,2153 ----
+  	i = expand_wildcards(new_ga.ga_len, (char_u **)new_ga.ga_data,
+  		&exp_count, &exp_files, EW_DIR|EW_FILE|EW_ADDSLASH|EW_NOTFOUND);
+  	ga_clear(&new_ga);
+! 	if (i == FAIL || exp_count == 0)
+  	{
+  	    EMSG(_(e_nomatch));
+  	    return FAIL;
+*** ../vim-7.4.1111/src/version.c	2016-01-16 22:47:12.820927766 +0100
+--- src/version.c	2016-01-16 22:48:57.195786504 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1112,
+  /**/
+
+-- 
+Team-building exercises come in many forms but they all trace their roots back
+to the prison system.  In your typical team-building exercise the employees
+are subjected to a variety of unpleasant situations until they become either a
+cohesive team or a ring of car jackers.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

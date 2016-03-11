@@ -1,0 +1,283 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.983
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.983
+Problem:    Executing one test after "make testclean" doesn't work.
+Solution:   Add a dependency on test1.out.
+Files:      src/testdir/Make_amiga.mak, src/testdir/Make_dos.mak,
+            src/testdir/Make_ming.mak, src/testdir/Make_os2.mak,
+            src/testdir/Make_vms.mms, src/testdir/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-7.4.982/src/testdir/Make_amiga.mak	2015-12-28 16:01:02.228455716 +0100
+--- src/testdir/Make_amiga.mak	2015-12-28 16:19:50.544186728 +0100
+***************
+*** 20,28 ****
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+  
+  .SUFFIXES: .in .out
+  
+! nongui:	/tmp $(SCRIPTS)
+  	csh -c echo ALL DONE
+  
+  clean:
+--- 20,31 ----
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+  
++ # Must run test1 first to create small.vim.
++ $(SCRIPTS) $(SCRIPTS_GUI) $(NEW_TESTS): $(SCRIPTS_FIRST)
++ 
+  .SUFFIXES: .in .out
+  
+! nongui:	/tmp $(SCRIPTS_FIRST) $(SCRIPTS)
+  	csh -c echo ALL DONE
+  
+  clean:
+*** ../vim-7.4.982/src/testdir/Make_dos.mak	2015-12-28 16:01:02.228455716 +0100
+--- src/testdir/Make_dos.mak	2015-12-28 16:21:05.039376692 +0100
+***************
+*** 17,36 ****
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+  
+! TEST_OUTFILES = $(SCRIPTS) $(SCRIPTS_WIN32) $(SCRIPTS_GUI)
+  DOSTMP = dostmp
+  DOSTMP_OUTFILES = $(TEST_OUTFILES:test=dostmp\test)
+  DOSTMP_INFILES = $(DOSTMP_OUTFILES:.out=.in)
+  
+  .SUFFIXES: .in .out
+  
+! nongui:	nolog $(SCRIPTS) report
+  
+  small:	nolog report
+  
+! gui:	nolog $(SCRIPTS) $(SCRIPTS_GUI) report
+  
+! win32:	nolog $(SCRIPTS) $(SCRIPTS_WIN32) report
+  
+  # Copy the input files to dostmp, changing the fileformat to dos.
+  $(DOSTMP_INFILES): $(*B).in
+--- 17,39 ----
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+  
+! TEST_OUTFILES = $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_WIN32) $(SCRIPTS_GUI)
+  DOSTMP = dostmp
+  DOSTMP_OUTFILES = $(TEST_OUTFILES:test=dostmp\test)
+  DOSTMP_INFILES = $(DOSTMP_OUTFILES:.out=.in)
+  
+  .SUFFIXES: .in .out
+  
+! # Must run test1 first to create small.vim.
+! $(SCRIPTS) $(SCRIPTS_GUI) $(SCRIPTS_WIN32) $(NEW_TESTS): $(SCRIPTS_FIRST)
+! 
+! nongui:	nolog $(SCRIPTS_FIRST) $(SCRIPTS) report
+  
+  small:	nolog report
+  
+! gui:	nolog $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_GUI) report
+  
+! win32:	nolog $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_WIN32) report
+  
+  # Copy the input files to dostmp, changing the fileformat to dos.
+  $(DOSTMP_INFILES): $(*B).in
+*** ../vim-7.4.982/src/testdir/Make_ming.mak	2015-12-28 16:01:02.228455716 +0100
+--- src/testdir/Make_ming.mak	2015-12-28 16:21:50.142886252 +0100
+***************
+*** 39,50 ****
+  
+  SCRIPTS_BENCH = bench_re_freeze.out
+  
+  .SUFFIXES: .in .out
+  
+! vimall:	fixff $(SCRIPTS) $(SCRIPTS_GUI) $(SCRIPTS_WIN32)
+  	echo ALL DONE
+  
+! nongui:	fixff $(SCRIPTS)
+  	echo ALL DONE
+  
+  benchmark: $(SCRIPTS_BENCH)
+--- 39,53 ----
+  
+  SCRIPTS_BENCH = bench_re_freeze.out
+  
++ # Must run test1 first to create small.vim.
++ $(SCRIPTS) $(SCRIPTS_GUI) $(SCRIPTS_WIN32) $(NEW_TESTS): $(SCRIPTS_FIRST)
++ 
+  .SUFFIXES: .in .out
+  
+! vimall:	fixff $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_GUI) $(SCRIPTS_WIN32)
+  	echo ALL DONE
+  
+! nongui:	fixff $(SCRIPTS_FIRST) $(SCRIPTS)
+  	echo ALL DONE
+  
+  benchmark: $(SCRIPTS_BENCH)
+***************
+*** 52,61 ****
+  small:
+  	echo ALL DONE
+  
+! gui:	fixff $(SCRIPTS) $(SCRIPTS_GUI)
+  	echo ALL DONE
+  
+! win32:	fixff $(SCRIPTS) $(SCRIPTS_WIN32)
+  	echo ALL DONE
+  
+  fixff:
+--- 55,64 ----
+  small:
+  	echo ALL DONE
+  
+! gui:	fixff $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_GUI)
+  	echo ALL DONE
+  
+! win32:	fixff $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_WIN32)
+  	echo ALL DONE
+  
+  fixff:
+*** ../vim-7.4.982/src/testdir/Make_os2.mak	2015-12-28 16:01:02.228455716 +0100
+--- src/testdir/Make_os2.mak	2015-12-28 16:22:45.702282119 +0100
+***************
+*** 28,37 ****
+  
+  .SUFFIXES: .in .out
+  
+! all:	/tmp $(SCRIPTS)
+  	@echo ALL DONE
+  
+! $(SCRIPTS): $(VIMPROG)
+  
+  benchmark: $(SCRIPTS_BENCH)
+  
+--- 28,40 ----
+  
+  .SUFFIXES: .in .out
+  
+! all:	/tmp $(SCRIPTS_FIRST) $(SCRIPTS)
+  	@echo ALL DONE
+  
+! $(SCRIPTS_FIRST) $(SCRIPTS): $(VIMPROG)
+! 
+! # Must run test1 first to create small.vim.
+! $(SCRIPTS): $(SCRIPTS_FIRST)
+  
+  benchmark: $(SCRIPTS_BENCH)
+  
+*** ../vim-7.4.982/src/testdir/Make_vms.mms	2015-12-28 16:01:02.228455716 +0100
+--- src/testdir/Make_vms.mms	2015-12-28 16:23:16.113951433 +0100
+***************
+*** 170,176 ****
+  	-@ if "''F$SEARCH("Xdotest.*")'"  .NES. "" then delete/noconfirm/nolog Xdotest.*.*
+  	-@ if "''F$SEARCH("Xtest.*")'"    .NES. "" then delete/noconfirm/nolog Xtest.*.*
+  
+! all : clean nolog $(START_WITH) $(SCRIPT) $(SCRIPT_GUI) $(SCRIPT_UNIX) $(SCRIPT_WIN) $(SCRIPT_SPELL) $(SCRIPT_ODS5) $(SCRIPT_GZIP) \
+      $(SCRIPT_GDIFF) $(SCRIPT_MZSCH) $(SCRIPT_CKSUM) $(SCRIPT_ICONV) $(SCRIPT_LUA) $(SCRIPT_PYTHON) nolog 
+  	-@ write sys$output " "
+  	-@ write sys$output "-----------------------------------------------"
+--- 170,176 ----
+  	-@ if "''F$SEARCH("Xdotest.*")'"  .NES. "" then delete/noconfirm/nolog Xdotest.*.*
+  	-@ if "''F$SEARCH("Xtest.*")'"    .NES. "" then delete/noconfirm/nolog Xtest.*.*
+  
+! all : clean nolog $(SCRIPTS_FIRST) $(SCRIPT) $(SCRIPT_GUI) $(SCRIPT_UNIX) $(SCRIPT_WIN) $(SCRIPT_SPELL) $(SCRIPT_ODS5) $(SCRIPT_GZIP) \
+      $(SCRIPT_GDIFF) $(SCRIPT_MZSCH) $(SCRIPT_CKSUM) $(SCRIPT_ICONV) $(SCRIPT_LUA) $(SCRIPT_PYTHON) nolog 
+  	-@ write sys$output " "
+  	-@ write sys$output "-----------------------------------------------"
+*** ../vim-7.4.982/src/testdir/Makefile	2015-12-28 16:01:02.228455716 +0100
+--- src/testdir/Makefile	2015-12-28 16:18:56.252777075 +0100
+***************
+*** 30,38 ****
+  
+  .SUFFIXES: .in .out .res .vim
+  
+! nongui:	nolog $(SCRIPTS) newtests report
+  
+! gui:	nolog $(SCRIPTS) $(SCRIPTS_GUI) newtests report
+  
+  benchmark: $(SCRIPTS_BENCH)
+  
+--- 30,38 ----
+  
+  .SUFFIXES: .in .out .res .vim
+  
+! nongui:	nolog $(SCRIPTS_FIRST) $(SCRIPTS) newtests report
+  
+! gui:	nolog $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_GUI) newtests report
+  
+  benchmark: $(SCRIPTS_BENCH)
+  
+***************
+*** 44,50 ****
+  		else echo ALL DONE; \
+  		fi"
+  
+! $(SCRIPTS) $(SCRIPTS_GUI) $(NEW_TESTS): $(VIMPROG)
+  
+  RM_ON_RUN = test.out X* viminfo
+  RM_ON_START = tiny.vim small.vim mbyte.vim mzscheme.vim lua.vim test.ok benchmark.out
+--- 44,53 ----
+  		else echo ALL DONE; \
+  		fi"
+  
+! $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_GUI) $(NEW_TESTS): $(VIMPROG)
+! 
+! # Must run test1 first to create small.vim.
+! $(SCRIPTS) $(SCRIPTS_GUI) $(NEW_TESTS): $(SCRIPTS_FIRST)
+  
+  RM_ON_RUN = test.out X* viminfo
+  RM_ON_START = tiny.vim small.vim mbyte.vim mzscheme.vim lua.vim test.ok benchmark.out
+*** ../vim-7.4.982/src/testdir/Make_all.mak	2015-12-28 16:01:02.228455716 +0100
+--- src/testdir/Make_all.mak	2015-12-28 16:15:50.274799340 +0100
+***************
+*** 2,10 ****
+  # Common Makefile, defines the list of tests to run.
+  #
+  
+  # Tests that run on all systems.
+  SCRIPTS_ALL = \
+- 	test1.out \
+  	test3.out \
+  	test4.out \
+  	test5.out \
+--- 2,13 ----
+  # Common Makefile, defines the list of tests to run.
+  #
+  
++ # The first script creates small.vim.
++ SCRIPTS_FIRST = \
++ 	test1.out
++ 
+  # Tests that run on all systems.
+  SCRIPTS_ALL = \
+  	test3.out \
+  	test4.out \
+  	test5.out \
+*** ../vim-7.4.982/src/version.c	2015-12-28 16:01:02.232455673 +0100
+--- src/version.c	2015-12-28 16:16:34.426319251 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     983,
+  /**/
+
+-- 
+This is the polymorph virus!  Follow these instructions carefully:
+1. Send this message to everybody you know.
+2. Format your harddisk.
+Thank you for your cooperation in spreading the most powerful virus ever!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

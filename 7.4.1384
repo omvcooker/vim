@@ -1,0 +1,520 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1384
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1384
+Problem:    It is not easy to use a set of plugins and their dependencies.
+Solution:   Add packages, ":loadplugin", 'packpath'.
+Files:      src/main.c, src/ex_cmds2.c, src/option.c, src/option.h,
+            src/ex_cmds.h, src/eval.c, src/version.c, src/proto/ex_cmds2.pro,
+            runtime/doc/repeat.txt, runtime/doc/options.txt,
+            runtime/optwin.vim
+
+
+*** ../vim-7.4.1383/src/main.c	2016-02-21 16:40:07.084383820 +0100
+--- src/main.c	2016-02-21 21:25:31.725933897 +0100
+***************
+*** 637,642 ****
+--- 637,645 ----
+  	source_runtime((char_u *)"plugin/**/*.vim", TRUE);
+  # endif
+  	TIME_MSG("loading plugins");
++ 
++ 	source_packages();
++ 	TIME_MSG("loading packages");
+      }
+  #endif
+  
+*** ../vim-7.4.1383/src/ex_cmds2.c	2016-02-16 15:06:54.657635357 +0100
+--- src/ex_cmds2.c	2016-02-21 22:57:51.091805123 +0100
+***************
+*** 2905,2912 ****
+      source_runtime(eap->arg, eap->forceit);
+  }
+  
+- static void source_callback(char_u *fname, void *cookie);
+- 
+      static void
+  source_callback(char_u *fname, void *cookie UNUSED)
+  {
+--- 2905,2910 ----
+***************
+*** 2925,2943 ****
+      return do_in_runtimepath(name, all, source_callback, NULL);
+  }
+  
+! /*
+!  * Find "name" in 'runtimepath'.  When found, invoke the callback function for
+!  * it: callback(fname, "cookie")
+!  * When "all" is TRUE repeat for all matches, otherwise only the first one is
+!  * used.
+!  * Returns OK when at least one match found, FAIL otherwise.
+!  *
+!  * If "name" is NULL calls callback for each entry in runtimepath. Cookie is
+!  * passed by reference in this case, setting it to NULL indicates that callback
+!  * has done its job.
+!  */
+!     int
+! do_in_runtimepath(
+      char_u	*name,
+      int		all,
+      void	(*callback)(char_u *fname, void *ck),
+--- 2923,2931 ----
+      return do_in_runtimepath(name, all, source_callback, NULL);
+  }
+  
+!     static int
+! do_in_path(
+!     char_u	*path,
+      char_u	*name,
+      int		all,
+      void	(*callback)(char_u *fname, void *ck),
+***************
+*** 2962,2968 ****
+  
+      /* Make a copy of 'runtimepath'.  Invoking the callback may change the
+       * value. */
+!     rtp_copy = vim_strsave(p_rtp);
+      buf = alloc(MAXPATHL);
+      if (buf != NULL && rtp_copy != NULL)
+      {
+--- 2950,2956 ----
+  
+      /* Make a copy of 'runtimepath'.  Invoking the callback may change the
+       * value. */
+!     rtp_copy = vim_strsave(path);
+      buf = alloc(MAXPATHL);
+      if (buf != NULL && rtp_copy != NULL)
+      {
+***************
+*** 2970,2976 ****
+  	{
+  	    verbose_enter();
+  	    smsg((char_u *)_("Searching for \"%s\" in \"%s\""),
+! 						 (char *)name, (char *)p_rtp);
+  	    verbose_leave();
+  	}
+  
+--- 2958,2964 ----
+  	{
+  	    verbose_enter();
+  	    smsg((char_u *)_("Searching for \"%s\" in \"%s\""),
+! 						 (char *)name, (char *)path);
+  	    verbose_leave();
+  	}
+  
+***************
+*** 3039,3044 ****
+--- 3027,3146 ----
+      return did_one ? OK : FAIL;
+  }
+  
++ /*
++  * Find "name" in 'runtimepath'.  When found, invoke the callback function for
++  * it: callback(fname, "cookie")
++  * When "all" is TRUE repeat for all matches, otherwise only the first one is
++  * used.
++  * Returns OK when at least one match found, FAIL otherwise.
++  *
++  * If "name" is NULL calls callback for each entry in runtimepath. Cookie is
++  * passed by reference in this case, setting it to NULL indicates that callback
++  * has done its job.
++  */
++     int
++ do_in_runtimepath(
++     char_u	*name,
++     int		all,
++     void	(*callback)(char_u *fname, void *ck),
++     void	*cookie)
++ {
++     return do_in_path(p_rtp, name, all, callback, cookie);
++ }
++ 
++     static void
++ source_pack_plugin(char_u *fname, void *cookie UNUSED)
++ {
++     char_u *p6, *p5, *p4, *p3, *p2, *p1, *p;
++     int c;
++     char_u *new_rtp;
++     int keep;
++     int oldlen;
++     int addlen;
++ 
++     p4 = p3 = p2 = p1 = get_past_head(fname);
++     for (p = p1; *p; mb_ptr_adv(p))
++     {
++ 	if (vim_ispathsep_nocolon(*p))
++ 	{
++ 	    p6 = p5; p5 = p4; p4 = p3; p3 = p2; p2 = p1; p1 = p;
++ 	}
++     }
++ 
++     /* now we have:
++      * rtp/pack/name/ever/name/plugin/name.vim
++      *    p6   p5   p4   p3   p2     p1
++      */
++ 
++     /* find the part up to "pack" in 'runtimepath' */
++     c = *p6;
++     *p6 = NUL;
++     p = (char_u *)strstr((char *)p_rtp, (char *)fname);
++     if (p == NULL)
++ 	/* not found, append at the end */
++ 	p = p_rtp + STRLEN(p_rtp);
++     else
++ 	/* append after the matching directory. */
++ 	p += STRLEN(fname);
++     *p6 = c;
++ 
++     c = *p2;
++     *p2 = NUL;
++     if (strstr((char *)p_rtp, (char *)fname) == NULL)
++     {
++ 	/* directory not in 'runtimepath', add it */
++ 	oldlen = STRLEN(p_rtp);
++ 	addlen = STRLEN(fname);
++ 	new_rtp = alloc(oldlen + addlen + 2);
++ 	if (new_rtp == NULL)
++ 	{
++ 	    *p2 = c;
++ 	    return;
++ 	}
++ 	keep = (int)(p - p_rtp);
++ 	mch_memmove(new_rtp, p_rtp, keep);
++ 	new_rtp[keep] = ',';
++ 	mch_memmove(new_rtp + keep + 1, fname, addlen + 1);
++ 	if (p_rtp[keep] != NUL)
++ 	    mch_memmove(new_rtp + keep + 1 + addlen, p_rtp + keep,
++ 							   oldlen - keep + 1);
++ 	free_string_option(p_rtp);
++ 	p_rtp = new_rtp;
++     }
++     *p2 = c;
++ 
++     (void)do_source(fname, FALSE, DOSO_NONE);
++ }
++ 
++ /*
++  * Source the plugins in the package directories.
++  */
++     void
++ source_packages()
++ {
++     do_in_path(p_pp, (char_u *)"pack/*/ever/*/plugin/*.vim",
++ 					      TRUE, source_pack_plugin, NULL);
++ }
++ 
++ /*
++  * ":loadplugin {name}"
++  */
++     void
++ ex_loadplugin(exarg_T *eap)
++ {
++     static char *pattern = "pack/*/opt/%s/plugin/*.vim";
++     int		len;
++     char	*pat;
++ 
++     len = STRLEN(pattern) + STRLEN(eap->arg);
++     pat = (char *)alloc(len);
++     if (pat == NULL)
++ 	return;
++     vim_snprintf(pat, len, pattern, eap->arg);
++     do_in_path(p_pp, (char_u *)pat, TRUE, source_pack_plugin, NULL);
++     vim_free(pat);
++ }
++ 
+  #if defined(FEAT_EVAL) && defined(FEAT_AUTOCMD)
+  /*
+   * ":options"
+*** ../vim-7.4.1383/src/option.c	2016-02-20 22:16:54.086901581 +0100
+--- src/option.c	2016-02-21 21:46:11.580905023 +0100
+***************
+*** 1978,1983 ****
+--- 1978,1988 ----
+      {"osfiletype",  "oft",  P_STRING|P_ALLOCED|P_VI_DEF,
+  			    (char_u *)NULL, PV_NONE,
+  			    {(char_u *)0L, (char_u *)0L} SCRIPTID_INIT},
++     {"packpath",    "pp",   P_STRING|P_VI_DEF|P_EXPAND|P_ONECOMMA|P_NODUP
++ 								    |P_SECURE,
++ 			    (char_u *)&p_pp, PV_NONE,
++ 			    {(char_u *)DFLT_RUNTIMEPATH, (char_u *)0L}
++ 			    SCRIPTID_INIT},
+      {"paragraphs",  "para", P_STRING|P_VI_DEF,
+  			    (char_u *)&p_para, PV_NONE,
+  			    {(char_u *)"IPLPPPQPP TPHPLIPpLpItpplpipbp",
+***************
+*** 11045,11050 ****
+--- 11050,11056 ----
+  	if (p == (char_u *)&p_bdir
+  		|| p == (char_u *)&p_dir
+  		|| p == (char_u *)&p_path
++ 		|| p == (char_u *)&p_pp
+  		|| p == (char_u *)&p_rtp
+  #ifdef FEAT_SEARCHPATH
+  		|| p == (char_u *)&p_cdpath
+*** ../vim-7.4.1383/src/option.h	2016-01-09 19:39:39.281685901 +0100
+--- src/option.h	2016-02-21 21:44:52.349737228 +0100
+***************
+*** 723,728 ****
+--- 723,729 ----
+  #ifdef FEAT_STL_OPT
+  EXTERN char_u	*p_ruf;		/* 'rulerformat' */
+  #endif
++ EXTERN char_u	*p_pp;		/* 'packpath' */
+  EXTERN char_u	*p_rtp;		/* 'runtimepath' */
+  EXTERN long	p_sj;		/* 'scrolljump' */
+  EXTERN long	p_so;		/* 'scrolloff' */
+*** ../vim-7.4.1383/src/ex_cmds.h	2016-02-20 22:16:54.082901623 +0100
+--- src/ex_cmds.h	2016-02-21 22:27:29.118935280 +0100
+***************
+*** 810,815 ****
+--- 810,818 ----
+  EX(CMD_loadkeymap,	"loadkeymap",	ex_loadkeymap,
+  			CMDWIN,
+  			ADDR_LINES),
++ EX(CMD_loadplugin,	"loadplugin",	ex_loadplugin,
++ 			BANG|FILE1|TRLBAR|SBOXOK|CMDWIN,
++ 			ADDR_LINES),
+  EX(CMD_lockmarks,	"lockmarks",	ex_wrongmodifier,
+  			NEEDARG|EXTRA|NOTRLCOM,
+  			ADDR_LINES),
+*** ../vim-7.4.1383/src/eval.c	2016-02-21 20:08:19.546419633 +0100
+--- src/eval.c	2016-02-21 22:48:15.497846758 +0100
+***************
+*** 13785,13790 ****
+--- 13785,13791 ----
+  #ifdef FEAT_OLE
+  	"ole",
+  #endif
++ 	"packages",
+  #ifdef FEAT_PATH_EXTRA
+  	"path_extra",
+  #endif
+*** ../vim-7.4.1383/src/version.c	2016-02-21 20:30:18.404646761 +0100
+--- src/version.c	2016-02-21 22:57:24.388085381 +0100
+***************
+*** 462,467 ****
+--- 462,468 ----
+  	"-ole",
+  # endif
+  #endif
++ 	"+packages",
+  #ifdef FEAT_PATH_EXTRA
+  	"+path_extra",
+  #else
+*** ../vim-7.4.1383/src/proto/ex_cmds2.pro	2016-02-07 21:19:24.141042332 +0100
+--- src/proto/ex_cmds2.pro	2016-02-21 22:38:19.920099921 +0100
+***************
+*** 62,67 ****
+--- 62,69 ----
+  void ex_runtime(exarg_T *eap);
+  int source_runtime(char_u *name, int all);
+  int do_in_runtimepath(char_u *name, int all, void (*callback)(char_u *fname, void *ck), void *cookie);
++ void source_packages(void);
++ void ex_loadplugin(exarg_T *eap);
+  void ex_options(exarg_T *eap);
+  void ex_source(exarg_T *eap);
+  linenr_T *source_breakpoint(void *cookie);
+*** ../vim-7.4.1383/runtime/doc/repeat.txt	2016-01-16 15:40:04.694704736 +0100
+--- runtime/doc/repeat.txt	2016-02-21 22:53:53.862294978 +0100
+***************
+*** 12,19 ****
+  2. Multiple repeats	|multi-repeat|
+  3. Complex repeats	|complex-repeat|
+  4. Using Vim scripts	|using-scripts|
+! 5. Debugging scripts	|debug-scripts|
+! 6. Profiling		|profiling|
+  
+  ==============================================================================
+  1. Single repeats					*single-repeat*
+--- 12,20 ----
+  2. Multiple repeats	|multi-repeat|
+  3. Complex repeats	|complex-repeat|
+  4. Using Vim scripts	|using-scripts|
+! 5. Using Vim packages	|packages|
+! 6. Debugging scripts	|debug-scripts|
+! 7. Profiling		|profiling|
+  
+  ==============================================================================
+  1. Single repeats					*single-repeat*
+***************
+*** 205,210 ****
+--- 213,234 ----
+  			about each searched file.
+  			{not in Vi}
+  
++ 							*:loadp* *:loadplugin*
++ :loadp[lugin] {name}	Search for an optional plugin directory and source the
++ 			plugin files found.  It is similar to: >
++ 				:runtime pack/*/opt/{name}/plugin/*.vim
++ <			However, `:loadplugin` uses 'packpath' instead of
++ 			'runtimepath'.  And the directory found is added to
++ 			'runtimepath'.
++ 
++ 			Note that {name} is the directory name, not the name
++ 			of the .vim file.  If the "{name}/plugin" directory
++ 			contains more than one file they are all sourced.
++ 
++ 			Also see |load-plugin|.
++ 
++ 			{not available without the |+packages| feature}
++ 
+  :scripte[ncoding] [encoding]		*:scripte* *:scriptencoding* *E167*
+  			Specify the character encoding used in the script.
+  			The following lines will be converted from [encoding]
+***************
+*** 381,387 ****
+  <	Therefore the unusual leading backslash is used.
+  
+  ==============================================================================
+! 5. Debugging scripts					*debug-scripts*
+  
+  Besides the obvious messages that you can add to your scripts to find out what
+  they are doing, Vim offers a debug mode.  This allows you to step through a
+--- 405,460 ----
+  <	Therefore the unusual leading backslash is used.
+  
+  ==============================================================================
+! 5. Using Vim packages					*packages*
+! 
+! A Vim package is a directory that contains one or more plugins.  The
+! advantages over normal plugins:
+! - A package can be downloaded as an archive and unpacked in its own directory.
+!   That makes it easy to updated and/or remove.
+! - A package can be a git, mercurial, etc. respository.  That makes it really
+!   easy to update.
+! - A package can contain multiple plugins that depend on each other.
+! - A package can contain plugins that are automatically loaded on startup and
+!   ones that are only loaded when needed with `:loadplugin`.
+! 
+! Let's assume your Vim files are in the "~/.vim" directory and you want to add a
+! package from a zip archive "/tmp/mypack.zip":
+! 	% mkdir -p ~/.vim/pack/my
+! 	% cd ~/.vim/pack/my
+! 	% unzip /tmp/mypack.zip
+! 
+! The directory name "my" is arbitrary, you can pick anything you like.
+! 
+! You would now have these files under ~/.vim:
+! 	pack/my/README.txt
+! 	pack/my/ever/always/plugin/always.vim
+! 	pack/my/ever/always/syntax/always.vim
+! 	pack/my/opt/mydebug/plugin/debugger.vim
+! 
+! When Vim starts up it scans all directories in 'packpath' for plugins under the
+! "ever" directory and loads them.  When found that directory is added to
+! 'runtimepath'.
+! 
+! In the example Vim will find "my/ever/always/plugin/always.vim" and adds 
+! "~/.vim/pack/my/ever/always" to 'runtimepath'.
+! 
+! If the "always" plugin kicks in and sets the 'filetype' to "always", Vim will
+! find the syntax/always.vim file, because its directory is in 'runtimepath'.
+! 
+! 							*load-plugin*
+! To load an optional plugin from a pack use the `:loadplugin` command: >
+! 	:loadplugin mydebug
+! This could be done inside always.vim, if some conditions are met.
+! Or you could add this command to your |.vimrc|.
+! 
+! It is perfectly normal for a package to only have files in the "opt"
+! directory.  You then need to load each plugin when you want to use it.
+! 
+! Loading packages will not happen if loading plugins is disabled, see
+! |load-plugins|.
+! 
+! ==============================================================================
+! 6. Debugging scripts					*debug-scripts*
+  
+  Besides the obvious messages that you can add to your scripts to find out what
+  they are doing, Vim offers a debug mode.  This allows you to step through a
+***************
+*** 606,612 ****
+  		user, don't use typeahead for debug commands.
+  
+  ==============================================================================
+! 6. Profiling						*profile* *profiling*
+  
+  Profiling means that Vim measures the time that is spent on executing
+  functions and/or scripts.  The |+profile| feature is required for this.
+--- 679,685 ----
+  		user, don't use typeahead for debug commands.
+  
+  ==============================================================================
+! 7. Profiling						*profile* *profiling*
+  
+  Profiling means that Vim measures the time that is spent on executing
+  functions and/or scripts.  The |+profile| feature is required for this.
+*** ../vim-7.4.1383/runtime/doc/options.txt	2016-01-19 22:28:54.607593071 +0100
+--- runtime/doc/options.txt	2016-02-21 22:15:01.478771527 +0100
+***************
+*** 5387,5392 ****
+--- 5409,5421 ----
+  	This option was supported on RISC OS, which has been removed.
+  
+  
++ 				*'packpath'* *'pp'*
++ 'packpath' 'pp'		string	(default: see 'runtimepath')
++ 			{not in Vi}
++ 			{not available without the |+packages| feature}
++ 	Directories used to find packages.  See |packages|.
++ 
++ 
+  						*'paragraphs'* *'para'*
+  'paragraphs' 'para'	string	(default "IPLPPPQPP TPHPLIPpLpItpplpipbp")
+  			global
+*** ../vim-7.4.1383/runtime/optwin.vim	2016-01-09 19:39:39.273685988 +0100
+--- runtime/optwin.vim	2016-02-21 22:50:24.224495461 +0100
+***************
+*** 1,7 ****
+  " These commands create the option window.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2015 Nov 10
+  
+  " If there already is an option window, jump to that one.
+  if bufwinnr("option-window") > 0
+--- 1,7 ----
+  " These commands create the option window.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2016 Feb 21
+  
+  " If there already is an option window, jump to that one.
+  if bufwinnr("option-window") > 0
+***************
+*** 228,233 ****
+--- 228,235 ----
+  endif
+  call append("$", "runtimepath\tlist of directories used for runtime files and plugins")
+  call <SID>OptionG("rtp", &rtp)
++ call append("$", "packpath\tlist of directories used for plugin packages")
++ call <SID>OptionG("pp", &pp)
+  call append("$", "helpfile\tname of the main help file")
+  call <SID>OptionG("hf", &hf)
+  
+*** ../vim-7.4.1383/src/version.c	2016-02-21 20:30:18.404646761 +0100
+--- src/version.c	2016-02-21 22:57:24.388085381 +0100
+***************
+*** 749,750 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1384,
+  /**/
+
+-- 
+There are 2 kinds of people in my world: those who know Unix, Perl, Vim, GNU,
+Linux, etc, and those who know COBOL.  It gets very difficult for me at
+parties, not knowing which group to socialise with :-)
+						Sitaram Chamarty
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

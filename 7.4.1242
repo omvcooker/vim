@@ -1,0 +1,63 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1242
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1242 (after 7.4.1238)
+Problem:    json_test fails without the eval feature.
+Solution:   Add #ifdef.
+Files:      src/json_test.c
+
+
+*** ../vim-7.4.1241/src/json_test.c	2016-02-02 18:19:52.798743887 +0100
+--- src/json_test.c	2016-02-02 19:07:24.345210458 +0100
+***************
+*** 21,26 ****
+--- 21,27 ----
+  /* This file has to be included because the tested functions are static */
+  #include "json.c"
+  
++ #if defined(FEAT_EVAL)
+  /*
+   * Test json_find_end() with imcomplete items.
+   */
+***************
+*** 182,193 ****
+--- 183,197 ----
+      reader.js_cookie =        " \"foobar\"  ";
+      assert(json_decode_string(&reader, NULL) == OK);
+  }
++ #endif
+  
+      int
+  main(void)
+  {
++ #if defined(FEAT_EVAL)
+      test_decode_find_end();
+      test_fill_called_on_find_end();
+      test_fill_called_on_string();
++ #endif
+      return 0;
+  }
+*** ../vim-7.4.1241/src/version.c	2016-02-02 19:01:26.644921279 +0100
+--- src/version.c	2016-02-02 19:15:25.116212301 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1242,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+110. You actually volunteer to become your employer's webmaster.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

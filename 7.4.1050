@@ -1,0 +1,120 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1050
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1050
+Problem:    Warning for unused var with tiny features. (Tony Mechelynck)
+Solution:   Add #ifdef.  Use vim_snprintf().  Reduce number of statemements.
+Files:      src/ops.c
+
+
+*** ../vim-7.4.1049/src/ops.c	2016-01-03 22:56:40.901651349 +0100
+--- src/ops.c	2016-01-04 21:38:50.319640818 +0100
+***************
+*** 6974,6980 ****
+--- 6974,6982 ----
+      char_u	buf2[40];
+      linenr_T	lnum;
+      long	byte_count = 0;
++ #ifdef FEAT_MBYTE
+      long	bom_count  = 0;
++ #endif
+      long	byte_count_cursor = 0;
+      long	char_count = 0;
+      long	char_count_cursor = 0;
+***************
+*** 7190,7204 ****
+  	    }
+  	}
+  
+- 	/* Don't shorten this message, the user asked for it. */
+  #ifdef FEAT_MBYTE
+  	bom_count = bomb_size();
+  	if (bom_count > 0)
+! 	    sprintf((char *)IObuff + STRLEN(IObuff), _("(+%ld for BOM)"),
+! 								bom_count);
+  #endif
+  	if (dict == NULL)
+  	{
+  	    p = p_shm;
+  	    p_shm = (char_u *)"";
+  	    msg(IObuff);
+--- 7192,7206 ----
+  	    }
+  	}
+  
+  #ifdef FEAT_MBYTE
+  	bom_count = bomb_size();
+  	if (bom_count > 0)
+! 	    vim_snprintf((char *)IObuff + STRLEN(IObuff), IOSIZE,
+! 					      _("(+%ld for BOM)"), bom_count);
+  #endif
+  	if (dict == NULL)
+  	{
++ 	    /* Don't shorten this message, the user asked for it. */
+  	    p = p_shm;
+  	    p_shm = (char_u *)"";
+  	    msg(IObuff);
+***************
+*** 7210,7228 ****
+      {
+  	dict_add_nr_str(dict, "words", (long)word_count, NULL);
+  	dict_add_nr_str(dict, "chars", (long)char_count, NULL);
+! 	dict_add_nr_str(dict, "bytes", (long)byte_count + bom_count, NULL);
+! 	if (VIsual_active)
+! 	{
+! 	    dict_add_nr_str(dict, "visual_bytes", (long)byte_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "visual_chars", (long)char_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "visual_words", (long)word_count_cursor, NULL);
+! 	}
+! 	else
+! 	{
+! 	    dict_add_nr_str(dict, "cursor_bytes", (long)byte_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "cursor_chars", (long)char_count_cursor, NULL);
+! 	    dict_add_nr_str(dict, "cursor_words", (long)word_count_cursor, NULL);
+! 	}
+      }
+  #endif
+  }
+--- 7212,7228 ----
+      {
+  	dict_add_nr_str(dict, "words", (long)word_count, NULL);
+  	dict_add_nr_str(dict, "chars", (long)char_count, NULL);
+! 	dict_add_nr_str(dict, "bytes", (long)byte_count
+! # ifdef FEAT_MBYTE
+! 		+ bom_count
+! # endif
+! 		, NULL);
+! 	dict_add_nr_str(dict, VIsual_active ? "visual_bytes" : "cursor_bytes",
+! 		(long)byte_count_cursor, NULL);
+! 	dict_add_nr_str(dict, VIsual_active ? "visual_chars" : "cursor_chars",
+! 		(long)char_count_cursor, NULL);
+! 	dict_add_nr_str(dict, VIsual_active ? "visual_words" : "cursor_words",
+! 		(long)word_count_cursor, NULL);
+      }
+  #endif
+  }
+*** ../vim-7.4.1049/src/version.c	2016-01-04 12:45:24.729291891 +0100
+--- src/version.c	2016-01-04 21:40:07.666796331 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1050,
+  /**/
+
+
+-- 
+Permission is granted to read this message out aloud on Kings Cross Road,
+London, under the condition that the orator is properly dressed.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

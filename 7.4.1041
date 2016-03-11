@@ -1,0 +1,81 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1041
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1041
+Problem:    Various small things.
+Solution:   Add file to list of distributed files.  Adjust README.  Fix typo.
+Files:      Filelist, src/testdir/README.txt, src/testdir/test_charsearch.in,
+            src/INSTALLMac.txt
+
+
+*** ../vim-7.4.1040/Filelist	2016-01-02 18:07:43.334985080 +0100
+--- Filelist	2016-01-03 22:10:53.207652230 +0100
+***************
+*** 703,708 ****
+--- 703,709 ----
+  		runtime/vimlogo.xpm \
+  		src/swis.s \
+  		src/tee/Makefile \
++ 		src/tee/Make_mvc.mak \
+  		src/tee/tee.c \
+  		csdpmi4b.zip \
+  
+*** ../vim-7.4.1040/src/testdir/README.txt	2014-08-29 10:04:32.222407390 +0200
+--- src/testdir/README.txt	2015-12-05 20:00:42.129784983 +0100
+***************
+*** 5,10 ****
+--- 5,12 ----
+  command comment).
+  
+  The numbered tests are older, we have switched to named tests.
++ And the newest way of testing is to use assert functions, see test_assert.vim
++ for an example.
+  
+  To add a new test:
+  1) Create test_<subject>.in and test_<subject>.ok files.
+*** ../vim-7.4.1040/src/testdir/test_charsearch.in	2015-08-11 14:26:03.594931131 +0200
+--- src/testdir/test_charsearch.in	2015-08-11 15:30:45.302483889 +0200
+***************
+*** 10,16 ****
+  ylfep:let csave = getcharsearch()
+  fip:call setcharsearch(csave)
+  ;p;p:
+! :" check that setcharsearch() changes the settins.
+  /^Z
+  ylfep:call setcharsearch({'char': 'k'})
+  ;p:call setcharsearch({'forward': 0})
+--- 10,16 ----
+  ylfep:let csave = getcharsearch()
+  fip:call setcharsearch(csave)
+  ;p;p:
+! :" check that setcharsearch() changes the settings.
+  /^Z
+  ylfep:call setcharsearch({'char': 'k'})
+  ;p:call setcharsearch({'forward': 0})
+*** ../vim-7.4.1040/src/version.c	2016-01-03 16:55:55.556236985 +0100
+--- src/version.c	2016-01-03 22:15:08.728865433 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1041,
+  /**/
+
+-- 
+ARTHUR:          But if he was dying, he wouldn't bother to carve
+                 "Aaaaarrrrrrggghhh".  He'd just say it.
+BROTHER MAYNARD: It's down there carved in stone.
+GALAHAD:         Perhaps he was dictating.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

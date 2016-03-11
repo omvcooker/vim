@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1489
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1489 (after 7.4.1487)
+Problem:    "inline" is not supported by old MSVC.
+Solution:   use "__inline". (Ken Takata)
+Files:      src/macros.h
+
+
+*** ../vim-7.4.1488/src/macros.h	2016-03-04 22:19:17.663973545 +0100
+--- src/macros.h	2016-03-04 22:55:27.521004543 +0100
+***************
+*** 331,337 ****
+  #  if defined(WIN32)
+  #   ifndef isnan
+  #    define isnan(x) _isnan(x)
+!      static inline int isinf(double x) { return !_finite(x) && !_isnan(x); }
+  #   endif
+  #  else
+  #   ifndef HAVE_ISNAN
+--- 331,337 ----
+  #  if defined(WIN32)
+  #   ifndef isnan
+  #    define isnan(x) _isnan(x)
+!      static __inline int isinf(double x) { return !_finite(x) && !_isnan(x); }
+  #   endif
+  #  else
+  #   ifndef HAVE_ISNAN
+*** ../vim-7.4.1488/src/version.c	2016-03-04 22:52:28.878894053 +0100
+--- src/version.c	2016-03-04 22:55:02.929264624 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1489,
+  /**/
+
+-- 
+Scientists decoded the first message from an alien civilization:
+        SIMPLY SEND 6 TIMES 10 TO THE 50 ATOMS OF HYDROGEN TO THE STAR
+SYSTEM AT THE TOP OF THE LIST, CROSS OFF THAT STAR SYSTEM, THEN PUT
+YOUR STAR SYSTEM AT THE BOTTOM OF THE LIST AND SEND IT TO 100 OTHER
+STAR SYSTEMS.  WITHIN ONE TENTH GALACTIC ROTATION YOU WILL RECEIVE
+ENOUGH HYDROGREN TO POWER YOUR CIVILIZATION UNTIL ENTROPY REACHES ITS
+MAXIMUM!  IT REALLY WORKS!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

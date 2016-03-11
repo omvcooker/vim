@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1156
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1156
+Problem:    Coverity warns for NULL pointer and ignoring return value.
+Solution:   Check for NULL pointer. When dict_add() returns FAIL free the item.
+Files:      src/json.c
+
+
+*** ../vim-7.4.1155/src/json.c	2016-01-23 19:45:48.610931457 +0100
+--- src/json.c	2016-01-23 21:34:13.762201989 +0100
+***************
+*** 318,324 ****
+  	    goto fail;
+  	}
+  	di->di_tv = item;
+! 	dict_add(res->vval.v_dict, di);
+  
+  	json_skip_white(reader);
+  	p = reader->js_buf + reader->js_used;
+--- 318,325 ----
+  	    goto fail;
+  	}
+  	di->di_tv = item;
+! 	if (dict_add(res->vval.v_dict, di) == FAIL)
+! 	    dictitem_free(di);
+  
+  	json_skip_white(reader);
+  	p = reader->js_buf + reader->js_used;
+***************
+*** 398,404 ****
+      {
+  	++reader->js_used;
+  	res->v_type = VAR_STRING;
+! 	res->vval.v_string = vim_strsave(ga.ga_data);
+      }
+      else
+      {
+--- 399,408 ----
+      {
+  	++reader->js_used;
+  	res->v_type = VAR_STRING;
+! 	if (ga.ga_data == NULL)
+! 	    res->vval.v_string = NULL;
+! 	else
+! 	    res->vval.v_string = vim_strsave(ga.ga_data);
+      }
+      else
+      {
+*** ../vim-7.4.1155/src/version.c	2016-01-23 19:54:26.445549280 +0100
+--- src/version.c	2016-01-23 21:34:32.286003249 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1156,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+9. As often as possible, skip rather than walk.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

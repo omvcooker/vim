@@ -1,0 +1,67 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1094
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1094
+Problem:    Test for :hardcopy fails on MS-Windows.
+Solution:   Check for the +postscript feature.
+Files:      src/testdir/test_hardcopy.vim
+
+
+*** ../vim-7.4.1093/src/testdir/test_hardcopy.vim	2016-01-14 22:10:23.793193870 +0100
+--- src/testdir/test_hardcopy.vim	2016-01-15 15:41:15.544958190 +0100
+***************
+*** 45,56 ****
+  " Test that :hardcopy produces a non-empty file.
+  " We don't check much of the contents.
+  func Test_with_syntax()
+!   set printoptions=syntax:y
+!   syn on
+!   hardcopy > Xhardcopy
+!   let lines = readfile('Xhardcopy')
+!   call assert_true(len(lines) > 20)
+!   call assert_true(lines[0] =~ 'PS-Adobe')
+!   call delete('Xhardcopy')
+!   set printoptions&
+  endfunc
+--- 45,58 ----
+  " Test that :hardcopy produces a non-empty file.
+  " We don't check much of the contents.
+  func Test_with_syntax()
+!   if has('postscript')
+!     set printoptions=syntax:y
+!     syn on
+!     hardcopy > Xhardcopy
+!     let lines = readfile('Xhardcopy')
+!     call assert_true(len(lines) > 20)
+!     call assert_true(lines[0] =~ 'PS-Adobe')
+!     call delete('Xhardcopy')
+!     set printoptions&
+!   endif
+  endfunc
+*** ../vim-7.4.1093/src/version.c	2016-01-15 15:37:16.979521224 +0100
+--- src/version.c	2016-01-15 15:41:56.312520153 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1094,
+  /**/
+
+-- 
+BLACK KNIGHT: None shall pass.
+ARTHUR:       I have no quarrel with you, brave Sir knight, but I must cross
+              this bridge.
+BLACK KNIGHT: Then you shall die.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

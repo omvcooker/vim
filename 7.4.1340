@@ -1,0 +1,45 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1340
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1340 (after 7.4.1339)
+Problem:    Merge left extra #endif behind.
+Solution:   Remove the #endif
+Files:      src/os_win32.c
+
+
+*** ../vim-7.4.1339/src/os_win32.c	2016-02-16 20:09:07.873342509 +0100
+--- src/os_win32.c	2016-02-16 20:30:08.640166503 +0100
+***************
+*** 354,360 ****
+  }
+  # endif
+  #endif
+- #endif
+  
+      static void
+  get_exe_name(void)
+--- 354,359 ----
+*** ../vim-7.4.1339/src/version.c	2016-02-16 20:09:07.873342509 +0100
+--- src/version.c	2016-02-16 20:30:56.255669275 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1340,
+  /**/
+
+-- 
+Facepalm statement #4: "3000 year old graves?  That's not possible, it's only
+2014!"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

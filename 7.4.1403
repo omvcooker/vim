@@ -1,0 +1,115 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1403
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1403
+Problem:    Can't build without the quickfix feature.
+Solution:   Add #ifdefs. Call ex_ni() for unimplemented commands. (Yegappan
+            Lakshmanan)
+Files:      src/ex_cmds2.c, src/popupmnu.c
+
+
+*** ../vim-7.4.1402/src/ex_cmds2.c	2016-02-23 14:52:31.877232254 +0100
+--- src/ex_cmds2.c	2016-02-23 18:52:25.775657468 +0100
+***************
+*** 2442,2448 ****
+      }
+  }
+  
+! #ifdef FEAT_LISTCMDS
+  /*
+   * ":argedit"
+   */
+--- 2442,2448 ----
+      }
+  }
+  
+! #if defined(FEAT_LISTCMDS) || defined(PROTO)
+  /*
+   * ":argedit"
+   */
+***************
+*** 2562,2567 ****
+--- 2562,2576 ----
+      {
+  	ex_ni(eap);
+  	return;
++     }
++ #endif
++ 
++ #ifndef FEAT_QUICKFIX
++     if (eap->cmdidx == CMD_cdo || eap->cmdidx == CMD_ldo ||
++ 	    eap->cmdidx == CMD_cfdo || eap->cmdidx == CMD_lfdo)
++     {
++ 	ex_ni(eap);
++ 	return;
+      }
+  #endif
+  
+*** ../vim-7.4.1402/src/popupmnu.c	2016-01-30 20:31:21.249607913 +0100
+--- src/popupmnu.c	2016-02-23 18:52:25.775657468 +0100
+***************
+*** 75,90 ****
+--- 75,94 ----
+  
+      row = curwin->w_wrow + W_WINROW(curwin);
+  
++ #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+      if (firstwin->w_p_pvw)
+  	top_clear = firstwin->w_height;
+      else
++ #endif
+  	top_clear = 0;
+  
++ #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+      /* When the preview window is at the bottom stop just above it.  Also
+       * avoid drawing over the status line so that it's clear there is a window
+       * boundary. */
+      if (lastwin->w_p_pvw)
+  	above_row -= lastwin->w_height + lastwin->w_status_height + 1;
++ #endif
+  
+      /*
+       * Figure out the size and position of the pum.
+***************
+*** 149,154 ****
+--- 153,159 ----
+      if (pum_height < 1 || (pum_height == 1 && size > 1))
+  	return;
+  
++ #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+      /* If there is a preview window at the top avoid drawing over it. */
+      if (firstwin->w_p_pvw
+  	    && pum_row < firstwin->w_height
+***************
+*** 157,162 ****
+--- 162,168 ----
+  	pum_row += firstwin->w_height;
+  	pum_height -= firstwin->w_height;
+      }
++ #endif
+  
+      /* Compute the width of the widest match and the widest extra. */
+      for (i = 0; i < size; ++i)
+*** ../vim-7.4.1402/src/version.c	2016-02-23 17:13:56.885032246 +0100
+--- src/version.c	2016-02-23 18:49:22.397575721 +0100
+***************
+*** 750,751 ****
+--- 750,753 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1403,
+  /**/
+
+-- 
+Mental Floss prevents moral decay!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

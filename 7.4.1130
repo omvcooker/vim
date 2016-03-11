@@ -1,0 +1,49 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1130
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1130
+Problem:    Memory leak in :vimgrep.
+Solution:   Call FreeWild(). (Yegappan Lakshmanan)
+Files:      src/quickfix.c
+
+
+*** ../vim-7.4.1129/src/quickfix.c	2016-01-10 16:00:49.393306192 +0100
+--- src/quickfix.c	2016-01-18 20:25:12.467698497 +0100
+***************
+*** 3465,3471 ****
+--- 3465,3474 ----
+      dirname_start = alloc_id(MAXPATHL, aid_qf_dirname_start);
+      dirname_now = alloc_id(MAXPATHL, aid_qf_dirname_now);
+      if (dirname_start == NULL || dirname_now == NULL)
++     {
++ 	FreeWild(fcount, fnames);
+  	goto theend;
++     }
+  
+      /* Remember the current directory, because a BufRead autocommand that does
+       * ":lcd %:p:h" changes the meaning of short path names. */
+*** ../vim-7.4.1129/src/version.c	2016-01-17 22:36:56.021417120 +0100
+--- src/version.c	2016-01-18 20:25:57.091211272 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1130,
+  /**/
+
+
+-- 
+Q:  What's a light-year?
+A:  One-third less calories than a regular year.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

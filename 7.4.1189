@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1189
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1189 (after 7.4.1165)
+Problem:    Using another language on MS-Windows does not work. (Yongwei Wu)
+Solution:   Undo the change to try loading libintl-8.dll first.
+Files:      src/os_win32.c
+
+
+*** ../vim-7.4.1188/src/os_win32.c	2016-01-24 15:35:55.529110654 +0100
+--- src/os_win32.c	2016-01-28 15:03:51.526788661 +0100
+***************
+*** 500,512 ****
+      if (hLibintlDLL)
+  	return 1;
+      /* Load gettext library (libintl.dll) */
+  #ifdef GETTEXT_DLL_ALT
+      if (!hLibintlDLL)
+  	hLibintlDLL = vimLoadLib(GETTEXT_DLL_ALT);
+  #endif
+      if (!hLibintlDLL)
+- 	hLibintlDLL = vimLoadLib(GETTEXT_DLL);
+-     if (!hLibintlDLL)
+      {
+  	if (p_verbose > 0)
+  	{
+--- 500,511 ----
+      if (hLibintlDLL)
+  	return 1;
+      /* Load gettext library (libintl.dll) */
++     hLibintlDLL = vimLoadLib(GETTEXT_DLL);
+  #ifdef GETTEXT_DLL_ALT
+      if (!hLibintlDLL)
+  	hLibintlDLL = vimLoadLib(GETTEXT_DLL_ALT);
+  #endif
+      if (!hLibintlDLL)
+      {
+  	if (p_verbose > 0)
+  	{
+*** ../vim-7.4.1188/src/version.c	2016-01-28 14:11:33.843370399 +0100
+--- src/version.c	2016-01-28 15:07:26.176543985 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1189,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+57. You begin to wonder how on earth your service provider is allowed to call
+    200 hours per month "unlimited."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

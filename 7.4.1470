@@ -1,0 +1,83 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1470
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1470
+Problem:    Coverity reports missing restore.
+Solution:   Move json_encode() call up.
+Files:      src/channel.c
+
+
+*** ../vim-7.4.1469/src/channel.c	2016-03-02 20:48:43.835501284 +0100
+--- src/channel.c	2016-03-02 21:07:24.391826045 +0100
+***************
+*** 1551,1572 ****
+      {
+  	if (buffer != NULL)
+  	{
+- 	    buf_T	*save_curbuf = curbuf;
+- 	    linenr_T	lnum = buffer->b_ml.ml_line_count;
+- 
+- 	    /* Append to the buffer */
+- 	    ch_logn(channel, "appending line %d to buffer", (int)lnum + 1);
+- 
+- 	    curbuf = buffer;
+- 	    u_sync(TRUE);
+- 	    /* ignore undo failure, undo is not very useful here */
+- 	    ignored = u_save(lnum, lnum + 1);
+- 
+  	    if (msg == NULL)
+  		/* JSON or JS mode: re-encode the message. */
+  		msg = json_encode(listtv, ch_mode);
+  	    if (msg != NULL)
+  	    {
+  		ml_append(lnum, msg, 0, FALSE);
+  		appended_lines_mark(lnum, 1L);
+  		curbuf = save_curbuf;
+--- 1551,1572 ----
+      {
+  	if (buffer != NULL)
+  	{
+  	    if (msg == NULL)
+  		/* JSON or JS mode: re-encode the message. */
+  		msg = json_encode(listtv, ch_mode);
+  	    if (msg != NULL)
+  	    {
++ 		buf_T	    *save_curbuf = curbuf;
++ 		linenr_T    lnum = buffer->b_ml.ml_line_count;
++ 
++ 		/* Append to the buffer */
++ 		ch_logn(channel, "appending line %d to buffer", (int)lnum + 1);
++ 
++ 		curbuf = buffer;
++ 		u_sync(TRUE);
++ 		/* ignore undo failure, undo is not very useful here */
++ 		ignored = u_save(lnum, lnum + 1);
++ 
+  		ml_append(lnum, msg, 0, FALSE);
+  		appended_lines_mark(lnum, 1L);
+  		curbuf = save_curbuf;
+*** ../vim-7.4.1469/src/version.c	2016-03-02 20:48:43.839501242 +0100
+--- src/version.c	2016-03-02 21:08:44.458982581 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1470,
+  /**/
+
+-- 
+Why I like vim:
+> I like VIM because, when I ask a question in this newsgroup, I get a
+> one-line answer.  With xemacs, I get a 1Kb lisp script with bugs in it ;-)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

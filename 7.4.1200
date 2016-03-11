@@ -1,0 +1,1049 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1200
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1200
+Problem:    Still using __ARGS.
+Solution:   Remove __ARGS in several files. (script by Hirohito Higashi)
+Files:      src/blowfish.c, src/ex_cmds2.c, src/ex_getln.c, src/fold.c,
+            src/gui_beval.c, src/gui_w32.c, src/os_unix.c, src/os_win16.c,
+            src/pty.c, src/regexp.c, src/syntax.c, src/xpm_w32.c,
+            src/ex_cmds.h, src/globals.h, src/gui_at_sb.h, src/gui_beval.h,
+            src/if_cscope.h, src/if_sniff.h, src/nbdebug.h, src/os_unix.h,
+            src/proto.h, src/structs.h, src/vim.h, src/xpm_w32.h,
+            src/if_perl.xs, src/proto/if_lua.pro, src/proto/pty.pro,
+            runtime/tools/xcmdsrv_client.c,
+            src/Makefile
+
+
+*** ../vim-7.4.1199/src/blowfish.c	2014-08-10 13:34:59.052785459 +0200
+--- src/blowfish.c	2016-01-29 22:49:44.176795079 +0100
+***************
+*** 56,67 ****
+  } bf_state_T;
+  
+  
+! static void bf_e_block __ARGS((bf_state_T *state, UINT32_T *p_xl, UINT32_T *p_xr));
+! static void bf_e_cblock __ARGS((bf_state_T *state, char_u *block));
+! static int bf_check_tables __ARGS((UINT32_T pax[18], UINT32_T sbx[4][256], UINT32_T val));
+! static int bf_self_test __ARGS((void));
+! static void bf_key_init __ARGS((bf_state_T *state, char_u *password, char_u *salt, int salt_len));
+! static void bf_cfb_init __ARGS((bf_state_T *state, char_u *seed, int seed_len));
+  
+  /* Blowfish code */
+  static UINT32_T pax_init[18] = {
+--- 56,67 ----
+  } bf_state_T;
+  
+  
+! static void bf_e_block(bf_state_T *state, UINT32_T *p_xl, UINT32_T *p_xr);
+! static void bf_e_cblock(bf_state_T *state, char_u *block);
+! static int bf_check_tables(UINT32_T pax[18], UINT32_T sbx[4][256], UINT32_T val);
+! static int bf_self_test(void);
+! static void bf_key_init(bf_state_T *state, char_u *password, char_u *salt, int salt_len);
+! static void bf_cfb_init(bf_state_T *state, char_u *seed, int seed_len);
+  
+  /* Blowfish code */
+  static UINT32_T pax_init[18] = {
+*** ../vim-7.4.1199/src/ex_cmds2.c	2016-01-29 22:03:43.481945824 +0100
+--- src/ex_cmds2.c	2016-01-29 22:49:55.724673477 +0100
+***************
+*** 2999,3005 ****
+  do_in_runtimepath(name, all, callback, cookie)
+      char_u	*name;
+      int		all;
+!     void	(*callback)__ARGS((char_u *fname, void *ck));
+      void	*cookie;
+  {
+      char_u	*rtp;
+--- 2999,3005 ----
+  do_in_runtimepath(name, all, callback, cookie)
+      char_u	*name;
+      int		all;
+!     void	(*callback)(char_u *fname, void *ck);
+      void	*cookie;
+  {
+      char_u	*rtp;
+*** ../vim-7.4.1199/src/ex_getln.c	2016-01-29 22:13:26.039781608 +0100
+--- src/ex_getln.c	2016-01-29 22:50:25.696357870 +0100
+***************
+*** 4709,4715 ****
+  	static struct expgen
+  	{
+  	    int		context;
+! 	    char_u	*((*func)__ARGS((expand_T *, int)));
+  	    int		ic;
+  	    int		escaped;
+  	} tab[] =
+--- 4709,4715 ----
+  	static struct expgen
+  	{
+  	    int		context;
+! 	    char_u	*((*func)(expand_T *, int));
+  	    int		ic;
+  	    int		escaped;
+  	} tab[] =
+***************
+*** 4804,4810 ****
+      regmatch_T	*regmatch;
+      int		*num_file;
+      char_u	***file;
+!     char_u	*((*func)__ARGS((expand_T *, int)));
+  					  /* returns a string from the list */
+      int		escaped;
+  {
+--- 4804,4810 ----
+      regmatch_T	*regmatch;
+      int		*num_file;
+      char_u	***file;
+!     char_u	*((*func)(expand_T *, int));
+  					  /* returns a string from the list */
+      int		escaped;
+  {
+*** ../vim-7.4.1199/src/fold.c	2016-01-29 22:13:26.047781524 +0100
+--- src/fold.c	2016-01-29 23:05:35.342780794 +0100
+***************
+*** 2142,2148 ****
+  static int fold_changed;
+  
+  /* Function declarations. {{{2 */
+! static linenr_T foldUpdateIEMSRecurse(garray_T *gap, int level, linenr_T startlnum, fline_T *flp, void (*getlevel)__ARGS((fline_T *)), linenr_T bot, int topflags);
+  static int foldInsert(garray_T *gap, int i);
+  static void foldSplit(garray_T *gap, int i, linenr_T top, linenr_T bot);
+  static void foldRemove(garray_T *gap, linenr_T top, linenr_T bot);
+--- 2142,2148 ----
+  static int fold_changed;
+  
+  /* Function declarations. {{{2 */
+! static linenr_T foldUpdateIEMSRecurse(garray_T *gap, int level, linenr_T startlnum, fline_T *flp, void (*getlevel)(fline_T *), linenr_T bot, int topflags);
+  static int foldInsert(garray_T *gap, int i);
+  static void foldSplit(garray_T *gap, int i, linenr_T top, linenr_T bot);
+  static void foldRemove(garray_T *gap, linenr_T top, linenr_T bot);
+***************
+*** 2169,2175 ****
+      linenr_T	start;
+      linenr_T	end;
+      fline_T	fline;
+!     void	(*getlevel)__ARGS((fline_T *));
+      int		level;
+      fold_T	*fp;
+  
+--- 2169,2175 ----
+      linenr_T	start;
+      linenr_T	end;
+      fline_T	fline;
+!     void	(*getlevel)(fline_T *);
+      int		level;
+      fold_T	*fp;
+  
+***************
+*** 2422,2428 ****
+      int		level;
+      linenr_T	startlnum;
+      fline_T	*flp;
+!     void	(*getlevel)__ARGS((fline_T *));
+      linenr_T	bot;
+      int		topflags;	/* flags used by containing fold */
+  {
+--- 2422,2428 ----
+      int		level;
+      linenr_T	startlnum;
+      fline_T	*flp;
+!     void	(*getlevel)(fline_T *);
+      linenr_T	bot;
+      int		topflags;	/* flags used by containing fold */
+  {
+*** ../vim-7.4.1199/src/gui_beval.c	2016-01-29 22:13:26.051781481 +0100
+--- src/gui_beval.c	2016-01-29 22:51:03.379961069 +0100
+***************
+*** 195,201 ****
+  gui_mch_create_beval_area(target, mesg, mesgCB, clientData)
+      void	*target;
+      char_u	*mesg;
+!     void	(*mesgCB)__ARGS((BalloonEval *, int));
+      void	*clientData;
+  {
+  #ifndef FEAT_GUI_GTK
+--- 195,201 ----
+  gui_mch_create_beval_area(target, mesg, mesgCB, clientData)
+      void	*target;
+      char_u	*mesg;
+!     void	(*mesgCB)(BalloonEval *, int);
+      void	*clientData;
+  {
+  #ifndef FEAT_GUI_GTK
+*** ../vim-7.4.1199/src/gui_w32.c	2016-01-29 22:13:26.051781481 +0100
+--- src/gui_w32.c	2016-01-29 22:51:22.299761843 +0100
+***************
+*** 4931,4937 ****
+  gui_mch_create_beval_area(target, mesg, mesgCB, clientData)
+      void	*target;	/* ignored, always use s_textArea */
+      char_u	*mesg;
+!     void	(*mesgCB)__ARGS((BalloonEval *, int));
+      void	*clientData;
+  {
+      /* partially stolen from gui_beval.c */
+--- 4931,4937 ----
+  gui_mch_create_beval_area(target, mesg, mesgCB, clientData)
+      void	*target;	/* ignored, always use s_textArea */
+      char_u	*mesg;
+!     void	(*mesgCB)(BalloonEval *, int);
+      void	*clientData;
+  {
+      /* partially stolen from gui_beval.c */
+*** ../vim-7.4.1199/src/os_unix.c	2016-01-29 22:46:58.962534859 +0100
+--- src/os_unix.c	2016-01-29 22:52:29.307056281 +0100
+***************
+*** 109,115 ****
+  
+  static int sysmouse_open(void);
+  static void sysmouse_close(void);
+! static RETSIGTYPE sig_sysmouse __ARGS(SIGPROTOARG);
+  #endif
+  
+  /*
+--- 109,115 ----
+  
+  static int sysmouse_open(void);
+  static void sysmouse_close(void);
+! static RETSIGTYPE sig_sysmouse SIGPROTOARG;
+  #endif
+  
+  /*
+***************
+*** 190,211 ****
+  static void handle_resize(void);
+  
+  #if defined(SIGWINCH)
+! static RETSIGTYPE sig_winch __ARGS(SIGPROTOARG);
+  #endif
+  #if defined(SIGINT)
+! static RETSIGTYPE catch_sigint __ARGS(SIGPROTOARG);
+  #endif
+  #if defined(SIGPWR)
+! static RETSIGTYPE catch_sigpwr __ARGS(SIGPROTOARG);
+  #endif
+  #if defined(SIGALRM) && defined(FEAT_X11) \
+  	&& defined(FEAT_TITLE) && !defined(FEAT_GUI_GTK)
+  # define SET_SIG_ALARM
+! static RETSIGTYPE sig_alarm __ARGS(SIGPROTOARG);
+  /* volatile because it is used in signal handler sig_alarm(). */
+  static volatile int sig_alarm_called;
+  #endif
+! static RETSIGTYPE deathtrap __ARGS(SIGPROTOARG);
+  
+  static void catch_int_signal(void);
+  static void set_signals(void);
+--- 190,211 ----
+  static void handle_resize(void);
+  
+  #if defined(SIGWINCH)
+! static RETSIGTYPE sig_winch SIGPROTOARG;
+  #endif
+  #if defined(SIGINT)
+! static RETSIGTYPE catch_sigint SIGPROTOARG;
+  #endif
+  #if defined(SIGPWR)
+! static RETSIGTYPE catch_sigpwr SIGPROTOARG;
+  #endif
+  #if defined(SIGALRM) && defined(FEAT_X11) \
+  	&& defined(FEAT_TITLE) && !defined(FEAT_GUI_GTK)
+  # define SET_SIG_ALARM
+! static RETSIGTYPE sig_alarm SIGPROTOARG;
+  /* volatile because it is used in signal handler sig_alarm(). */
+  static volatile int sig_alarm_called;
+  #endif
+! static RETSIGTYPE deathtrap SIGPROTOARG;
+  
+  static void catch_int_signal(void);
+  static void set_signals(void);
+***************
+*** 1137,1143 ****
+   * volatile because it is used in signal handler sigcont_handler().
+   */
+  static volatile int sigcont_received;
+! static RETSIGTYPE sigcont_handler __ARGS(SIGPROTOARG);
+  
+  /*
+   * signal handler for SIGCONT
+--- 1137,1143 ----
+   * volatile because it is used in signal handler sigcont_handler().
+   */
+  static volatile int sigcont_received;
+! static RETSIGTYPE sigcont_handler SIGPROTOARG;
+  
+  /*
+   * signal handler for SIGCONT
+***************
+*** 6592,6601 ****
+  #endif /* FEAT_SYSMOUSE */
+  
+  #if defined(FEAT_LIBCALL) || defined(PROTO)
+! typedef char_u * (*STRPROCSTR)__ARGS((char_u *));
+! typedef char_u * (*INTPROCSTR)__ARGS((int));
+! typedef int (*STRPROCINT)__ARGS((char_u *));
+! typedef int (*INTPROCINT)__ARGS((int));
+  
+  /*
+   * Call a DLL routine which takes either a string or int param
+--- 6592,6601 ----
+  #endif /* FEAT_SYSMOUSE */
+  
+  #if defined(FEAT_LIBCALL) || defined(PROTO)
+! typedef char_u * (*STRPROCSTR)(char_u *);
+! typedef char_u * (*INTPROCSTR)(int);
+! typedef int (*STRPROCINT)(char_u *);
+! typedef int (*INTPROCINT)(int);
+  
+  /*
+   * Call a DLL routine which takes either a string or int param
+*** ../vim-7.4.1199/src/os_win16.c	2012-11-20 16:01:50.000000000 +0100
+--- src/os_win16.c	2016-01-29 22:52:38.810956209 +0100
+***************
+*** 84,90 ****
+  /* cproto doesn't create a prototype for main() */
+  int _cdecl
+  VimMain
+! __ARGS((int argc, char **argv));
+  static int (_cdecl *pmain)(int, char **);
+  
+  #ifndef PROTO
+--- 84,90 ----
+  /* cproto doesn't create a prototype for main() */
+  int _cdecl
+  VimMain
+!     (int argc, char **argv);
+  static int (_cdecl *pmain)(int, char **);
+  
+  #ifndef PROTO
+*** ../vim-7.4.1199/src/pty.c	2016-01-29 22:46:58.962534859 +0100
+--- src/pty.c	2016-01-29 22:52:59.650736777 +0100
+***************
+*** 228,234 ****
+  {
+      int f;
+      char *name;
+!     RETSIGTYPE (*sigcld)__ARGS(SIGPROTOARG);
+  
+      /*
+       * SIGCHLD set to SIG_DFL for _getpty() because it may fork() and
+--- 228,234 ----
+  {
+      int f;
+      char *name;
+!     RETSIGTYPE (*sigcld) SIGPROTOARG;
+  
+      /*
+       * SIGCHLD set to SIG_DFL for _getpty() because it may fork() and
+*** ../vim-7.4.1199/src/regexp.c	2016-01-29 22:46:58.966534817 +0100
+--- src/regexp.c	2016-01-29 22:53:46.302245568 +0100
+***************
+*** 7226,7237 ****
+   *		      regsub stuff			       *
+   ***************************************************************/
+  
+- /* This stuff below really confuses cc on an SGI -- webb */
+- #ifdef __sgi
+- # undef __ARGS
+- # define __ARGS(x)  ()
+- #endif
+- 
+  /*
+   * We should define ftpr as a pointer to a function returning a pointer to
+   * a function returning a pointer to a function ...
+--- 7226,7231 ----
+*** ../vim-7.4.1199/src/syntax.c	2016-01-29 22:46:58.974534733 +0100
+--- src/syntax.c	2016-01-29 22:54:01.638084096 +0100
+***************
+*** 6334,6341 ****
+  
+  struct subcommand
+  {
+!     char    *name;				/* subcommand name */
+!     void    (*func)__ARGS((exarg_T *, int));	/* function to call */
+  };
+  
+  static struct subcommand subcommands[] =
+--- 6334,6341 ----
+  
+  struct subcommand
+  {
+!     char    *name;			/* subcommand name */
+!     void    (*func)(exarg_T *, int);	/* function to call */
+  };
+  
+  static struct subcommand subcommands[] =
+*** ../vim-7.4.1199/src/xpm_w32.c	2012-08-02 21:46:20.000000000 +0200
+--- src/xpm_w32.c	2016-01-29 22:54:28.421802085 +0100
+***************
+*** 14,28 ****
+  #endif
+  #include <windows.h>
+  
+- /* reduced def from Vim.h */
+- #ifndef __ARGS
+- # if defined(__STDC__) || defined(__GNUC__) || defined(WIN3264)
+- #  define __ARGS(x) x
+- # else
+- #  define __ARGS(x) ()
+- # endif
+- #endif
+- 
+  #include "xpm_w32.h"
+  
+  /* Engage Windows support in libXpm */
+--- 14,19 ----
+*** ../vim-7.4.1199/src/ex_cmds.h	2016-01-23 23:02:30.248636368 +0100
+--- src/ex_cmds.h	2016-01-29 22:55:07.809387374 +0100
+***************
+*** 85,91 ****
+  #ifdef DO_DECLARE_EXCMD
+  # define EX(a, b, c, d, e)  {(char_u *)b, c, (long_u)(d), e}
+  
+! typedef void (*ex_func_T) __ARGS((exarg_T *eap));
+  
+  static struct cmdname
+  {
+--- 85,91 ----
+  #ifdef DO_DECLARE_EXCMD
+  # define EX(a, b, c, d, e)  {(char_u *)b, c, (long_u)(d), e}
+  
+! typedef void (*ex_func_T) (exarg_T *eap);
+  
+  static struct cmdname
+  {
+***************
+*** 1739,1745 ****
+      int		useridx;	/* user command index */
+  #endif
+      char_u	*errmsg;	/* returned error message */
+!     char_u	*(*getline) __ARGS((int, void *, int));
+      void	*cookie;	/* argument for getline() */
+  #ifdef FEAT_EVAL
+      struct condstack *cstack;	/* condition stack for ":if" etc. */
+--- 1739,1745 ----
+      int		useridx;	/* user command index */
+  #endif
+      char_u	*errmsg;	/* returned error message */
+!     char_u	*(*getline)(int, void *, int);
+      void	*cookie;	/* argument for getline() */
+  #ifdef FEAT_EVAL
+      struct condstack *cstack;	/* condition stack for ":if" etc. */
+*** ../vim-7.4.1199/src/globals.h	2016-01-23 19:45:48.622931332 +0100
+--- src/globals.h	2016-01-29 22:55:38.345065868 +0100
+***************
+*** 845,863 ****
+   * The value is set in mb_init();
+   */
+  /* length of char in bytes, including following composing chars */
+! EXTERN int (*mb_ptr2len) __ARGS((char_u *p)) INIT(= latin_ptr2len);
+  /* idem, with limit on string length */
+! EXTERN int (*mb_ptr2len_len) __ARGS((char_u *p, int size)) INIT(= latin_ptr2len_len);
+  /* byte length of char */
+! EXTERN int (*mb_char2len) __ARGS((int c)) INIT(= latin_char2len);
+  /* convert char to bytes, return the length */
+! EXTERN int (*mb_char2bytes) __ARGS((int c, char_u *buf)) INIT(= latin_char2bytes);
+! EXTERN int (*mb_ptr2cells) __ARGS((char_u *p)) INIT(= latin_ptr2cells);
+! EXTERN int (*mb_ptr2cells_len) __ARGS((char_u *p, int size)) INIT(= latin_ptr2cells_len);
+! EXTERN int (*mb_char2cells) __ARGS((int c)) INIT(= latin_char2cells);
+! EXTERN int (*mb_off2cells) __ARGS((unsigned off, unsigned max_off)) INIT(= latin_off2cells);
+! EXTERN int (*mb_ptr2char) __ARGS((char_u *p)) INIT(= latin_ptr2char);
+! EXTERN int (*mb_head_off) __ARGS((char_u *base, char_u *p)) INIT(= latin_head_off);
+  
+  # if defined(USE_ICONV) && defined(DYNAMIC_ICONV)
+  /* Pointers to functions and variables to be loaded at runtime */
+--- 845,863 ----
+   * The value is set in mb_init();
+   */
+  /* length of char in bytes, including following composing chars */
+! EXTERN int (*mb_ptr2len)(char_u *p) INIT(= latin_ptr2len);
+  /* idem, with limit on string length */
+! EXTERN int (*mb_ptr2len_len)(char_u *p, int size) INIT(= latin_ptr2len_len);
+  /* byte length of char */
+! EXTERN int (*mb_char2len)(int c) INIT(= latin_char2len);
+  /* convert char to bytes, return the length */
+! EXTERN int (*mb_char2bytes)(int c, char_u *buf) INIT(= latin_char2bytes);
+! EXTERN int (*mb_ptr2cells)(char_u *p) INIT(= latin_ptr2cells);
+! EXTERN int (*mb_ptr2cells_len)(char_u *p, int size) INIT(= latin_ptr2cells_len);
+! EXTERN int (*mb_char2cells)(int c) INIT(= latin_char2cells);
+! EXTERN int (*mb_off2cells)(unsigned off, unsigned max_off) INIT(= latin_off2cells);
+! EXTERN int (*mb_ptr2char)(char_u *p) INIT(= latin_ptr2char);
+! EXTERN int (*mb_head_off)(char_u *base, char_u *p) INIT(= latin_head_off);
+  
+  # if defined(USE_ICONV) && defined(DYNAMIC_ICONV)
+  /* Pointers to functions and variables to be loaded at runtime */
+*** ../vim-7.4.1199/src/gui_at_sb.h	2010-05-15 13:04:06.000000000 +0200
+--- src/gui_at_sb.h	2016-01-29 22:56:09.168741331 +0100
+***************
+*** 94,100 ****
+  
+  extern WidgetClass vim_scrollbarWidgetClass;
+  
+! extern void vim_XawScrollbarSetThumb __ARGS((Widget, double, double, double));
+  
+  typedef struct
+  {
+--- 94,100 ----
+  
+  extern WidgetClass vim_scrollbarWidgetClass;
+  
+! extern void vim_XawScrollbarSetThumb(Widget, double, double, double);
+  
+  typedef struct
+  {
+*** ../vim-7.4.1199/src/gui_beval.h	2010-05-15 13:04:08.000000000 +0200
+--- src/gui_beval.h	2016-01-29 22:56:23.672588625 +0100
+***************
+*** 60,66 ****
+  #endif
+      int			ts;		/* tabstop setting for this buffer */
+      char_u		*msg;
+!     void		(*msgCB)__ARGS((struct BalloonEvalStruct *, int));
+      void		*clientData;	/* For callback */
+  #if !defined(FEAT_GUI_GTK) && !defined(FEAT_GUI_W32)
+      Dimension		screen_width;	/* screen width in pixels */
+--- 60,66 ----
+  #endif
+      int			ts;		/* tabstop setting for this buffer */
+      char_u		*msg;
+!     void		(*msgCB)(struct BalloonEvalStruct *, int);
+      void		*clientData;	/* For callback */
+  #if !defined(FEAT_GUI_GTK) && !defined(FEAT_GUI_W32)
+      Dimension		screen_width;	/* screen width in pixels */
+*** ../vim-7.4.1199/src/if_cscope.h	2010-05-15 13:04:11.000000000 +0200
+--- src/if_cscope.h	2016-01-29 22:56:38.480432719 +0100
+***************
+*** 44,50 ****
+  
+  typedef struct {
+      char *  name;
+!     int     (*func) __ARGS((exarg_T *eap));
+      char *  help;
+      char *  usage;
+      int	    cansplit;		/* if supports splitting window */
+--- 44,50 ----
+  
+  typedef struct {
+      char *  name;
+!     int     (*func)(exarg_T *eap);
+      char *  help;
+      char *  usage;
+      int	    cansplit;		/* if supports splitting window */
+*** ../vim-7.4.1199/src/if_sniff.h	2010-05-15 13:43:29.000000000 +0200
+--- src/if_sniff.h	2016-01-29 22:56:50.696304103 +0100
+***************
+*** 9,16 ****
+  extern int  sniff_request_waiting;
+  extern int  sniff_connected;
+  extern int  fd_from_sniff;
+! extern void sniff_disconnect __ARGS((int immediately));
+! extern void ProcessSniffRequests __ARGS((void));
+! extern void ex_sniff __ARGS((exarg_T *eap));
+  
+  #endif
+--- 9,16 ----
+  extern int  sniff_request_waiting;
+  extern int  sniff_connected;
+  extern int  fd_from_sniff;
+! extern void sniff_disconnect(int immediately);
+! extern void ProcessSniffRequests(void);
+! extern void ex_sniff(exarg_T *eap);
+  
+  #endif
+*** ../vim-7.4.1199/src/nbdebug.h	2010-05-15 13:04:11.000000000 +0200
+--- src/nbdebug.h	2016-01-29 22:57:10.432096314 +0100
+***************
+*** 44,51 ****
+  
+  void		 nbdbg(char *, ...);
+  
+! void nbdebug_wait __ARGS((u_int wait_flags, char *wait_var, u_int wait_secs));
+! void nbdebug_log_init __ARGS((char *log_var, char *level_var));
+  
+  extern FILE	*nb_debug;
+  extern u_int	 nb_dlevel;		/* nb_debug verbosity level */
+--- 44,51 ----
+  
+  void		 nbdbg(char *, ...);
+  
+! void nbdebug_wait(u_int wait_flags, char *wait_var, u_int wait_secs);
+! void nbdebug_log_init(char *log_var, char *level_var);
+  
+  extern FILE	*nb_debug;
+  extern u_int	 nb_dlevel;		/* nb_debug verbosity level */
+*** ../vim-7.4.1199/src/os_unix.h	2016-01-15 21:23:15.662977914 +0100
+--- src/os_unix.h	2016-01-29 23:06:58.229908263 +0100
+***************
+*** 74,83 ****
+  # define USE_GETCWD
+  #endif
+  
+- #ifndef __ARGS
+- # define __ARGS(x) x
+- #endif
+- 
+  /* always use unlink() to remove files */
+  #ifndef PROTO
+  # ifdef VMS
+--- 74,79 ----
+***************
+*** 453,459 ****
+  # ifdef HAVE_RENAME
+  #  define mch_rename(src, dst) rename(src, dst)
+  # else
+! int mch_rename __ARGS((const char *src, const char *dest));
+  # endif
+  # ifndef VMS
+  #  ifdef __MVS__
+--- 449,455 ----
+  # ifdef HAVE_RENAME
+  #  define mch_rename(src, dst) rename(src, dst)
+  # else
+! int mch_rename(const char *src, const char *dest);
+  # endif
+  # ifndef VMS
+  #  ifdef __MVS__
+*** ../vim-7.4.1199/src/proto.h	2016-01-24 20:36:18.862082391 +0100
+--- src/proto.h	2016-01-29 22:58:06.779503070 +0100
+***************
+*** 55,61 ****
+  #  include "winclip.pro"
+  #  if (defined(__GNUC__) && !defined(__MINGW32__)) \
+  	|| (defined(__BORLANDC__) && __BORLANDC__ < 0x502)
+! extern int _stricoll __ARGS((char *a, char *b));
+  #  endif
+  # endif
+  # ifdef VMS
+--- 55,61 ----
+  #  include "winclip.pro"
+  #  if (defined(__GNUC__) && !defined(__MINGW32__)) \
+  	|| (defined(__BORLANDC__) && __BORLANDC__ < 0x502)
+! extern int _stricoll(char *a, char *b);
+  #  endif
+  # endif
+  # ifdef VMS
+***************
+*** 111,135 ****
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! smsg __ARGS((char_u *, ...));
+  
+  int
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! smsg_attr __ARGS((int, char_u *, ...));
+  
+  int
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! vim_snprintf_add __ARGS((char *, size_t, char *, ...));
+  
+  int
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! vim_snprintf __ARGS((char *, size_t, char *, ...));
+  
+  #  if defined(HAVE_STDARG_H)
+  int vim_vsnprintf(char *str, size_t str_m, char *fmt, va_list ap, typval_T *tvs);
+--- 111,135 ----
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! smsg(char_u *, ...);
+  
+  int
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! smsg_attr(int, char_u *, ...);
+  
+  int
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! vim_snprintf_add(char *, size_t, char *, ...);
+  
+  int
+  #  ifdef __BORLANDC__
+  _RTLENTRYF
+  #  endif
+! vim_snprintf(char *, size_t, char *, ...);
+  
+  #  if defined(HAVE_STDARG_H)
+  int vim_vsnprintf(char *str, size_t str_m, char *fmt, va_list ap, typval_T *tvs);
+***************
+*** 140,150 ****
+  # include "misc1.pro"
+  # include "misc2.pro"
+  #ifndef HAVE_STRPBRK	    /* not generated automatically from misc2.c */
+! char_u *vim_strpbrk __ARGS((char_u *s, char_u *charset));
+  #endif
+  #ifndef HAVE_QSORT
+  /* Use our own qsort(), don't define the prototype when not used. */
+! void qsort __ARGS((void *base, size_t elm_count, size_t elm_size, int (*cmp)(const void *, const void *)));
+  #endif
+  # include "move.pro"
+  # if defined(FEAT_MBYTE) || defined(FEAT_XIM) || defined(FEAT_KEYMAP) \
+--- 140,150 ----
+  # include "misc1.pro"
+  # include "misc2.pro"
+  #ifndef HAVE_STRPBRK	    /* not generated automatically from misc2.c */
+! char_u *vim_strpbrk(char_u *s, char_u *charset);
+  #endif
+  #ifndef HAVE_QSORT
+  /* Use our own qsort(), don't define the prototype when not used. */
+! void qsort(void *base, size_t elm_count, size_t elm_size, int (*cmp)(const void *, const void *));
+  #endif
+  # include "move.pro"
+  # if defined(FEAT_MBYTE) || defined(FEAT_XIM) || defined(FEAT_KEYMAP) \
+***************
+*** 219,227 ****
+  #   include "pty.pro"
+  #  endif
+  #  if !defined(HAVE_SETENV) && !defined(HAVE_PUTENV) && !defined(VMS)
+! extern int putenv __ARGS((const char *string));		/* from pty.c */
+  #   ifdef USE_VIMPTY_GETENV
+! extern char_u *vimpty_getenv __ARGS((const char_u *string));	/* from pty.c */
+  #   endif
+  #  endif
+  #  ifdef FEAT_GUI_W16
+--- 219,227 ----
+  #   include "pty.pro"
+  #  endif
+  #  if !defined(HAVE_SETENV) && !defined(HAVE_PUTENV) && !defined(VMS)
+! extern int putenv(const char *string);		/* from pty.c */
+  #   ifdef USE_VIMPTY_GETENV
+! extern char_u *vimpty_getenv(const char_u *string);	/* from pty.c */
+  #   endif
+  #  endif
+  #  ifdef FEAT_GUI_W16
+***************
+*** 241,247 ****
+  #  ifdef FEAT_GUI_ATHENA
+  #   include "gui_athena.pro"
+  #   ifdef FEAT_BROWSE
+! extern char *vim_SelFile __ARGS((Widget toplevel, char *prompt, char *init_path, int (*show_entry)(), int x, int y, guicolor_T fg, guicolor_T bg, guicolor_T scroll_fg, guicolor_T scroll_bg));
+  #   endif
+  #  endif
+  #  ifdef FEAT_GUI_MAC
+--- 241,247 ----
+  #  ifdef FEAT_GUI_ATHENA
+  #   include "gui_athena.pro"
+  #   ifdef FEAT_BROWSE
+! extern char *vim_SelFile(Widget toplevel, char *prompt, char *init_path, int (*show_entry)(), int x, int y, guicolor_T fg, guicolor_T bg, guicolor_T scroll_fg, guicolor_T scroll_bg);
+  #   endif
+  #  endif
+  #  ifdef FEAT_GUI_MAC
+*** ../vim-7.4.1199/src/structs.h	2016-01-23 19:45:48.618931375 +0100
+--- src/structs.h	2016-01-29 22:58:19.967364220 +0100
+***************
+*** 2515,2521 ****
+      char_u	*actext;	    /* accelerator text (after TAB) */
+      int		priority;	    /* Menu order priority */
+  #ifdef FEAT_GUI
+!     void	(*cb) __ARGS((vimmenu_T *));	    /* Call-back routine */
+  #endif
+  #ifdef FEAT_TOOLBAR
+      char_u	*iconfile;	    /* name of file for icon or NULL */
+--- 2515,2521 ----
+      char_u	*actext;	    /* accelerator text (after TAB) */
+      int		priority;	    /* Menu order priority */
+  #ifdef FEAT_GUI
+!     void	(*cb)(vimmenu_T *);	    /* Call-back routine */
+  #endif
+  #ifdef FEAT_TOOLBAR
+      char_u	*iconfile;	    /* name of file for icon or NULL */
+*** ../vim-7.4.1199/src/vim.h	2016-01-29 21:11:20.971061323 +0100
+--- src/vim.h	2016-01-29 22:59:12.278813479 +0100
+***************
+*** 274,288 ****
+  # include "os_unix.h"	    /* bring lots of system header files */
+  #endif
+  
+- #ifndef __ARGS
+- # define __ARGS(x) x
+- #endif
+- 
+- /* __ARGS and __PARMS are the same thing. */
+- #ifndef __PARMS
+- # define __PARMS(x) __ARGS(x)
+- #endif
+- 
+  /* Mark unused function arguments with UNUSED, so that gcc -Wunused-parameter
+   * can be used to check for mistakes. */
+  #ifdef HAVE_ATTRIBUTE_UNUSED
+--- 274,279 ----
+***************
+*** 1641,1647 ****
+   * Include a prototype for mch_memmove(), it may not be in alloc.pro.
+   */
+  #ifdef VIM_MEMMOVE
+! void mch_memmove __ARGS((void *, void *, size_t));
+  #else
+  # ifndef mch_memmove
+  #  define mch_memmove(to, from, len) memmove(to, from, len)
+--- 1632,1638 ----
+   * Include a prototype for mch_memmove(), it may not be in alloc.pro.
+   */
+  #ifdef VIM_MEMMOVE
+! void mch_memmove(void *, void *, size_t);
+  #else
+  # ifndef mch_memmove
+  #  define mch_memmove(to, from, len) memmove(to, from, len)
+***************
+*** 1660,1666 ****
+  #ifdef HAVE_MEMSET
+  # define vim_memset(ptr, c, size)   memset((ptr), (c), (size))
+  #else
+! void *vim_memset __ARGS((void *, int, size_t));
+  #endif
+  
+  #ifdef HAVE_MEMCMP
+--- 1651,1657 ----
+  #ifdef HAVE_MEMSET
+  # define vim_memset(ptr, c, size)   memset((ptr), (c), (size))
+  #else
+! void *vim_memset(void *, int, size_t);
+  #endif
+  
+  #ifdef HAVE_MEMCMP
+***************
+*** 1669,1675 ****
+  # ifdef HAVE_BCMP
+  #  define vim_memcmp(p1, p2, len)   bcmp((p1), (p2), (len))
+  # else
+! int vim_memcmp __ARGS((void *, void *, size_t));
+  #  define VIM_MEMCMP
+  # endif
+  #endif
+--- 1660,1666 ----
+  # ifdef HAVE_BCMP
+  #  define vim_memcmp(p1, p2, len)   bcmp((p1), (p2), (len))
+  # else
+! int vim_memcmp(void *, void *, size_t);
+  #  define VIM_MEMCMP
+  # endif
+  #endif
+*** ../vim-7.4.1199/src/xpm_w32.h	2010-05-15 13:04:10.000000000 +0200
+--- src/xpm_w32.h	2016-01-29 22:59:20.274729294 +0100
+***************
+*** 3,7 ****
+   */
+  
+  #ifndef XPM_W32__H
+! int LoadXpmImage __ARGS((char *filename, HBITMAP *hImage, HBITMAP *hShape));
+  #endif
+--- 3,7 ----
+   */
+  
+  #ifndef XPM_W32__H
+! int LoadXpmImage(char *filename, HBITMAP *hImage, HBITMAP *hShape);
+  #endif
+*** ../vim-7.4.1199/src/if_perl.xs	2016-01-17 21:15:17.843322552 +0100
+--- src/if_perl.xs	2016-01-29 23:06:22.854280654 +0100
+***************
+*** 125,133 ****
+  /* Compatibility hacks over */
+  
+  static PerlInterpreter *perl_interp = NULL;
+! static void xs_init __ARGS((pTHX));
+! static void VIM_init __ARGS((void));
+! EXTERN_C void boot_DynaLoader __ARGS((pTHX_ CV*));
+  
+  /*
+   * For dynamic linked perl.
+--- 125,133 ----
+  /* Compatibility hacks over */
+  
+  static PerlInterpreter *perl_interp = NULL;
+! static void xs_init(pTHX);
+! static void VIM_init(void);
+! EXTERN_C void boot_DynaLoader(pTHX_ CV*);
+  
+  /*
+   * For dynamic linked perl.
+***************
+*** 1090,1096 ****
+  		    item2 = av_fetch((AV *)sv, size, 0);
+  
+  		    if (item2 == NULL || *item2 == NULL ||
+! 					perl_to_vim(*item2, &item->li_tv) == FAIL)
+  			break;
+  		}
+  	    }
+--- 1090,1096 ----
+  		    item2 = av_fetch((AV *)sv, size, 0);
+  
+  		    if (item2 == NULL || *item2 == NULL ||
+! 				    perl_to_vim(*item2, &item->li_tv) == FAIL)
+  			break;
+  		}
+  	    }
+*** ../vim-7.4.1199/src/proto/if_lua.pro	2015-02-03 12:55:11.140179551 +0100
+--- src/proto/if_lua.pro	2016-01-29 23:03:35.572041621 +0100
+***************
+*** 1,11 ****
+  /* if_lua.c */
+! int lua_enabled __ARGS((int verbose));
+! void lua_end __ARGS((void));
+! void ex_lua __ARGS((exarg_T *eap));
+! void ex_luado __ARGS((exarg_T *eap));
+! void ex_luafile __ARGS((exarg_T *eap));
+! void lua_buffer_free __ARGS((buf_T *buf));
+! void lua_window_free __ARGS((win_T *win));
+! void do_luaeval __ARGS((char_u *str, typval_T *arg, typval_T *rettv));
+! int set_ref_in_lua __ARGS((int copyID));
+  /* vim: set ft=c : */
+--- 1,11 ----
+  /* if_lua.c */
+! int lua_enabled(int verbose);
+! void lua_end(void);
+! void ex_lua(exarg_T *eap);
+! void ex_luado(exarg_T *eap);
+! void ex_luafile(exarg_T *eap);
+! void lua_buffer_free(buf_T *o);
+! void lua_window_free(win_T *o);
+! void do_luaeval(char_u *str, typval_T *arg, typval_T *rettv);
+! int set_ref_in_lua(int copyID);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1199/src/proto/pty.pro	2010-05-15 13:04:08.000000000 +0200
+--- src/proto/pty.pro	2016-01-29 23:02:43.988584654 +0100
+***************
+*** 1,3 ****
+  /* pty.c */
+! int OpenPTY __ARGS((char **ttyn));
+! int SetupSlavePTY __ARGS((int fd));
+--- 1,4 ----
+  /* pty.c */
+! int SetupSlavePTY(int fd);
+! int OpenPTY(char **ttyn);
+! /* vim: set ft=c : */
+*** ../vim-7.4.1199/runtime/tools/xcmdsrv_client.c	2010-05-15 13:04:00.000000000 +0200
+--- runtime/tools/xcmdsrv_client.c	2016-01-29 23:13:31.741766157 +0100
+***************
+*** 29,38 ****
+  #include <X11/Intrinsic.h>
+  #include <X11/Xatom.h>
+  
+- #define __ARGS(x) x
+- 
+  /* Client API */
+! char * sendToVim __ARGS((Display *dpy, char *name, char *cmd, int asKeys, int *code));
+  
+  #ifdef MAIN
+  /* A sample program */
+--- 29,36 ----
+  #include <X11/Intrinsic.h>
+  #include <X11/Xatom.h>
+  
+  /* Client API */
+! char * sendToVim(Display *dpy, char *name, char *cmd, int asKeys, int *code);
+  
+  #ifdef MAIN
+  /* A sample program */
+***************
+*** 70,84 ****
+   * Forward declarations for procedures defined later in this file:
+   */
+  
+! static int	x_error_check __ARGS((Display *dpy, XErrorEvent *error_event));
+! static int	AppendPropCarefully __ARGS((Display *display,
+! 		    Window window, Atom property, char *value, int length));
+! static Window	LookupName __ARGS((Display *dpy, char *name,
+! 		    int delete, char **loose));
+! static int	SendInit __ARGS((Display *dpy));
+! static char	*SendEventProc __ARGS((Display *dpy, XEvent *eventPtr,
+! 				      int expect, int *code));
+! static int	IsSerialName __ARGS((char *name));
+  
+  /* Private variables */
+  static Atom	registryProperty = None;
+--- 68,82 ----
+   * Forward declarations for procedures defined later in this file:
+   */
+  
+! static int	x_error_check(Display *dpy, XErrorEvent *error_event);
+! static int	AppendPropCarefully(Display *display,
+! 		    Window window, Atom property, char *value, int length);
+! static Window	LookupName(Display *dpy, char *name,
+! 		    int delete, char **loose);
+! static int	SendInit(Display *dpy);
+! static char	*SendEventProc(Display *dpy, XEvent *eventPtr,
+! 				      int expect, int *code);
+! static int	IsSerialName(char *name);
+  
+  /* Private variables */
+  static Atom	registryProperty = None;
+*** ../vim-7.4.1199/src/Makefile	2016-01-24 20:54:32.590672156 +0100
+--- src/Makefile	2016-01-29 23:03:23.268171148 +0100
+***************
+*** 1660,1669 ****
+  	hashtab.pro \
+  	hangulin.pro \
+  	if_cscope.pro \
+! 	if_xcmdsrv.pro \
+  	if_python.pro \
+  	if_python3.pro \
+  	if_ruby.pro \
+  	json.pro \
+  	main.pro \
+  	mark.pro \
+--- 1660,1670 ----
+  	hashtab.pro \
+  	hangulin.pro \
+  	if_cscope.pro \
+! 	if_lua.pro \
+  	if_python.pro \
+  	if_python3.pro \
+  	if_ruby.pro \
++ 	if_xcmdsrv.pro \
+  	json.pro \
+  	main.pro \
+  	mark.pro \
+***************
+*** 1680,1685 ****
+--- 1681,1687 ----
+  	option.pro \
+  	os_unix.pro \
+  	popupmnu.pro \
++ 	pty.pro \
+  	quickfix.pro \
+  	regexp.pro \
+  	screen.pro \
+***************
+*** 1997,2002 ****
+--- 1999,2005 ----
+  	test_cursor_func \
+  	test_delete \
+  	test_expand \
++ 	test_glob2regpat \
+  	test_hardcopy \
+  	test_increment \
+  	test_json \
+*** ../vim-7.4.1199/src/version.c	2016-01-29 22:46:58.978534691 +0100
+--- src/version.c	2016-01-29 22:49:05.601201286 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1200,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+80. At parties, you introduce your spouse as your "service provider."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,45 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1251
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1251
+Problem:    New test file missing from distribution.
+Solution:   Add src/testdir/*.py.
+Files:      Filelist
+
+
+*** ../vim-7.4.1250/Filelist	2016-02-02 20:52:38.223567818 +0100
+--- Filelist	2016-02-03 21:54:58.501057069 +0100
+***************
+*** 91,96 ****
+--- 91,97 ----
+  		src/testdir/README.txt \
+  		src/testdir/Make_all.mak \
+  		src/testdir/*.in \
++ 		src/testdir/*.py \
+  		src/testdir/sautest/autoload/*.vim \
+  		src/testdir/runtest.vim \
+  		src/testdir/test[0-9]*.ok \
+*** ../vim-7.4.1250/src/version.c	2016-02-03 21:45:23.587069590 +0100
+--- src/version.c	2016-02-03 21:56:13.812269779 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1251,
+  /**/
+
+-- 
+Would you care for a drink?   I mean, if it were, like,
+disabled and you had to look after it?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

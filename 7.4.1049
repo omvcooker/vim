@@ -1,0 +1,55 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1049
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1049 (after patch 7.4.1048)
+Problem:    Wordcount test still still fails on MS-Windows.
+Solution:   Set 'fileformats' to "unix".
+Files:      src/testdir/test_wordcount.in
+
+
+*** ../vim-7.4.1048/src/testdir/test_wordcount.in	2016-01-04 12:26:19.869638601 +0100
+--- src/testdir/test_wordcount.in	2016-01-04 12:33:29.761000543 +0100
+***************
+*** 4,10 ****
+  :so small.vim
+  :so mbyte.vim
+  :set enc=utf8
+! :set selection=inclusive fileformat=unix
+  :new
+  :fu DoRecordWin(...)
+  :	wincmd k
+--- 4,10 ----
+  :so small.vim
+  :so mbyte.vim
+  :set enc=utf8
+! :set selection=inclusive fileformat=unix fileformats=unix
+  :new
+  :fu DoRecordWin(...)
+  :	wincmd k
+*** ../vim-7.4.1048/src/version.c	2016-01-04 12:26:19.869638601 +0100
+--- src/version.c	2016-01-04 12:36:03.447343913 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1049,
+  /**/
+
+-- 
+BEDEVERE: Look!  It's the old man from scene 24 - what's he Doing here?
+ARTHUR:   He is the keeper of the Bridge.  He asks each traveler five
+          questions ...
+GALAHAD:  Three questions.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

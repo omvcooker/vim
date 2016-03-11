@@ -1,0 +1,55 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1449
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1449
+Problem:    Build fails with job feature but without channel feature.
+Solution:   Add #ifdef.
+Files:      src/eval.c
+
+
+*** ../vim-7.4.1448/src/eval.c	2016-02-28 15:48:58.950599740 +0100
+--- src/eval.c	2016-02-28 16:40:07.402840319 +0100
+***************
+*** 7800,7805 ****
+--- 7800,7806 ----
+  	{
+  	    job_free(job);
+  	}
++ # ifdef FEAT_CHANNEL
+  	else if (job->jv_channel != NULL)
+  	{
+  	    /* Do remove the link to the channel, otherwise it hangs
+***************
+*** 7808,7813 ****
+--- 7809,7815 ----
+  	    channel_unref(job->jv_channel);
+  	    job->jv_channel = NULL;
+  	}
++ # endif
+      }
+  }
+  
+*** ../vim-7.4.1448/src/version.c	2016-02-28 16:29:46.213263102 +0100
+--- src/version.c	2016-02-28 16:40:39.182511517 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1449,
+  /**/
+
+-- 
+Communication is one of the most compli..., eh, well, it's hard.
+You know what I mean.  Not?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

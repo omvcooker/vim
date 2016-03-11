@@ -1,0 +1,89 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1038
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1038
+Problem:    Still get a warning for a deprecated function with gdk-pixbuf
+            2.31.
+Solution:   Change minimum minor version from 32 to 31.
+Files:      src/configure.in, src/auto/configure
+
+
+*** ../vim-7.4.1037/src/configure.in	2015-12-29 18:52:33.344054429 +0100
+--- src/configure.in	2016-01-02 22:43:14.371174575 +0100
+***************
+*** 2500,2506 ****
+    fi
+  fi
+  
+! dnl Check the version of Gdk-Pixbuf.  If the version is 2.32 or later and
+  dnl glib-compile-resources is found in PATH, use GResource.
+  if test "x$GUITYPE" = "xGTK"; then
+    AC_MSG_CHECKING([version of Gdk-Pixbuf])
+--- 2500,2506 ----
+    fi
+  fi
+  
+! dnl Check the version of Gdk-Pixbuf.  If the version is 2.31 or later and
+  dnl glib-compile-resources is found in PATH, use GResource.
+  if test "x$GUITYPE" = "xGTK"; then
+    AC_MSG_CHECKING([version of Gdk-Pixbuf])
+***************
+*** 2509,2515 ****
+      gdk_pixbuf_version_minor=`echo $gdk_pixbuf_version | \
+        sed -e 's/[[0-9]][[0-9]]*\.\([[0-9]][[0-9]]*\)\.[[0-9]][[0-9]]*/\1/'`
+      if test "x$gdk_pixbuf_version_minor" != x -a \
+!       $gdk_pixbuf_version_minor -ge 32 ; then
+        AC_MSG_RESULT([OK.])
+        AC_PATH_PROG(GLIB_COMPILE_RESOURCES,[glib-compile-resources],no)
+        AC_MSG_CHECKING([glib-compile-resources])
+--- 2509,2515 ----
+      gdk_pixbuf_version_minor=`echo $gdk_pixbuf_version | \
+        sed -e 's/[[0-9]][[0-9]]*\.\([[0-9]][[0-9]]*\)\.[[0-9]][[0-9]]*/\1/'`
+      if test "x$gdk_pixbuf_version_minor" != x -a \
+!       $gdk_pixbuf_version_minor -ge 31 ; then
+        AC_MSG_RESULT([OK.])
+        AC_PATH_PROG(GLIB_COMPILE_RESOURCES,[glib-compile-resources],no)
+        AC_MSG_CHECKING([glib-compile-resources])
+*** ../vim-7.4.1037/src/auto/configure	2015-12-29 18:52:33.344054429 +0100
+--- src/auto/configure	2016-01-02 22:44:37.866260689 +0100
+***************
+*** 8919,8925 ****
+      gdk_pixbuf_version_minor=`echo $gdk_pixbuf_version | \
+        sed -e 's/[0-9][0-9]*\.\([0-9][0-9]*\)\.[0-9][0-9]*/\1/'`
+      if test "x$gdk_pixbuf_version_minor" != x -a \
+!       $gdk_pixbuf_version_minor -ge 32 ; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: OK." >&5
+  $as_echo "OK." >&6; }
+        # Extract the first word of "glib-compile-resources", so it can be a program name with args.
+--- 8919,8925 ----
+      gdk_pixbuf_version_minor=`echo $gdk_pixbuf_version | \
+        sed -e 's/[0-9][0-9]*\.\([0-9][0-9]*\)\.[0-9][0-9]*/\1/'`
+      if test "x$gdk_pixbuf_version_minor" != x -a \
+!       $gdk_pixbuf_version_minor -ge 31 ; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: OK." >&5
+  $as_echo "OK." >&6; }
+        # Extract the first word of "glib-compile-resources", so it can be a program name with args.
+*** ../vim-7.4.1037/src/version.c	2016-01-02 22:25:40.674710064 +0100
+--- src/version.c	2016-01-02 22:44:30.490341419 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1038,
+  /**/
+
+-- 
+An indication you must be a manager:
+You give constructive feedback to your dog.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

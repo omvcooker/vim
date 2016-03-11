@@ -1,0 +1,290 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1209
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1209 (after 7.4.1207)
+Problem:    Can't build with Athena. (Elimar Riesebieter)
+Solution:   Fix function declarations.
+Files:      src/gui_athena.c, src/gui_x11.c, src/gui_at_sb.c, src/gui_at_fs.c
+
+
+*** ../vim-7.4.1208/src/gui_athena.c	2016-01-30 16:39:20.430376564 +0100
+--- src/gui_athena.c	2016-01-30 18:08:18.714906576 +0100
+***************
+*** 89,95 ****
+      static void
+  gui_athena_scroll_cb_jump(
+      Widget	w UNUSED,
+!     XtPointer	client_data, call_data)
+  {
+      scrollbar_T *sb, *sb_info;
+      long	value;
+--- 89,96 ----
+      static void
+  gui_athena_scroll_cb_jump(
+      Widget	w UNUSED,
+!     XtPointer	client_data,
+!     XtPointer	call_data)
+  {
+      scrollbar_T *sb, *sb_info;
+      long	value;
+***************
+*** 124,130 ****
+      static void
+  gui_athena_scroll_cb_scroll(
+      Widget	w UNUSED,
+!     XtPointer	client_data, call_data)
+  {
+      scrollbar_T *sb, *sb_info;
+      long	value;
+--- 125,132 ----
+      static void
+  gui_athena_scroll_cb_scroll(
+      Widget	w UNUSED,
+!     XtPointer	client_data,
+!     XtPointer	call_data)
+  {
+      scrollbar_T *sb, *sb_info;
+      long	value;
+*** ../vim-7.4.1208/src/gui_x11.c	2016-01-30 17:24:01.794502490 +0100
+--- src/gui_x11.c	2016-01-30 18:09:10.810365287 +0100
+***************
+*** 1761,1767 ****
+   * Get the position of the top left corner of the window.
+   */
+      int
+! gui_mch_get_winpos(int *x, *y)
+  {
+      Dimension	xpos, ypos;
+  
+--- 1761,1767 ----
+   * Get the position of the top left corner of the window.
+   */
+      int
+! gui_mch_get_winpos(int *x, int *y)
+  {
+      Dimension	xpos, ypos;
+  
+***************
+*** 1779,1785 ****
+   * coordinates.
+   */
+      void
+! gui_mch_set_winpos(int x, y)
+  {
+      XtVaSetValues(vimShell,
+  	XtNx,	x,
+--- 1779,1785 ----
+   * coordinates.
+   */
+      void
+! gui_mch_set_winpos(int x, int y)
+  {
+      XtVaSetValues(vimShell,
+  	XtNx,	x,
+***************
+*** 3181,3187 ****
+  static XtIntervalId	blink_timer = (XtIntervalId)0;
+  
+      void
+! gui_mch_set_blinking(long waittime, on, off)
+  {
+      blink_waittime = waittime;
+      blink_ontime = on;
+--- 3181,3187 ----
+  static XtIntervalId	blink_timer = (XtIntervalId)0;
+  
+      void
+! gui_mch_set_blinking(long waittime, long on, long off)
+  {
+      blink_waittime = waittime;
+      blink_ontime = on;
+*** ../vim-7.4.1208/src/gui_at_sb.c	2016-01-30 16:39:20.434376524 +0100
+--- src/gui_at_sb.c	2016-01-30 18:10:45.749378851 +0100
+***************
+*** 234,240 ****
+      static void
+  FillArea(
+      ScrollbarWidget	sbw,
+!     Position		top, bottom,
+      int			fill,
+      int			draw_shadow)
+  {
+--- 234,241 ----
+      static void
+  FillArea(
+      ScrollbarWidget	sbw,
+!     Position		top,
+!     Position		bottom,
+      int			fill,
+      int			draw_shadow)
+  {
+***************
+*** 641,647 ****
+  
+  
+      static Boolean
+! CompareEvents(XEvent *oldEvent, *newEvent)
+  {
+  #define Check(field) if (newEvent->field != oldEvent->field) return False;
+  
+--- 642,648 ----
+  
+  
+      static Boolean
+! CompareEvents(XEvent *oldEvent, XEvent *newEvent)
+  {
+  #define Check(field) if (newEvent->field != oldEvent->field) return False;
+  
+***************
+*** 713,719 ****
+      static void
+  ExtractPosition(
+      XEvent	    *event,
+!     Position	    *x, *y,	/* RETURN */
+      unsigned int    *state)	/* RETURN */
+  {
+      switch (event->type)
+--- 714,721 ----
+      static void
+  ExtractPosition(
+      XEvent	    *event,
+!     Position	    *x,		/* RETURN */
+!     Position	    *y,		/* RETURN */
+      unsigned int    *state)	/* RETURN */
+  {
+      switch (event->type)
+***************
+*** 816,822 ****
+   * Same as above, but for floating numbers.
+   */
+      static float
+! FloatInRange(float num, small, big)
+  {
+      return (num < small) ? small : ((num > big) ? big : num);
+  }
+--- 818,824 ----
+   * Same as above, but for floating numbers.
+   */
+      static float
+! FloatInRange(float num, float small, float big)
+  {
+      return (num < small) ? small : ((num > big) ? big : num);
+  }
+***************
+*** 984,990 ****
+  }
+  
+      static float
+! FractionLoc(ScrollbarWidget sbw, int x, y)
+  {
+      int	    margin;
+      float   height, width;
+--- 986,992 ----
+  }
+  
+      static float
+! FractionLoc(ScrollbarWidget sbw, int x, int y)
+  {
+      int	    margin;
+      float   height, width;
+***************
+*** 1165,1171 ****
+   * Set the scroll bar to the given location.
+   */
+      void
+! vim_XawScrollbarSetThumb(Widget w, double top, shown, max)
+  {
+      ScrollbarWidget sbw = (ScrollbarWidget) w;
+  
+--- 1167,1173 ----
+   * Set the scroll bar to the given location.
+   */
+      void
+! vim_XawScrollbarSetThumb(Widget w, double top, double shown, double max)
+  {
+      ScrollbarWidget sbw = (ScrollbarWidget) w;
+  
+*** ../vim-7.4.1208/src/gui_at_fs.c	2016-01-30 16:39:20.430376564 +0100
+--- src/gui_at_fs.c	2016-01-30 18:12:15.312448283 +0100
+***************
+*** 495,501 ****
+  static int SFcompareLogins(const void *p, const void *q);
+  
+      static int
+! SFcompareLogins(const void *p, *q)
+  {
+      return strcmp(((SFLogin *)p)->name, ((SFLogin *)q)->name);
+  }
+--- 495,501 ----
+  static int SFcompareLogins(const void *p, const void *q);
+  
+      static int
+! SFcompareLogins(const void *p, const void *q)
+  {
+      return strcmp(((SFLogin *)p)->name, ((SFLogin *)q)->name);
+  }
+***************
+*** 571,577 ****
+  static int SFfindHomeDir(char *begin, char *end);
+  
+      static int
+! SFfindHomeDir(char *begin, *end)
+  {
+      char	save;
+      char	*theRest;
+--- 571,577 ----
+  static int SFfindHomeDir(char *begin, char *end);
+  
+      static int
+! SFfindHomeDir(char *begin, char *end)
+  {
+      char	save;
+      char	*theRest;
+***************
+*** 2709,2717 ****
+      char	*prompt,
+      char	*init_path,
+      int		(*show_entry)(),
+!     int		x, y,
+!     guicolor_T	fg, bg,
+!     guicolor_T	scroll_fg, scroll_bg) /* The "Scrollbar" group colors */
+  {
+      static int	firstTime = 1;
+      XEvent	event;
+--- 2709,2720 ----
+      char	*prompt,
+      char	*init_path,
+      int		(*show_entry)(),
+!     int		x,
+!     int		y,
+!     guicolor_T	fg,
+!     guicolor_T	bg,
+!     guicolor_T	scroll_fg,
+!     guicolor_T	scroll_bg) /* The "Scrollbar" group colors */
+  {
+      static int	firstTime = 1;
+      XEvent	event;
+*** ../vim-7.4.1208/src/version.c	2016-01-30 17:24:01.802502407 +0100
+--- src/version.c	2016-01-30 17:24:46.038043171 +0100
+***************
+*** 748,749 ****
+--- 748,751 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1209,
+  /**/
+
+-- 
+From "know your smileys":
+ !-|	I-am-a-Cylon-Centurian-with-one-red-eye-bouncing-back-and-forth
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

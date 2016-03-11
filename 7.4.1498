@@ -1,0 +1,48 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1498
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1498
+Problem:    Error for locked item when using json_decode(). (Shougo)
+Solution:   Initialize v_lock.
+Files:      src/json.c
+
+
+*** ../vim-7.4.1497/src/json.c	2016-02-29 23:12:44.214899375 +0100
+--- src/json.c	2016-03-05 23:21:19.530465637 +0100
+***************
+*** 506,511 ****
+--- 506,512 ----
+  		return FAIL;
+  	    }
+  	    di->di_tv = item;
++ 	    di->di_tv.v_lock = 0;
+  	    if (dict_add(res->vval.v_dict, di) == FAIL)
+  	    {
+  		dictitem_free(di);
+*** ../vim-7.4.1497/src/version.c	2016-03-05 22:40:46.880980377 +0100
+--- src/version.c	2016-03-05 23:22:27.401726934 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1498,
+  /**/
+
+-- 
+For humans, honesty is a matter of degree.  Engineers are always honest in
+matters of technology and human relationships.  That's why it's a good idea
+to keep engineers away from customers, romantic interests, and other people
+who can't handle the truth.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

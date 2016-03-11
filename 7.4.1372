@@ -1,0 +1,522 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1372
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1372
+Problem:    Channel read implementation is incomplete.
+Solution:   Add ch_read() and options for ch_readraw().
+Files:      src/channel.c, src/eval.c, src/structs.h, src/proto/channel.pro,
+            src/testdir/test_channel.vim
+
+
+*** ../vim-7.4.1371/src/channel.c	2016-02-20 18:44:34.320779512 +0100
+--- src/channel.c	2016-02-20 19:33:21.437702415 +0100
+***************
+*** 1696,1707 ****
+   * Returns NULL in case of error or timeout.
+   */
+      char_u *
+! channel_read_block(channel_T *channel, int part)
+  {
+      char_u	*buf;
+      char_u	*msg;
+      ch_mode_T	mode = channel->ch_part[part].ch_mode;
+-     int		timeout = channel->ch_part[part].ch_timeout;
+      sock_T	fd = channel->ch_part[part].ch_fd;
+      char_u	*nl;
+  
+--- 1696,1706 ----
+   * Returns NULL in case of error or timeout.
+   */
+      char_u *
+! channel_read_block(channel_T *channel, int part, int timeout)
+  {
+      char_u	*buf;
+      char_u	*msg;
+      ch_mode_T	mode = channel->ch_part[part].ch_mode;
+      sock_T	fd = channel->ch_part[part].ch_fd;
+      char_u	*nl;
+  
+***************
+*** 1753,1768 ****
+  /*
+   * Read one JSON message with ID "id" from "channel"/"part" and store the
+   * result in "rettv".
+   * Blocks until the message is received or the timeout is reached.
+   */
+      int
+! channel_read_json_block(channel_T *channel, int part, int id, typval_T **rettv)
+  {
+      int		more;
+      sock_T	fd;
+  
+      ch_log(channel, "Reading JSON");
+!     channel->ch_part[part].ch_block_id = id;
+      for (;;)
+      {
+  	more = channel_parse_json(channel, part);
+--- 1752,1774 ----
+  /*
+   * Read one JSON message with ID "id" from "channel"/"part" and store the
+   * result in "rettv".
++  * When "id" is -1 accept any message;
+   * Blocks until the message is received or the timeout is reached.
+   */
+      int
+! channel_read_json_block(
+! 	channel_T *channel,
+! 	int part,
+! 	int timeout,
+! 	int id,
+! 	typval_T **rettv)
+  {
+      int		more;
+      sock_T	fd;
+  
+      ch_log(channel, "Reading JSON");
+!     if (id != -1)
+! 	channel->ch_part[part].ch_block_id = id;
+      for (;;)
+      {
+  	more = channel_parse_json(channel, part);
+***************
+*** 1781,1790 ****
+  	    if (channel_parse_messages())
+  		continue;
+  
+! 	    /* Wait for up to the channel timeout. */
+  	    fd = channel->ch_part[part].ch_fd;
+! 	    if (fd == INVALID_FD || channel_wait(channel, fd,
+! 				   channel->ch_part[part].ch_timeout) == FAIL)
+  		break;
+  	    channel_read(channel, part, "channel_read_json_block");
+  	}
+--- 1787,1795 ----
+  	    if (channel_parse_messages())
+  		continue;
+  
+! 	    /* Wait for up to the timeout. */
+  	    fd = channel->ch_part[part].ch_fd;
+! 	    if (fd == INVALID_FD || channel_wait(channel, fd, timeout) == FAIL)
+  		break;
+  	    channel_read(channel, part, "channel_read_json_block");
+  	}
+***************
+*** 2161,2164 ****
+--- 2166,2178 ----
+      return channel->ch_part[part].ch_mode;
+  }
+  
++ /*
++  * Return the timeout of "channel"/"part"
++  */
++     int
++ channel_get_timeout(channel_T *channel, int part)
++ {
++     return channel->ch_part[part].ch_timeout;
++ }
++ 
+  #endif /* FEAT_CHANNEL */
+*** ../vim-7.4.1371/src/eval.c	2016-02-20 18:18:51.757033160 +0100
+--- src/eval.c	2016-02-20 19:40:55.448896485 +0100
+***************
+*** 507,512 ****
+--- 507,513 ----
+  static void f_ch_log(typval_T *argvars, typval_T *rettv);
+  static void f_ch_logfile(typval_T *argvars, typval_T *rettv);
+  static void f_ch_open(typval_T *argvars, typval_T *rettv);
++ static void f_ch_read(typval_T *argvars, typval_T *rettv);
+  static void f_ch_readraw(typval_T *argvars, typval_T *rettv);
+  static void f_ch_sendexpr(typval_T *argvars, typval_T *rettv);
+  static void f_ch_sendraw(typval_T *argvars, typval_T *rettv);
+***************
+*** 8129,8134 ****
+--- 8130,8136 ----
+      {"ch_log",		1, 2, f_ch_log},
+      {"ch_logfile",	1, 2, f_ch_logfile},
+      {"ch_open",		1, 2, f_ch_open},
++     {"ch_read",		1, 2, f_ch_read},
+      {"ch_readraw",	1, 2, f_ch_readraw},
+      {"ch_sendexpr",	2, 3, f_ch_sendexpr},
+      {"ch_sendraw",	2, 3, f_ch_sendraw},
+***************
+*** 9881,9887 ****
+  get_job_options(typval_T *tv, jobopt_T *opt, int supported)
+  {
+      typval_T	*item;
+!     char_u	*mode;
+      dict_T	*dict;
+      int		todo;
+      hashitem_T	*hi;
+--- 9883,9889 ----
+  get_job_options(typval_T *tv, jobopt_T *opt, int supported)
+  {
+      typval_T	*item;
+!     char_u	*val;
+      dict_T	*dict;
+      int		todo;
+      hashitem_T	*hi;
+***************
+*** 9909,9926 ****
+  		if (!(supported & JO_MODE))
+  		    break;
+  		opt->jo_set |= JO_MODE;
+! 		mode = get_tv_string(item);
+! 		if (STRCMP(mode, "nl") == 0)
+  		    opt->jo_mode = MODE_NL;
+! 		else if (STRCMP(mode, "raw") == 0)
+  		    opt->jo_mode = MODE_RAW;
+! 		else if (STRCMP(mode, "js") == 0)
+  		    opt->jo_mode = MODE_JS;
+! 		else if (STRCMP(mode, "json") == 0)
+  		    opt->jo_mode = MODE_JSON;
+  		else
+  		{
+! 		    EMSG2(_(e_invarg2), mode);
+  		    return FAIL;
+  		}
+  	    }
+--- 9911,9928 ----
+  		if (!(supported & JO_MODE))
+  		    break;
+  		opt->jo_set |= JO_MODE;
+! 		val = get_tv_string(item);
+! 		if (STRCMP(val, "nl") == 0)
+  		    opt->jo_mode = MODE_NL;
+! 		else if (STRCMP(val, "raw") == 0)
+  		    opt->jo_mode = MODE_RAW;
+! 		else if (STRCMP(val, "js") == 0)
+  		    opt->jo_mode = MODE_JS;
+! 		else if (STRCMP(val, "json") == 0)
+  		    opt->jo_mode = MODE_JSON;
+  		else
+  		{
+! 		    EMSG2(_(e_invarg2), val);
+  		    return FAIL;
+  		}
+  	    }
+***************
+*** 9950,9955 ****
+--- 9952,9978 ----
+  		opt->jo_set |= JO_TIMEOUT;
+  		opt->jo_timeout = get_tv_number(item);
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "part") == 0)
++ 	    {
++ 		if (!(supported & JO_PART))
++ 		    break;
++ 		opt->jo_set |= JO_PART;
++ 		val = get_tv_string(item);
++ 		if (STRCMP(val, "err") == 0)
++ 		    opt->jo_part = PART_ERR;
++ 		else
++ 		{
++ 		    EMSG2(_(e_invarg2), val);
++ 		    return FAIL;
++ 		}
++ 	    }
++ 	    else if (STRCMP(hi->hi_key, "id") == 0)
++ 	    {
++ 		if (!(supported & JO_ID))
++ 		    break;
++ 		opt->jo_set |= JO_ID;
++ 		opt->jo_id = get_tv_number(item);
++ 	    }
+  	    else
+  		break;
+  	    --todo;
+***************
+*** 10107,10136 ****
+  }
+  
+  /*
+!  * "ch_readraw()" function
+   */
+      static void
+! f_ch_readraw(typval_T *argvars, typval_T *rettv)
+  {
+      channel_T	*channel;
+      int		part;
+  
+      /* return an empty string by default */
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = NULL;
+  
+!     /* TODO: use timeout from the options */
+!     /* TODO: read from stderr */
+  
+      channel = get_channel_arg(&argvars[0]);
+      if (channel != NULL)
+      {
+! 	part = channel_part_read(channel);
+! 	rettv->vval.v_string = channel_read_block(channel, part);
+      }
+  }
+  
+  /*
+   * common for "sendexpr()" and "sendraw()"
+   * Returns the channel if the caller should read the response.
+   * Sets "part_read" to the the read fd.
+--- 10130,10206 ----
+  }
+  
+  /*
+!  * Common for ch_read() and ch_readraw().
+   */
+      static void
+! common_channel_read(typval_T *argvars, typval_T *rettv, int raw)
+  {
+      channel_T	*channel;
+      int		part;
++     jobopt_T	opt;
++     int		mode;
++     int		timeout;
++     int		id = -1;
++     typval_T	*listtv = NULL;
+  
+      /* return an empty string by default */
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = NULL;
+  
+!     opt.jo_set = 0;
+!     if (get_job_options(&argvars[1], &opt, JO_TIMEOUT + JO_PART + JO_ID)
+! 								      == FAIL)
+! 	return;
+  
+      channel = get_channel_arg(&argvars[0]);
+      if (channel != NULL)
+      {
+! 	if (opt.jo_set & JO_PART)
+! 	    part = opt.jo_part;
+! 	else
+! 	    part = channel_part_read(channel);
+! 	mode = channel_get_mode(channel, part);
+! 	timeout = channel_get_timeout(channel, part);
+! 	if (opt.jo_set & JO_TIMEOUT)
+! 	    timeout = opt.jo_timeout;
+! 
+! 	if (raw || mode == MODE_RAW || mode == MODE_NL)
+! 	    rettv->vval.v_string = channel_read_block(channel, part, timeout);
+! 	else
+! 	{
+! 	    if (opt.jo_set & JO_ID)
+! 		id = opt.jo_id;
+! 	    channel_read_json_block(channel, part, timeout, id, &listtv);
+! 	    if (listtv != NULL)
+! 		*rettv = *listtv;
+! 	    else
+! 	    {
+! 		rettv->v_type = VAR_SPECIAL;
+! 		rettv->vval.v_number = VVAL_NONE;
+! 	    }
+! 	}
+      }
+  }
+  
+  /*
++  * "ch_read()" function
++  */
++     static void
++ f_ch_read(typval_T *argvars, typval_T *rettv)
++ {
++     common_channel_read(argvars, rettv, FALSE);
++ }
++ 
++ /*
++  * "ch_readraw()" function
++  */
++     static void
++ f_ch_readraw(typval_T *argvars, typval_T *rettv)
++ {
++     common_channel_read(argvars, rettv, TRUE);
++ }
++ 
++ /*
+   * common for "sendexpr()" and "sendraw()"
+   * Returns the channel if the caller should read the response.
+   * Sets "part_read" to the the read fd.
+***************
+*** 10177,10182 ****
+--- 10247,10253 ----
+      ch_mode_T	ch_mode;
+      int		part_send;
+      int		part_read;
++     int		timeout;
+  
+      /* return an empty string by default */
+      rettv->v_type = VAR_STRING;
+***************
+*** 10204,10210 ****
+      vim_free(text);
+      if (channel != NULL)
+      {
+! 	if (channel_read_json_block(channel, part_read, id, &listtv) == OK)
+  	{
+  	    list_T *list = listtv->vval.v_list;
+  
+--- 10275,10284 ----
+      vim_free(text);
+      if (channel != NULL)
+      {
+! 	/* TODO: timeout from options */
+! 	timeout = channel_get_timeout(channel, part_read);
+! 	if (channel_read_json_block(channel, part_read, timeout, id, &listtv)
+! 									== OK)
+  	{
+  	    list_T *list = listtv->vval.v_list;
+  
+***************
+*** 10227,10232 ****
+--- 10301,10307 ----
+      char_u	*text;
+      channel_T	*channel;
+      int		part_read;
++     int		timeout;
+  
+      /* return an empty string by default */
+      rettv->v_type = VAR_STRING;
+***************
+*** 10235,10241 ****
+      text = get_tv_string_buf(&argvars[1], buf);
+      channel = send_common(argvars, text, 0, "sendraw", &part_read);
+      if (channel != NULL)
+! 	rettv->vval.v_string = channel_read_block(channel, part_read);
+  }
+  
+  /*
+--- 10310,10320 ----
+      text = get_tv_string_buf(&argvars[1], buf);
+      channel = send_common(argvars, text, 0, "sendraw", &part_read);
+      if (channel != NULL)
+!     {
+! 	/* TODO: timeout from options */
+! 	timeout = channel_get_timeout(channel, part_read);
+! 	rettv->vval.v_string = channel_read_block(channel, part_read, timeout);
+!     }
+  }
+  
+  /*
+*** ../vim-7.4.1371/src/structs.h	2016-02-20 18:18:51.761033118 +0100
+--- src/structs.h	2016-02-20 19:26:01.394367922 +0100
+***************
+*** 1377,1382 ****
+--- 1377,1384 ----
+  #define JO_CALLBACK	2	/* channel callback */
+  #define JO_WAITTIME	4	/* only for ch_open() */
+  #define JO_TIMEOUT	8	/* all timeouts */
++ #define JO_PART		16	/* "part" */
++ #define JO_ID		32	/* "id" */
+  #define JO_ALL		0xffffff
+  
+  /*
+***************
+*** 1390,1395 ****
+--- 1392,1399 ----
+      char_u	*jo_callback;	/* not allocated! */
+      int		jo_waittime;
+      int		jo_timeout;
++     int		jo_part;
++     int		jo_id;
+  } jobopt_T;
+  
+  
+*** ../vim-7.4.1371/src/proto/channel.pro	2016-02-20 18:18:51.761033118 +0100
+--- src/proto/channel.pro	2016-02-20 19:30:05.387780642 +0100
+***************
+*** 23,31 ****
+  void channel_free_all(void);
+  int channel_get_id(void);
+  void channel_read(channel_T *channel, int part, char *func);
+! char_u *channel_read_block(channel_T *channel, int part);
+! int channel_read_json_block(channel_T *channel, int part, int id, typval_T **rettv);
+! channel_T *channel_fd2channel(sock_T fd, int *part);
+  void channel_handle_events(void);
+  int channel_send(channel_T *channel, int part, char_u *buf, char *fun);
+  int channel_poll_setup(int nfd_in, void *fds_in);
+--- 23,31 ----
+  void channel_free_all(void);
+  int channel_get_id(void);
+  void channel_read(channel_T *channel, int part, char *func);
+! char_u *channel_read_block(channel_T *channel, int part, int timeout);
+! int channel_read_json_block(channel_T *channel, int part, int timeout, int id, typval_T **rettv);
+! channel_T *channel_fd2channel(sock_T fd, int *partp);
+  void channel_handle_events(void);
+  int channel_send(channel_T *channel, int part, char_u *buf, char *fun);
+  int channel_poll_setup(int nfd_in, void *fds_in);
+***************
+*** 37,40 ****
+--- 37,41 ----
+  int channel_part_send(channel_T *channel);
+  int channel_part_read(channel_T *channel);
+  ch_mode_T channel_get_mode(channel_T *channel, int part);
++ int channel_get_timeout(channel_T *channel, int part);
+  /* vim: set ft=c : */
+*** ../vim-7.4.1371/src/testdir/test_channel.vim	2016-02-19 23:21:21.674060254 +0100
+--- src/testdir/test_channel.vim	2016-02-20 19:54:01.924617414 +0100
+***************
+*** 184,189 ****
+--- 184,204 ----
+  
+    call assert_equal('ok', ch_sendexpr(handle, 'empty-request'))
+  
++   " Reading while there is nothing available.
++   call assert_equal(v:none, ch_read(handle, {'timeout': 0}))
++   let start = reltime()
++   call assert_equal(v:none, ch_read(handle, {'timeout': 333}))
++   let elapsed = reltime(start)
++   call assert_true(reltimefloat(elapsed) > 0.3)
++   call assert_true(reltimefloat(elapsed) < 0.6)
++ 
++   " Send without waiting for a response, then wait for a response.
++   call ch_sendexpr(handle, 'wait a bit',  {'callback': 0})
++   let resp = ch_read(handle)
++   call assert_equal(type([]), type(resp))
++   call assert_equal(type(11), type(resp[0]))
++   call assert_equal('waited', resp[1])
++ 
+    " make the server quit, can't check if this works, should not hang.
+    call ch_sendexpr(handle, '!quit!', {'callback': 0})
+  endfunc
+***************
+*** 292,299 ****
+      " Oops, port does exists.
+      call ch_close(handle)
+    else
+!     " Failed connection doesn't wait the full time on Unix.
+!     " TODO: why is MS-Windows different?
+      let elapsed = reltime(start)
+      call assert_true(reltimefloat(elapsed) < 1.0)
+    endif
+--- 307,313 ----
+      " Oops, port does exists.
+      call ch_close(handle)
+    else
+!     " Failed connection should wait about 500 msec.
+      let elapsed = reltime(start)
+      call assert_true(reltimefloat(elapsed) < 1.0)
+    endif
+*** ../vim-7.4.1371/src/version.c	2016-02-20 18:44:34.320779512 +0100
+--- src/version.c	2016-02-20 19:54:55.844049749 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1372,
+  /**/
+
+-- 
+This is the polymorph virus!  Follow these instructions carefully:
+1. Send this message to everybody you know.
+2. Format your harddisk.
+Thank you for your cooperation in spreading the most powerful virus ever!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

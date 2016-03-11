@@ -1,0 +1,83 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1241
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1241 (after 7.4.1238)
+Problem:    Missing change in Makefile due to diff mismatch
+Solution:   Update the list of object files.
+Files:      src/Makefile
+
+
+*** ../vim-7.4.1240/src/Makefile	2016-02-02 18:19:52.798743887 +0100
+--- src/Makefile	2016-02-02 18:19:30.306977252 +0100
+***************
+*** 1591,1597 ****
+  	objects/if_cscope.o \
+  	objects/if_xcmdsrv.o \
+  	objects/mark.o \
+!         objects/memline.o \
+  	objects/menu.o \
+  	objects/message.o \
+  	objects/misc1.o \
+--- 1591,1597 ----
+  	objects/if_cscope.o \
+  	objects/if_xcmdsrv.o \
+  	objects/mark.o \
+! 	objects/memline.o \
+  	objects/menu.o \
+  	objects/message.o \
+  	objects/misc1.o \
+***************
+*** 1633,1643 ****
+  	$(WSDEBUG_OBJ)
+  
+  OBJ = $(OBJ_COMMON) \
+  	objects/main.o \
+  	objects/memfile.o
+  
+  MEMFILE_TEST_OBJ = $(OBJ_COMMON) \
+!         objects/memfile_test.o
+  
+  PRO_AUTO = \
+  	blowfish.pro \
+--- 1633,1649 ----
+  	$(WSDEBUG_OBJ)
+  
+  OBJ = $(OBJ_COMMON) \
++ 	objects/json.o \
+  	objects/main.o \
+  	objects/memfile.o
+  
++ JSON_TEST_OBJ = $(OBJ_COMMON) \
++ 	objects/json_test.o \
++ 	objects/memfile.o
++ 
+  MEMFILE_TEST_OBJ = $(OBJ_COMMON) \
+! 	objects/json.o \
+! 	objects/memfile_test.o
+  
+  PRO_AUTO = \
+  	blowfish.pro \
+*** ../vim-7.4.1240/src/version.c	2016-02-02 18:50:41.407602846 +0100
+--- src/version.c	2016-02-02 18:56:23.832057529 +0100
+***************
+*** 744,745 ****
+--- 744,747 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1241,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+109. You actually read -- and enjoy -- lists like this.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

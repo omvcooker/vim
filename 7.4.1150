@@ -1,0 +1,194 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1150
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1150
+Problem:    'langmap' applies to the first character typed in Select mode.
+            (David Watson)
+Solution:   Check for SELECTMODE. (Christian Brabandt, closes #572)
+            Add the 'x' flag to feedkeys().
+Files:      src/getchar.c, src/normal.c, src/testdir/test_langmap.vim,
+            src/ex_docmd.c, src/proto/ex_docmd.pro, src/testdir/Make_all.mak,
+	    runtime/doc/eval.txt
+
+
+*** ../vim-7.4.1149/src/getchar.c	2015-12-31 19:06:56.052081865 +0100
+--- src/getchar.c	2016-01-21 22:27:13.054855993 +0100
+***************
+*** 2149,2155 ****
+  			else
+  			{
+  			    LANGMAP_ADJUST(c1,
+! 					   (State & (CMDLINE | INSERT)) == 0);
+  			    nolmaplen = 0;
+  			}
+  #endif
+--- 2149,2156 ----
+  			else
+  			{
+  			    LANGMAP_ADJUST(c1,
+! 					   (State & (CMDLINE | INSERT)) == 0
+! 					   && get_real_state() != SELECTMODE);
+  			    nolmaplen = 0;
+  			}
+  #endif
+*** ../vim-7.4.1149/src/normal.c	2016-01-12 22:20:53.034213670 +0100
+--- src/normal.c	2016-01-21 22:57:10.083976286 +0100
+***************
+*** 638,644 ****
+       * Get the command character from the user.
+       */
+      c = safe_vgetc();
+!     LANGMAP_ADJUST(c, TRUE);
+  
+      /*
+       * If a mapping was started in Visual or Select mode, remember the length
+--- 638,644 ----
+       * Get the command character from the user.
+       */
+      c = safe_vgetc();
+!     LANGMAP_ADJUST(c, get_real_state() != SELECTMODE);
+  
+      /*
+       * If a mapping was started in Visual or Select mode, remember the length
+*** ../vim-7.4.1149/src/testdir/test_langmap.vim	2016-01-21 23:30:38.231042140 +0100
+--- src/testdir/test_langmap.vim	2016-01-21 23:21:18.508896103 +0100
+***************
+*** 0 ****
+--- 1,24 ----
++ " tests for 'langmap'
++ 
++ func Test_langmap()
++   new
++   set langmap=}l,^x,%v
++ 
++   call setline(1, ['abc'])
++   call feedkeys('gg0}^', 'tx')
++   call assert_equal('ac', getline(1))
++ 
++   " in Replace mode
++   " need silent! to avoid a delay when entering Insert mode
++   call setline(1, ['abcde'])
++   silent! call feedkeys("gg0lR%{z\<Esc>00", 'tx')
++   call assert_equal('a%{ze', getline(1))
++ 
++   " in Select mode
++   " need silent! to avoid a delay when entering Insert mode
++   call setline(1, ['abcde'])
++   silent! call feedkeys("gg0}%}\<C-G>}^\<Esc>00", 'tx')
++   call assert_equal('a}^de', getline(1))
++ 
++   quit!
++ endfunc
+*** ../vim-7.4.1149/src/ex_docmd.c	2016-01-10 13:54:42.871030788 +0100
+--- src/ex_docmd.c	2016-01-21 22:34:03.378531788 +0100
+***************
+*** 10226,10242 ****
+      int		remap;
+      int		silent;
+  {
+      oparg_T	oa;
+  
+-     /*
+-      * Stuff the argument into the typeahead buffer.
+-      * Execute normal_cmd() until there is no typeahead left.
+-      */
+      clear_oparg(&oa);
+      finish_op = FALSE;
+!     ins_typebuf(cmd, remap, 0, TRUE, silent);
+!     while ((!stuff_empty() || (!typebuf_typed() && typebuf.tb_len > 0))
+! 								  && !got_int)
+      {
+  	update_topline_cursor();
+  	normal_cmd(&oa, TRUE);	/* execute a Normal mode cmd */
+--- 10226,10251 ----
+      int		remap;
+      int		silent;
+  {
++     /* Stuff the argument into the typeahead buffer. */
++     ins_typebuf(cmd, remap, 0, TRUE, silent);
++     exec_normal(FALSE);
++ }
++ #endif
++ 
++ #if defined(FEAT_EX_EXTRA) || defined(FEAT_MENU) || defined(FEAT_EVAL) \
++ 	|| defined(PROTO)
++ /*
++  * Execute normal_cmd() until there is no typeahead left.
++  */
++     void
++ exec_normal(int was_typed)
++ {
+      oparg_T	oa;
+  
+      clear_oparg(&oa);
+      finish_op = FALSE;
+!     while ((!stuff_empty() || ((was_typed || !typebuf_typed())
+! 		    && typebuf.tb_len > 0)) && !got_int)
+      {
+  	update_topline_cursor();
+  	normal_cmd(&oa, TRUE);	/* execute a Normal mode cmd */
+*** ../vim-7.4.1149/src/proto/ex_docmd.pro	2016-01-19 13:21:55.837334377 +0100
+--- src/proto/ex_docmd.pro	2016-01-21 22:34:07.874484415 +0100
+***************
+*** 50,55 ****
+--- 50,56 ----
+  FILE *open_exfile(char_u *fname, int forceit, char *mode);
+  void update_topline_cursor(void);
+  void exec_normal_cmd(char_u *cmd, int remap, int silent);
++ void exec_normal(int was_typed);
+  int find_cmdline_var(char_u *src, int *usedlen);
+  char_u *eval_vars(char_u *src, char_u *srcstart, int *usedlen, linenr_T *lnump, char_u **errormsg, int *escaped);
+  char_u *expand_sfile(char_u *arg);
+*** ../vim-7.4.1149/src/testdir/Make_all.mak	2016-01-19 22:28:54.615592984 +0100
+--- src/testdir/Make_all.mak	2016-01-21 22:14:20.747000441 +0100
+***************
+*** 173,178 ****
+--- 173,179 ----
+  	    test_cdo.res \
+  	    test_hardcopy.res \
+  	    test_increment.res \
++ 	    test_langmap.res \
+  	    test_perl.res \
+  	    test_quickfix.res \
+  	    test_syntax.res \
+*** ../vim-7.4.1149/runtime/doc/eval.txt	2016-01-17 21:48:55.837086369 +0100
+--- runtime/doc/eval.txt	2016-01-21 23:29:26.439795247 +0100
+***************
+*** 3081,3086 ****
+--- 3102,3112 ----
+  			if coming from a mapping.  This matters for undo,
+  			opening folds, etc.
+  		'i'	Insert the string instead of appending (see above).
++ 		'x'	Execute commands until typeahead is empty.  This is
++ 			similar to using ":normal!".  You can call feedkeys()
++ 			several times without 'x' and then one time with 'x'
++ 			(possibly with an empty {string}) to execute all the
++ 			typeahead.
+  		Return value is always 0.
+  
+  filereadable({file})					*filereadable()*
+*** ../vim-7.4.1149/src/version.c	2016-01-21 21:48:02.263696689 +0100
+--- src/version.c	2016-01-21 23:30:07.215367500 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1150,
+  /**/
+
+-- 
+If they don't keep on exercising their lips, he thought, their brains
+start working.
+		-- Douglas Adams, "The Hitchhiker's Guide to the Galaxy"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1367
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1367
+Problem:    Compiler warning for unreachable code.
+Solution:   Remove a "break". (Danek Duvall)
+Files:      src/json.c
+
+
+*** ../vim-7.4.1366/src/json.c	2016-02-13 23:22:35.093363549 +0100
+--- src/json.c	2016-02-20 15:25:18.076659627 +0100
+***************
+*** 272,278 ****
+  	    break;
+  #endif
+  	case VAR_UNKNOWN:
+! 	    EMSG2(_(e_intern2), "json_encode_item()"); break;
+  	    return FAIL;
+      }
+      return OK;
+--- 272,278 ----
+  	    break;
+  #endif
+  	case VAR_UNKNOWN:
+! 	    EMSG2(_(e_intern2), "json_encode_item()");
+  	    return FAIL;
+      }
+      return OK;
+*** ../vim-7.4.1366/src/version.c	2016-02-20 15:10:46.697695089 +0100
+--- src/version.c	2016-02-20 15:25:51.440313677 +0100
+***************
+*** 749,750 ****
+--- 749,752 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1367,
+  /**/
+
+-- 
+GUARD #1:  What, ridden on a horse?
+ARTHUR:    Yes!
+GUARD #1:  You're using coconuts!
+ARTHUR:    What?
+GUARD #1:  You've got two empty halves of coconut and you're bangin' 'em
+           together.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

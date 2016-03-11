@@ -1,0 +1,85 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.998
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.998
+Problem:    Running tests in shadow directory fails.  Test 49 fails.
+Solution:   Link more files for the shadow directory. Make test 49 end up in
+            the right buffer.
+Files:      src/Makefile, src/testdir/test49.in
+
+
+*** ../vim-7.4.997/src/Makefile	2015-12-29 18:52:33.340054471 +0100
+--- src/Makefile	2015-12-29 20:49:39.407869461 +0100
+***************
+*** 2461,2467 ****
+  
+  shadow:	runtime pixmaps
+  	mkdir $(SHADOWDIR)
+! 	cd $(SHADOWDIR); ln -s ../*.[ch] ../*.in ../*.sh ../*.xs ../*.xbm ../toolcheck ../proto ../vimtutor ../gvimtutor ../mkinstalldirs .
+  	mkdir $(SHADOWDIR)/auto
+  	cd $(SHADOWDIR)/auto; ln -s ../../auto/configure .
+  	mkdir $(SHADOWDIR)/po
+--- 2461,2467 ----
+  
+  shadow:	runtime pixmaps
+  	mkdir $(SHADOWDIR)
+! 	cd $(SHADOWDIR); ln -s ../*.[ch] ../*.in ../*.sh ../*.xs ../*.xbm ../gui_gtk_gresources.xml ../toolcheck ../proto ../vimtutor ../gvimtutor ../mkinstalldirs .
+  	mkdir $(SHADOWDIR)/auto
+  	cd $(SHADOWDIR)/auto; ln -s ../../auto/configure .
+  	mkdir $(SHADOWDIR)/po
+***************
+*** 2480,2485 ****
+--- 2480,2486 ----
+  	fi
+  	mkdir $(SHADOWDIR)/testdir
+  	cd $(SHADOWDIR)/testdir; ln -s ../../testdir/Makefile \
++ 				 ../../testdir/Make_all.mak \
+  				 ../../testdir/vimrc.unix \
+  				 ../../testdir/*.in \
+  				 ../../testdir/*.vim \
+*** ../vim-7.4.997/src/testdir/test49.in	2014-05-13 20:19:53.569808877 +0200
+--- src/testdir/test49.in	2015-12-29 21:31:07.836739095 +0100
+***************
+*** 8,14 ****
+  :se nocp nomore viminfo+=nviminfo
+  :lang mess C
+  :so test49.vim
+! GGGGGGGGGGGGGG"rp:.-,$w! test.out
+  :"
+  :" make valgrind happy
+  :redir => funclist
+--- 8,16 ----
+  :se nocp nomore viminfo+=nviminfo
+  :lang mess C
+  :so test49.vim
+! :" Go back to this file and append the results from register r.
+! :buf test49.in
+! G"rp:/^Results/,$w! test.out
+  :"
+  :" make valgrind happy
+  :redir => funclist
+*** ../vim-7.4.997/src/version.c	2015-12-29 20:32:17.579209977 +0100
+--- src/version.c	2015-12-29 21:31:42.808355954 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     998,
+  /**/
+
+-- 
+The question is:  What do you do with your life?
+The wrong answer is: Become the richest guy in the graveyard.
+				(billionaire and Oracle founder Larry Ellison)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

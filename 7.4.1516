@@ -1,0 +1,190 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1516
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1516
+Problem:    Cannot change file permissions.
+Solution:   Add setfperm().
+Files:      src/eval.c, runtime/doc/eval.txt, src/testdir/test_alot.vim,
+            src/testdir/test_file_perm.vim
+
+
+*** ../vim-7.4.1515/src/eval.c	2016-03-07 21:19:34.485323094 +0100
+--- src/eval.c	2016-03-08 17:03:22.081508543 +0100
+***************
+*** 735,740 ****
+--- 735,741 ----
+  static void f_setbufvar(typval_T *argvars, typval_T *rettv);
+  static void f_setcharsearch(typval_T *argvars, typval_T *rettv);
+  static void f_setcmdpos(typval_T *argvars, typval_T *rettv);
++ static void f_setfperm(typval_T *argvars, typval_T *rettv);
+  static void f_setline(typval_T *argvars, typval_T *rettv);
+  static void f_setloclist(typval_T *argvars, typval_T *rettv);
+  static void f_setmatches(typval_T *argvars, typval_T *rettv);
+***************
+*** 8446,8451 ****
+--- 8447,8453 ----
+      {"setbufvar",	3, 3, f_setbufvar},
+      {"setcharsearch",	1, 1, f_setcharsearch},
+      {"setcmdpos",	1, 1, f_setcmdpos},
++     {"setfperm",	2, 2, f_setfperm},
+      {"setline",		2, 2, f_setline},
+      {"setloclist",	2, 3, f_setloclist},
+      {"setmatches",	1, 1, f_setmatches},
+***************
+*** 18422,18427 ****
+--- 18424,18465 ----
+  }
+  
+  /*
++  * "setfperm({fname}, {mode})" function
++  */
++     static void
++ f_setfperm(typval_T *argvars, typval_T *rettv)
++ {
++     char_u	*fname;
++     char_u	modebuf[NUMBUFLEN];
++     char_u	*mode_str;
++     int		i;
++     int		mask;
++     int		mode = 0;
++ 
++     rettv->vval.v_number = 0;
++     fname = get_tv_string_chk(&argvars[0]);
++     if (fname == NULL)
++ 	return;
++     mode_str = get_tv_string_buf_chk(&argvars[1], modebuf);
++     if (mode_str == NULL)
++ 	return;
++     if (STRLEN(mode_str) != 9)
++     {
++ 	EMSG2(_(e_invarg2), mode_str);
++ 	return;
++     }
++ 
++     mask = 1;
++     for (i = 8; i >= 0; --i)
++     {
++ 	if (mode_str[i] != '-')
++ 	    mode |= mask;
++ 	mask = mask << 1;
++     }
++     rettv->vval.v_number = mch_setperm(fname, mode) == OK;
++ }
++ 
++ /*
+   * "setline()" function
+   */
+      static void
+*** ../vim-7.4.1515/runtime/doc/eval.txt	2016-02-27 21:10:05.121338560 +0100
+--- runtime/doc/eval.txt	2016-03-08 16:53:05.083910242 +0100
+***************
+*** 2056,2061 ****
+--- 2067,2073 ----
+  setbufvar( {expr}, {varname}, {val})	set {varname} in buffer {expr} to {val}
+  setcharsearch( {dict})		Dict	set character search from {dict}
+  setcmdpos( {pos})		Number	set cursor position in command-line
++ setfperm( {fname}, {mode})	Number	set {fname} file permissions to {mode}
+  setline( {lnum}, {line})	Number	set line {lnum} to {line}
+  setloclist( {nr}, {list}[, {action}])
+  				Number	modify location list using {list}
+***************
+*** 3773,3778 ****
+--- 3831,3838 ----
+  <		This will hopefully (from a security point of view) display
+  		the string "rw-r--r--" or even "rw-------".
+  
++ 		For setting permissins use |setfperm()|.
++ 
+  getftime({fname})					*getftime()*
+  		The result is a Number, which is the last modification time of
+  		the given file {fname}.  The value is measured as seconds
+***************
+*** 5933,5938 ****
+--- 6004,6027 ----
+  		Returns 0 when successful, 1 when not editing the command
+  		line.
+  
++ setfperm({fname}, {mode})				*setfperm()* *chmod*
++ 		Set the file permissions for {fname} to {mode}.
++ 		{mode} must be a string with 9 characters.  It is of the form
++ 		"rwxrwxrwx", where each group of "rwx" flags represent, in
++ 		turn, the permissions of the owner of the file, the group the
++ 		file belongs to, and other users.  A '-' character means the
++ 		permission is off, any other character means on.  Multi-byte
++ 		characters are not supported.
++ 
++ 		For example "rw-r-----" means read-write for the user,
++ 		readable by the group, not accessible by others.  "xx-x-----"
++ 		would do the same thing.
++ 
++ 		Returns non-zero for success, zero for failure.
++ 
++ 		To read permissions see |getfperm()|.
++ 
++ 
+  setline({lnum}, {text})					*setline()*
+  		Set line {lnum} of the current buffer to {text}.  To insert
+  		lines use |append()|.
+*** ../vim-7.4.1515/src/testdir/test_alot.vim	2016-03-08 14:44:28.192510661 +0100
+--- src/testdir/test_alot.vim	2016-03-08 16:54:51.094810668 +0100
+***************
+*** 5,10 ****
+--- 5,11 ----
+  source test_cursor_func.vim
+  source test_delete.vim
+  source test_expand.vim
++ source test_file_perm.vim
+  source test_glob2regpat.vim
+  source test_join.vim
+  source test_lispwords.vim
+*** ../vim-7.4.1515/src/testdir/test_file_perm.vim	2016-03-08 17:07:13.815102983 +0100
+--- src/testdir/test_file_perm.vim	2016-03-08 17:05:22.608257467 +0100
+***************
+*** 0 ****
+--- 1,20 ----
++ " Test getting and setting file permissions.
++ 
++ func Test_file_perm()
++   call assert_equal('', getfperm('Xtest'))
++   call assert_equal(0, setfperm('Xtest', 'r--------'))
++ 
++   call writefile(['one'], 'Xtest')
++   call assert_true(len(getfperm('Xtest')) == 9)
++ 
++   call assert_equal(1, setfperm('Xtest', 'rwx------'))
++   call assert_equal('rwx------', getfperm('Xtest'))
++ 
++   call assert_equal(1, setfperm('Xtest', 'r--r--r--'))
++   call assert_equal('r--r--r--', getfperm('Xtest'))
++ 
++   call assert_fails("setfperm('Xtest', '---')")
++ 
++   call assert_equal(1, setfperm('Xtest', 'rwx------'))
++   call delete('Xtest')
++ endfunc
+*** ../vim-7.4.1515/src/version.c	2016-03-08 16:06:51.048733393 +0100
+--- src/version.c	2016-03-08 16:52:06.176521179 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1516,
+  /**/
+
+-- 
+The Feynman problem solving Algorithm:
+	1) Write down the problem
+	2) Think real hard
+	3) Write down the answer
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

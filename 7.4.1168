@@ -1,0 +1,84 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1168
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1168
+Problem:    This doesn't give the right result: eval(string(v:true)). (Nikolay
+            Pavlov)
+Solution:   Make the string "v:true" instead of "true".
+Files:      src/eval.c, src/testdir/test_viml.vim
+
+
+*** ../vim-7.4.1167/src/eval.c	2016-01-24 14:22:06.282648939 +0100
+--- src/eval.c	2016-01-24 17:42:37.970365093 +0100
+***************
+*** 7825,7834 ****
+  {
+      switch (nr)
+      {
+! 	case VVAL_FALSE: return "false";
+! 	case VVAL_TRUE: return "true";
+! 	case VVAL_NONE: return "none";
+! 	case VVAL_NULL: return "null";
+      }
+      EMSG2(_(e_intern2), "get_var_special_name()");
+      return "42";
+--- 7825,7834 ----
+  {
+      switch (nr)
+      {
+! 	case VVAL_FALSE: return "v:false";
+! 	case VVAL_TRUE: return "v:true";
+! 	case VVAL_NONE: return "v:none";
+! 	case VVAL_NULL: return "v:null";
+      }
+      EMSG2(_(e_intern2), "get_var_special_name()");
+      return "42";
+*** ../vim-7.4.1167/src/testdir/test_viml.vim	2016-01-24 17:21:24.967581138 +0100
+--- src/testdir/test_viml.vim	2016-01-24 17:44:53.004964021 +0100
+***************
+*** 942,951 ****
+      call assert_equal(0, 0 + v:none)
+      call assert_equal(0, 0 + v:null)
+  
+!     call assert_equal('false', '' . v:false)
+!     call assert_equal('true', '' . v:true)
+!     call assert_equal('none', '' . v:none)
+!     call assert_equal('null', '' . v:null)
+  
+      call assert_true(v:false == 0)
+      call assert_false(v:false != 0)
+--- 942,951 ----
+      call assert_equal(0, 0 + v:none)
+      call assert_equal(0, 0 + v:null)
+  
+!     call assert_equal('v:false', '' . v:false)
+!     call assert_equal('v:true', '' . v:true)
+!     call assert_equal('v:none', '' . v:none)
+!     call assert_equal('v:null', '' . v:null)
+  
+      call assert_true(v:false == 0)
+      call assert_false(v:false != 0)
+*** ../vim-7.4.1167/src/version.c	2016-01-24 17:21:24.967581138 +0100
+--- src/version.c	2016-01-24 17:46:10.812157000 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1168,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+37. You start looking for hot HTML addresses in public restrooms.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

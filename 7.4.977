@@ -1,0 +1,265 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.977
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.977
+Problem:    'linebreak' does not work properly when using "space" in
+            'listchars'.
+Solution:   (Hirohito Higashi, Christian Brabandt)
+Files:      src/screen.c, src/testdir/test_listlbr.in,
+            src/testdir/test_listlbr.ok
+
+
+*** ../vim-7.4.976/src/screen.c	2015-12-03 14:28:36.100419806 +0100
+--- src/screen.c	2015-12-17 21:05:55.094576000 +0100
+***************
+*** 3345,3358 ****
+      }
+  #endif
+  
+!     /* find start of trailing whitespace */
+!     if (wp->w_p_list && lcs_trail)
+      {
+! 	trailcol = (colnr_T)STRLEN(ptr);
+! 	while (trailcol > (colnr_T)0 && vim_iswhite(ptr[trailcol - 1]))
+! 	    --trailcol;
+! 	trailcol += (colnr_T) (ptr - line);
+! 	extra_check = TRUE;
+      }
+  
+      /*
+--- 3345,3362 ----
+      }
+  #endif
+  
+!     if (wp->w_p_list)
+      {
+! 	if (lcs_space || lcs_trail)
+! 	    extra_check = TRUE;
+! 	/* find start of trailing whitespace */
+! 	if (lcs_trail)
+! 	{
+! 	    trailcol = (colnr_T)STRLEN(ptr);
+! 	    while (trailcol > (colnr_T)0 && vim_iswhite(ptr[trailcol - 1]))
+! 		--trailcol;
+! 	    trailcol += (colnr_T) (ptr - line);
+! 	}
+      }
+  
+      /*
+***************
+*** 4354,4388 ****
+  #endif
+  	    ++ptr;
+  
+- 	    /* 'list': change char 160 to lcs_nbsp and space to lcs_space. */
+- 	    if (wp->w_p_list
+- 		    && (((c == 160
+- #ifdef FEAT_MBYTE
+- 			  || (mb_utf8 && (mb_c == 160 || mb_c == 0x202f))
+- #endif
+- 			 ) && lcs_nbsp)
+- 			|| (c == ' ' && lcs_space && ptr - line <= trailcol)))
+- 	    {
+- 		c = (c == ' ') ? lcs_space : lcs_nbsp;
+- 		if (area_attr == 0 && search_attr == 0)
+- 		{
+- 		    n_attr = 1;
+- 		    extra_attr = hl_attr(HLF_8);
+- 		    saved_attr2 = char_attr; /* save current attr */
+- 		}
+- #ifdef FEAT_MBYTE
+- 		mb_c = c;
+- 		if (enc_utf8 && (*mb_char2len)(c) > 1)
+- 		{
+- 		    mb_utf8 = TRUE;
+- 		    u8cc[0] = 0;
+- 		    c = 0xc0;
+- 		}
+- 		else
+- 		    mb_utf8 = FALSE;
+- #endif
+- 	    }
+- 
+  	    if (extra_check)
+  	    {
+  #ifdef FEAT_SPELL
+--- 4358,4363 ----
+***************
+*** 4567,4572 ****
+--- 4542,4577 ----
+  		}
+  #endif
+  
++ 		/* 'list': change char 160 to lcs_nbsp and space to lcs_space.
++ 		 */
++ 		if (wp->w_p_list
++ 			&& (((c == 160
++ #ifdef FEAT_MBYTE
++ 			      || (mb_utf8 && (mb_c == 160 || mb_c == 0x202f))
++ #endif
++ 			     ) && lcs_nbsp)
++ 			|| (c == ' ' && lcs_space && ptr - line <= trailcol)))
++ 		{
++ 		    c = (c == ' ') ? lcs_space : lcs_nbsp;
++ 		    if (area_attr == 0 && search_attr == 0)
++ 		    {
++ 			n_attr = 1;
++ 			extra_attr = hl_attr(HLF_8);
++ 			saved_attr2 = char_attr; /* save current attr */
++ 		    }
++ #ifdef FEAT_MBYTE
++ 		    mb_c = c;
++ 		    if (enc_utf8 && (*mb_char2len)(c) > 1)
++ 		    {
++ 			mb_utf8 = TRUE;
++ 			u8cc[0] = 0;
++ 			c = 0xc0;
++ 		    }
++ 		    else
++ 			mb_utf8 = FALSE;
++ #endif
++ 		}
++ 
+  		if (trailcol != MAXCOL && ptr > line + trailcol && c == ' ')
+  		{
+  		    c = lcs_trail;
+*** ../vim-7.4.976/src/testdir/test_listlbr.in	2015-09-25 19:34:57.891936941 +0200
+--- src/testdir/test_listlbr.in	2015-12-17 21:04:04.179738994 +0100
+***************
+*** 23,42 ****
+--- 23,46 ----
+  :	$put =g:line
+  :	wincmd p
+  :endfu
++ :"
+  :let g:test="Test 1: set linebreak"
+  :redraw!
+  :let line=ScreenChar(winwidth(0))
+  :call DoRecordScreen()
++ :"
+  :let g:test="Test 2: set linebreak + set list"
+  :set linebreak list listchars=
+  :redraw!
+  :let line=ScreenChar(winwidth(0))
+  :call DoRecordScreen()
++ :"
+  :let g:test ="Test 3: set linebreak nolist"
+  :set nolist linebreak
+  :redraw!
+  :let line=ScreenChar(winwidth(0))
+  :call DoRecordScreen()
++ :"
+  :let g:test ="Test 4: set linebreak with tab and 1 line as long as screen: should break!"
+  :set nolist linebreak ts=8
+  :let line="1\t".repeat('a', winwidth(0)-2)
+***************
+*** 50,55 ****
+--- 54,60 ----
+  :$put =line
+  :$
+  :norm! zt
++ :"
+  :let g:test ="Test 5: set linebreak with conceal and set list and tab displayed by different char (line may not be truncated)"
+  :set cpo&vim list linebreak conceallevel=2 concealcursor=nv listchars=tab:ab
+  :syn match ConcealVar contained /_/ conceal
+***************
+*** 57,62 ****
+--- 62,68 ----
+  :let line=ScreenChar(winwidth(0))
+  :call DoRecordScreen()
+  :set cpo&vim linebreak
++ :"
+  :let g:test ="Test 6: set linebreak with visual block mode"
+  :let line="REMOVE: this not"
+  :$put =g:test
+***************
+*** 66,85 ****
+--- 72,95 ----
+  :1/^REMOVE:
+  0jf x:$put
+  :set cpo&vim linebreak
++ :"
+  :let g:test ="Test 7: set linebreak with visual block mode and v_b_A"
+  :$put =g:test
+  Golong line: 40afoobar aTARGET at end
+  :exe "norm! $3B\<C-v>eAx\<Esc>"
+  :set cpo&vim linebreak sbr=
++ :"
+  :let g:test ="Test 8: set linebreak with visual char mode and changing block"
+  :$put =g:test
+  Go1111-1111-1111-11-1111-1111-11110f-lv3lc2222bgj.
++ :"
+  :let g:test ="Test 9: using redo after block visual mode"
+  :$put =g:test
+  Go
+  aaa
+  aaa
+  a2k2j~e.
++ :"
+  :let g:test ="Test 10: using normal commands after block-visual"
+  :$put =g:test
+  :set linebreak
+***************
+*** 87,96 ****
+--- 97,118 ----
+  abcd{ef
+  ghijklm
+  no}pqrs2k0f{c%
++ :"
+  :let g:test ="Test 11: using block replace mode after wrapping"
+  :$put =g:test
+  :set linebreak wrap
+  Go150aayypk147|jr0
++ :"
++ :let g:test ="Test 12: set linebreak list listchars=space:_,tab:>-,tail:-,eol:$"
++ :set list listchars=space:_,trail:-,tab:>-,eol:$
++ :$put =g:test
++ :let line="a aaaaaaaaaaaaaaaaaaaaaa\ta "
++ :$put =line
++ :$
++ :norm! zt
++ :redraw!
++ :let line=ScreenChar(winwidth(0))
++ :call DoRecordScreen()
+  :%w! test.out
+  :qa!
+  ENDTEST
+*** ../vim-7.4.976/src/testdir/test_listlbr.ok	2015-09-25 19:34:57.891936941 +0200
+--- src/testdir/test_listlbr.ok	2015-12-17 21:04:04.179738994 +0100
+***************
+*** 52,54 ****
+--- 52,62 ----
+  Test 11: using block replace mode after wrapping
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0aaa
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0aaa
++ Test 12: set linebreak list listchars=space:_,tab:>-,tail:-,eol:$
++ a aaaaaaaaaaaaaaaaaaaaaa	a 
++ 
++ Test 12: set linebreak list listchars=space:_,tab:>-,tail:-,eol:$
++ a_                  
++ aaaaaaaaaaaaaaaaaaaa
++ aa>-----a-$         
++ ~                   
+*** ../vim-7.4.976/src/version.c	2015-12-17 15:34:49.936071729 +0100
+--- src/version.c	2015-12-17 21:03:23.408166561 +0100
+***************
+*** 743,744 ****
+--- 743,746 ----
+  {   /* Add new patch number below this line */
++ /**/
++     977,
+  /**/
+
+-- 
+Facepalm statement #7: "Last week I almost got pregnant!"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

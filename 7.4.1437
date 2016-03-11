@@ -1,0 +1,254 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 7.4.1437
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 7.4.1437
+Problem:    Old system doesn't have isinf() and NAN. (Ben Fritz)
+Solution:   Adjust #ifdefs.  Detect isnan() and isinf() functions with
+            configure. Use a replacement when missing. (Kazunobu Kuriyama)
+Files:      src/eval.c, src/json.c, src/macros.h, src/message.c,
+            src/config.h.in, src/configure.in, src/auto/configure
+
+
+*** ../vim-7.4.1436/src/eval.c	2016-02-27 19:20:58.777967241 +0100
+--- src/eval.c	2016-02-27 19:54:16.133061138 +0100
+***************
+*** 27,42 ****
+  # include <time.h>	/* for time_t */
+  #endif
+  
+- #if defined(FEAT_FLOAT)
+- # include <float.h>
+- # if defined(HAVE_MATH_H)
+- #  include <math.h>
+- # endif
+- # if defined(WIN32) && !defined(isnan)
+- #  define isnan(x) _isnan(x)
+- # endif
+- #endif
+- 
+  #define DICT_MAXNEST 100	/* maximum nesting of lists and dicts */
+  
+  #define DO_NOT_FREE_CNT 99999	/* refcount for dict or list that should not
+--- 27,32 ----
+*** ../vim-7.4.1436/src/json.c	2016-02-27 18:41:23.166807287 +0100
+--- src/json.c	2016-02-27 19:53:09.953754045 +0100
+***************
+*** 17,40 ****
+  
+  #if defined(FEAT_EVAL) || defined(PROTO)
+  
+- #if defined(FEAT_FLOAT)
+- # include <float.h>
+- # if defined(HAVE_MATH_H)
+-    /* for isnan() and isinf() */
+- #  include <math.h>
+- # endif
+- # if defined(WIN32) && !defined(isnan)
+- #  define isnan(x) _isnan(x)
+- #  define isinf(x) (!_finite(x) && !_isnan(x))
+- # endif
+- # if !defined(INFINITY) && defined(DBL_MAX)
+- #  define INFINITY (DBL_MAX+DBL_MAX)
+- # endif
+- # if !defined(NAN) && defined(INFINITY)
+- #  define NAN (INFINITY-INFINITY)
+- # endif
+- #endif
+- 
+  static int json_encode_item(garray_T *gap, typval_T *val, int copyID, int options);
+  static int json_decode_item(js_read_T *reader, typval_T *res, int options);
+  
+--- 17,22 ----
+*** ../vim-7.4.1436/src/macros.h	2016-02-25 15:24:59.696624342 +0100
+--- src/macros.h	2016-02-27 20:12:12.397779555 +0100
+***************
+*** 320,322 ****
+--- 320,351 ----
+  #if defined(FEAT_CHANNEL) || defined(FEAT_JOB) || defined(FEAT_CLIENTSERVER)
+  # define MESSAGE_QUEUE
+  #endif
++ 
++ #if defined(FEAT_EVAL) && defined(FEAT_FLOAT)
++ # include <float.h>
++ # if defined(HAVE_MATH_H)
++    /* for isnan() and isinf() */
++ #  include <math.h>
++ # endif
++ # if defined(WIN32) && !defined(isnan)
++ #  define isnan(x) _isnan(x)
++ #  define isinf(x) (!_finite(x) && !_isnan(x))
++ # else
++ #  ifndef HAVE_ISNAN
++     static inline int isnan(double x) { return x != x; }
++ #  endif
++ #  ifndef HAVE_ISINF
++     static inline int isinf(double x) { return !isnan(x) && isnan(x - x); }
++ #  endif
++ # endif
++ # if !defined(INFINITY)
++ #  if defined(DBL_MAX)
++ #   define INFINITY (DBL_MAX+DBL_MAX)
++ #  else
++ #   define INFINITY (1.0 / 0.0)
++ #  endif
++ # endif
++ # if !defined(NAN)
++ #  define NAN (INFINITY-INFINITY)
++ # endif
++ #endif
+*** ../vim-7.4.1436/src/message.c	2016-02-18 20:31:30.918431563 +0100
+--- src/message.c	2016-02-27 19:54:50.360702771 +0100
+***************
+*** 15,24 ****
+  
+  #include "vim.h"
+  
+- #if defined(FEAT_FLOAT) && defined(HAVE_MATH_H)
+- # include <math.h>
+- #endif
+- 
+  static int other_sourcing_name(void);
+  static char_u *get_emsg_source(void);
+  static char_u *get_emsg_lnum(void);
+--- 15,20 ----
+*** ../vim-7.4.1436/src/config.h.in	2016-02-27 18:13:05.248592984 +0100
+--- src/config.h.in	2016-02-27 20:11:54.333969055 +0100
+***************
+*** 460,462 ****
+--- 460,471 ----
+  
+  /* Define if GTK+ GUI is to be linked against GTK+ 3 */
+  #undef USE_GTK3
++ 
++ /* Define if we have isinf() */
++ #undef HAVE_ISINF
++ 
++ /* Define if we have isnan() */
++ #undef HAVE_ISNAN
++ 
++ /* Define to inline symbol or empty */
++ #undef inline
+*** ../vim-7.4.1436/src/configure.in	2016-02-27 18:13:05.244593026 +0100
+--- src/configure.in	2016-02-27 19:42:24.176515732 +0100
+***************
+*** 3146,3151 ****
+--- 3146,3152 ----
+  AC_CHECK_TYPE(ino_t, long)
+  AC_CHECK_TYPE(dev_t, unsigned)
+  AC_C_BIGENDIAN(,,,)
++ AC_C_INLINE
+  
+  AC_MSG_CHECKING(for rlim_t)
+  if eval "test \"`echo '$''{'ac_cv_type_rlim_t'+set}'`\" = set"; then
+***************
+*** 3564,3570 ****
+  	setpgid setsid sigaltstack sigstack sigset sigsetjmp sigaction \
+  	sigvec strcasecmp strerror strftime stricmp strncasecmp \
+  	strnicmp strpbrk strtol tgetent towlower towupper iswupper \
+! 	usleep utime utimes)
+  AC_FUNC_FSEEKO
+  
+  dnl define _LARGE_FILES, _FILE_OFFSET_BITS and _LARGEFILE_SOURCE when
+--- 3565,3571 ----
+  	setpgid setsid sigaltstack sigstack sigset sigsetjmp sigaction \
+  	sigvec strcasecmp strerror strftime stricmp strncasecmp \
+  	strnicmp strpbrk strtol tgetent towlower towupper iswupper \
+! 	usleep utime utimes isnan isinf)
+  AC_FUNC_FSEEKO
+  
+  dnl define _LARGE_FILES, _FILE_OFFSET_BITS and _LARGEFILE_SOURCE when
+*** ../vim-7.4.1436/src/auto/configure	2016-02-27 18:13:05.244593026 +0100
+--- src/auto/configure	2016-02-27 20:12:15.909742713 +0100
+***************
+*** 10978,10983 ****
+--- 10978,11025 ----
+   presetting ac_cv_c_bigendian=no (or yes) will help" "$LINENO" 5 ;;
+   esac
+  
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for inline" >&5
++ $as_echo_n "checking for inline... " >&6; }
++ if ${ac_cv_c_inline+:} false; then :
++   $as_echo_n "(cached) " >&6
++ else
++   ac_cv_c_inline=no
++ for ac_kw in inline __inline__ __inline; do
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ #ifndef __cplusplus
++ typedef int foo_t;
++ static $ac_kw foo_t static_foo () {return 0; }
++ $ac_kw foo_t foo () {return 0; }
++ #endif
++ 
++ _ACEOF
++ if ac_fn_c_try_compile "$LINENO"; then :
++   ac_cv_c_inline=$ac_kw
++ fi
++ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
++   test "$ac_cv_c_inline" != no && break
++ done
++ 
++ fi
++ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_c_inline" >&5
++ $as_echo "$ac_cv_c_inline" >&6; }
++ 
++ case $ac_cv_c_inline in
++   inline | yes) ;;
++   *)
++     case $ac_cv_c_inline in
++       no) ac_val=;;
++       *) ac_val=$ac_cv_c_inline;;
++     esac
++     cat >>confdefs.h <<_ACEOF
++ #ifndef __cplusplus
++ #define inline $ac_val
++ #endif
++ _ACEOF
++     ;;
++ esac
++ 
+  
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for rlim_t" >&5
+  $as_echo_n "checking for rlim_t... " >&6; }
+***************
+*** 11816,11822 ****
+  	setpgid setsid sigaltstack sigstack sigset sigsetjmp sigaction \
+  	sigvec strcasecmp strerror strftime stricmp strncasecmp \
+  	strnicmp strpbrk strtol tgetent towlower towupper iswupper \
+! 	usleep utime utimes
+  do :
+    as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+  ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+--- 11858,11864 ----
+  	setpgid setsid sigaltstack sigstack sigset sigsetjmp sigaction \
+  	sigvec strcasecmp strerror strftime stricmp strncasecmp \
+  	strnicmp strpbrk strtol tgetent towlower towupper iswupper \
+! 	usleep utime utimes isnan isinf
+  do :
+    as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+  ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+*** ../vim-7.4.1436/src/version.c	2016-02-27 19:25:57.154850611 +0100
+--- src/version.c	2016-02-27 20:04:20.174733895 +0100
+***************
+*** 745,746 ****
+--- 745,748 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1437,
+  /**/
+
+-- 
+A special cleaning ordinance bans housewives from hiding dirt and dust under a
+rug in a dwelling.
+		[real standing law in Pennsylvania, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///
