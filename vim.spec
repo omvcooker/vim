@@ -17,7 +17,7 @@
 
 Name:		vim
 Version:	7.4.1591
-Release:	1
+Release:	1.1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
