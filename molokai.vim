@@ -18,10 +18,7 @@ if version > 580
         syntax reset
     endif
 endif
-
-if exists("g:colors_name")
-    let g:colors_name="molokai"
-endif
+let g:colors_name="molokai"
 
 if exists("g:molokai_original")
     let s:molokai_original = g:molokai_original
