@@ -17,7 +17,7 @@
 
 Name:		vim
 Version:	7.4.1591
-Release:	1.1
+Release:	1.2
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -425,7 +425,6 @@ rm -f %{buildroot}%{_bindir}/vim
 mkdir -p %{buildroot}%{_sysconfdir}/vim/
 MESSAGE='"Place your systemwide modification here.\n"%{_datadir}/vim/ files will be overwritten on update\n'
 echo -e "$MESSAGE\nsource %{_datadir}/vim/vimrc" > %{buildroot}%{_sysconfdir}/vim/vimrc
-echo -e "colorscheme molokai" >> %{buildroot}%{_sysconfdir}/vim/vimrc
 %if %{with gui}
 echo -e "$MESSAGE\nsource %{_datadir}/vim/gvimrc" > %{buildroot}%{_sysconfdir}/vim/gvimrc
 %endif
