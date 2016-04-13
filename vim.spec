@@ -49,7 +49,6 @@ Patch8:		vim-6.0af-man-path.patch
 Patch10:	xxd-locale.patch
 Patch20:	vimrc_hebrew.patch
 Patch22:	vim-6.1-fix-xterms-comments.patch
-Patch23:	vim-6.3-remove-docs.patch
 Patch24:	vim-6.1-outline-mode.patch
 Patch25:	vim-6.1-xterm-s-insert.patch
 Patch27:	vim-6.1-rpm42.patch
