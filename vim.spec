@@ -16,13 +16,13 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.1591
-Release:	1.2
+Version:	7.4.1725
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
 Group:		Editors
-Source0:	%{dlurl}/vim/releases/%{name}-%{version}.tar.gz
+Source0:	%{dlurl}/vim/archive/v%{version}.tar.gz
 # read README.mdv prior updating official patches:
 Source3:	README.omv
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
@@ -43,7 +43,6 @@ Source11:	python-pep8-indent.vim
 Source12:	molokai.vim
 Source100:	vim.rpmlintrc
 # MDK patches
-Patch0:		vim-7.2-vimrc_nosetmouse.patch
 Patch2:		vim-5.6a-paths.patch
 Patch3:		vim-7.4.005-rpm-spec-syntax.patch
 Patch8:		vim-6.0af-man-path.patch
@@ -182,14 +181,12 @@ cp -a %{SOURCE11} runtime/indent/python.vim
 cp -a %{SOURCE12} runtime/colors
 
 #mdk patches
-%patch0 -p1 -b .vimrc_nosetmouse~
 %patch2 -p1
 #patch3 -p1 -b .spec~
 %patch8 -p1 -b .manpath~
 %patch10 -p1 -b .xxdloc~
 %patch20 -p1 -b .warly~
 %patch22 -p0
-%patch23 -p0 -b .doc~
 %patch24 -p0
 %patch25 -p0
 %patch27 -p0
@@ -483,6 +480,7 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_datadir}/vim/lang/README.txt
 %{_datadir}/vim/macros
 %{_datadir}/vim/plugin
+%{_datadir}/vim/pack
 %{_datadir}/vim/print
 %{_datadir}/vim/spell
 %{_datadir}/vim/syntax
