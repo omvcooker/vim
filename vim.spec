@@ -227,6 +227,7 @@ cp -a * .enhanced
 
 mkdir .minimal
 cp -a * .minimal
+# https://issues.openmandriva.org/show_bug.cgi?id=1627
 sed -i "s/vimrc/virc/" .minimal/src/os_unix.h
 
 %build
