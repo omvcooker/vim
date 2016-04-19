@@ -17,7 +17,7 @@
 
 Name:		vim
 Version:	7.4.1725
-Release:	2
+Release:	3
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -227,6 +227,7 @@ cp -a * .enhanced
 
 mkdir .minimal
 cp -a * .minimal
+sed -i "s/vimrc/virc/" .minimal/src/os_unix.h
 
 %build
 %if %{with gui}
