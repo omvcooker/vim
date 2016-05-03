@@ -17,7 +17,7 @@
 
 Name:		vim
 Version:	7.4.1725
-Release:	3
+Release:	4
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -41,6 +41,7 @@ Source11:	python-pep8-indent.vim
 # perfect theme
 # https://github.com/tomasr/molokai.git
 Source12:	molokai.vim
+Source13:	virc
 Source100:	vim.rpmlintrc
 # MDK patches
 Patch0:		vim-7.2-vimrc_nosetmouse.patch
@@ -428,6 +429,7 @@ echo -e "$MESSAGE\nsource %{_datadir}/vim/vimrc" > %{buildroot}%{_sysconfdir}/vi
 %if %{with gui}
 echo -e "$MESSAGE\nsource %{_datadir}/vim/gvimrc" > %{buildroot}%{_sysconfdir}/vim/gvimrc
 %endif
+install -m644 %{SOURCE13} %{buildroot}%{_sysconfdir}/vim/virc
 
 %post minimal
 update-alternatives --install /bin/vi vi /bin/vim-minimal 10 \
@@ -507,11 +509,13 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_bindir}/xxd
 %{_mandir}/man1/xxd.1*
 %dir %{_sysconfdir}/vim/
+%exclude %{_sysconfdir}/vim/virc
 %config(noreplace) %{_sysconfdir}/vim/*
 
 %files minimal
 %doc README*.txt
 /bin/vim-minimal
+%config(noreplace) %{_sysconfdir}/vim/virc
 
 %files enhanced
 %doc README*.txt
