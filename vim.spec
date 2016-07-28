@@ -16,8 +16,8 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.1725
-Release:	3
+Version:	7.4.2102
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -494,6 +494,7 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_datadir}/vim/tutor/tutor.vim
 %{_datadir}/vim/*.vim
 %{_datadir}/vim/vimrc
+%{_datadir}/vim/rgb.txt
 %{_mandir}/man1/vim.1*
 %{_mandir}/man1/ex.1*
 %{_mandir}/man1/vi.1*

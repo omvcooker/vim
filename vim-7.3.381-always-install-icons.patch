@@ -1,12 +1,19 @@
---- vim73/src/Makefile.icons_install~	2011-12-14 21:29:44.363793098 +0100
-+++ vim73/src/Makefile	2011-12-14 21:30:26.261814468 +0100
-@@ -2115,18 +2115,9 @@ ICON32PATH = $(DESTDIR)$(DATADIR)/icons/
+diff --git a/src/Makefile b/src/Makefile
+index 9b7dc91..3cafdb0 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -2441,23 +2441,9 @@ ICONTHEMEPATH = $(DATADIR)/icons/hicolor
  DESKTOPPATH = $(DESTDIR)$(DATADIR)/applications
  KDEPATH = $(HOME)/.kde/share/icons
  install-icons:
 -	if test -d $(ICON48PATH) -a -w $(ICON48PATH) \
 -		-a ! -f $(ICON48PATH)/gvim.png; then \
 -	   $(INSTALL_DATA) $(SCRIPTSOURCE)/vim48x48.png $(ICON48PATH)/gvim.png; \
+-	   if test -z "$(DESTDIR)" -a -x "$(GTK_UPDATE_ICON_CACHE)" \
+-		   -a -w $(ICONTHEMEPATH) \
+-		   -a -f $(ICONTHEMEPATH)/index.theme; then \
+-		$(GTK_UPDATE_ICON_CACHE) -q $(ICONTHEMEPATH); \
+-	   fi \
 -	fi
 -	if test -d $(ICON32PATH) -a -w $(ICON32PATH) \
 -		-a ! -f $(ICON32PATH)/gvim.png; then \
