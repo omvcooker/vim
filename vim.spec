@@ -17,7 +17,7 @@
 
 Name:		vim
 Version:	8.0.0003
-Release:	1
+Release:	2
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -44,6 +44,7 @@ Source12:	molokai.vim
 Source13:	virc
 Source100:	vim.rpmlintrc
 # MDK patches
+Patch1:		vim-8.0-nomouse.patch
 Patch2:		vim-5.6a-paths.patch
 Patch3:		vim-7.4.005-rpm-spec-syntax.patch
 Patch8:		vim-6.0af-man-path.patch
@@ -181,8 +182,9 @@ cp -a %{SOURCE11} runtime/indent/python.vim
 cp -a %{SOURCE12} runtime/colors
 
 #mdk patches
+%patch1 -p1 -b .nomouse~
 %patch2 -p1
-#patch3 -p1 -b .spec~
+%patch3 -p1 -b .spec~
 %patch8 -p1 -b .manpath~
 %patch10 -p1 -b .xxdloc~
 %patch20 -p1 -b .warly~
