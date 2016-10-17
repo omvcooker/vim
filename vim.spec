@@ -16,14 +16,14 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	8.0.0003
-Release:	2
+Version:	8.0.0041
+Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
 Group:		Editors
 Source0:	%{dlurl}/vim/archive/v%{version}.tar.gz
-# read README.mdv prior updating official patches:
+# read README.omv prior updating official patches:
 Source3:	README.omv
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:	vim-spec-3.0.bz2
