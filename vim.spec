@@ -16,7 +16,7 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	7.4.2102
+Version:	8.0.0033
 Release:	1
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
@@ -51,15 +51,12 @@ Patch10:	xxd-locale.patch
 Patch20:	vimrc_hebrew.patch
 Patch22:	vim-6.1-fix-xterms-comments.patch
 Patch24:	vim-6.1-outline-mode.patch
-Patch25:	vim-6.1-xterm-s-insert.patch
 Patch27:	vim-6.1-rpm42.patch
 Patch28:	vim-7.4-po-mode.patch
 Patch30:	vim-7.3.478-add-dhcpd-syntax.patch
 Patch33:	vim-7.4.005-CVE-2009-0316-debian.patch
 # (proyvind): fix path to locale files
 Patch35:	vim-7.4.005-use-proper-localedir.patch
-Patch36:	vim-7.4-qt-highlighting.patch
-Patch37:	vim-7.3.381-always-install-icons.patch
 Patch38:	vim-7.3.478-dont-check-for-xsetlocale.patch
 
 # Fedora patches
@@ -531,5 +528,7 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_iconsdir}/locolor/32x32/apps/gvim.png
 %{_iconsdir}/hicolor/48x48/apps/gvim.png
 %{_datadir}/applications/mandriva-%{name}-X11.desktop
+%{_datadir}/applications/gvim.desktop
+%{_datadir}/applications/vim.desktop
 %{_datadir}/vim/gvimrc
 %endif
