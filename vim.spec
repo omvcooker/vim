@@ -180,21 +180,15 @@ cp -a %{SOURCE12} runtime/colors
 #mdk patches
 %patch0 -p1
 %patch2 -p1
-#patch3 -p1 -b .spec~
 %patch8 -p1 -b .manpath~
 %patch10 -p1 -b .xxdloc~
 %patch20 -p1 -b .warly~
 %patch22 -p0
 %patch24 -p0
-%patch25 -p0
 %patch27 -p0
 %patch28 -p1 -b .pomode~
 %patch30 -p1
 %patch33 -p1 -b .security~
-#patch35 -p1 -b .localedir~
-%patch36 -p1 -b .qthl~
-%patch37 -p1 -b .icons_install~
-#patch38 -p1 -b .xsetlocale~
 
 # Fedora patches
 %patch101 -p1 -b .fstab~
