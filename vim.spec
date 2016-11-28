@@ -17,7 +17,7 @@
 
 Name:		vim
 Version:	8.0.0033
-Release:	1
+Release:	2
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
@@ -70,7 +70,7 @@ BuildRequires:	pkgconfig(python3)
 BuildRequires:	perl-devel
 BuildRequires:	acl-devel
 %if %{with gui}
-BuildRequires:	pkgconfig(gtk+-2.0) 
+BuildRequires:	pkgconfig(gtk+-3.0)
 BuildRequires:	pkgconfig(ncursesw)
 BuildRequires:	pkgconfig(xt)
 BuildRequires:	tcl
@@ -247,9 +247,9 @@ pushd .gui
 	--enable-xim \
 	--enable-fontset \
 	--with-features=huge \
-	--enable-gui=gtk2 \
+	--enable-gui=gt32 \
 	--with-tlib=ncurses \
-	--enable-gtk2-check \
+	--enable-gtk3-check \
 	--enable-acl \
 	--enable-gpm \
 	--disable-sysmouse \
