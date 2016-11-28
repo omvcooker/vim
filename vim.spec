@@ -152,7 +152,7 @@ Requires(post,postun):	update-alternatives
 Requires(post,postun):	rpm-helper
 Requires(post,postun):	bash
 Requires:	vim-common >= %{EVRD}
-
+Suggests: 	config(adwaita-gtk3-theme)
 %description	X11
 VIM (VIsual editor iMproved) is an updated and improved version of the vi
 editor. Vi was the first real screen-based editor for UNIX, and is still
