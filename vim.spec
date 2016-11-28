@@ -16,14 +16,14 @@
 %define longtitle	All-purpose text editor
 
 Name:		vim
-Version:	8.0.0033
+Version:	8.0.0041
 Release:	2
 Summary:	VIsual editor iMproved
 Url:		http://www.vim.org/
 License:	Charityware
 Group:		Editors
 Source0:	%{dlurl}/vim/archive/v%{version}.tar.gz
-# read README.mdv prior updating official patches:
+# read README.omv prior updating official patches:
 Source3:	README.omv
 # http://vim.sourceforge.net/scripts/script.php?script_id=98
 Source5:	vim-spec-3.0.bz2
@@ -41,9 +41,10 @@ Source11:	python-pep8-indent.vim
 # perfect theme
 # https://github.com/tomasr/molokai.git
 Source12:	molokai.vim
+Source13:	virc
 Source100:	vim.rpmlintrc
 # MDK patches
-Patch0:		vim-7.2-vimrc_nosetmouse.patch
+Patch1:		vim-8.0-nomouse.patch
 Patch2:		vim-5.6a-paths.patch
 Patch3:		vim-7.4.005-rpm-spec-syntax.patch
 Patch8:		vim-6.0af-man-path.patch
@@ -178,17 +179,23 @@ cp -a %{SOURCE11} runtime/indent/python.vim
 cp -a %{SOURCE12} runtime/colors
 
 #mdk patches
-%patch0 -p1
+%patch1 -p1 -b .nomouse~
 %patch2 -p1
+%patch3 -p1 -b .spec~
 %patch8 -p1 -b .manpath~
 %patch10 -p1 -b .xxdloc~
 %patch20 -p1 -b .warly~
 %patch22 -p0
 %patch24 -p0
+%patch25 -p1 -b .p25~
 %patch27 -p0
 %patch28 -p1 -b .pomode~
 %patch30 -p1
 %patch33 -p1 -b .security~
+#patch35 -p1 -b .localedir~
+%patch36 -p1 -b .qthl~
+#patch37 -p1 -b .icons_install~
+#patch38 -p1 -b .xsetlocale~
 
 # Fedora patches
 %patch101 -p1 -b .fstab~
@@ -367,21 +374,6 @@ ln -f runtime/tools/README.txt README_tools.txt
 
 # installing the menu icons & entry
 %if %{with gui}
-# menu entry
-install -d %{buildroot}%{_datadir}/applications
-cat > %{buildroot}%{_datadir}/applications/mandriva-%{name}-X11.desktop << EOF
-[Desktop Entry]
-Name=%{title}
-Comment=%{longtitle}
-Exec=%{_bindir}/gvim -f
-Icon=gvim
-Terminal=false
-Type=Application
-StartupNotify=false
-Categories=Gtk;TextEditor;Utility;
-MimeType=text/plain;
-EOF
-
 # gvim and fontset (from Pablo) 2001/03/19
 echo 'set guifontset=-*-fixed-medium-r-normal--14-*-*-*-c-*-*-*,-*-*-medium-r-normal--14-*-*-*-c-*-*-*,-*-*-medium-r-normal--14-*-*-*-m-*-*-*,*' > %{buildroot}%{_datadir}/vim/gvimrc
 %else
@@ -412,6 +404,8 @@ find %{buildroot}%{_datadir}/vim/lang -name "menu*" |
   -e 's!^\(/.*menu_\)\(..\)!%lang(\2) \1\2!g' \
   >> %{name}.lang
 rm -f %{buildroot}%{_bindir}/vim
+# Desktop file for the text mode version? Probably not very useful
+rm -f %{buildroot}%{_datadir}/applications/vim.desktop
 
 mkdir -p %{buildroot}%{_sysconfdir}/vim/
 MESSAGE='"Place your systemwide modification here.\n"%{_datadir}/vim/ files will be overwritten on update\n'
@@ -419,6 +413,7 @@ echo -e "$MESSAGE\nsource %{_datadir}/vim/vimrc" > %{buildroot}%{_sysconfdir}/vi
 %if %{with gui}
 echo -e "$MESSAGE\nsource %{_datadir}/vim/gvimrc" > %{buildroot}%{_sysconfdir}/vim/gvimrc
 %endif
+install -m644 %{SOURCE13} %{buildroot}%{_sysconfdir}/vim/virc
 
 %post minimal
 update-alternatives --install /bin/vi vi /bin/vim-minimal 10 \
@@ -498,12 +493,15 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_bindir}/vimtutor
 %{_bindir}/xxd
 %{_mandir}/man1/xxd.1*
+%{_datadir}/vim/rgb.txt
 %dir %{_sysconfdir}/vim/
+%exclude %{_sysconfdir}/vim/virc
 %config(noreplace) %{_sysconfdir}/vim/*
 
 %files minimal
 %doc README*.txt
 /bin/vim-minimal
+%config(noreplace) %{_sysconfdir}/vim/virc
 
 %files enhanced
 %doc README*.txt
@@ -521,8 +519,6 @@ update-alternatives --remove uvi /usr/bin/vim-enhanced
 %{_iconsdir}/locolor/16x16/apps/gvim.png
 %{_iconsdir}/locolor/32x32/apps/gvim.png
 %{_iconsdir}/hicolor/48x48/apps/gvim.png
-%{_datadir}/applications/mandriva-%{name}-X11.desktop
 %{_datadir}/applications/gvim.desktop
-%{_datadir}/applications/vim.desktop
 %{_datadir}/vim/gvimrc
 %endif

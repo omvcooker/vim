@@ -1,0 +1,13 @@
+--- vim-8.0.0003/runtime/vimrc_example.vim.p25~	2016-09-12 20:50:05.584064617 +0200
++++ vim-8.0.0003/runtime/vimrc_example.vim	2016-09-12 20:50:21.548783425 +0200
+@@ -49,6 +49,10 @@ else
+ 
+ endif " has("autocmd")
+ 
++" Make shift-insert work like in Xterm
++map <S-Insert> <MiddleMouse>
++map! <S-Insert> <MiddleMouse>
++
+ " Add optional packages.
+ "
+ " The matchit plugin makes the % command work better, but it is not backwards
