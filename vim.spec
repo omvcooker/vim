@@ -257,9 +257,9 @@ pushd .gui
 	--enable-xim \
 	--enable-fontset \
 	--with-features=huge \
-	--enable-gui=gtk2 \
+	--enable-gui=gtk3 \
 	--with-tlib=ncurses \
-	--enable-gtk2-check \
+	--enable-gtk3-check \
 	--enable-acl \
 	--enable-gpm \
 	--disable-sysmouse \
